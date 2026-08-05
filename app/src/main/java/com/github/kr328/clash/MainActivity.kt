@@ -17,6 +17,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.update.UpdatePrompt
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -36,6 +37,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         setContentDesign(design)
 
         design.fetch()
+
+        // Обновление приложения из GitHub Releases. Ядро отдельно не обновляется:
+        // оно вкомпилировано в APK, и подменить его по одному файлу нельзя.
+        UpdatePrompt.checkInBackground(this, this)
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
 

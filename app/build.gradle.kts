@@ -6,6 +6,7 @@ plugins {
     kotlin("android")
     kotlin("kapt")
     id("com.android.application")
+    id("kotlinx-serialization")
 }
 
 dependencies {
@@ -26,6 +27,8 @@ dependencies {
     implementation(libs.google.material)
     implementation(libs.quickie.bundled)
     implementation(libs.androidx.activity.ktx)
+    // разбор манифеста обновлений (latest.json)
+    implementation(libs.kotlin.serialization.json)
 }
 
 tasks.getByName("clean", type = Delete::class) {
