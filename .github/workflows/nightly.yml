@@ -1,0 +1,213 @@
+# Ночная (pre-release) сборка на каждый push в main.
+#
+# Отличия от release.yml:
+#   * тега не требует, версия получает суффикс -nightly.<номер прогона>;
+#   * релиз плавающий (тег nightly), старые APK перезаписываются;
+#   * манифест кладётся в отдельный плавающий релиз updater-nightly — на него смотрят
+#     только те, у кого в настройках включены пре-релизы. Стабильный канал не трогается.
+#
+# versionCode считается как базовый + номер прогона, чтобы ночные сборки ставились
+# поверх друг друга. Очередной релиз поднимает minor (+10000), то есть заведомо
+# перебивает любую ночную сборку — при условии, что прогонов между релизами меньше 10000.
+
+name: Nightly
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'fastlane/**'
+      - '.github/ISSUE_TEMPLATE/**'
+
+permissions: write-all
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Ночная сборка
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Подтянуть submodule ядра
+        run: git submodule update --init --recursive --force
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
+          go-version: '1.26'
+
+      - name: Патчи Go-тулчейна
+        run: |
+          cd $(go env GOROOT)
+          for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
+
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Версия ночной сборки
+        id: v
+        run: |
+          set -euo pipefail
+          BASE_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' build.gradle.kts | head -1)
+          BASE_CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' build.gradle.kts | head -1)
+          NAME="$BASE_NAME-nightly.${{ github.run_number }}"
+          CODE=$((BASE_CODE + ${{ github.run_number }}))
+          sed -i "s/versionName = \"$BASE_NAME\"/versionName = \"$NAME\"/" build.gradle.kts
+          sed -i "s/versionCode = $BASE_CODE/versionCode = $CODE/" build.gradle.kts
+          echo "version=$NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$CODE" >> "$GITHUB_OUTPUT"
+          echo "Ночная сборка $NAME ($CODE)"
+
+      - name: Обновить CA-сертификаты ядра
+        run: |
+          sudo apt-get update && sudo apt-get install -y ca-certificates
+          sudo update-ca-certificates
+          cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
+
+      - name: Ключ подписи из секретов
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
+            echo "::error::Секрет KEYSTORE_BASE64 не задан — ночная сборка будет неустановимой поверх релиза"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          {
+            echo "keystore.path=$RUNNER_TEMP/release.keystore"
+            echo "keystore.password=$KEYSTORE_PASSWORD"
+            echo "key.alias=$KEY_ALIAS"
+            echo "key.password=$KEY_PASSWORD"
+          } > signing.properties
+
+      - name: Сборка
+        run: ./gradlew --no-daemon app:assembleStandardRelease
+
+      - name: Проверка выравнивания 16 KB
+        run: |
+          set -euo pipefail
+          READELF=$(find "$ANDROID_HOME/ndk" -name 'llvm-readelf' | head -1)
+          fail=0
+          for apk in app/build/outputs/apk/standard/release/*.apk; do
+            tmp=$(mktemp -d); unzip -q -o "$apk" 'lib/*' -d "$tmp" || true
+            while IFS= read -r so; do
+              align=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | tail -1)
+              if [[ "$align" != "0x4000" && "$align" != "0x10000" ]]; then
+                echo "::error::$(basename "$apk") :: $(basename "$so") выравнен на $align"
+                fail=1
+              fi
+            done < <(find "$tmp" -name '*.so')
+            rm -rf "$tmp"
+          done
+          [[ $fail -eq 0 ]] || exit 1
+
+      - name: Подготовить файлы
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for apk in app/build/outputs/apk/standard/release/*.apk; do
+            name=$(basename "$apk")
+            abi=$(echo "$name" | sed -E 's/^app-standard-?(.*)-release\.apk$/\1/')
+            [[ -z "$abi" ]] && abi=universal
+            cp "$apk" "dist/clodclash-$VERSION-$abi.apk"
+          done
+          cd dist && sha256sum *.apk > SHA256SUMS.txt
+
+      - name: Собрать latest.json ночного канала
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          VERSION_CODE: ${{ steps.v.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          NOTES=$(git log -10 --pretty='· %s')
+          BASE="https://github.com/${{ github.repository }}/releases/download/nightly"
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            --arg base "$BASE" \
+            --slurpfile sums <(
+              cd dist && while read -r hash file; do
+                jq -n --arg f "$file" --arg h "$hash" '{file:$f, sha256:$h}'
+              done < SHA256SUMS.txt | jq -s .
+            ) '
+            {
+              version: $version,
+              versionCode: $versionCode,
+              notes: $notes,
+              pub_date: $pub_date,
+              channel: "nightly",
+              platforms: ($sums[0] | map({
+                key: (.file | capture("clodclash-.*-(?<abi>[a-z0-9_\\-]+)\\.apk$").abi),
+                value: {url: ($base + "/" + .file), sha256: .sha256}
+              }) | from_entries)
+            }' > dist/latest.json
+
+      - name: Разложить по плавающим релизам
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          ensure_release() {
+            local tag="$1" name="$2" body="$3"
+            local id
+            id=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq .id 2>/dev/null || true)
+            if [[ -z "$id" ]]; then
+              id=$(gh api -X POST "repos/${{ github.repository }}/releases" \
+                -f tag_name="$tag" -f name="$name" -f body="$body" \
+                -F draft=false -F prerelease=true --jq .id)
+            fi
+            echo "$id"
+          }
+
+          upload() {
+            local id="$1" file="$2" ctype="$3"
+            local name; name=$(basename "$file")
+            local old
+            old=$(gh api "repos/${{ github.repository }}/releases/$id/assets" \
+              --jq ".[] | select(.name == \"$name\") | .id" || true)
+            [[ -n "$old" ]] && gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+            gh api --method POST -H "Content-Type: $ctype" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/$id/assets?name=$name" \
+              --input "$file" >/dev/null
+            echo "залито: $name"
+          }
+
+          NIGHTLY=$(ensure_release nightly "Ночная сборка" "Собирается автоматически из main. Может не работать.")
+          gh api -X PATCH "repos/${{ github.repository }}/releases/$NIGHTLY" \
+            -f name="Ночная сборка $VERSION" \
+            -f body="Автоматическая сборка из main от $(date -u +%d.%m.%Y). Ставится поверх релизной, но обратно откатиться можно только переустановкой." >/dev/null
+
+          for f in dist/*.apk dist/SHA256SUMS.txt; do upload "$NIGHTLY" "$f" "application/octet-stream"; done
+
+          UPD=$(ensure_release updater-nightly "Манифест ночного канала" "Служебный релиз: latest.json ночного канала. APK отсюда не качайте.")
+          upload "$UPD" dist/latest.json "application/json"

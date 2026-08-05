@@ -1,0 +1,343 @@
+# Релиз Android-версии Clod Clash.
+#
+# Конвейер повторяет десктопный (release-clod.yml в основном репозитории):
+#   тег android-v* -> сверка версии -> черновик релиза -> сборка -> публикация как pre-release
+#   -> latest.json в сам релиз и в плавающий релиз updater.
+#
+# Почему черновик создаётся отдельным джобом: если релиз создавать из джоба сборки,
+# параллельные джобы дерутся за создание одного и того же релиза и проигравший получает 403.
+#
+# Почему всегда prerelease=true: продукт в альфе, и ровно так же ведёт себя десктоп.
+# Из-за этого GitHub не считает релиз "latest", поэтому манифест обновлений дублируется
+# в плавающий релиз с тегом updater — на него и смотрит приложение.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'android-v*'
+
+permissions: write-all
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # ABI, под которые собираются отдельные APK. Универсальный APK собирается всегда.
+  ABIS: 'arm64-v8a armeabi-v7a x86_64'
+
+jobs:
+  check_version:
+    name: Сверка версии
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      version_code: ${{ steps.v.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Тег должен совпадать с versionName в build.gradle.kts
+        id: v
+        run: |
+          set -euo pipefail
+          TAG_REF="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' build.gradle.kts | head -1)
+          VERSION_CODE=$(grep -oP 'versionCode\s*=\s*\K[0-9]+' build.gradle.kts | head -1)
+          EXPECTED_TAG="android-v$VERSION_NAME"
+
+          if [[ "$TAG_REF" != "$EXPECTED_TAG" ]]; then
+            echo "::error::Тег $TAG_REF не совпадает с build.gradle.kts (ожидался $EXPECTED_TAG)"
+            exit 1
+          fi
+
+          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "Версия $VERSION_NAME ($VERSION_CODE)"
+
+  prepare_release:
+    name: Черновик релиза
+    needs: check_version
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.draft.outputs.release_id }}
+    steps:
+      - name: Создать черновик (или пересоздать старый)
+        id: draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+
+          existing=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '{id: .id, draft: .draft}' 2>/dev/null || echo '')
+          if [[ -n "$existing" ]]; then
+            if [[ "$(echo "$existing" | jq -r .draft)" == "true" ]]; then
+              gh api -X DELETE "repos/${{ github.repository }}/releases/$(echo "$existing" | jq -r .id)"
+              echo "Старый черновик удалён"
+            else
+              echo "::error::Релиз $TAG уже опубликован — перезаписывать не будем"
+              exit 1
+            fi
+          fi
+
+          id=$(gh api -X POST "repos/${{ github.repository }}/releases" \
+            -f tag_name="$TAG" \
+            -f name="Clod Clash для Android $TAG" \
+            -f body="Черновик — наполняется сборкой." \
+            -F draft=true -F prerelease=true --jq .id)
+          echo "release_id=$id" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Сборка
+    needs: [check_version, prepare_release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Подтянуть submodule ядра
+        run: git submodule update --init --recursive --force
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      # Go — форк MetaCubeX с двумя патчами GOROOT (см. .github/patch).
+      # Без них ломаются armeabi-v7a на старых ядрах и pidfd на Android.
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
+        with:
+          go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
+          go-version: '1.26'
+
+      - name: Патчи Go-тулчейна
+        run: |
+          cd $(go env GOROOT)
+          for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
+
+      # Кеш Go. Помним общее правило GitHub: кеш не переживает тег,
+      # поэтому релизная сборка всегда холодная — это ожидаемо, а не поломка.
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Обновить CA-сертификаты ядра
+        run: |
+          sudo apt-get update && sudo apt-get install -y ca-certificates
+          sudo update-ca-certificates
+          cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
+
+      # Ключ подписи приходит из секрета base64. В репозитории его нет и быть не должно:
+      # тот же ключ = единственное условие, при котором обновление ставится поверх
+      # установленного приложения без потери данных.
+      - name: Ключ подписи из секретов
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
+            echo "::error::Секрет KEYSTORE_BASE64 не задан — релиз нельзя подписать"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          {
+            echo "keystore.path=$RUNNER_TEMP/release.keystore"
+            echo "keystore.password=$KEYSTORE_PASSWORD"
+            echo "key.alias=$KEY_ALIAS"
+            echo "key.password=$KEY_PASSWORD"
+          } > signing.properties
+          # Содержимое в лог не печатаем (апстрим печатал).
+
+      - name: Сборка релиза
+        run: ./gradlew --no-daemon app:assembleStandardRelease
+
+      # 16 KB page size: с NDK r29 выравнивание получается само, но "само" —
+      # это не гарантия. Проверяем явно, иначе на новых устройствах библиотеки
+      # просто не загрузятся, а узнаем мы об этом от пользователей.
+      - name: Проверка выравнивания 16 KB
+        run: |
+          set -euo pipefail
+          READELF=$(find "$ANDROID_HOME/ndk" -name 'llvm-readelf' | head -1)
+          echo "readelf: $READELF"
+          fail=0
+          for apk in app/build/outputs/apk/standard/release/*.apk; do
+            tmp=$(mktemp -d); unzip -q -o "$apk" 'lib/*' -d "$tmp" || true
+            while IFS= read -r so; do
+              align=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | tail -1)
+              if [[ "$align" != "0x4000" && "$align" != "0x10000" ]]; then
+                echo "::error::$(basename "$apk") :: $(basename "$so") выравнен на $align, а нужно 0x4000 (16 KB)"
+                fail=1
+              fi
+            done < <(find "$tmp" -name '*.so')
+            rm -rf "$tmp"
+          done
+          [[ $fail -eq 0 ]] || exit 1
+
+      - name: Переименовать APK и посчитать SHA-256
+        id: assets
+        env:
+          VERSION: ${{ needs.check_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for apk in app/build/outputs/apk/standard/release/*.apk; do
+            name=$(basename "$apk")
+            # app-standard-arm64-v8a-release.apk -> clodclash-<версия>-arm64-v8a.apk
+            abi=$(echo "$name" | sed -E 's/^app-standard-?(.*)-release\.apk$/\1/')
+            [[ -z "$abi" ]] && abi=universal
+            cp "$apk" "dist/clodclash-$VERSION-$abi.apk"
+          done
+          cd dist && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      # Манифест обновлений. Схема повторяет десктопный latest.json, но с двумя
+      # обязательными для Android добавками: versionCode (сравнение версий монотонным
+      # числом, а не строкой) и sha256 (подписи minisign, как на ПК, здесь не нужны —
+      # целостность APK гарантирует ключ подписи, но MITM при загрузке ловим хешем).
+      - name: Собрать latest.json
+        env:
+          VERSION: ${{ needs.check_version.outputs.version }}
+          VERSION_CODE: ${{ needs.check_version.outputs.version_code }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          NOTES=$(awk -v ver="## v$VERSION" '
+            $0 == ver { grab = 1; next }
+            /^## v/ || /^---/ { if (grab) exit }
+            grab { print }
+          ' UPDATELOG.md 2>/dev/null || true)
+          if [[ -z "${NOTES// }" ]]; then
+            NOTES=$(git tag -l --format='%(contents)' "$TAG")
+          fi
+          if [[ -z "${NOTES// }" ]]; then
+            NOTES="Вышла версия $VERSION."
+          fi
+
+          BASE="https://github.com/${{ github.repository }}/releases/download/$TAG"
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            --arg base "$BASE" \
+            --slurpfile sums <(
+              cd dist && while read -r hash file; do
+                jq -n --arg f "$file" --arg h "$hash" '{file:$f, sha256:$h}'
+              done < SHA256SUMS.txt | jq -s .
+            ) '
+            {
+              version: $version,
+              versionCode: $versionCode,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: ($sums[0] | map({
+                key: (.file | capture("clodclash-.*-(?<abi>[a-z0-9_\\-]+)\\.apk$").abi),
+                value: {url: ($base + "/" + .file), sha256: .sha256}
+              }) | from_entries)
+            }' > dist/latest.json
+          cat dist/latest.json
+
+      - name: Залить в черновик релиза
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare_release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          # По тегу gh release upload черновики не видит — только по release_id.
+          for f in dist/*; do
+            name=$(basename "$f")
+            old=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
+              --jq ".[] | select(.name == \"$name\") | .id" || true)
+            [[ -n "$old" ]] && gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+            gh api --method POST \
+              -H "Content-Type: application/octet-stream" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=$name" \
+              --input "$f" >/dev/null
+            echo "залито: $name"
+          done
+
+  publish:
+    name: Публикация
+    needs: [check_version, prepare_release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # Гейт комплектности: лучше упасть здесь, чем выпустить релиз без APK
+      # под какой-то ABI или без манифеста, на который смотрит апдейтер.
+      - name: Проверить, что релиз укомплектован
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare_release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          assets=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" --jq '.[].name')
+          echo "$assets"
+          for needle in latest.json SHA256SUMS.txt universal.apk arm64-v8a.apk armeabi-v7a.apk; do
+            if ! echo "$assets" | grep -qi -- "$needle"; then
+              echo "::error::В релизе нет файла по маске '$needle'"
+              exit 1
+            fi
+          done
+
+      - name: Опубликовать как pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare_release.outputs.release_id }}
+          VERSION: ${{ needs.check_version.outputs.version }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          NOTES=$(awk -v ver="## v$VERSION" '
+            $0 == ver { grab = 1; next }
+            /^## v/ || /^---/ { if (grab) exit }
+            grab { print }
+          ' UPDATELOG.md 2>/dev/null || true)
+          [[ -z "${NOTES// }" ]] && NOTES=$(git tag -l --format='%(contents)' "$TAG")
+          [[ -z "${NOTES// }" ]] && NOTES="Вышла версия $VERSION."
+
+          gh api -X PATCH "repos/${{ github.repository }}/releases/$RELEASE_ID" \
+            -F draft=false -F prerelease=true -f body="$NOTES" --jq .html_url
+
+      # Плавающий релиз updater: GitHub не отдаёт pre-release по /releases/latest,
+      # поэтому приложение ходит за манифестом сюда — адрес не меняется от версии к версии.
+      - name: Обновить плавающий релиз updater
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare_release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
+            --jq '.[] | select(.name == "latest.json") | .id' > /tmp/asset_id
+          gh api -H "Accept: application/octet-stream" \
+            "repos/${{ github.repository }}/releases/assets/$(cat /tmp/asset_id)" > latest.json
+
+          upd=$(gh api "repos/${{ github.repository }}/releases/tags/updater" --jq .id 2>/dev/null || true)
+          if [[ -z "$upd" ]]; then
+            upd=$(gh api -X POST "repos/${{ github.repository }}/releases" \
+              -f tag_name=updater \
+              -f name="Манифест обновлений" \
+              -f body="Служебный релиз: здесь всегда лежит latest.json текущей версии. Не скачивайте отсюда APK." \
+              -F draft=false -F prerelease=true --jq .id)
+          fi
+
+          old=$(gh api "repos/${{ github.repository }}/releases/$upd/assets" \
+            --jq '.[] | select(.name == "latest.json") | .id' || true)
+          [[ -n "$old" ]] && gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+
+          gh api --method POST \
+            -H "Content-Type: application/json" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/$upd/assets?name=latest.json" \
+            --input latest.json >/dev/null
+          echo "latest.json разложен в updater"

@@ -1,4 +1,4 @@
-name: Build Debug
+name: Build Check
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -64,7 +64,7 @@ jobs:
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
       - name: Build
         if: success()
-        run: ./gradlew --no-daemon app:assembleAlphaRelease
+        run: ./gradlew --no-daemon app:assembleStandardDebug
           
       - name: Upload Aritfact (universal)
         uses: actions/upload-artifact@v7
