@@ -64,3 +64,9 @@ google-services.json
 
 # MacOS
 .DS_Store
+
+# clod: подпись релиза — только из секретов CI, в репозиторий не кладём
+/signing.properties
+/release.keystore
+*.keystore
+*.jks

@@ -204,7 +204,7 @@
     <string name="import_from_clipboard">Импорт из буфера обмена</string>
     <string name="export_to_clipboard">Экспорт в буфер обмена</string>
 
-    <string name="clash_meta_for_android">Clash Meta для Android</string>
+    <string name="clash_meta_for_android">Clod Clash</string>
 
     <string name="document">Документ</string>
     <string name="feedback">Обратная связь</string>
@@ -306,9 +306,6 @@
     <string name="geox_geoip">GeoIP URL</string>
     <string name="geox_mmdb">MMDB URL</string>
     <string name="geox_geosite">Geosite URL</string>
-    <string name="geoip_url" translatable="false">https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat</string>
-    <string name="mmdb_url" translatable="false">https://raw.githubusercontent.com/Loyalsoldier/geoip/release/Country.mmdb</string>
-    <string name="geosite_url" translatable="false">https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geosite.dat</string>
     <string name="geox_files" >Geo Files</string>
     <string name="import_geoip_file">Import GeoIP Database</string>
     <string name="press_to_import">Press to import...</string>

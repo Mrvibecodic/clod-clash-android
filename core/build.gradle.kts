@@ -13,11 +13,8 @@ val golangSource = file("src/main/golang/native")
 
 golang {
     sourceSets {
-        create("alpha") {
-            tags.set(listOf("foss","with_gvisor","cmfa"))
-            srcDir.set(file("src/foss/golang"))
-        }
-        create("meta") {
+        // clod: единственный flavor — standard (апстримные alpha/meta схлопнуты в один)
+        create("standard") {
             tags.set(listOf("foss","with_gvisor","cmfa"))
             srcDir.set(file("src/foss/golang"))
         }

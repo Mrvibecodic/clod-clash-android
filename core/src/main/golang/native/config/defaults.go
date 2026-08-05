@@ -1,11 +1,11 @@
 package config
 
 var (
+	// clod: китайские резолверы (223.5.5.5 AliDNS, 119.29.29.29 DNSPod) убраны
 	defaultNameServers = []string{
-		"223.5.5.5",
-		"119.29.29.29",
-		"8.8.4.4",
 		"1.0.0.1",
+		"8.8.4.4",
+		"9.9.9.10",
 	}
 	defaultFakeIPFilter = []string{
 		// Stun Services
@@ -30,9 +30,6 @@ var (
 		// Microsoft Captive Portal
 		"*.msftncsi.com",
 		"*.msftconnecttest.com",
-
-		// Bilibili CDN
-		"*.mcdn.bilivideo.cn",
 
 		// Windows Default LAN WorkGroup
 		"WORKGROUP",

@@ -84,20 +84,20 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
+                <data android:scheme="clodclash"/>
                 <data android:scheme="clash"/>
-                <data android:scheme="clashmeta"/>
                 <data android:host="install-config"/>
             </intent-filter>
             <intent-filter>
-                <action android:name="com.github.metacubex.clash.meta.action.START_CLASH" />
+                <action android:name="${applicationId}.action.START_CLASH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
-                <action android:name="com.github.metacubex.clash.meta.action.STOP_CLASH" />
+                <action android:name="${applicationId}.action.STOP_CLASH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
-                <action android:name="com.github.metacubex.clash.meta.action.TOGGLE_CLASH" />
+                <action android:name="${applicationId}.action.TOGGLE_CLASH" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -214,15 +214,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-            </intent-filter>
-        </receiver>
-
-        <receiver android:name=".DialerReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.provider.Telephony.SECRET_CODE" />
-                <!-- 252746382 is the name of Clash Meta in T9 -->
-                <data android:scheme="android_secret_code" android:host="252746382" />
             </intent-filter>
         </receiver>
     </application>

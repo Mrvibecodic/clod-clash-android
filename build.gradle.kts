@@ -47,19 +47,26 @@ subprojects {
         defaultConfig {
             if (isApp) {
                 val customApplicationId = queryConfigProperty("custom.application.id") as? String?
-                applicationId = customApplicationId.takeIf { it?.isNotBlank() == true } ?: "com.github.metacubex.clash"
+                applicationId = customApplicationId.takeIf { it?.isNotBlank() == true } ?: "io.clodclash.app"
             }
 
+            // clod: пакет исходников намеренно оставлен апстримным (com.github.kr328.clash).
+            // Смена пакета тянет переименование всех JNI-символов Java_com_github_kr328_clash_*
+            // в core/src/main/cpp/main.c и ничего не даёт: пользователю виден applicationId, не пакет.
             project.name.let { name ->
                 namespace = if (name == "app") "com.github.kr328.clash"
                 else "com.github.kr328.clash.$name"
             }
 
-            minSdk = 21
+            // clod: minSdk 23 — при 21 AGP включает legacy packaging (extractNativeLibs=true),
+            // что несовместимо с требованием 16 KB page size для Google Play.
+            minSdk = 23
             targetSdk = 35
 
-            versionName = "2.11.32"
-            versionCode = 211032
+            // clod: своя нумерация с нуля, апстримная (2.11.32 / 211032) не наследуется.
+            // versionCode = major * 1_000_000 + minor * 10_000 + patch
+            versionName = "0.1.0"
+            versionCode = 10000
 
             resValue("string", "release_name", "v$versionName")
             resValue("integer", "release_code", "$versionCode")
@@ -77,7 +84,7 @@ subprojects {
             if (!isApp) {
                 consumerProguardFiles("consumer-rules.pro")
             } else {
-                setProperty("archivesBaseName", "cmfa-$versionName")
+                setProperty("archivesBaseName", "clodclash-$versionName")
             }
         }
 
@@ -93,52 +100,25 @@ subprojects {
             }
         }
 
+        // clod: у апстрима два flavor'а (alpha/meta) с одинаковым PREMIUM=false — они различались
+        // только суффиксом имени и applicationId. Нам нужна одна сборка, поэтому meta удалён,
+        // а суффиксы сняты: applicationId должен совпадать с установленным, иначе самообновление
+        // из GitHub система посчитает установкой другого приложения.
         productFlavors {
             flavorDimensions("feature")
 
-            val removeSuffix = (queryConfigProperty("remove.suffix") as? String)?.toBoolean() == true
-
-            create("alpha") {
+            create("standard") {
                 isDefault = true
                 dimension = flavorDimensionList[0]
-                if (!removeSuffix) {
-                    versionNameSuffix = ".Alpha"
-                }
 
-
+                // launch_name / application_name больше не генерируются resValue —
+                // они объявлены в design/src/main/res/values/strings.xml как обычные строки.
                 buildConfigField("boolean", "PREMIUM", "Boolean.parseBoolean(\"false\")")
-
-                resValue("string", "launch_name", "@string/launch_name_alpha")
-                resValue("string", "application_name", "@string/application_name_alpha")
-
-                if (isApp && !removeSuffix) {
-                    applicationIdSuffix = ".alpha"
-                }
-            }
-
-            create("meta") {
-
-                dimension = flavorDimensionList[0]
-                if (!removeSuffix) {
-                    versionNameSuffix = ".Meta"
-                }
-
-                buildConfigField("boolean", "PREMIUM", "Boolean.parseBoolean(\"false\")")
-
-                resValue("string", "launch_name", "@string/launch_name_meta")
-                resValue("string", "application_name", "@string/application_name_meta")
-
-                if (isApp && !removeSuffix) {
-                    applicationIdSuffix = ".meta"
-                }
             }
         }
 
         sourceSets {
-            getByName("meta") {
-                java.srcDirs("src/foss/java")
-            }
-            getByName("alpha") {
+            getByName("standard") {
                 java.srcDirs("src/foss/java")
             }
         }
@@ -151,7 +131,9 @@ subprojects {
                         keystore.inputStream().use(this::load)
                     }
 
-                    storeFile = rootProject.file("release.keystore")
+                    // clod: апстрим держал release.keystore прямо в репозитории.
+                    // Теперь путь задаётся в signing.properties (CI пишет его из секрета).
+                    storeFile = rootProject.file(prop.getProperty("keystore.path") ?: "release.keystore")
                     storePassword = prop.getProperty("keystore.password")!!
                     keyAlias = prop.getProperty("key.alias")!!
                     keyPassword = prop.getProperty("key.password")!!

@@ -255,12 +255,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             "172.31.*",
             "192.168.*"
         )
-        private val HTTP_PROXY_BLACK_LIST: List<String> = listOf(
-            "*zhihu.com",
-            "*zhimg.com",
-            "*jd.com",
-            "100ime-iat-api.xfyun.cn",
-            "*360buyimg.com",
-        )
+        // clod: апстримный список — китайские сайты, ломавшиеся на системном прокси.
+        // Нам он не нужен; список оставлен пустым, механизм сохранён.
+        private val HTTP_PROXY_BLACK_LIST: List<String> = emptyList()
     }
 }
