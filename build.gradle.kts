@@ -29,6 +29,15 @@ subprojects {
 
     val isApp = name == "app"
 
+    // -Pclod.abi=arm64-v8a — собрать только под одну архитектуру.
+    // ABI перечислены в четырёх независимых местах (ndk, cmake, splits, golang),
+    // поэтому сужение вынесено сюда, чтобы они не разъехались.
+    val abiList: List<String> = (project.findProperty("clod.abi") as String?)
+        ?.split(",")?.map(String::trim)?.filter(String::isNotEmpty)
+        // x86 (32-битный) выброшен: живых устройств нет, нужен только древним
+        // эмуляторам, а стоит ~25 с сборки Go на каждый прогон.
+        ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+
     apply(plugin = if (isApp) "com.android.application" else "com.android.library")
 
     fun queryConfigProperty(key: String): Any? {
@@ -72,12 +81,12 @@ subprojects {
             resValue("integer", "release_code", "$versionCode")
 
             ndk {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                abiFilters += abiList
             }
 
             externalNativeBuild {
                 cmake {
-                    abiFilters("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    abiFilters(*abiList.toTypedArray())
                 }
             }
 
@@ -162,8 +171,12 @@ subprojects {
         }
 
         buildFeatures.apply {
+            // Вёрстка (42 layout-файла) есть только в design — там dataBinding и нужен.
+            // У апстрима он был включён во всех модулях сразу, и в core/service/common/app
+            // на пустом месте отрабатывали dataBindingMergeDependencyArtifacts
+            // и dataBindingGenBaseClasses: ~55 с на каждой сборке.
             dataBinding {
-                isEnabled = name != "hideapi"
+                isEnabled = name == "design"
             }
         }
 
@@ -175,7 +188,7 @@ subprojects {
                     isEnable = true
                     isUniversalApk = true
                     reset()
-                    include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+                    include(*abiList.toTypedArray())
                 }
             }
         }

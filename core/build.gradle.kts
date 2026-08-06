@@ -59,6 +59,8 @@ afterEvaluate {
     }
 }
 
+// Карта имён для связывания задач CMake и Go. Лишние записи безвредны:
+// задача просто не найдётся, если ABI не собирается.
 val abis = listOf("arm64-v8a" to "Arm64V8a", "armeabi-v7a" to "ArmeabiV7a", "x86" to "X86", "x86_64" to "X8664")
 
 androidComponents.onVariants { variant ->

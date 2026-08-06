@@ -64,7 +64,7 @@ jobs:
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
       - name: Build
         if: success()
-        run: ./gradlew --no-daemon app:assembleStandardDebug
+        run: ./gradlew --no-daemon app:assembleStandardDebug -Pclod.abi=arm64-v8a
           
       - name: Upload Aritfact (universal)
         uses: actions/upload-artifact@v7

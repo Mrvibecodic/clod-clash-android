@@ -111,16 +111,19 @@ jobs:
         run: |
           set -euo pipefail
           READELF=$(find "$ANDROID_HOME/ndk" -name 'llvm-readelf' | head -1)
+          echo "readelf: $READELF"
           fail=0
           for apk in app/build/outputs/apk/standard/release/*.apk; do
             tmp=$(mktemp -d); unzip -q -o "$apk" 'lib/*' -d "$tmp" || true
+            # Только 64-битные ABI: 16 KB страницы существуют лишь там, у armeabi-v7a
+            # и x86 выравнивание 0x1000 — это норма, а не поломка.
             while IFS= read -r so; do
               align=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | tail -1)
               if [[ "$align" != "0x4000" && "$align" != "0x10000" ]]; then
-                echo "::error::$(basename "$apk") :: $(basename "$so") выравнен на $align"
+                echo "::error::$(basename "$apk") :: ${so#$tmp/} выравнен на $align, нужно 0x4000"
                 fail=1
               fi
-            done < <(find "$tmp" -name '*.so')
+            done < <(find "$tmp/lib/arm64-v8a" "$tmp/lib/x86_64" -name '*.so' 2>/dev/null)
             rm -rf "$tmp"
           done
           [[ $fail -eq 0 ]] || exit 1
