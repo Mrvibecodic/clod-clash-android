@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Кнопка подключения. Material Symbols power_settings_new. -->
+<!-- Material Symbols Rounded «power_settings_new», Apache License 2.0.
+     Холст 960 с переносом по вертикали: у Material Symbols viewBox
+     «0 -960 960 960», то есть ось Y идёт вверх от нуля. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M13,3h-2v10h2V3z M17.83,5.17l-1.42,1.42C17.99,7.86 19,9.81 19,12c0,3.87 -3.13,7 -7,7s-7,-3.13 -7,-7c0,-2.19 1.01,-4.14 2.58,-5.42L6.17,5.17C4.23,6.82 3,9.26 3,12c0,4.97 4.03,9 9,9s9,-4.03 9,-9C21,9.26 19.77,6.82 17.83,5.17z" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M480-80q-82 0-155-31.5t-127.5-86Q143-252 111.5-325T80-480q0-75 26-142t72-120q9-11 21-10.5t20 8.5q8 8 10.5 20t-8.5 24q-38 45-59.5 101T140-480q0 141 99.5 240.5T480-140q142 0 241-99.5T820-480q0-63-21-119t-59-101q-11-12-9-24t10-20q8-8 20-8.5t21 10.5q46 53 72 120t26 142q0 82-31.5 155T763-197.5q-54 54.5-127 86T480-80Zm-21.5-368.5Q450-457 450-470v-380q0-13 8.5-21.5T480-880q13 0 21.5 8.5T510-850v380q0 13-8.5 21.5T480-440q-13 0-21.5-8.5Z" />
+    </group>
 </vector>
