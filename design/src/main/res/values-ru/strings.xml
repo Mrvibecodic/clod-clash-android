@@ -357,6 +357,12 @@
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
+    <string name="allow_ipv6">Разрешить IPv6</string>
+    <string name="allow_ipv6_summary">Пропускать трафик IPv6 через VpnService</string>
+    <string name="tun_stack_mode">Сетевой стек</string>
+    <string name="tun_stack_system">Системный</string>
+    <string name="tun_stack_gvisor">gVisor</string>
+    <string name="tun_stack_mixed">Смешанный</string>
     <string name="hide_app_icon_title">Скрыть значок</string>
     <string name="hide_app_icon_desc">Убрать значок приложения из списка программ</string>
     <string name="hide_from_recents_title">Скрыть из недавних</string>

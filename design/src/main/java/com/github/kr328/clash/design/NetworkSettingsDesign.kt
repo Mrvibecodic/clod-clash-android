@@ -3,149 +3,112 @@ package com.github.kr328.clash.design
 import android.content.Context
 import android.os.Build
 import android.view.View
-import com.github.kr328.clash.design.databinding.DesignSettingsCommonBinding
-import com.github.kr328.clash.design.preference.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.screen.NetworkSettingsAction
+import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
+import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.store.UiStore
-import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.design.util.applyFrom
-import com.github.kr328.clash.design.util.bindAppBarElevation
-import com.github.kr328.clash.design.util.layoutInflater
-import com.github.kr328.clash.design.util.root
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
-import kotlinx.coroutines.launch
 
 class NetworkSettingsDesign(
     context: Context,
-    uiStore: UiStore,
-    srvStore: ServiceStore,
+    private val uiStore: UiStore,
+    private val srvStore: ServiceStore,
     running: Boolean,
 ) : Design<NetworkSettingsDesign.Request>(context) {
-    enum class Request {
-        StartAccessControlList
+    sealed interface Request {
+        data object StartAccessControlList : Request
+        data object Back : Request
     }
 
-    private val binding = DesignSettingsCommonBinding
-        .inflate(context.layoutInflater, context.root, false)
+    /**
+     * Порядок важен: экран отдаёт индекс, а в хранилище лежит строка.
+     * Значения те же, что понимает ядро.
+     */
+    private val tunStacks = listOf("system", "gvisor", "mixed")
 
-    override val root: View
-        get() = binding.root
+    private val accessControlModes = AccessControlMode.entries
 
-    init {
-        binding.surface = surface
+    private var state by mutableStateOf(
+        NetworkSettingsState(
+            enableVpn = uiStore.enableVpn,
+            bypassPrivateNetwork = srvStore.bypassPrivateNetwork,
+            dnsHijacking = srvStore.dnsHijacking,
+            allowBypass = srvStore.allowBypass,
+            allowIpv6 = srvStore.allowIpv6,
+            systemProxy = srvStore.systemProxy,
+            // Системный прокси через VpnService появился в Android 10.
+            systemProxySupported = Build.VERSION.SDK_INT >= 29,
+            tunStack = tunStacks.indexOf(srvStore.tunStackMode).coerceAtLeast(0),
+            accessControlMode = accessControlModes
+                .indexOf(srvStore.accessControlMode)
+                .coerceAtLeast(0),
+            editable = !running,
+        ),
+    )
 
-        binding.activityBarLayout.applyFrom(context)
-
-        binding.scrollRoot.bindAppBarElevation(binding.activityBarLayout)
-
-        val screen = preferenceScreen(context) {
-            val vpnDependencies: MutableList<Preference> = mutableListOf()
-
-            val vpn = switch(
-                value = uiStore::enableVpn,
-                icon = R.drawable.ic_baseline_vpn_lock,
-                title = R.string.route_system_traffic,
-                summary = R.string.routing_via_vpn_service
-            ) {
-                listener = OnChangedListener {
-                    vpnDependencies.forEach {
-                        it.enabled = uiStore.enableVpn
-                    }
-                }
-            }
-
-            category(R.string.vpn_service_options)
-
-            switch(
-                value = srvStore::bypassPrivateNetwork,
-                title = R.string.bypass_private_network,
-                summary = R.string.bypass_private_network_summary,
-                configure = vpnDependencies::add,
-            )
-
-            switch(
-                value = srvStore::dnsHijacking,
-                title = R.string.dns_hijacking,
-                summary = R.string.dns_hijacking_summary,
-                configure = vpnDependencies::add,
-            )
-
-            switch(
-                value = srvStore::allowBypass,
-                title = R.string.allow_bypass,
-                summary = R.string.allow_bypass_summary,
-                configure = vpnDependencies::add,
-            )
-
-            switch(
-                value = srvStore::allowIpv6,
-                title = R.string.allow_ipv6,
-                summary = R.string.allow_ipv6_summary,
-                configure = vpnDependencies::add,
-            )
-
-            if (Build.VERSION.SDK_INT >= 29) {
-                switch(
-                    value = srvStore::systemProxy,
-                    title = R.string.system_proxy,
-                    summary = R.string.system_proxy_summary,
-                    configure = vpnDependencies::add,
-                )
-            }
-
-            selectableList(
-                value = srvStore::tunStackMode,
-                values = arrayOf(
-                    "system",
-                    "gvisor",
-                    "mixed"
-                ),
-                valuesText = arrayOf(
-                    R.string.tun_stack_system,
-                    R.string.tun_stack_gvisor,
-                    R.string.tun_stack_mixed
-                ),
-                title = R.string.tun_stack_mode,
-                configure = vpnDependencies::add,
-            )
-
-            selectableList(
-                value = srvStore::accessControlMode,
-                values = AccessControlMode.values(),
-                valuesText = arrayOf(
-                    R.string.allow_all_apps,
-                    R.string.allow_selected_apps,
-                    R.string.deny_selected_apps
-                ),
-                title = R.string.access_control_mode,
-                configure = vpnDependencies::add,
-            )
-
-            clickable(
-                title = R.string.access_control_packages,
-                summary = R.string.access_control_packages_summary,
-            ) {
-                clicked {
-                    requests.trySend(Request.StartAccessControlList)
-                }
-            }
-
-            if (running) {
-                vpn.enabled = false
-
-                vpnDependencies.forEach {
-                    it.enabled = false
-                }
-            } else {
-                vpn.listener?.onChanged()
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                NetworkSettingsScreen(state = state, onAction = ::onAction)
             }
         }
+    }
 
-        binding.content.addView(screen.root)
+    private fun onAction(action: NetworkSettingsAction) {
+        when (action) {
+            NetworkSettingsAction.Back -> requests.trySend(Request.Back)
+            NetworkSettingsAction.OpenAccessControlList ->
+                requests.trySend(Request.StartAccessControlList)
 
-        if (running) {
-            launch {
-                showToast(R.string.options_unavailable, ToastDuration.Indefinite)
+            is NetworkSettingsAction.SetEnableVpn -> {
+                uiStore.enableVpn = action.enabled
+
+                state = state.copy(enableVpn = action.enabled)
+            }
+            is NetworkSettingsAction.SetBypassPrivateNetwork -> {
+                srvStore.bypassPrivateNetwork = action.enabled
+
+                state = state.copy(bypassPrivateNetwork = action.enabled)
+            }
+            is NetworkSettingsAction.SetDnsHijacking -> {
+                srvStore.dnsHijacking = action.enabled
+
+                state = state.copy(dnsHijacking = action.enabled)
+            }
+            is NetworkSettingsAction.SetAllowBypass -> {
+                srvStore.allowBypass = action.enabled
+
+                state = state.copy(allowBypass = action.enabled)
+            }
+            is NetworkSettingsAction.SetAllowIpv6 -> {
+                srvStore.allowIpv6 = action.enabled
+
+                state = state.copy(allowIpv6 = action.enabled)
+            }
+            is NetworkSettingsAction.SetSystemProxy -> {
+                srvStore.systemProxy = action.enabled
+
+                state = state.copy(systemProxy = action.enabled)
+            }
+            is NetworkSettingsAction.SetTunStack -> {
+                val stack = tunStacks.getOrNull(action.index) ?: return
+
+                srvStore.tunStackMode = stack
+
+                state = state.copy(tunStack = action.index)
+            }
+            is NetworkSettingsAction.SetAccessControlMode -> {
+                val mode = accessControlModes.getOrNull(action.index) ?: return
+
+                srvStore.accessControlMode = mode
+
+                state = state.copy(accessControlMode = action.index)
             }
         }
     }
