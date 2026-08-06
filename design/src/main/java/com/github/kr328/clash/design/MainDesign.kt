@@ -21,6 +21,7 @@ import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.databinding.DesignAboutBinding
 import com.github.kr328.clash.design.util.layoutInflater
+import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -34,7 +35,6 @@ import kotlinx.coroutines.withContext
 class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     sealed interface Request {
         data object ToggleStatus : Request
-        data object OpenProfiles : Request
         data object OpenProviders : Request
         data object OpenLogs : Request
         data object OpenSettings : Request
@@ -47,6 +47,13 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class SelectProxy(val index: Int, val name: String) : Request
         data class UrlTest(val index: Int) : Request
         data class PatchMode(val mode: TunnelState.Mode) : Request
+
+        data object NewProfile : Request
+        data object UpdateAllProfiles : Request
+        data class ActivateProfile(val profile: Profile) : Request
+        data class UpdateProfile(val profile: Profile) : Request
+        data class EditProfile(val profile: Profile) : Request
+        data class DeleteProfile(val profile: Profile) : Request
     }
 
     /**
@@ -67,7 +74,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     private fun onAction(action: MainAction) {
         when (action) {
             MainAction.ToggleStatus -> request(Request.ToggleStatus)
-            MainAction.OpenProfiles -> request(Request.OpenProfiles)
             MainAction.OpenProviders -> request(Request.OpenProviders)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenSettings -> request(Request.OpenSettings)
@@ -75,6 +81,12 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.OpenAbout -> request(Request.OpenAbout)
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
+            MainAction.NewProfile -> request(Request.NewProfile)
+            MainAction.UpdateAllProfiles -> request(Request.UpdateAllProfiles)
+            is MainAction.ActivateProfile -> request(Request.ActivateProfile(action.profile))
+            is MainAction.UpdateProfile -> request(Request.UpdateProfile(action.profile))
+            is MainAction.EditProfile -> request(Request.EditProfile(action.profile))
+            is MainAction.DeleteProfile -> request(Request.DeleteProfile(action.profile))
             is MainAction.SelectGroup -> {
                 state = state.copy(servers = state.servers.copy(selected = action.index))
                 request(Request.ReloadGroup(action.index))
@@ -89,10 +101,8 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                     // протухает — перечитываем при каждом заходе на вкладку.
                     request(Request.ReloadProxies)
                 }
-                // «Подписки» пока открывают старую Activity, поэтому вкладка не
-                // переключается: иначе по «Назад» пользователь попадал бы на пустой экран.
-                MainTab.Subscriptions -> request(Request.OpenProfiles)
-                MainTab.Home, MainTab.More -> state = state.copy(selectedTab = action.tab)
+                MainTab.Home, MainTab.More, MainTab.Subscriptions ->
+                    state = state.copy(selectedTab = action.tab)
             }
         }
     }
@@ -188,6 +198,25 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     suspend fun setProxyTesting(testing: Boolean) {
         withContext(Dispatchers.Main) {
             state = state.copy(servers = state.servers.copy(testing = testing))
+        }
+    }
+
+    /** Переключить вкладку снаружи: например, из подсказки «подписка не выбрана». */
+    suspend fun selectTab(tab: MainTab) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(selectedTab = tab)
+        }
+    }
+
+    suspend fun setProfiles(profiles: List<Profile>) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(subscriptions = state.subscriptions.copy(profiles = profiles))
+        }
+    }
+
+    suspend fun setProfilesUpdating(updating: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(subscriptions = state.subscriptions.copy(updating = updating))
         }
     }
 

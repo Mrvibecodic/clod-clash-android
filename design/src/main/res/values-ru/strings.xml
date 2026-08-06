@@ -339,6 +339,17 @@
     <string name="clod_selector_group">Группа</string>
     <string name="clod_selector_server">Сервер</string>
     <string name="clod_no_subscription">Подписка не выбрана</string>
+    <string name="clod_sub_active">Активна</string>
+    <string name="clod_sub_expiring">Истекает</string>
+    <string name="clod_sub_exhausted">Трафик кончился</string>
+    <string name="clod_sub_expired">Истекла</string>
+    <string name="clod_sub_unlimited">безлимит</string>
+    <string name="clod_sub_days">%1$d дн</string>
+    <string name="clod_sub_until">до %1$s</string>
+    <string name="clod_sub_add">Добавить подписку</string>
+    <string name="clod_sub_update_all">Обновить все</string>
+    <string name="clod_no_subscriptions">Подписок нет</string>
+    <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_mode">Режим</string>
     <string name="clod_test_delays">Проверить задержки</string>
     <string name="clod_no_servers">Серверов нет</string>

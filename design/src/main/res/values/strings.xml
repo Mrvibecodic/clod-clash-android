@@ -380,6 +380,17 @@
     <string name="clod_selector_group">Group</string>
     <string name="clod_selector_server">Server</string>
     <string name="clod_no_subscription">No subscription selected</string>
+    <string name="clod_sub_active">Active</string>
+    <string name="clod_sub_expiring">Expiring</string>
+    <string name="clod_sub_exhausted">Out of traffic</string>
+    <string name="clod_sub_expired">Expired</string>
+    <string name="clod_sub_unlimited">Unlimited</string>
+    <string name="clod_sub_days">%1$d d</string>
+    <string name="clod_sub_until">until %1$s</string>
+    <string name="clod_sub_add">Add subscription</string>
+    <string name="clod_sub_update_all">Update all</string>
+    <string name="clod_no_subscriptions">No subscriptions</string>
+    <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_mode">Mode</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>

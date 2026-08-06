@@ -57,6 +57,7 @@ import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.StatusTextStyle
+import com.github.kr328.clash.service.model.Profile
 
 /** Вкладки нижней навигации. Порядок совпадает с утверждённым макетом. */
 enum class MainTab {
@@ -86,6 +87,12 @@ data class ServersState(
     val testing: Boolean = false,
 )
 
+/** Состояние вкладки «Подписки». */
+data class SubscriptionsState(
+    val profiles: List<Profile> = emptyList(),
+    val updating: Boolean = false,
+)
+
 /**
  * Всё, что показывает главный экран. Отдельный неизменяемый снимок вместо
  * россыпи параметров: экран перерисовывается одним `setState`, и ни один
@@ -100,12 +107,12 @@ data class MainScreenState(
     val hasProviders: Boolean = false,
     val selectedTab: MainTab = MainTab.Home,
     val servers: ServersState = ServersState(),
+    val subscriptions: SubscriptionsState = SubscriptionsState(),
 )
 
 /** Действия пользователя. Экран сам ничего не делает — только сообщает наверх. */
 sealed interface MainAction {
     data object ToggleStatus : MainAction
-    data object OpenProfiles : MainAction
     data object OpenProviders : MainAction
     data object OpenLogs : MainAction
     data object OpenSettings : MainAction
@@ -116,6 +123,13 @@ sealed interface MainAction {
     data class SelectTab(val tab: MainTab) : MainAction
     data class SelectGroup(val index: Int) : MainAction
     data class SelectProxy(val name: String) : MainAction
+
+    data object NewProfile : MainAction
+    data object UpdateAllProfiles : MainAction
+    data class ActivateProfile(val profile: Profile) : MainAction
+    data class UpdateProfile(val profile: Profile) : MainAction
+    data class EditProfile(val profile: Profile) : MainAction
+    data class DeleteProfile(val profile: Profile) : MainAction
 }
 
 @Composable
@@ -132,6 +146,7 @@ fun MainScreen(
         Box(modifier = Modifier.padding(padding)) {
             when (state.selectedTab) {
                 MainTab.Servers -> ServersTab(state.servers, onAction)
+                MainTab.Subscriptions -> SubscriptionsTab(state.subscriptions, onAction)
                 MainTab.More -> MoreTab(state, onAction)
                 else -> HomeTab(state, onAction)
             }
@@ -262,7 +277,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             label = stringResource(R.string.clod_tab_subscriptions),
             value = state.profileName ?: stringResource(R.string.clod_no_subscription),
             leading = painterResource(R.drawable.ic_baseline_view_list),
-            onClick = { onAction(MainAction.OpenProfiles) },
+            onClick = { onAction(MainAction.SelectTab(MainTab.Subscriptions)) },
         )
 
         Spacer(Modifier.height(24.dp))
@@ -291,7 +306,7 @@ private fun MainHeader(profileName: String?, onAction: (MainAction) -> Unit) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = { onAction(MainAction.OpenProfiles) }) {
+        IconButton(onClick = { onAction(MainAction.UpdateAllProfiles) }) {
             Icon(
                 painter = painterResource(R.drawable.ic_baseline_sync),
                 contentDescription = stringResource(R.string.clod_refresh_profile),

@@ -15,8 +15,10 @@ import androidx.core.graphics.drawable.IconCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.intent
+import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.design.MainDesign
+import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.update.UpdatePrompt
 import com.github.kr328.clash.util.startClashService
@@ -24,6 +26,7 @@ import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.core.bridge.*
+import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -104,8 +107,58 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.fetch()
                         }
-                        MainDesign.Request.OpenProfiles ->
-                            startActivity(ProfilesActivity::class.intent)
+                        MainDesign.Request.NewProfile ->
+                            startActivity(NewProfileActivity::class.intent)
+                        MainDesign.Request.UpdateAllProfiles -> {
+                            // Отдельная корутина: обновление всех подписок ходит
+                            // в сеть по очереди, а цикл событий должен жить.
+                            launch {
+                                design.setProfilesUpdating(true)
+
+                                try {
+                                    withProfile {
+                                        queryAll().forEach { profile ->
+                                            if (profile.imported &&
+                                                profile.type != Profile.Type.File
+                                            ) {
+                                                update(profile.uuid)
+                                            }
+                                        }
+                                    }
+                                } finally {
+                                    design.setProfilesUpdating(false)
+                                }
+                            }
+                        }
+                        is MainDesign.Request.ActivateProfile -> {
+                            val profile = request.profile
+
+                            if (profile.imported) {
+                                withProfile { setActive(profile) }
+                            } else {
+                                // Профиль ещё не сохранён: активировать нечего,
+                                // ведём в редактор, как это делал старый экран.
+                                design.showToast(
+                                    DesignR.string.active_unsaved_tips,
+                                    ToastDuration.Long,
+                                ) {
+                                    setAction(DesignR.string.edit) {
+                                        startActivity(
+                                            PropertiesActivity::class.intent
+                                                .setUUID(profile.uuid),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        is MainDesign.Request.UpdateProfile ->
+                            withProfile { update(request.profile.uuid) }
+                        is MainDesign.Request.EditProfile ->
+                            startActivity(
+                                PropertiesActivity::class.intent.setUUID(request.profile.uuid),
+                            )
+                        is MainDesign.Request.DeleteProfile ->
+                            withProfile { delete(request.profile.uuid) }
                         MainDesign.Request.OpenProviders ->
                             startActivity(ProvidersActivity::class.intent)
                         MainDesign.Request.OpenLogs -> {
@@ -147,6 +200,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         withProfile {
             setProfileName(queryActive()?.name)
+            setProfiles(queryAll())
         }
 
         reloadProxyGroups()
@@ -191,7 +245,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (active == null || !active.imported) {
             showToast(DesignR.string.no_profile_selected, ToastDuration.Long) {
                 setAction(DesignR.string.profiles) {
-                    startActivity(ProfilesActivity::class.intent)
+                    launch { selectTab(MainTab.Subscriptions) }
                 }
             }
 
