@@ -46,11 +46,6 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
-    var proxyLine: Int by store.int(
-        key = "proxy_line",
-        defaultValue = 2
-    )
-
     var proxySort: ProxySort by store.enum(
         key = "proxy_sort",
         defaultValue = ProxySort.Default,
