@@ -380,6 +380,13 @@
     <string name="clod_selector_group">Group</string>
     <string name="clod_selector_server">Server</string>
     <string name="clod_no_subscription">No subscription selected</string>
+    <string name="clod_sub_url_label">Subscription link</string>
+    <string name="clod_sub_url_hint">Your provider issues the link. Everything else is pulled from it.</string>
+    <string name="clod_sub_other_ways">Other ways to import</string>
+    <string name="clod_sub_fetching">Fetching subscription\u2026</string>
+    <string name="clod_sub_added">Subscription added</string>
+    <string name="clod_sub_done">Done</string>
+    <string name="clod_sub_interval">updated every %1$d h</string>
     <string name="clod_sub_active">Active</string>
     <string name="clod_sub_expiring">Expiring</string>
     <string name="clod_sub_exhausted">Out of traffic</string>

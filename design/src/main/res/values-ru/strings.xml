@@ -339,6 +339,13 @@
     <string name="clod_selector_group">Группа</string>
     <string name="clod_selector_server">Сервер</string>
     <string name="clod_no_subscription">Подписка не выбрана</string>
+    <string name="clod_sub_url_label">Ссылка на подписку</string>
+    <string name="clod_sub_url_hint">Ссылку выдаёт ваш сервис. Всё остальное подтянется само.</string>
+    <string name="clod_sub_other_ways">Другие способы импорта</string>
+    <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
+    <string name="clod_sub_added">Подписка успешно добавлена</string>
+    <string name="clod_sub_done">Готово</string>
+    <string name="clod_sub_interval">обновление раз в %1$d ч</string>
     <string name="clod_sub_active">Активна</string>
     <string name="clod_sub_expiring">Истекает</string>
     <string name="clod_sub_exhausted">Трафик кончился</string>

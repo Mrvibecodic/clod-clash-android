@@ -3,6 +3,7 @@ package com.github.kr328.clash.update
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import com.github.kr328.clash.BuildConfig
 import com.github.kr328.clash.common.log.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -226,5 +227,12 @@ object Updater {
         }
     }
 
-    const val USER_AGENT: String = "ClodClash-Android"
+    /**
+     * Один User-Agent на всё приложение — им же ходит за подпиской ядро
+     * (`config/fetch.go`). Панель считает устройства по User-Agent, и два разных
+     * агента из одного клиента выглядят как два устройства. Формат `ClodClash/<версия>`
+     * ещё и обязателен для Server Description: панель отдаёт его только клиентам,
+     * попавшим в `additionalExtendedClientsRegex ^ClodClash/`.
+     */
+    val USER_AGENT: String = "ClodClash/" + BuildConfig.VERSION_NAME
 }

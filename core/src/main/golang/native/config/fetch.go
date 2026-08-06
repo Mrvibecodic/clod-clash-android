@@ -39,7 +39,7 @@ type fetchHeader struct {
 }
 
 func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error) {
-	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, http.Header{"User-Agent": {"ClashMetaForAndroid/" + app.VersionName()}}, nil)
+	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, http.Header{"User-Agent": {"ClodClash/" + app.VersionName()}}, nil)
 
 	if err != nil {
 		return nil, fetchHeader{}, err

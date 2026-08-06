@@ -118,6 +118,11 @@
             android:label="@string/application_crashed"
             android:launchMode="singleTask" />
         <activity
+            android:name=".AddProfileActivity"
+            android:configChanges="uiMode"
+            android:exported="false"
+            android:label="@string/clod_sub_add" />
+        <activity
             android:name=".NewProfileActivity"
             android:configChanges="uiMode"
             android:exported="false"

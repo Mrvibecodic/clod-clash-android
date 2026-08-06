@@ -108,7 +108,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             design.fetch()
                         }
                         MainDesign.Request.NewProfile ->
-                            startActivity(NewProfileActivity::class.intent)
+                            startActivity(AddProfileActivity::class.intent)
                         MainDesign.Request.UpdateAllProfiles -> {
                             // Отдельная корутина: обновление всех подписок ходит
                             // в сеть по очереди, а цикл событий должен жить.
