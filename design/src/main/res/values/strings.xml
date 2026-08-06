@@ -399,6 +399,7 @@
     <string name="clod_no_subscriptions">No subscriptions</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_section_connection">Connection</string>
+    <string name="clod_no_logs">No saved logs yet</string>
     <string name="clod_section_settings">Settings</string>
     <string name="clod_section_support">Help and updates</string>
     <string name="clod_settings_app_subtitle">Theme, auto restart, icon</string>

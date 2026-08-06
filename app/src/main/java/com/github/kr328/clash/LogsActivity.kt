@@ -33,18 +33,19 @@ class LogsActivity : BaseActivity<LogsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
+                        LogsDesign.Request.Back -> finish()
                         LogsDesign.Request.StartLogcat -> {
                             startActivity(LogcatActivity::class.intent)
                             finish()
                         }
+                        // Вопрос «точно удалить?» задаёт экран, сюда запрос
+                        // приходит уже подтверждённым.
                         LogsDesign.Request.DeleteAll -> {
-                            if (design.requestDeleteAll()) {
-                                withContext(Dispatchers.IO) {
-                                    deleteAllLogs()
-                                }
-
-                                events.trySend(Event.ActivityStart)
+                            withContext(Dispatchers.IO) {
+                                deleteAllLogs()
                             }
+
+                            events.trySend(Event.ActivityStart)
                         }
                         is LogsDesign.Request.OpenFile -> {
                             startActivity(LogcatActivity::class.intent.setFileName(it.file.fileName))

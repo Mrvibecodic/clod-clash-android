@@ -358,6 +358,7 @@
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
+    <string name="clod_no_logs">Сохранённых логов пока нет</string>
     <string name="clod_section_settings">Настройки</string>
     <string name="clod_section_support">Помощь и обновления</string>
     <string name="clod_settings_app_subtitle">Тема, автозапуск, значок</string>

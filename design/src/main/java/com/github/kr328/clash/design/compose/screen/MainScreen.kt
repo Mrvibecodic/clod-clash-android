@@ -56,6 +56,7 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.component.PowerButton
+import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
@@ -499,17 +500,6 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
             }
         }
     }
-}
-
-/** Заголовок группы пунктов во вкладке «Ещё». */
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
-    )
 }
 
 /** Подпись режима туннеля. Ключи строк те же, что у XML-слоя. */

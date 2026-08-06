@@ -149,6 +149,17 @@ fun SelectorRow(
     }
 }
 
+/** Заголовок группы строк. */
+@Composable
+fun SectionHeader(title: String, modifier: Modifier = Modifier) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
+    )
+}
+
 /** Строка-переход во вкладке «Ещё»: иконка, заголовок, необязательное пояснение. */
 @Composable
 fun ActionRow(
