@@ -171,12 +171,13 @@ subprojects {
         }
 
         buildFeatures.apply {
-            // Вёрстка (42 layout-файла) есть только в design — там dataBinding и нужен.
-            // У апстрима он был включён во всех модулях сразу, и в core/service/common/app
-            // на пустом месте отрабатывали dataBindingMergeDependencyArtifacts
-            // и dataBindingGenBaseClasses: ~55 с на каждой сборке.
+            // Вёрстка (42 layout-файла) есть только в design, но app тоже обязан
+            // держать dataBinding включённым: класс design.BR генерируется на этапе
+            // сборки приложения, и без него R8 падает на minify.
+            // В core/service/common его нет — там задачи dataBinding отрабатывали
+            // вхолостую (~40 с на прогон).
             dataBinding {
-                isEnabled = name == "design"
+                isEnabled = name == "design" || name == "app"
             }
         }
 

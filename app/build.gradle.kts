@@ -4,6 +4,8 @@ import java.nio.file.StandardCopyOption
 
 plugins {
     kotlin("android")
+    // нужен dataBinding: генерирует design.BR при сборке приложения
+    kotlin("kapt")
     id("com.android.application")
     id("kotlinx-serialization")
 }
