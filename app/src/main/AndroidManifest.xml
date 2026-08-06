@@ -148,11 +148,6 @@
             android:exported="false"
             android:label="@string/logcat" />
         <activity
-            android:name=".SettingsActivity"
-            android:configChanges="uiMode"
-            android:exported="false"
-            android:label="@string/settings" />
-        <activity
             android:name=".NetworkSettingsActivity"
             android:configChanges="uiMode"
             android:exported="false"

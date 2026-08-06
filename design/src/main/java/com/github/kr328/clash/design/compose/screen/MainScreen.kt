@@ -28,7 +28,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -164,7 +163,10 @@ sealed interface MainAction {
     data object OpenProviders : MainAction
     data object OpenAccessControl : MainAction
     data object OpenLogs : MainAction
-    data object OpenSettings : MainAction
+    data object OpenAppSettings : MainAction
+    data object OpenNetworkSettings : MainAction
+    data object OpenOverrideSettings : MainAction
+    data object OpenMetaSettings : MainAction
     data object OpenHelp : MainAction
     data class OpenSubScreen(val screen: SubScreen) : MainAction
     data object CloseSubScreen : MainAction
@@ -598,6 +600,12 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 onClick = { onAction(MainAction.OpenAccessControl) },
             )
             ActionRow(
+                title = stringResource(R.string.network),
+                subtitle = stringResource(R.string.clod_settings_network_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_dns),
+                onClick = { onAction(MainAction.OpenNetworkSettings) },
+            )
+            ActionRow(
                 title = stringResource(R.string.clod_geo_title),
                 subtitle = stringResource(R.string.clod_geo_subtitle),
                 icon = painterResource(R.drawable.ic_baseline_domain),
@@ -611,20 +619,34 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 )
             }
 
-            SectionHeader(stringResource(R.string.clod_section_app))
+            // Промежуточного экрана «Настройки» больше нет: он состоял из четырёх
+            // строк и ничего к ним не добавлял. Сеть уехала к соединению — там её
+            // и ищут, — остальные три лежат здесь.
+            SectionHeader(stringResource(R.string.clod_section_settings))
+            ActionRow(
+                title = stringResource(R.string.app),
+                subtitle = stringResource(R.string.clod_settings_app_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_settings),
+                onClick = { onAction(MainAction.OpenAppSettings) },
+            )
+            ActionRow(
+                title = stringResource(R.string.override),
+                subtitle = stringResource(R.string.clod_settings_override_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_extension),
+                onClick = { onAction(MainAction.OpenOverrideSettings) },
+            )
+            ActionRow(
+                title = stringResource(R.string.meta_features),
+                subtitle = stringResource(R.string.clod_settings_meta_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_meta),
+                onClick = { onAction(MainAction.OpenMetaSettings) },
+            )
+
+            SectionHeader(stringResource(R.string.clod_section_support))
             ActionRow(
                 title = stringResource(R.string.logs),
                 icon = painterResource(R.drawable.ic_baseline_assignment),
                 onClick = { onAction(MainAction.OpenLogs) },
-            )
-            ActionRow(
-                title = stringResource(R.string.settings),
-                icon = painterResource(R.drawable.ic_baseline_settings),
-                onClick = { onAction(MainAction.OpenSettings) },
-            )
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant,
             )
             ActionRow(
                 title = stringResource(R.string.help),

@@ -399,7 +399,12 @@
     <string name="clod_no_subscriptions">No subscriptions</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_section_connection">Connection</string>
-    <string name="clod_section_app">App</string>
+    <string name="clod_section_settings">Settings</string>
+    <string name="clod_section_support">Help and updates</string>
+    <string name="clod_settings_app_subtitle">Theme, auto restart, icon</string>
+    <string name="clod_settings_network_subtitle">VPN, DNS, system proxy</string>
+    <string name="clod_settings_override_subtitle">Applied on top of the subscription config</string>
+    <string name="clod_settings_meta_subtitle">Sniffer, geodata sources, TLS</string>
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_renew">Renew</string>

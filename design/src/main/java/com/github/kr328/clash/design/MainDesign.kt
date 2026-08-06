@@ -41,7 +41,16 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object OpenProviders : Request
         data object OpenAccessControl : Request
         data object OpenLogs : Request
-        data object OpenSettings : Request
+
+        /**
+         * Экраны настроек. Раньше за ними стоял общий экран-список из четырёх
+         * строк; теперь строки лежат прямо во вкладке «Ещё», и каждая ведёт
+         * в свой экран напрямую.
+         */
+        data object OpenAppSettings : Request
+        data object OpenNetworkSettings : Request
+        data object OpenOverrideSettings : Request
+        data object OpenMetaSettings : Request
         data object OpenHelp : Request
 
         /** Открыт экран «О приложении» — нужны версии и текущие настройки обновления. */
@@ -94,7 +103,10 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.OpenProviders -> request(Request.OpenProviders)
             MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
-            MainAction.OpenSettings -> request(Request.OpenSettings)
+            MainAction.OpenAppSettings -> request(Request.OpenAppSettings)
+            MainAction.OpenNetworkSettings -> request(Request.OpenNetworkSettings)
+            MainAction.OpenOverrideSettings -> request(Request.OpenOverrideSettings)
+            MainAction.OpenMetaSettings -> request(Request.OpenMetaSettings)
             MainAction.OpenHelp -> request(Request.OpenHelp)
             is MainAction.OpenSubScreen -> {
                 state = state.copy(subScreen = action.screen)

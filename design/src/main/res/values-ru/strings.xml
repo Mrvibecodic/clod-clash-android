@@ -358,7 +358,12 @@
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
-    <string name="clod_section_app">Приложение</string>
+    <string name="clod_section_settings">Настройки</string>
+    <string name="clod_section_support">Помощь и обновления</string>
+    <string name="clod_settings_app_subtitle">Тема, автозапуск, значок</string>
+    <string name="clod_settings_network_subtitle">VPN, DNS, системный прокси</string>
+    <string name="clod_settings_override_subtitle">Применяется поверх конфигурации подписки</string>
+    <string name="clod_settings_meta_subtitle">Sniffer, источники geodata, TLS</string>
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
     <string name="clod_renew">Продлить</string>

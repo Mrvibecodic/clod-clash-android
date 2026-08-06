@@ -216,8 +216,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 startActivity(LogsActivity::class.intent)
                             }
                         }
-                        MainDesign.Request.OpenSettings ->
-                            startActivity(SettingsActivity::class.intent)
+                        MainDesign.Request.OpenAppSettings ->
+                            startActivity(AppSettingsActivity::class.intent)
+                        MainDesign.Request.OpenNetworkSettings ->
+                            startActivity(NetworkSettingsActivity::class.intent)
+                        MainDesign.Request.OpenOverrideSettings ->
+                            startActivity(OverrideSettingsActivity::class.intent)
+                        MainDesign.Request.OpenMetaSettings ->
+                            startActivity(MetaFeatureSettingsActivity::class.intent)
                         MainDesign.Request.OpenHelp ->
                             startActivity(HelpActivity::class.intent)
                         MainDesign.Request.LoadAbout -> design.loadAbout()
