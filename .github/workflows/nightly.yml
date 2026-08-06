@@ -131,10 +131,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
+          # Gradle уже кладёт имя вида clodclash-<версия>-standard-<abi>-release.apk
+          # (archivesBaseName), поэтому ABI достаём по известному списку, а не разбором
+          # имени: у универсального APK части с ABI нет вовсе.
           for apk in app/build/outputs/apk/standard/release/*.apk; do
             name=$(basename "$apk")
-            abi=$(echo "$name" | sed -E 's/^app-standard-?(.*)-release\.apk$/\1/')
-            [[ -z "$abi" ]] && abi=universal
+            abi=universal
+            for candidate in arm64-v8a armeabi-v7a x86_64 x86; do
+              if [[ "$name" == *"-$candidate-"* ]]; then abi="$candidate"; break; fi
+            done
             cp "$apk" "dist/clodclash-$VERSION-$abi.apk"
           done
           cd dist && sha256sum *.apk > SHA256SUMS.txt
