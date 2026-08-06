@@ -111,9 +111,14 @@ subprojects {
                 isDefault = true
                 dimension = flavorDimensionList[0]
 
-                // launch_name / application_name больше не генерируются resValue —
-                // они объявлены в design/src/main/res/values/strings.xml как обычные строки.
                 buildConfigField("boolean", "PREMIUM", "Boolean.parseBoolean(\"false\")")
+
+                // resValue, а не строка в strings.xml: блок subprojects применяется ко ВСЕМ
+                // модулям, поэтому launch_name/application_name попадают в R каждого из них.
+                // Объявление в одном модуле не видно остальным: TileService берёт R из service,
+                // а вёрстка design — из design.
+                resValue("string", "launch_name", "Clod Clash")
+                resValue("string", "application_name", "Clod Clash")
             }
         }
 
