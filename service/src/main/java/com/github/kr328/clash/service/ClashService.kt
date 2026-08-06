@@ -74,6 +74,11 @@ class ClashService : BaseService() {
 
         StatusProvider.serviceRunning = true
 
+        // Отметка нужна экрану для таймера сессии. Ставим здесь, а не в приложении:
+        // служба переживает закрытие приложения, и только она знает, когда туннель
+        // подняли на самом деле.
+        ServiceStore(this).clashStartedAt = System.currentTimeMillis()
+
         StaticNotificationModule.createNotificationChannel(this)
         StaticNotificationModule.notifyLoadingNotification(this)
 

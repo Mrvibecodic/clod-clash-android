@@ -61,6 +61,7 @@ import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.StatusTextStyle
+import com.github.kr328.clash.design.compose.theme.TimerTextStyle
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 
@@ -133,6 +134,8 @@ data class MainScreenState(
     val mode: TunnelState.Mode = TunnelState.Mode.Rule,
     val downloaded: String = "",
     val uploaded: String = "",
+    /** Длительность текущей сессии в секундах; 0 — таймер не показывать. */
+    val sessionSeconds: Long = 0,
     val hasProviders: Boolean = false,
     val selectedTab: MainTab = MainTab.Home,
     val servers: ServersState = ServersState(),
@@ -236,6 +239,16 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
         state.active?.let { active ->
             PanelBanner(active, onAction)
+
+            // Карточка подписки на главном — только когда она к месту: во время
+            // сессии (человек ради этого и открыл приложение) или когда с ней
+            // что-то не так. В спокойном отключённом состоянии экран должен
+            // оставаться пустым вокруг кнопки, как в макете.
+            ActiveSubscriptionCard(
+                item = active,
+                expanded = connected,
+                onAction = onAction,
+            )
         }
 
         AnimatedVisibility(
@@ -297,6 +310,13 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            } else if (state.sessionSeconds > 0) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = formatSession(state.sessionSeconds),
+                    style = TimerTextStyle,
+                    color = ClodTheme.extraColors.statusConnected,
+                )
             }
         }
 
@@ -357,6 +377,22 @@ private fun MainHeader(profileName: String?, onAction: (MainAction) -> Unit) {
  * Вкладка «Ещё». Собирает то, что на десктопе живёт в боковом меню, а у CMFA
  * лежало прямо на главном экране вперемешку с кнопкой подключения.
  */
+/**
+ * Часы сессии. Часы показываются, только когда они есть: «00:14:02» без часов
+ * читается хуже, чем «14:02».
+ */
+private fun formatSession(seconds: Long): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val secs = seconds % 60
+
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, secs)
+    } else {
+        "%02d:%02d".format(minutes, secs)
+    }
+}
+
 /**
  * Баннер объявления и кнопки оплаты — то, что панель прислала заголовками
  * вместе с подпиской.

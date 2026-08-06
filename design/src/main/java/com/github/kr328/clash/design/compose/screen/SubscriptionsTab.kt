@@ -22,8 +22,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -34,6 +36,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -62,7 +65,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 
 /** Состояние карточки подписки — то, чем определяется её цвет и текст бейджа. */
-private enum class SubscriptionState {
+internal enum class SubscriptionState {
     Active,
     Expiring,
     Exhausted,
@@ -78,7 +81,7 @@ private enum class SubscriptionState {
  *
  * Порог «истекает» — трое суток, как на десктопе.
  */
-private fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
+internal fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
     val used = profile.upload + profile.download
     return when {
         profile.expire in 1 until now -> SubscriptionState.Expired
@@ -91,14 +94,14 @@ private fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
 }
 
 @Composable
-private fun SubscriptionState.color(): Color = when (this) {
+internal fun SubscriptionState.color(): Color = when (this) {
     SubscriptionState.Active -> ClodTheme.extraColors.statusConnected
     SubscriptionState.Expiring -> ClodTheme.extraColors.statusConnecting
     SubscriptionState.Exhausted, SubscriptionState.Expired -> MaterialTheme.colorScheme.error
 }
 
 @Composable
-private fun SubscriptionState.label(): String = stringResource(
+internal fun SubscriptionState.label(): String = stringResource(
     when (this) {
         SubscriptionState.Active -> R.string.clod_sub_active
         SubscriptionState.Expiring -> R.string.clod_sub_expiring
@@ -353,6 +356,129 @@ private fun SubscriptionCard(
 }
 
 /**
+ * Карточка активной подписки на главном экране: срок, трафик и, если панель их
+ * прислала, кнопки продления. Отдельная от карточки в списке — там нужны меню
+ * и выбор, а здесь только сведения и действие.
+ */
+@Composable
+fun ActiveSubscriptionCard(
+    item: SubscriptionItem,
+    expanded: Boolean,
+    onAction: (MainAction) -> Unit,
+) {
+    val profile = item.profile
+    val now = remember(profile) { System.currentTimeMillis() }
+    val status = subscriptionState(profile, now)
+    val critical = status != SubscriptionState.Active
+
+    // Ни сессии, ни проблемы — карточке на главном делать нечего.
+    if (!expanded && !critical) return
+    if (profile.total <= 0L && profile.expire <= 0L) return
+
+    val context = LocalContext.current
+    val used = profile.upload + profile.download
+    val panel = item.panel
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 8.dp),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (profile.expire > 0) {
+                    val days = ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
+                    StatusBadge(
+                        text = if (days >= 0) {
+                            stringResource(R.string.clod_sub_days, days)
+                        } else {
+                            status.label()
+                        },
+                        color = status.color(),
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (profile.total > 0) {
+                        "${Formatter.formatShortFileSize(context, used)} / " +
+                            Formatter.formatShortFileSize(context, profile.total)
+                    } else {
+                        Formatter.formatShortFileSize(context, used) + " · " +
+                            stringResource(R.string.clod_sub_unlimited)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                if (profile.expire > 0) {
+                    Text(
+                        text = stringResource(
+                            R.string.clod_sub_until,
+                            DateFormat.getDateFormat(context).format(Date(profile.expire)),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            if (profile.total > 0) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
+                    color = status.color(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(50)),
+                )
+            }
+
+            // Кнопки повторяются здесь только в критическом состоянии: в спокойной
+            // сессии они уже показаны баннером выше, и дублировать их незачем.
+            if (critical && panel != null &&
+                (panel.renewUrl.isNotBlank() || panel.topupUrl.isNotBlank())
+            ) {
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (panel.renewUrl.isNotBlank()) {
+                        Button(
+                            onClick = { onAction(MainAction.OpenUrl(panel.renewUrl)) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(stringResource(R.string.clod_renew))
+                        }
+                    }
+                    if (panel.topupUrl.isNotBlank()) {
+                        OutlinedButton(
+                            onClick = { onAction(MainAction.OpenUrl(panel.topupUrl)) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(stringResource(R.string.clod_topup))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * Выбор группы для подписки: уже заведённые группы списком плюс поле для новой.
  * Отдельного экрана управления группами нет намеренно — группа это одна строка
  * текста, и заводить ради неё раздел настроек не за что.
@@ -425,7 +551,7 @@ private fun GroupOption(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun StatusBadge(text: String, color: Color) {
+internal fun StatusBadge(text: String, color: Color) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))

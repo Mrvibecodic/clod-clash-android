@@ -160,6 +160,12 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
+    suspend fun setSessionSeconds(seconds: Long) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(sessionSeconds = seconds)
+        }
+    }
+
     suspend fun setTraffic(value: Traffic) {
         withContext(Dispatchers.Main) {
             state = state.copy(

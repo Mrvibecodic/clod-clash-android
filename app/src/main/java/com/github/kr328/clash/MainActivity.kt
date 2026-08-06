@@ -20,6 +20,7 @@ import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.service.model.PanelGroup
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
@@ -205,6 +206,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 if (clashRunning) {
                     ticker.onReceive {
                         design.fetchTraffic()
+                        design.fetchSession()
                     }
                 }
             }
@@ -213,6 +215,14 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.fetch() {
         setClashRunning(clashRunning)
+
+        sessionStartedAt = if (clashRunning) {
+            withContext(Dispatchers.IO) { ServiceStore(this@MainActivity).clashStartedAt }
+        } else {
+            0
+        }
+
+        fetchSession()
 
         val state = withClash {
             queryTunnelState()
@@ -327,6 +337,25 @@ class MainActivity : BaseActivity<MainDesign>() {
          * узла, если тот перестал отвечать, и это правильное поведение.
          */
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
+    }
+
+    /**
+     * Момент подъёма туннеля по данным службы. Читается один раз на подключение:
+     * значение живёт в общих настройках, а это межпроцессный вызов — дёргать его
+     * каждую секунду ради тикающего таймера незачем.
+     */
+    private var sessionStartedAt: Long = 0
+
+    private suspend fun MainDesign.fetchSession() {
+        val startedAt = sessionStartedAt
+
+        setSessionSeconds(
+            if (startedAt > 0) {
+                ((System.currentTimeMillis() - startedAt) / 1000).coerceAtLeast(0)
+            } else {
+                0
+            },
+        )
     }
 
     private suspend fun MainDesign.fetchTraffic() {

@@ -20,6 +20,18 @@ class ServiceStore(context: Context) {
         to = { it?.toString() ?: "" }
     )
 
+    /**
+     * Когда туннель подняли, в миллисекундах системных часов.
+     *
+     * Пишет служба, читает экран: таймер сессии должен быть верным и после того,
+     * как приложение закрыли и открыли заново. Считать от запуска Activity —
+     * значит показывать неправду при каждом возврате на экран.
+     */
+    var clashStartedAt: Long by store.long(
+        key = "clash_started_at",
+        defaultValue = 0L
+    )
+
     var bypassPrivateNetwork: Boolean by store.boolean(
         key = "bypass_private_network",
         defaultValue = true
