@@ -160,7 +160,13 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** Строка-переход во вкладке «Ещё»: иконка, заголовок, необязательное пояснение. */
+/**
+ * Строка-переход во вкладке «Ещё»: иконка, заголовок, необязательное пояснение.
+ *
+ * @param subtitleMaxLines пояснение по умолчанию в одну строку с многоточием:
+ *   это подпись, а не текст. Больше просят там, где обрезать нельзя, — адрес
+ *   ссылки в многоточии не даёт понять, куда уводит нажатие.
+ */
 @Composable
 fun ActionRow(
     title: String,
@@ -168,6 +174,7 @@ fun ActionRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    subtitleMaxLines: Int = 1,
 ) {
     Row(
         modifier = modifier
@@ -195,7 +202,7 @@ fun ActionRow(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = subtitleMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

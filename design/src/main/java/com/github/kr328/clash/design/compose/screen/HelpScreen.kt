@@ -83,6 +83,8 @@ private fun LinkRow(title: String, url: String, onAction: (HelpAction) -> Unit) 
     ActionRow(
         title = title,
         subtitle = url,
+        // Адрес не обрезаем: в многоточии не видно, куда уводит нажатие.
+        subtitleMaxLines = 2,
         icon = painterResource(R.drawable.ic_outline_article),
         onClick = { onAction(HelpAction.OpenUrl(url)) },
     )
