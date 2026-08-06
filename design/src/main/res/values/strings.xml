@@ -398,6 +398,10 @@
     <string name="clod_sub_update_all">Update all</string>
     <string name="clod_no_subscriptions">No subscriptions</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
+    <string name="clod_section_connection">Connection</string>
+    <string name="clod_section_app">App</string>
+    <string name="clod_apps">Apps</string>
+    <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_mode">Mode</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>

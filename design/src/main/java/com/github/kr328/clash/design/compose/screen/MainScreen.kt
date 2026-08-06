@@ -114,6 +114,7 @@ data class MainScreenState(
 sealed interface MainAction {
     data object ToggleStatus : MainAction
     data object OpenProviders : MainAction
+    data object OpenAccessControl : MainAction
     data object OpenLogs : MainAction
     data object OpenSettings : MainAction
     data object OpenHelp : MainAction
@@ -320,6 +321,17 @@ private fun MainHeader(profileName: String?, onAction: (MainAction) -> Unit) {
  * Вкладка «Ещё». Собирает то, что на десктопе живёт в боковом меню, а у CMFA
  * лежало прямо на главном экране вперемешку с кнопкой подключения.
  */
+/** Заголовок группы пунктов во вкладке «Ещё». */
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
+    )
+}
+
 /** Подпись режима туннеля. Ключи строк те же, что у XML-слоя. */
 @Composable
 fun modeLabel(mode: TunnelState.Mode): String = stringResource(
@@ -399,7 +411,14 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 12.dp),
             )
+            SectionHeader(stringResource(R.string.clod_section_connection))
             ModeRow(state.mode, onAction)
+            ActionRow(
+                title = stringResource(R.string.clod_apps),
+                subtitle = stringResource(R.string.clod_apps_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_apps),
+                onClick = { onAction(MainAction.OpenAccessControl) },
+            )
             if (state.hasProviders) {
                 ActionRow(
                     title = stringResource(R.string.providers),
@@ -407,6 +426,8 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                     onClick = { onAction(MainAction.OpenProviders) },
                 )
             }
+
+            SectionHeader(stringResource(R.string.clod_section_app))
             ActionRow(
                 title = stringResource(R.string.logs),
                 icon = painterResource(R.drawable.ic_baseline_assignment),

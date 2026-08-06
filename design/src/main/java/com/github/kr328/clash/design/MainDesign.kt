@@ -36,6 +36,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     sealed interface Request {
         data object ToggleStatus : Request
         data object OpenProviders : Request
+        data object OpenAccessControl : Request
         data object OpenLogs : Request
         data object OpenSettings : Request
         data object OpenHelp : Request
@@ -75,6 +76,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         when (action) {
             MainAction.ToggleStatus -> request(Request.ToggleStatus)
             MainAction.OpenProviders -> request(Request.OpenProviders)
+            MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenSettings -> request(Request.OpenSettings)
             MainAction.OpenHelp -> request(Request.OpenHelp)

@@ -161,6 +161,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             withProfile { delete(request.profile.uuid) }
                         MainDesign.Request.OpenProviders ->
                             startActivity(ProvidersActivity::class.intent)
+                        MainDesign.Request.OpenAccessControl ->
+                            startActivity(AccessControlActivity::class.intent)
                         MainDesign.Request.OpenLogs -> {
                             if (LogcatService.running) {
                                 startActivity(LogcatActivity::class.intent)

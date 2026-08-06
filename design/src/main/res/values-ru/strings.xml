@@ -357,6 +357,10 @@
     <string name="clod_sub_update_all">Обновить все</string>
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
+    <string name="clod_section_connection">Подключение</string>
+    <string name="clod_section_app">Приложение</string>
+    <string name="clod_apps">Приложения</string>
+    <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
     <string name="clod_mode">Режим</string>
     <string name="clod_test_delays">Проверить задержки</string>
     <string name="clod_no_servers">Серверов нет</string>
