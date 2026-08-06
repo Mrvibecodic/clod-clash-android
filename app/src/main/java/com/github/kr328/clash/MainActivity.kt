@@ -59,9 +59,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         design.fetch()
 
-        // Один раз за жизнь экрана: версии не меняются, а номер нужен уже на
-        // вкладке «Ещё» — он стоит подписью к пункту «О приложении».
-        design.loadAbout()
+        // Один раз за жизнь экрана: версия не меняется, а номер нужен уже
+        // на вкладке «Ещё» — он стоит подписью к пункту «О приложении».
+        design.loadVersionName()
 
         // Обновление приложения из GitHub Releases. Ядро отдельно не обновляется:
         // оно вкомпилировано в APK, и подменить его по одному файлу нельзя.
@@ -590,21 +590,38 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun MainDesign.loadAbout() {
-        val store = AppStore(this@MainActivity)
-
-        val versionName = withContext(Dispatchers.IO) {
-            packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
-        }
-
-        setAbout(
-            versionName = versionName,
-            // Подчёркивания в версии ядра — из имени тега сборки; в тексте
-            // на экране они читаются как опечатка.
-            coreVersion = Bridge.nativeCoreVersion().replace("_", "-"),
-            autoCheckUpdate = store.autoCheckUpdate,
-            prerelease = store.nightlyChannel,
+    /**
+     * Только номер версии приложения — он стоит подписью к пункту
+     * «О приложении» во вкладке «Ещё», и нужен сразу.
+     *
+     * Версию ядра здесь не спрашиваем намеренно. Первое же обращение
+     * к [Bridge] выполняет его инициализатор: подгружает нативную библиотеку
+     * и вызывает `nativeInit`, то есть поднимает ядро в текущем процессе.
+     * Ядро живёт в отдельном (`:background`), и заводить второе в UI-процессе
+     * ради подписи к одной строке — тем более на старте — нельзя.
+     */
+    private suspend fun MainDesign.loadVersionName() {
+        setAppVersion(
+            withContext(Dispatchers.IO) {
+                packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+            },
         )
+    }
+
+    /** Полные данные экрана «О приложении». Только по открытию экрана. */
+    private suspend fun MainDesign.loadAbout() {
+        withContext(Dispatchers.IO) {
+            val store = AppStore(this@MainActivity)
+
+            setAbout(
+                versionName = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty(),
+                // Подчёркивания в версии ядра — из имени тега сборки; в тексте
+                // на экране они читаются как опечатка.
+                coreVersion = Bridge.nativeCoreVersion().replace("_", "-"),
+                autoCheckUpdate = store.autoCheckUpdate,
+                prerelease = store.nightlyChannel,
+            )
+        }
     }
 
     /**

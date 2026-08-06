@@ -330,6 +330,17 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
+    /**
+     * Только номер версии. Отдельно от [setAbout], потому что нужен раньше:
+     * он стоит подписью к пункту «О приложении», а версию ядра до открытия
+     * самого экрана спрашивать дорого.
+     */
+    suspend fun setAppVersion(versionName: String) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(about = state.about.copy(versionName = versionName))
+        }
+    }
+
     suspend fun setAbout(
         versionName: String,
         coreVersion: String,
