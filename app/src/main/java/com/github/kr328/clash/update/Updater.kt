@@ -53,7 +53,7 @@ object Updater {
             val url = if (nightly) MANIFEST_NIGHTLY else MANIFEST_RELEASE
             val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8) ?: return@withContext null
 
-            val manifest = runCatching { json.decodeFromString<UpdateManifest>(body) }
+            val manifest = runCatching { json.decodeFromString(UpdateManifest.serializer(), body) }
                 .onFailure { Log.w("$TAG: манифест не разобран", it) }
                 .getOrNull() ?: return@withContext null
 

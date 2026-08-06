@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Имя приложения. Живёт в app, а не в design: у апстрима эти строки генерировались
+      resValue на каждый flavor, и код app-модуля обращается к ним через свой R.
+      В design они тоже нужны (design_main.xml, design_about.xml) — туда приходят
+      слиянием ресурсов, обратное направление не работает.
+    -->
+    <string name="launch_name">Clod Clash</string>
+    <string name="application_name">Clod Clash</string>
+</resources>
