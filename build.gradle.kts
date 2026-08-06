@@ -15,6 +15,7 @@ buildscript {
         classpath(libs.build.android)
         classpath(libs.build.kotlin.common)
         classpath(libs.build.kotlin.serialization)
+        classpath(libs.build.kotlin.compose)
         classpath(libs.build.ksp)
         classpath(libs.build.golang)
     }

@@ -6,8 +6,15 @@ plugins {
     kotlin("android")
     // нужен dataBinding: генерирует design.BR при сборке приложения
     kotlin("kapt")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.android.application")
     id("kotlinx-serialization")
+}
+
+android {
+    buildFeatures {
+        compose = true
+    }
 }
 
 dependencies {
@@ -30,6 +37,15 @@ dependencies {
     implementation(libs.androidx.activity.ktx)
     // разбор манифеста обновлений (latest.json)
     implementation(libs.kotlin.serialization.json)
+
+    // Jetpack Compose. Activity хостят экраны из :design, поэтому рантайм нужен и здесь.
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
 }
 
 tasks.getByName("clean", type = Delete::class) {
