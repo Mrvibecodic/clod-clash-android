@@ -12,14 +12,11 @@
 
 name: Nightly
 
+# Запускается ТОЛЬКО вручную (кнопка Run workflow). На каждый push не нужен:
+# компиляцию проверяет build-check, а релизную конфигурацию — сам релиз.
+# Держим на случай, когда нужно дать кому-то APK из текущего main без выпуска версии.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'fastlane/**'
-      - '.github/ISSUE_TEMPLATE/**'
 
 permissions: write-all
 
@@ -180,10 +177,19 @@ jobs:
         run: |
           set -euo pipefail
 
+          # gh api при 404 печатает тело ошибки в stdout, поэтому проверяем и код
+          # возврата, и то, что получилось именно число.
+          release_id_of() {
+            local tag="$1" out
+            if out=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq .id 2>/dev/null); then
+              [[ "$out" =~ ^[0-9]+$ ]] && echo "$out"
+            fi
+          }
+
           ensure_release() {
             local tag="$1" name="$2" body="$3"
             local id
-            id=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq .id 2>/dev/null || true)
+            id=$(release_id_of "$tag")
             if [[ -z "$id" ]]; then
               id=$(gh api -X POST "repos/${{ github.repository }}/releases" \
                 -f tag_name="$tag" -f name="$name" -f body="$body" \
@@ -197,8 +203,10 @@ jobs:
             local name; name=$(basename "$file")
             local old
             old=$(gh api "repos/${{ github.repository }}/releases/$id/assets" \
-              --jq ".[] | select(.name == \"$name\") | .id" || true)
-            [[ -n "$old" ]] && gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+              --jq ".[] | select(.name == \"$name\") | .id" 2>/dev/null || true)
+            if [[ "$old" =~ ^[0-9]+$ ]]; then
+              gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+            fi
             gh api --method POST -H "Content-Type: $ctype" \
               "https://uploads.github.com/repos/${{ github.repository }}/releases/$id/assets?name=$name" \
               --input "$file" >/dev/null

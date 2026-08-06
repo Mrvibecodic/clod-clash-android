@@ -71,7 +71,11 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
 
-          existing=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '{id: .id, draft: .draft}' 2>/dev/null || echo '')
+          # При 404 gh печатает тело ошибки в stdout, поэтому смотрим на код возврата.
+          existing=''
+          if out=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '{id: .id, draft: .draft}' 2>/dev/null); then
+            existing="$out"
+          fi
           if [[ -n "$existing" ]]; then
             if [[ "$(echo "$existing" | jq -r .draft)" == "true" ]]; then
               gh api -X DELETE "repos/${{ github.repository }}/releases/$(echo "$existing" | jq -r .id)"
@@ -260,8 +264,10 @@ jobs:
           for f in dist/*; do
             name=$(basename "$f")
             old=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
-              --jq ".[] | select(.name == \"$name\") | .id" || true)
-            [[ -n "$old" ]] && gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+              --jq ".[] | select(.name == \"$name\") | .id" 2>/dev/null || true)
+            if [[ "$old" =~ ^[0-9]+$ ]]; then
+              gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+            fi
             gh api --method POST \
               -H "Content-Type: application/octet-stream" \
               "https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=$name" \
@@ -325,7 +331,10 @@ jobs:
           gh api -H "Accept: application/octet-stream" \
             "repos/${{ github.repository }}/releases/assets/$(cat /tmp/asset_id)" > latest.json
 
-          upd=$(gh api "repos/${{ github.repository }}/releases/tags/updater" --jq .id 2>/dev/null || true)
+          upd=''
+          if out=$(gh api "repos/${{ github.repository }}/releases/tags/updater" --jq .id 2>/dev/null); then
+            [[ "$out" =~ ^[0-9]+$ ]] && upd="$out"
+          fi
           if [[ -z "$upd" ]]; then
             upd=$(gh api -X POST "repos/${{ github.repository }}/releases" \
               -f tag_name=updater \
@@ -335,8 +344,10 @@ jobs:
           fi
 
           old=$(gh api "repos/${{ github.repository }}/releases/$upd/assets" \
-            --jq '.[] | select(.name == "latest.json") | .id' || true)
-          [[ -n "$old" ]] && gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+            --jq '.[] | select(.name == "latest.json") | .id' 2>/dev/null || true)
+          if [[ "$old" =~ ^[0-9]+$ ]]; then
+            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+          fi
 
           gh api --method POST \
             -H "Content-Type: application/json" \
