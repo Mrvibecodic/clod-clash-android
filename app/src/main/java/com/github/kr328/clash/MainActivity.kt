@@ -113,7 +113,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.fetchTraffic() {
         withClash {
-            setForwarded(queryTrafficTotal())
+            setTraffic(queryTrafficTotal())
         }
     }
 
@@ -130,6 +130,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
+        // Ставим «Подключение…» до похода в службу: поднятие туннеля занимает
+        // заметное время, и без этого первое нажатие выглядит как непрошедшее.
+        setConnecting()
+
         val vpnRequest = startClashService()
 
         try {
@@ -139,10 +143,17 @@ class MainActivity : BaseActivity<MainDesign>() {
                     vpnRequest
                 )
 
-                if (result.resultCode == RESULT_OK)
+                if (result.resultCode == RESULT_OK) {
                     startClashService()
+                } else {
+                    // Пользователь отказал в разрешении на VPN. События от службы
+                    // не будет, поэтому «Подключение…» надо снять руками — иначе
+                    // экран так и останется в промежуточном состоянии.
+                    setClashRunning(clashRunning)
+                }
             }
         } catch (e: Exception) {
+            setClashRunning(clashRunning)
             design?.showToast(DesignR.string.unable_to_start_vpn, ToastDuration.Long)
         }
     }

@@ -325,4 +325,22 @@
     <string name="override_destination">Override Destination</string>
     <string name="import_from_qr_no_permission">Доступ к камере ограничен. Разрешите его в настройках.</string>
     <string name="import_from_qr_exception">Произошла не обрабатываемая системная ошибка.</string>
+    <!-- Clod Clash: главный экран на Compose -->
+    <string name="clod_tab_home">Главная</string>
+    <string name="clod_tab_servers">Серверы</string>
+    <string name="clod_tab_subscriptions">Подписки</string>
+    <string name="clod_tab_more">Ещё</string>
+    <string name="clod_status_disconnected">Отключено</string>
+    <string name="clod_status_connected">Подключено</string>
+    <string name="clod_status_connecting">Подключение\u2026</string>
+    <string name="clod_tap_to_connect">Нажмите, чтобы подключиться</string>
+    <string name="clod_traffic_downloaded">Скачано</string>
+    <string name="clod_traffic_uploaded">Отправлено</string>
+    <string name="clod_selector_group">Группа</string>
+    <string name="clod_selector_server">Сервер</string>
+    <string name="clod_no_subscription">Подписка не выбрана</string>
+    <string name="clod_action_connect">Подключиться</string>
+    <string name="clod_action_disconnect">Отключиться</string>
+    <string name="clod_refresh_profile">Обновить подписку</string>
+
 </resources>

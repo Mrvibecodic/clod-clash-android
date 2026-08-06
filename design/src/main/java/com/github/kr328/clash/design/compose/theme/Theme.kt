@@ -106,20 +106,29 @@ private val DarkColors: ColorScheme = darkColorScheme(
  */
 @Immutable
 data class ClodExtraColors(
-    val statusConnected: Color = LightStatusConnected,
-    val statusConnecting: Color = LightStatusConnecting,
-    val statusStopped: Color = LightStatusStopped,
-    val brandGradient: Brush = Brush.linearGradient(
-        listOf(BrandGradientStart, BrandGradientEnd),
-    ),
+    val statusConnected: Color,
+    val statusConnecting: Color,
+    val statusStopped: Color,
+    val brandGradient: Brush,
 )
 
-private val LightExtraColors = ClodExtraColors()
+// Значения по умолчанию заданы здесь, а не в конструкторе: цвета из Color.kt
+// объявлены internal, и тащить их в значения по умолчанию публичного класса —
+// значит светить internal-объявления в публичном API модуля.
+private val BrandGradient = Brush.linearGradient(listOf(BrandGradientStart, BrandGradientEnd))
+
+private val LightExtraColors = ClodExtraColors(
+    statusConnected = LightStatusConnected,
+    statusConnecting = LightStatusConnecting,
+    statusStopped = LightStatusStopped,
+    brandGradient = BrandGradient,
+)
 
 private val DarkExtraColors = ClodExtraColors(
     statusConnected = DarkStatusConnected,
     statusConnecting = DarkStatusConnecting,
     statusStopped = DarkStatusStopped,
+    brandGradient = BrandGradient,
 )
 
 private val LocalClodExtraColors = staticCompositionLocalOf { LightExtraColors }
