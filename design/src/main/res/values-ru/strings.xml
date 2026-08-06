@@ -218,7 +218,6 @@
     <string name="meta_github_url" translatable="false">https://github.com/MetaCubeX/ClashMetaForAndroid</string>
     <string name="clash_meta_core_url" translatable="false">https://github.com/MetaCubeX/Clash.Meta</string>
 
-    <string name="tips_properties"><![CDATA[Принимается только <strong>конфиг Clash</strong> (включая <strong>Прокси</strong>/<strong>Правила</strong>)]]></string>
     <string name="tips_help"><![CDATA[Clash Meta для Android — <strong>бесплатен</strong> и мы <strong>НЕ</strong> предоставляем по нему поддержку]]></string>
 
     <string name="google_play_url" translatable="false">https://play.google.com/store/apps/details?id=com.github.kr328.clash</string>
@@ -358,6 +357,7 @@
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
+    <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
     <string name="clod_section_settings">Настройки</string>
     <string name="clod_section_support">Помощь и обновления</string>

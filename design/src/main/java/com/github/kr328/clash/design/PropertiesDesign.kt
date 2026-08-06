@@ -2,189 +2,194 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.core.model.FetchStatus
-import com.github.kr328.clash.design.databinding.DesignPropertiesBinding
-import com.github.kr328.clash.design.dialog.ModelProgressBarConfigure
-import com.github.kr328.clash.design.dialog.requestModelTextInput
-import com.github.kr328.clash.design.dialog.withModelProgressBar
-import com.github.kr328.clash.design.util.*
+import com.github.kr328.clash.design.compose.screen.FetchProgress
+import com.github.kr328.clash.design.compose.screen.PropertiesAction
+import com.github.kr328.clash.design.compose.screen.PropertiesScreen
+import com.github.kr328.clash.design.compose.screen.PropertiesState
+import com.github.kr328.clash.design.compose.screen.isHttpUrl
+import com.github.kr328.clash.design.compose.screen.isValidInterval
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.service.model.Profile
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
 
 class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(context) {
-    sealed class Request {
-        object Commit : Request()
-        object BrowseFiles : Request()
+    sealed interface Request {
+        data object Commit : Request
+        data object BrowseFiles : Request
+        data object Back : Request
     }
 
-    private val binding = DesignPropertiesBinding
-        .inflate(context.layoutInflater, context.root, false)
+    private var state by mutableStateOf(PropertiesState())
 
-    override val root: View
-        get() = binding.root
+    /**
+     * Профиль в том виде, в каком он пришёл. Правки живут в состоянии экрана,
+     * а сюда возвращаются только через [profile]: так поля, которых на экране
+     * нет (uuid, тип, время обновления), не теряются при копировании.
+     */
+    private var base: Profile? = null
 
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                PropertiesScreen(state = state, onAction = ::onAction)
+            }
+        }
+    }
+
+    /**
+     * Текущее значение полей. `PropertiesActivity` сравнивает его с исходным,
+     * чтобы понять, было ли что менять, — поэтому геттер собирается
+     * из состояния экрана, а не отдаёт то, что положили.
+     */
     var profile: Profile
-        get() = binding.profile!!
+        get() = checkNotNull(base) { "profile is not set" }.copy(
+            name = state.name,
+            source = state.url,
+            ageSecretKey = state.ageSecretKey.ifBlank { null },
+            interval = TimeUnit.MINUTES.toMillis(state.intervalMinutes.toLongOrNull() ?: 0),
+        )
         set(value) {
-            binding.profile = value
+            base = value
+
+            val minutes = TimeUnit.MILLISECONDS.toMinutes(value.interval)
+
+            state = state.copy(
+                name = value.name,
+                url = value.source,
+                ageSecretKey = value.ageSecretKey ?: "",
+                // Ноль — это «выключено», а не «раз в ноль минут»: поле
+                // остаётся пустым, и подсказка объясняет, что будет.
+                intervalMinutes = if (minutes == 0L) "" else minutes.toString(),
+                // Только подписка по ссылке. У внешнего профиля в source лежит
+                // адрес, выданный приложением-источником: старый экран открыть
+                // его на правку тоже не давал.
+                urlEditable = value.type == Profile.Type.Url,
+                intervalEditable = value.type != Profile.Type.File,
+            )
         }
 
     val progressing: Boolean
-        get() = binding.processing
+        get() = state.processing != null
+
+    /**
+     * Черновик пригоден к записи.
+     *
+     * Нужен, потому что поля правятся напрямую: пока их правили в модальных
+     * окнах с валидаторами, недописанное значение до профиля просто не
+     * доходило. Теперь дойдёт — и уход с экрана сохранил бы пустое имя или
+     * недописанную ссылку молча.
+     *
+     * Ключ age сюда не входит: его проверяет ядро, и это отдельный вызов
+     * через JNI, а не свойство.
+     */
+    val draftValid: Boolean
+        get() = state.name.isNotBlank() &&
+            (!state.urlEditable || isHttpUrl(state.url)) &&
+            isValidInterval(state.intervalMinutes)
+
+    private fun onAction(action: PropertiesAction) {
+        when (action) {
+            PropertiesAction.Back -> request(Request.Back)
+            PropertiesAction.Commit -> request(Request.Commit)
+            PropertiesAction.BrowseFiles -> request(Request.BrowseFiles)
+            is PropertiesAction.NameChanged -> state = state.copy(name = action.value)
+            is PropertiesAction.UrlChanged -> state = state.copy(url = action.value)
+            is PropertiesAction.AgeSecretKeyChanged ->
+                state = state.copy(ageSecretKey = action.value)
+
+            is PropertiesAction.IntervalChanged ->
+                // Отсеиваем всё, кроме цифр: на части клавиатур числовой режим
+                // — рекомендация, а не запрет, и запятая или минус превратили бы
+                // интервал в ноль молча.
+                state = state.copy(intervalMinutes = action.value.filter { it.isDigit() })
+
+            PropertiesAction.ConfirmExit -> resumeExit(true)
+            PropertiesAction.CancelExit -> resumeExit(false)
+        }
+    }
 
     suspend fun withProcessing(executeTask: suspend (suspend (FetchStatus) -> Unit) -> Unit) {
         try {
-            binding.processing = true
+            setProgress(FetchProgress(context.getString(R.string.initializing)))
 
-            context.withModelProgressBar {
-                configure {
-                    isIndeterminate = true
-                    text = context.getString(R.string.initializing)
-                }
-
-                executeTask {
-                    configure {
-                        applyFrom(it)
-                    }
-                }
-            }
+            executeTask { setProgress(it.toProgress()) }
         } finally {
-            binding.processing = false
+            setProgress(null)
         }
     }
+
+    private suspend fun setProgress(progress: FetchProgress?) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(processing = progress)
+        }
+    }
+
+    /**
+     * Вопрос «выйти без сохранения?». Решение принимает активити — она одна
+     * знает, менялся ли профиль, — поэтому экран показывает окно, а ответ
+     * возвращается сюда же.
+     */
+    private var exitConfirmation: CancellableContinuation<Boolean>? = null
 
     suspend fun requestExitWithoutSaving(): Boolean {
         return withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { ctx ->
-                val dialog = MaterialAlertDialogBuilder(context)
-                    .setTitle(R.string.exit_without_save)
-                    .setMessage(R.string.exit_without_save_warning)
-                    .setCancelable(true)
-                    .setPositiveButton(R.string.ok) { _, _ -> ctx.resume(true) }
-                    .setNegativeButton(R.string.cancel) { _, _ -> }
-                    .setOnDismissListener { if (!ctx.isCompleted) ctx.resume(false) }
-                    .show()
+            suspendCancellableCoroutine { continuation ->
+                exitConfirmation = continuation
 
-                ctx.invokeOnCancellation { dialog.dismiss() }
+                state = state.copy(confirmingExit = true)
+
+                continuation.invokeOnCancellation {
+                    exitConfirmation = null
+
+                    state = state.copy(confirmingExit = false)
+                }
             }
         }
     }
 
-    init {
-        binding.self = this
+    private fun resumeExit(confirmed: Boolean) {
+        state = state.copy(confirmingExit = false)
 
-        binding.activityBarLayout.applyFrom(context)
+        val continuation = exitConfirmation ?: return
 
-        binding.tips.text = context.getHtml(R.string.tips_properties)
+        exitConfirmation = null
 
-        binding.scrollRoot.bindAppBarElevation(binding.activityBarLayout)
-    }
-
-    fun inputName() {
-        launch {
-            val name = context.requestModelTextInput(
-                initial = profile.name,
-                title = context.getText(R.string.name),
-                hint = context.getText(R.string.properties),
-                error = context.getText(R.string.should_not_be_blank),
-                validator = ValidatorNotBlank
-            )
-
-            if (name != profile.name) {
-                profile = profile.copy(name = name)
-            }
+        if (continuation.isActive) {
+            continuation.resumeWith(Result.success(confirmed))
         }
     }
 
-    fun inputUrl() {
-        if (profile.type == Profile.Type.External)
-            return
-
-        launch {
-            val url = context.requestModelTextInput(
-                initial = profile.source,
-                title = context.getText(R.string.url),
-                hint = context.getText(R.string.profile_url),
-                error = context.getText(R.string.accept_http_content),
-                validator = ValidatorHttpUrl
-            )
-
-            if (url != profile.source) {
-                profile = profile.copy(source = url)
-            }
-        }
+    fun request(request: Request) {
+        requests.trySend(request)
     }
 
-    fun inputAgeSecretKey() {
-        launch {
-            val ageSecretKey = context.requestModelTextInput(
-                initial = profile.ageSecretKey ?: "",
-                title = context.getText(R.string.age_secret_key),
-                hint = context.getText(R.string.age_secret_key_hint),
-                error = context.getText(R.string.age_secret_key_error),
-                validator = ValidatorAgeSecretKey
-            )
-
-            val newKey = ageSecretKey.ifBlank { null }
-            if (newKey != profile.ageSecretKey) {
-                profile = profile.copy(ageSecretKey = newKey)
-            }
-        }
+    private fun FetchStatus.toProgress(): FetchProgress = when (action) {
+        FetchStatus.Action.FetchConfiguration -> FetchProgress(
+            text = context.getString(R.string.format_fetching_configuration, args[0]),
+        )
+        FetchStatus.Action.FetchProviders -> FetchProgress(
+            text = context.getString(R.string.format_fetching_provider, args[0]),
+            progress = fraction(),
+        )
+        FetchStatus.Action.Verifying -> FetchProgress(
+            text = context.getString(R.string.verifying),
+            progress = fraction(),
+        )
+        // Данные подписки приходят отдельным событием и к ходу работы
+        // отношения не имеют: текст не меняем.
+        FetchStatus.Action.SubscriptionInfo -> state.processing
+            ?: FetchProgress(context.getString(R.string.initializing))
     }
 
-    fun inputInterval() {
-        launch {
-            var minutes = TimeUnit.MILLISECONDS.toMinutes(profile.interval)
-
-            minutes = context.requestModelTextInput(
-                initial = if (minutes == 0L) "" else minutes.toString(),
-                title = context.getText(R.string.auto_update),
-                hint = context.getText(R.string.auto_update_minutes),
-                error = context.getText(R.string.at_least_15_minutes),
-                validator = ValidatorAutoUpdateInterval
-            ).toLongOrNull() ?: 0
-
-            val interval = TimeUnit.MINUTES.toMillis(minutes)
-
-            if (interval != profile.interval) {
-                profile = profile.copy(interval = interval)
-            }
-        }
-    }
-
-    fun requestCommit() {
-        requests.trySend(Request.Commit)
-    }
-
-    fun requestBrowseFiles() {
-        requests.trySend(Request.BrowseFiles)
-    }
-
-    private fun ModelProgressBarConfigure.applyFrom(status: FetchStatus) {
-        when (status.action) {
-            FetchStatus.Action.FetchConfiguration -> {
-                text = context.getString(R.string.format_fetching_configuration, status.args[0])
-                isIndeterminate = true
-            }
-            FetchStatus.Action.FetchProviders -> {
-                text = context.getString(R.string.format_fetching_provider, status.args[0])
-                isIndeterminate = false
-                max = status.max
-                progress = status.progress
-            }
-            FetchStatus.Action.SubscriptionInfo -> Unit
-            FetchStatus.Action.Verifying -> {
-                text = context.getString(R.string.verifying)
-                isIndeterminate = false
-                max = status.max
-                progress = status.progress
-            }
-        }
-    }
+    private fun FetchStatus.fraction(): Float =
+        if (max > 0) progress.toFloat() / max else -1f
 }

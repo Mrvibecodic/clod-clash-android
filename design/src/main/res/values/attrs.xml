@@ -26,20 +26,7 @@
         <attr name="icon" />
     </declare-styleable>
 
-    <declare-styleable name="ActionLabel">
-        <attr name="enabled" />
-        <attr name="text" />
-        <attr name="subtext" />
-        <attr name="icon" />
-    </declare-styleable>
 
-    <declare-styleable name="ActionTextField">
-        <attr name="enabled" />
-        <attr name="icon" />
-        <attr name="title" />
-        <attr name="text" />
-        <attr name="placeholder" />
-    </declare-styleable>
 
     <declare-styleable name="Clickable">
         <attr name="android:focusable" />

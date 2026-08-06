@@ -234,7 +234,6 @@
     <string name="meta_github_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android</string>
     <string name="clash_meta_core_url" translatable="false">https://github.com/MetaCubeX/mihomo</string>
 
-    <string name="tips_properties"><![CDATA[Accept Only <strong>Clash Config</strong>(including <strong>Proxy</strong>/<strong>Rules</strong>)]]></string>
     <string name="tips_help"><![CDATA[Clash Meta for Android is a <strong>freeware</strong> and we do <strong>NOT</strong> provide any service for it]]></string>
 
     <string name="google_play_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android/releases</string>
@@ -399,6 +398,7 @@
     <string name="clod_no_subscriptions">No subscriptions</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_section_connection">Connection</string>
+    <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_no_logs">No saved logs yet</string>
     <string name="clod_section_settings">Settings</string>
     <string name="clod_section_support">Help and updates</string>
