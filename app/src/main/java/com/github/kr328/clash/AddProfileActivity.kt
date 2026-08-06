@@ -7,6 +7,7 @@ import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withProfile
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
@@ -94,7 +95,9 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                 withProfile { setActive(profile) }
             }
 
-            setDone(profile)
+            // Название приходит заголовком панели и лежит в panel.json рядом
+            // с конфигом — в базе профиль всё ещё зовётся по умолчанию.
+            setDone(profile, queryPanelInfo(uuid)?.title.orEmpty())
         } catch (e: Exception) {
             withProfile { release(uuid) }
 

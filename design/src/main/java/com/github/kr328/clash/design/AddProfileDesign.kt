@@ -91,9 +91,9 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
         }
     }
 
-    suspend fun setDone(profile: Profile) {
+    suspend fun setDone(profile: Profile, title: String) {
         withContext(Dispatchers.Main) {
-            state = state.copy(step = AddProfileStep.Done, result = profile)
+            state = state.copy(step = AddProfileStep.Done, result = profile, resultTitle = title)
         }
     }
 

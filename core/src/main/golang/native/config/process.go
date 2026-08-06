@@ -48,9 +48,22 @@ func patchExternalController(cfg *config.RawConfig, _ string) error {
 	return nil
 }
 
+// Порт локального прокси. Фиксируем свой, а не берём из подписки: панель может
+// прислать любой или не прислать вовсе, а человеку нужен предсказуемый адрес,
+// который можно прописать в другой программе. 7890 — общепринятый для клиентов
+// этого семейства.
+const localProxyPort = 7890
+
 func patchGeneral(cfg *config.RawConfig, profileDir string) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
+
+	// mixed-port один на HTTP и SOCKS. Отдельные port/socks-port обнуляем,
+	// иначе с конфигом из подписки поднялись бы ещё два слушателя на портах,
+	// о которых никто не просил.
+	cfg.MixedPort = localProxyPort
+	cfg.Port = 0
+	cfg.SocksPort = 0
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
 		cfg.ExternalUI = profileDir + "/ui"
 	}

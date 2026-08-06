@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -59,6 +60,8 @@ data class AddProfileState(
     val progress: Float = 0f,
     val error: String? = null,
     val result: Profile? = null,
+    /** Название от панели. Профиль в базе всё ещё зовётся по умолчанию. */
+    val resultTitle: String = "",
 )
 
 sealed interface AddProfileAction {
@@ -85,6 +88,9 @@ fun AddProfileScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            // Без этого заголовок уезжает под системную панель: экран рисуется
+            // во всё окно, а своей шапки с отступами у него нет.
+            .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
             .imePadding()
             .padding(20.dp),
@@ -192,7 +198,9 @@ private fun DoneStep(state: AddProfileState, onAction: (AddProfileAction) -> Uni
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = profile?.name.orEmpty(),
+                // Название от панели, а не то, под которым профиль лёг в базу:
+                // человек его не задавал и видеть «New Profile» не должен.
+                text = state.resultTitle.ifBlank { profile?.name.orEmpty() },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )

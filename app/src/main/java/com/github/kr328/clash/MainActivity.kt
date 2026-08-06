@@ -13,6 +13,7 @@ import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
@@ -37,6 +38,7 @@ import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -97,24 +99,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
                             }
                         }
-                        is MainDesign.Request.UrlTest -> {
-                            proxyGroupNames.getOrNull(request.index)?.let { group ->
-                                // В отдельной корутине: проверка группы занимает
-                                // секунды, а цикл событий должен остаться живым —
-                                // иначе на это время замирает и кнопка подключения.
-                                launch {
-                                    design.setProxyTesting(true)
-
-                                    try {
-                                        withClash { healthCheck(group) }
-
-                                        design.reloadProxyGroup(request.index)
-                                    } finally {
-                                        design.setProxyTesting(false)
-                                    }
-                                }
-                            }
-                        }
+                        is MainDesign.Request.UrlTest -> launch { design.runHealthCheck() }
                         is MainDesign.Request.PatchMode -> {
                             withClash {
                                 val override = queryOverride(Clash.OverrideSlot.Session)
@@ -258,6 +243,9 @@ class MainActivity : BaseActivity<MainDesign>() {
      */
     private var offlineGroups: List<PanelGroup> = emptyList()
 
+    /** Набор групп, для которого задержки уже мерили в этой сессии. */
+    private var healthCheckedGroups: List<String> = emptyList()
+
     private suspend fun MainDesign.reloadProxyGroups() {
         val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
 
@@ -276,6 +264,44 @@ class MainActivity : BaseActivity<MainDesign>() {
         setProxyGroupNames(names)
 
         reloadProxyGroup(selectedGroup)
+
+        // Задержки меряем сами, как только появился рабочий список: человек
+        // подключился или добавил подписку — и сразу видит, куда быстрее.
+        // Повторно на каждое событие не гоняем: набор групп не изменился.
+        if (names != healthCheckedGroups) {
+            healthCheckedGroups = names
+
+            launch { runHealthCheck() }
+        }
+    }
+
+    /**
+     * Проверка задержек.
+     *
+     * Проверяются ВСЕ группы, а не только открытая. У группы типа `select`
+     * в конфигах панели обычно нет своего `url`, и её проверка здоровья
+     * не делает ничего — а у соседней `url-test` он есть. Узлы в ядре общие
+     * (`tunnel.Proxies()` держит по одному объекту на имя), поэтому проверка
+     * любой группы обновляет задержки и во всех остальных.
+     */
+    private suspend fun MainDesign.runHealthCheck() {
+        if (proxyGroupNames.isEmpty() || offlineGroups.isNotEmpty()) return
+
+        setProxyTesting(true)
+
+        try {
+            coroutineScope {
+                proxyGroupNames.forEach { group ->
+                    launch { withClash { healthCheck(group) } }
+                }
+            }
+
+            reloadProxyGroup(selectedGroup)
+        } catch (e: Exception) {
+            Log.w("Health check: $e", e)
+        } finally {
+            setProxyTesting(false)
+        }
     }
 
     private suspend fun MainDesign.loadOfflineProxyGroups() {
@@ -283,6 +309,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         val panel = active?.let { queryPanelInfo(it.uuid) }
         offlineGroups = panel?.groups.orEmpty()
         proxyGroupNames = offlineGroups.map { it.name }
+        // Отключились — при следующем подключении меряем заново: старые
+        // задержки к новой сети отношения не имеют.
+        healthCheckedGroups = emptyList()
 
         setProxyGroupNames(proxyGroupNames, offline = true)
 
