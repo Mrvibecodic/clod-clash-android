@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Material Symbols Rounded «key», Apache License 2.0.
-     Холст 960 с переносом по вертикали: у Material Symbols viewBox
-     «0 -960 960 960», то есть ось Y идёт вверх от нуля. -->
+<!-- Solar Bold Duotone «key-bold-duotone», 480 Design (CC BY 4.0).
+     Объём даёт второй слой той же формы с прозрачностью: тонирование одним
+     цветом сохраняет его, поэтому иконка живёт в любой цветовой схеме. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="960"
-    android:viewportHeight="960"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
-    <group android:translateY="960">
-        <path
-            android:fillColor="@android:color/white"
-            android:pathData="M232-432q-20-20-20-48t20-48q20-20 48-20t48 20q20 20 20 48t-20 48q-20 20-48 20t-48-20Zm48 192q-100 0-170-70T40-480q0-100 70-170t170-70q72 0 126 34t85 103h344q6 0 11 2t10 7l82 82q5 5 7 10.5t2 11.5q0 6-2.5 11t-7.5 10L812-334q-4 4-9 6t-10 2q-5 0-9.5-1t-9.5-4l-69-50-70 51q-4 3-8.5 4t-9.5 1q-5 0-9.5-1.5T599-331l-57-46h-51q-25 60-78.5 98.5T280-240Zm0-60q58 0 107-38.5t63-98.5h114l54 45q-1 0 0 0h.5-.5l88-63 82 62h-.5.5l85-79 .5.5-.5-.5h.5-.5l-51-51H450q-12-56-60-96.5T280-660q-75 0-127.5 52.5T100-480q0 75 52.5 127.5T280-300Z" />
-    </group>
+    <path
+        android:fillColor="@android:color/white"
+        android:fillAlpha=".5"
+        android:fillType="evenOdd"
+        android:pathData="M22 8.293c0 3.476-2.83 6.294-6.32 6.294c-.636 0-2.086-.146-2.791-.732l-.882.878c-.519.517-.379.669-.148.919c.096.105.208.226.295.399c0 0 .735 1.024 0 2.049c-.441.585-1.676 1.404-3.086 0l-.294.292s.881 1.025.147 2.05c-.441.585-1.617 1.17-2.646.146l-1.028 1.024c-.706.703-1.568.293-1.91 0l-.883-.878c-.823-.82-.343-1.708 0-2.05l7.642-7.61s-.735-1.17-.735-2.78c0-3.476 2.83-6.294 6.32-6.294S22 4.818 22 8.293" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M17.885 8.294a2.2 2.2 0 0 1-2.204 2.195a2.2 2.2 0 0 1-2.204-2.195a2.2 2.2 0 0 1 2.204-2.196a2.2 2.2 0 0 1 2.204 2.196" />
 </vector>

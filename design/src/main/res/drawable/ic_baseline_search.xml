@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Material Symbols Rounded «search», Apache License 2.0.
-     Холст 960 с переносом по вертикали: у Material Symbols viewBox
-     «0 -960 960 960», то есть ось Y идёт вверх от нуля. -->
+<!-- Solar Bold Duotone «magnifer-bold-duotone», 480 Design (CC BY 4.0).
+     Объём даёт второй слой той же формы с прозрачностью: тонирование одним
+     цветом сохраняет его, поэтому иконка живёт в любой цветовой схеме. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="960"
-    android:viewportHeight="960"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
-    <group android:translateY="960">
-        <path
-            android:fillColor="@android:color/white"
-            android:pathData="M378-329q-108.16 0-183.08-75Q120-479 120-585t75-181q75-75 181.5-75t181 75Q632-691 632-584.85 632-542 618-502q-14 40-42 75l242 240q9 8.56 9 21.78T818-143q-9 9-22.22 9-13.22 0-21.78-9L533-384q-30 26-69.96 40.5Q423.08-329 378-329Zm-1-60q81.25 0 138.13-57.5Q572-504 572-585t-56.87-138.5Q458.25-781 377-781q-82.08 0-139.54 57.5Q180-666 180-585t57.46 138.5Q294.92-389 377-389Z" />
-    </group>
+    <path
+        android:fillColor="@android:color/white"
+        android:fillAlpha=".5"
+        android:pathData="M20.313 11.157a9.157 9.157 0 1 1-18.313 0a9.157 9.157 0 0 1 18.313 0" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="m17.1 18.122l3.666 3.666a.723.723 0 0 0 1.023-1.022L18.122 17.1a9 9 0 0 1-1.022 1.022" />
 </vector>
