@@ -74,6 +74,16 @@ enum class MainTab {
 }
 
 /**
+ * Вложенные экраны вкладки «Ещё». Открываются поверх содержимого вкладки,
+ * нижняя навигация остаётся на месте — уйти с экрана можно и по стрелке,
+ * и переключением вкладки.
+ */
+enum class SubScreen {
+    About,
+    RoutingData,
+}
+
+/**
  * Одна группа прокси в том виде, в каком её показывает вкладка «Серверы».
  *
  * @param selectable группа типа Selector — узел в ней можно выбрать руками.
@@ -138,8 +148,12 @@ data class MainScreenState(
     val sessionSeconds: Long = 0,
     val hasProviders: Boolean = false,
     val selectedTab: MainTab = MainTab.Home,
+    /** Открытый вложенный экран; null — показывать саму вкладку. */
+    val subScreen: SubScreen? = null,
     val servers: ServersState = ServersState(),
     val subscriptions: SubscriptionsState = SubscriptionsState(),
+    val about: AboutState = AboutState(),
+    val routingData: RoutingDataState = RoutingDataState(),
     /** Найденное обновление; null — окно не показывать. */
     val update: UpdateState? = null,
 )
@@ -152,7 +166,8 @@ sealed interface MainAction {
     data object OpenLogs : MainAction
     data object OpenSettings : MainAction
     data object OpenHelp : MainAction
-    data object OpenAbout : MainAction
+    data class OpenSubScreen(val screen: SubScreen) : MainAction
+    data object CloseSubScreen : MainAction
     data object TestDelays : MainAction
     data class SetMode(val mode: TunnelState.Mode) : MainAction
     data class SelectTab(val tab: MainTab) : MainAction
@@ -164,6 +179,9 @@ sealed interface MainAction {
     data object UpdateNow : MainAction
     data object UpdateLater : MainAction
     data object UpdateSkip : MainAction
+    data class SetAutoCheckUpdate(val enabled: Boolean) : MainAction
+    data class SetPrerelease(val enabled: Boolean) : MainAction
+    data object UpdateRoutingData : MainAction
     data class SelectSubscriptionGroup(val group: String?) : MainAction
     data class SetSubscriptionGroup(val profile: Profile, val group: String?) : MainAction
     data object NewProfile : MainAction
@@ -188,11 +206,15 @@ fun MainScreen(
         state.update?.let { UpdateDialog(it, onAction) }
 
         Box(modifier = Modifier.padding(padding)) {
-            when (state.selectedTab) {
-                MainTab.Servers -> ServersTab(state.servers, onAction)
-                MainTab.Subscriptions -> SubscriptionsTab(state.subscriptions, onAction)
-                MainTab.More -> MoreTab(state, onAction)
-                else -> HomeTab(state, onAction)
+            when (state.subScreen) {
+                SubScreen.About -> AboutScreen(state.about, onAction)
+                SubScreen.RoutingData -> RoutingDataScreen(state.routingData, onAction)
+                null -> when (state.selectedTab) {
+                    MainTab.Servers -> ServersTab(state.servers, onAction)
+                    MainTab.Subscriptions -> SubscriptionsTab(state.subscriptions, onAction)
+                    MainTab.More -> MoreTab(state, onAction)
+                    else -> HomeTab(state, onAction)
+                }
             }
         }
     }
@@ -575,6 +597,12 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 icon = painterResource(R.drawable.ic_baseline_apps),
                 onClick = { onAction(MainAction.OpenAccessControl) },
             )
+            ActionRow(
+                title = stringResource(R.string.clod_geo_title),
+                subtitle = stringResource(R.string.clod_geo_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_domain),
+                onClick = { onAction(MainAction.OpenSubScreen(SubScreen.RoutingData)) },
+            )
             if (state.hasProviders) {
                 ActionRow(
                     title = stringResource(R.string.providers),
@@ -610,8 +638,9 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             )
             ActionRow(
                 title = stringResource(R.string.about),
+                subtitle = state.about.versionName.takeIf { it.isNotBlank() },
                 icon = painterResource(R.drawable.ic_baseline_info),
-                onClick = { onAction(MainAction.OpenAbout) },
+                onClick = { onAction(MainAction.OpenSubScreen(SubScreen.About)) },
             )
             Spacer(Modifier.height(24.dp))
         }

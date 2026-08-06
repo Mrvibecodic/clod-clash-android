@@ -388,5 +388,18 @@
     <string name="clod_action_connect">Подключиться</string>
     <string name="clod_action_disconnect">Отключиться</string>
     <string name="clod_refresh_profile">Обновить подписку</string>
+    <string name="clod_about_core">Ядро %1$s</string>
+    <string name="clod_about_note">Ядро встроено в приложение и обновляется вместе с ним.</string>
+    <string name="clod_update_auto">Проверять автоматически</string>
+    <string name="clod_update_auto_subtitle">Раз в сутки при запуске</string>
+    <string name="clod_update_prerelease">Пре-релизы</string>
+    <string name="clod_update_prerelease_subtitle">Сборки новее, проверены меньше</string>
+    <string name="clod_geo_title">Данные маршрутизации</string>
+    <string name="clod_geo_subtitle">Списки стран, сайтов и сетей</string>
+    <string name="clod_geo_hint">По этим спискам ядро решает, что пускать через туннель. Их можно обновить отдельно от приложения; новые списки применятся при следующем подключении.</string>
+    <string name="clod_geo_update">Обновить всё</string>
+    <string name="clod_geo_updated">Данные маршрутизации обновлены</string>
+    <string name="clod_geo_update_failed">Не удалось скачать данные маршрутизации</string>
+    <string name="clod_geo_missing">Не скачан</string>
 
 </resources>

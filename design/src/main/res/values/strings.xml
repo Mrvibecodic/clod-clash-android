@@ -429,5 +429,18 @@
     <string name="clod_action_connect">Connect</string>
     <string name="clod_action_disconnect">Disconnect</string>
     <string name="clod_refresh_profile">Update subscription</string>
+    <string name="clod_about_core">Core %1$s</string>
+    <string name="clod_about_note">The core ships inside the app and updates with it.</string>
+    <string name="clod_update_auto">Check automatically</string>
+    <string name="clod_update_auto_subtitle">Once a day on launch</string>
+    <string name="clod_update_prerelease">Pre-releases</string>
+    <string name="clod_update_prerelease_subtitle">Newer builds, less tested</string>
+    <string name="clod_geo_title">Routing data</string>
+    <string name="clod_geo_subtitle">Country, site and network lists</string>
+    <string name="clod_geo_hint">The core decides what goes through the tunnel by these lists. They can be updated separately from the app; the new lists take effect on the next connection.</string>
+    <string name="clod_geo_update">Update all</string>
+    <string name="clod_geo_updated">Routing data updated</string>
+    <string name="clod_geo_update_failed">Could not download routing data</string>
+    <string name="clod_geo_missing">Not downloaded</string>
 
 </resources>

@@ -25,6 +25,8 @@ import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.store.AppStore
+import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
@@ -56,6 +58,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         setContentDesign(design)
 
         design.fetch()
+
+        // Один раз за жизнь экрана: версии не меняются, а номер нужен уже на
+        // вкладке «Ещё» — он стоит подписью к пункту «О приложении».
+        design.loadAbout()
 
         // Обновление приложения из GitHub Releases. Ядро отдельно не обновляется:
         // оно вкомпилировано в APK, и подменить его по одному файлу нельзя.
@@ -214,8 +220,22 @@ class MainActivity : BaseActivity<MainDesign>() {
                             startActivity(SettingsActivity::class.intent)
                         MainDesign.Request.OpenHelp ->
                             startActivity(HelpActivity::class.intent)
-                        MainDesign.Request.OpenAbout ->
-                            design.showAbout(queryAppVersionName())
+                        MainDesign.Request.LoadAbout -> design.loadAbout()
+                        is MainDesign.Request.SetAutoCheckUpdate ->
+                            withContext(Dispatchers.IO) {
+                                AppStore(this@MainActivity).autoCheckUpdate = request.enabled
+                            }
+
+                        is MainDesign.Request.SetPrerelease ->
+                            withContext(Dispatchers.IO) {
+                                AppStore(this@MainActivity).nightlyChannel = request.enabled
+                            }
+
+                        MainDesign.Request.LoadRoutingData ->
+                            design.setRoutingData(GeoData.query(this@MainActivity))
+
+                        MainDesign.Request.UpdateRoutingData ->
+                            launch { design.updateRoutingData() }
                     }
                 }
                 if (clashRunning) {
@@ -478,7 +498,13 @@ class MainActivity : BaseActivity<MainDesign>() {
     private var awaitingInstallPermission: Boolean = false
 
     private suspend fun MainDesign.checkUpdate(manual: Boolean) {
-        val available = UpdatePrompt.check(this@MainActivity, manual, LOCAL_PROXY_PORT)
+        setUpdateChecking(true)
+
+        val available = try {
+            UpdatePrompt.check(this@MainActivity, manual, LOCAL_PROXY_PORT)
+        } finally {
+            setUpdateChecking(false)
+        }
 
         if (available == null) {
             pendingUpdate = null
@@ -558,9 +584,45 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun queryAppVersionName(): String {
-        return withContext(Dispatchers.IO) {
-            packageManager.getPackageInfo(packageName, 0).versionName + "\n" + Bridge.nativeCoreVersion().replace("_", "-")
+    private suspend fun MainDesign.loadAbout() {
+        val store = AppStore(this@MainActivity)
+
+        val versionName = withContext(Dispatchers.IO) {
+            packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+        }
+
+        setAbout(
+            versionName = versionName,
+            // Подчёркивания в версии ядра — из имени тега сборки; в тексте
+            // на экране они читаются как опечатка.
+            coreVersion = Bridge.nativeCoreVersion().replace("_", "-"),
+            autoCheckUpdate = store.autoCheckUpdate,
+            prerelease = store.nightlyChannel,
+        )
+    }
+
+    /**
+     * Обновление списков маршрутизации. Ядро перечитывает их при следующем
+     * подъёме туннеля — на лету подменять файлы под работающим ядром нельзя.
+     */
+    private suspend fun MainDesign.updateRoutingData() {
+        setRoutingDataUpdating(true)
+
+        try {
+            GeoData.update(this@MainActivity, LOCAL_PROXY_PORT).fold(
+                onSuccess = {
+                    showToast(DesignR.string.clod_geo_updated, ToastDuration.Short)
+                },
+                onFailure = {
+                    Log.w("Update geo data: $it", it)
+
+                    showToast(DesignR.string.clod_geo_update_failed, ToastDuration.Long)
+                },
+            )
+
+            setRoutingData(GeoData.query(this@MainActivity))
+        } finally {
+            setRoutingDataUpdating(false)
         }
     }
 

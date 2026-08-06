@@ -2,7 +2,6 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
-import androidx.appcompat.app.AlertDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,17 +12,17 @@ import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.trafficDownload
 import com.github.kr328.clash.core.util.trafficUpload
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
+import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.design.compose.screen.MainAction
 import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
 import com.github.kr328.clash.design.compose.screen.ProxyGroupState
+import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
-import com.github.kr328.clash.design.databinding.DesignAboutBinding
 import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.design.util.layoutInflater
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,7 +43,15 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object OpenLogs : Request
         data object OpenSettings : Request
         data object OpenHelp : Request
-        data object OpenAbout : Request
+
+        /** Открыт экран «О приложении» — нужны версии и текущие настройки обновления. */
+        data object LoadAbout : Request
+        data class SetAutoCheckUpdate(val enabled: Boolean) : Request
+        data class SetPrerelease(val enabled: Boolean) : Request
+
+        /** Открыт экран «Данные маршрутизации» — нужен список файлов с диска. */
+        data object LoadRoutingData : Request
+        data object UpdateRoutingData : Request
 
         /** Перечитать имена групп: состав меняется при смене профиля. */
         data object ReloadProxies : Request
@@ -89,7 +96,31 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenSettings -> request(Request.OpenSettings)
             MainAction.OpenHelp -> request(Request.OpenHelp)
-            MainAction.OpenAbout -> request(Request.OpenAbout)
+            is MainAction.OpenSubScreen -> {
+                state = state.copy(subScreen = action.screen)
+
+                // Данные подтягиваются на открытии, а не заранее: держать в
+                // памяти версию ядра и размеры файлов ради экрана, который
+                // открывают раз в месяц, незачем.
+                when (action.screen) {
+                    SubScreen.About -> request(Request.LoadAbout)
+                    SubScreen.RoutingData -> request(Request.LoadRoutingData)
+                }
+            }
+            MainAction.CloseSubScreen -> state = state.copy(subScreen = null)
+            is MainAction.SetAutoCheckUpdate -> {
+                // Переключатель двигается сразу, не дожидаясь записи в хранилище:
+                // иначе он подвисает под пальцем на время межпроцессного вызова.
+                state = state.copy(about = state.about.copy(autoCheckUpdate = action.enabled))
+
+                request(Request.SetAutoCheckUpdate(action.enabled))
+            }
+            is MainAction.SetPrerelease -> {
+                state = state.copy(about = state.about.copy(prerelease = action.enabled))
+
+                request(Request.SetPrerelease(action.enabled))
+            }
+            MainAction.UpdateRoutingData -> request(Request.UpdateRoutingData)
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
@@ -126,15 +157,17 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 }
             }
 
+            // Переключение вкладки закрывает вложенный экран: он живёт внутри
+            // вкладки, и оставлять его поверх соседней было бы враньём.
             is MainAction.SelectTab -> when (action.tab) {
                 MainTab.Servers -> {
-                    state = state.copy(selectedTab = MainTab.Servers)
+                    state = state.copy(selectedTab = MainTab.Servers, subScreen = null)
                     // Состав групп меняется при смене профиля, а список задержек
                     // протухает — перечитываем при каждом заходе на вкладку.
                     request(Request.ReloadProxies)
                 }
                 MainTab.Home, MainTab.More, MainTab.Subscriptions ->
-                    state = state.copy(selectedTab = action.tab)
+                    state = state.copy(selectedTab = action.tab, subScreen = null)
             }
         }
     }
@@ -285,15 +318,40 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    suspend fun showAbout(versionName: String) {
+    suspend fun setAbout(
+        versionName: String,
+        coreVersion: String,
+        autoCheckUpdate: Boolean,
+        prerelease: Boolean,
+    ) {
         withContext(Dispatchers.Main) {
-            val binding = DesignAboutBinding.inflate(context.layoutInflater).apply {
-                this.versionName = versionName
-            }
+            state = state.copy(
+                about = state.about.copy(
+                    versionName = versionName,
+                    coreVersion = coreVersion,
+                    autoCheckUpdate = autoCheckUpdate,
+                    prerelease = prerelease,
+                ),
+            )
+        }
+    }
 
-            AlertDialog.Builder(context)
-                .setView(binding.root)
-                .show()
+    /** Идёт проверка обновления: кнопка на экране «О приложении» занята. */
+    suspend fun setUpdateChecking(checking: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(about = state.about.copy(checking = checking))
+        }
+    }
+
+    suspend fun setRoutingData(files: List<GeoFileState>) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(routingData = state.routingData.copy(files = files))
+        }
+    }
+
+    suspend fun setRoutingDataUpdating(updating: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(routingData = state.routingData.copy(updating = updating))
         }
     }
 
