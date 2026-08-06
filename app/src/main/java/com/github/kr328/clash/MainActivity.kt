@@ -30,7 +30,10 @@ import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.design.compose.screen.UpdateState
+import com.github.kr328.clash.update.ApkInstaller
 import com.github.kr328.clash.update.UpdatePrompt
+import com.github.kr328.clash.update.Updater
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -56,7 +59,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Обновление приложения из GitHub Releases. Ядро отдельно не обновляется:
         // оно вкомпилировано в APK, и подменить его по одному файлу нельзя.
-        UpdatePrompt.checkInBackground(this, this)
+        if (UpdatePrompt.shouldCheckInBackground(this)) {
+            launch { design.checkUpdate(manual = false) }
+        }
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
 
@@ -64,7 +69,21 @@ class MainActivity : BaseActivity<MainDesign>() {
             select<Unit> {
                 events.onReceive {
                     when (it) {
-                        Event.ActivityStart,
+                        Event.ActivityStart -> {
+                            design.fetch()
+
+                            // Возврат с системного экрана разрешений: если его
+                            // выдали, продолжаем то, ради чего туда уходили.
+                            // Иначе обновление молча теряется, а следующая
+                            // проверка — только через сутки.
+                            if (awaitingInstallPermission &&
+                                ApkInstaller.canInstall(this@MainActivity)
+                            ) {
+                                awaitingInstallPermission = false
+
+                                launch { design.startUpdate() }
+                            }
+                        }
                         Event.ServiceRecreated,
                         Event.ClashStop, Event.ClashStart,
                         Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
@@ -112,6 +131,17 @@ class MainActivity : BaseActivity<MainDesign>() {
                             design.fetch()
                         }
                         is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
+                        MainDesign.Request.CheckUpdate ->
+                            launch { design.checkUpdate(manual = true) }
+
+                        MainDesign.Request.UpdateNow -> launch { design.startUpdate() }
+                        MainDesign.Request.UpdateSkip -> {
+                            pendingUpdate?.let { UpdatePrompt.skip(this@MainActivity, it.manifest.versionCode) }
+
+                            pendingUpdate = null
+
+                            design.setUpdate(null)
+                        }
                         MainDesign.Request.NewProfile ->
                             startActivity(AddProfileActivity::class.intent)
                         MainDesign.Request.UpdateAllProfiles -> {
@@ -366,6 +396,13 @@ class MainActivity : BaseActivity<MainDesign>() {
          * узла, если тот перестал отвечать, и это правильное поведение.
          */
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
+
+        /**
+         * Порт локального прокси ядра. Через него апдейтер повторяет запрос,
+         * если GitHub недоступен напрямую — ровно как на десктопе.
+         * Значение задаётся в `native/config/process.go`.
+         */
+        private const val LOCAL_PROXY_PORT = 7890
     }
 
     /**
@@ -432,6 +469,78 @@ class MainActivity : BaseActivity<MainDesign>() {
             setClashRunning(clashRunning)
             design?.showToast(DesignR.string.unable_to_start_vpn, ToastDuration.Long)
         }
+    }
+
+    /** Обновление, о котором уже сказали человеку: нужно, чтобы продолжить после разрешения. */
+    private var pendingUpdate: Updater.Available? = null
+
+    /** Ушли на системный экран за разрешением на установку и ждём возврата. */
+    private var awaitingInstallPermission: Boolean = false
+
+    private suspend fun MainDesign.checkUpdate(manual: Boolean) {
+        val available = UpdatePrompt.check(this@MainActivity, manual, LOCAL_PROXY_PORT)
+
+        if (available == null) {
+            pendingUpdate = null
+
+            if (manual) {
+                showToast(DesignR.string.clod_update_none, ToastDuration.Short)
+            }
+
+            return
+        }
+
+        pendingUpdate = available
+
+        setUpdate(
+            UpdateState(
+                version = available.manifest.version,
+                notes = available.manifest.notes,
+            ),
+        )
+    }
+
+    private suspend fun MainDesign.startUpdate() {
+        val available = pendingUpdate ?: return
+
+        if (!ApkInstaller.canInstall(this@MainActivity)) {
+            // Разрешение выдаётся на системном экране, оттуда мы вернёмся
+            // событием ActivityStart и продолжим сами.
+            awaitingInstallPermission = true
+
+            showToast(DesignR.string.clod_update_permission, ToastDuration.Long)
+
+            ApkInstaller.requestPermission(this@MainActivity)
+
+            return
+        }
+
+        setUpdateProgress(-1f)
+
+        val result = Updater.download(this@MainActivity, available, LOCAL_PROXY_PORT) { received, total ->
+            if (total > 0) {
+                launch { setUpdateProgress(received.toFloat() / total) }
+            }
+        }
+
+        setUpdate(null)
+
+        result.fold(
+            onSuccess = { apk ->
+                runCatching { ApkInstaller.install(this@MainActivity, apk) }.onFailure {
+                    Log.w("Install update: $it", it)
+
+                    // Перегрузка с CharSequence, а не с Exception: fold и
+                    // onFailure отдают Throwable, а он шире.
+                    showExceptionToast(it.message ?: it.toString())
+                }
+            },
+            onFailure = {
+                Log.w("Download update: $it", it)
+
+                showExceptionToast(it.message ?: it.toString())
+            },
+        )
     }
 
     /**

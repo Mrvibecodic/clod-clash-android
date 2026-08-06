@@ -140,6 +140,8 @@ data class MainScreenState(
     val selectedTab: MainTab = MainTab.Home,
     val servers: ServersState = ServersState(),
     val subscriptions: SubscriptionsState = SubscriptionsState(),
+    /** Найденное обновление; null — окно не показывать. */
+    val update: UpdateState? = null,
 )
 
 /** Действия пользователя. Экран сам ничего не делает — только сообщает наверх. */
@@ -158,6 +160,10 @@ sealed interface MainAction {
     data class SelectProxy(val name: String) : MainAction
 
     data class OpenUrl(val url: String) : MainAction
+    data object CheckUpdate : MainAction
+    data object UpdateNow : MainAction
+    data object UpdateLater : MainAction
+    data object UpdateSkip : MainAction
     data class SelectSubscriptionGroup(val group: String?) : MainAction
     data class SetSubscriptionGroup(val profile: Profile, val group: String?) : MainAction
     data object NewProfile : MainAction
@@ -179,6 +185,8 @@ fun MainScreen(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = { MainBottomBar(state.selectedTab, onAction) },
     ) { padding ->
+        state.update?.let { UpdateDialog(it, onAction) }
+
         Box(modifier = Modifier.padding(padding)) {
             when (state.selectedTab) {
                 MainTab.Servers -> ServersTab(state.servers, onAction)
@@ -594,6 +602,11 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 title = stringResource(R.string.help),
                 icon = painterResource(R.drawable.ic_baseline_help_center),
                 onClick = { onAction(MainAction.OpenHelp) },
+            )
+            ActionRow(
+                title = stringResource(R.string.clod_update_check),
+                icon = painterResource(R.drawable.ic_baseline_update),
+                onClick = { onAction(MainAction.CheckUpdate) },
             )
             ActionRow(
                 title = stringResource(R.string.about),

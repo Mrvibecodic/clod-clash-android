@@ -412,6 +412,15 @@
     <string name="clod_group_move">Group</string>
     <string name="clod_group_new">New group</string>
     <string name="clod_group_create">Create</string>
+    <string name="clod_update_available">Update %1$s is available</string>
+    <string name="clod_update_install">Update</string>
+    <string name="clod_update_later">Later</string>
+    <string name="clod_update_skip">Skip</string>
+    <string name="clod_update_downloading">Downloading\u2026</string>
+    <string name="clod_update_check">Check for updates</string>
+    <string name="clod_update_none">You are on the latest version</string>
+    <string name="clod_update_failed">Could not check for updates</string>
+    <string name="clod_update_permission">Allow installation so the app can update itself. The system will open its own screen — turn the switch on there.</string>
     <string name="clod_mode">Mode</string>
     <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>

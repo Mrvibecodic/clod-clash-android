@@ -18,6 +18,7 @@ import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
 import com.github.kr328.clash.design.compose.screen.ProxyGroupState
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
+import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.databinding.DesignAboutBinding
@@ -53,6 +54,9 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class PatchMode(val mode: TunnelState.Mode) : Request
 
         data class OpenUrl(val url: String) : Request
+        data object CheckUpdate : Request
+        data object UpdateNow : Request
+        data object UpdateSkip : Request
         data object NewProfile : Request
         data object UpdateAllProfiles : Request
         data class ActivateProfile(val profile: Profile) : Request
@@ -89,6 +93,12 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
+            MainAction.CheckUpdate -> request(Request.CheckUpdate)
+            MainAction.UpdateNow -> request(Request.UpdateNow)
+            MainAction.UpdateSkip -> request(Request.UpdateSkip)
+            // «Позже» — чисто экранное действие: окно закрывается, ничего
+            // никуда не сообщается, при следующей проверке предложим снова.
+            MainAction.UpdateLater -> state = state.copy(update = null)
             is MainAction.SelectSubscriptionGroup ->
                 state = state.copy(
                     subscriptions = state.subscriptions.copy(selectedGroup = action.group),
@@ -157,6 +167,21 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             if (state.status == ConnectionStatus.Disconnected) {
                 state = state.copy(status = ConnectionStatus.Connecting)
             }
+        }
+    }
+
+    suspend fun setUpdate(update: UpdateState?) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(update = update)
+        }
+    }
+
+    /** Прогресс загрузки обновления; отрицательный — размер неизвестен. */
+    suspend fun setUpdateProgress(progress: Float) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                update = state.update?.copy(downloading = true, progress = progress),
+            )
         }
     }
 

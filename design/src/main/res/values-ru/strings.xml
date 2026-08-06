@@ -371,6 +371,15 @@
     <string name="clod_group_move">Группа</string>
     <string name="clod_group_new">Новая группа</string>
     <string name="clod_group_create">Создать</string>
+    <string name="clod_update_available">Доступно обновление %1$s</string>
+    <string name="clod_update_install">Обновить</string>
+    <string name="clod_update_later">Позже</string>
+    <string name="clod_update_skip">Пропустить</string>
+    <string name="clod_update_downloading">Загружаем\u2026</string>
+    <string name="clod_update_check">Проверить обновление</string>
+    <string name="clod_update_none">Установлена последняя версия</string>
+    <string name="clod_update_failed">Не удалось проверить обновление</string>
+    <string name="clod_update_permission">Разрешите приложению установку, чтобы оно могло обновить себя. Система откроет свой экран — включите там переключатель.</string>
     <string name="clod_mode">Режим</string>
     <string name="clod_select_failed">Не удалось выбрать этот сервер. Обновите подписку и попробуйте снова.</string>
     <string name="clod_test_delays">Проверить задержки</string>
