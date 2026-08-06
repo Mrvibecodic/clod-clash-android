@@ -59,6 +59,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class UpdateProfile(val profile: Profile) : Request
         data class EditProfile(val profile: Profile) : Request
         data class DeleteProfile(val profile: Profile) : Request
+        data class SetSubscriptionGroup(val profile: Profile, val group: String?) : Request
     }
 
     /**
@@ -88,6 +89,13 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
+            is MainAction.SelectSubscriptionGroup ->
+                state = state.copy(
+                    subscriptions = state.subscriptions.copy(selectedGroup = action.group),
+                )
+
+            is MainAction.SetSubscriptionGroup ->
+                request(Request.SetSubscriptionGroup(action.profile, action.group))
             MainAction.NewProfile -> request(Request.NewProfile)
             MainAction.UpdateAllProfiles -> request(Request.UpdateAllProfiles)
             is MainAction.ActivateProfile -> request(Request.ActivateProfile(action.profile))

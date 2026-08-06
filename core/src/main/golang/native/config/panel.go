@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
-	"net/http"
 	"os"
 	P "path"
 	"strings"
@@ -81,7 +80,7 @@ func writePanelInfo(dir string, info PanelInfo) {
 // то как `announce`, то как `x-announce`. Значение может прийти как
 // `base64:<payload>` — так панели передают кириллицу, которую нельзя положить
 // в заголовок сырыми байтами.
-func applyHeaders(info *PanelInfo, header http.Header) {
+func applyHeaders(info *PanelInfo, header map[string][]string) {
 	if header == nil {
 		return
 	}
@@ -141,7 +140,7 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 }
 
 // headerValue ищет заголовок по суффиксу имени и разбирает `base64:`.
-func headerValue(header http.Header, name string) string {
+func headerValue(header map[string][]string, name string) string {
 	for key, values := range header {
 		lower := strings.ToLower(key)
 		if lower != name && !strings.HasSuffix(lower, "-"+name) {

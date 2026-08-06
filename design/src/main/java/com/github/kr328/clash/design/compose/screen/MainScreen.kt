@@ -105,6 +105,8 @@ data class ServersState(
 data class SubscriptionItem(
     val profile: Profile,
     val panel: PanelInfo? = null,
+    /** Пользовательская группа («Личные», «Работа»); null — без группы. */
+    val group: String? = null,
 ) {
     /** Название от панели, а если его нет — то, под которым профиль сохранён. */
     val title: String
@@ -115,6 +117,8 @@ data class SubscriptionItem(
 data class SubscriptionsState(
     val profiles: List<SubscriptionItem> = emptyList(),
     val updating: Boolean = false,
+    /** Выбранный фильтр по группе; null — показывать все. */
+    val selectedGroup: String? = null,
 )
 
 /**
@@ -151,6 +155,8 @@ sealed interface MainAction {
     data class SelectProxy(val name: String) : MainAction
 
     data class OpenUrl(val url: String) : MainAction
+    data class SelectSubscriptionGroup(val group: String?) : MainAction
+    data class SetSubscriptionGroup(val profile: Profile, val group: String?) : MainAction
     data object NewProfile : MainAction
     data object UpdateAllProfiles : MainAction
     data class ActivateProfile(val profile: Profile) : MainAction

@@ -407,6 +407,11 @@
     <string name="clod_servers_offline">List from the subscription file. Connect to measure delays and pick a server.</string>
     <string name="clod_select_offline">Connect first, then pick a server.</string>
     <string name="clod_select_not_selectable">The core picks the node in this group automatically.</string>
+    <string name="clod_group_all">All</string>
+    <string name="clod_group_none">No group</string>
+    <string name="clod_group_move">Group</string>
+    <string name="clod_group_new">New group</string>
+    <string name="clod_group_create">Create</string>
     <string name="clod_mode">Mode</string>
     <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>

@@ -366,6 +366,11 @@
     <string name="clod_servers_offline">Список из файла подписки. Подключитесь, чтобы измерить задержки и выбрать сервер.</string>
     <string name="clod_select_offline">Сначала подключитесь, потом выбирайте сервер.</string>
     <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>
+    <string name="clod_group_all">Все</string>
+    <string name="clod_group_none">Без группы</string>
+    <string name="clod_group_move">Группа</string>
+    <string name="clod_group_new">Новая группа</string>
+    <string name="clod_group_create">Создать</string>
     <string name="clod_mode">Режим</string>
     <string name="clod_select_failed">Не удалось выбрать этот сервер. Обновите подписку и попробуйте снова.</string>
     <string name="clod_test_delays">Проверить задержки</string>

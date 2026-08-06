@@ -39,7 +39,11 @@ type fetchHeader struct {
 	// Полный набор заголовков ответа: из него берутся название подписки,
 	// объявления и ссылки панели (см. panel.go). Держать их по одному полю
 	// на заголовок — значит править эту структуру на каждый новый.
-	Raw http.Header
+	//
+	// Тип именно map[string][]string, а не http.Header: клиент ядра построен
+	// на форке github.com/metacubex/http, и его Header — другой именованный тип
+	// с тем же основанием, так что присвоение требует явного преобразования.
+	Raw map[string][]string
 }
 
 func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error) {
@@ -52,7 +56,7 @@ func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error
 	return response.Body, fetchHeader{
 		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
 		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
-		Raw:                   response.Header,
+		Raw:                   map[string][]string(response.Header),
 	}, nil
 }
 

@@ -4,6 +4,7 @@ import android.text.format.DateFormat
 import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,19 +16,28 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -148,20 +158,60 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             return@Column
         }
 
+        // Чипы появляются, только когда группы кто-то завёл: одинокий чип
+        // «Все · 1» — это строка, которая ничего не даёт и занимает место.
+        val groups = state.profiles.mapNotNull { it.group }.distinct().sorted()
+        if (groups.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilterChip(
+                    selected = state.selectedGroup == null,
+                    onClick = { onAction(MainAction.SelectSubscriptionGroup(null)) },
+                    label = {
+                        Text(
+                            stringResource(R.string.clod_group_all) +
+                                " · " + state.profiles.size,
+                        )
+                    },
+                )
+                groups.forEach { group ->
+                    val count = state.profiles.count { it.group == group }
+                    FilterChip(
+                        selected = state.selectedGroup == group,
+                        onClick = { onAction(MainAction.SelectSubscriptionGroup(group)) },
+                        label = { Text("$group · $count") },
+                    )
+                }
+            }
+        }
+
+        val visible = state.profiles.filter {
+            state.selectedGroup == null || it.group == state.selectedGroup
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(items = state.profiles, key = { it.profile.uuid.toString() }) { item ->
-                SubscriptionCard(item, onAction)
+            items(items = visible, key = { it.profile.uuid.toString() }) { item ->
+                SubscriptionCard(item, groups, onAction)
             }
         }
     }
 }
 
 @Composable
-private fun SubscriptionCard(item: SubscriptionItem, onAction: (MainAction) -> Unit) {
+private fun SubscriptionCard(
+    item: SubscriptionItem,
+    known: List<String>,
+    onAction: (MainAction) -> Unit,
+) {
     val profile = item.profile
     val context = LocalContext.current
     // Время берём на момент отрисовки: карточка перерисовывается при возврате на
@@ -170,6 +220,19 @@ private fun SubscriptionCard(item: SubscriptionItem, onAction: (MainAction) -> U
     val status = subscriptionState(profile, now)
     val used = profile.upload + profile.download
     var menuOpen by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
+
+    if (picking) {
+        GroupPicker(
+            current = item.group,
+            known = known,
+            onDismiss = { picking = false },
+            onPick = {
+                picking = false
+                onAction(MainAction.SetSubscriptionGroup(profile, it))
+            },
+        )
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -221,6 +284,13 @@ private fun SubscriptionCard(item: SubscriptionItem, onAction: (MainAction) -> U
                             onClick = {
                                 menuOpen = false
                                 onAction(MainAction.EditProfile(profile))
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.clod_group_move)) },
+                            onClick = {
+                                menuOpen = false
+                                picking = true
                             },
                         )
                         DropdownMenuItem(
@@ -279,6 +349,78 @@ private fun SubscriptionCard(item: SubscriptionItem, onAction: (MainAction) -> U
                 )
             }
         }
+    }
+}
+
+/**
+ * Выбор группы для подписки: уже заведённые группы списком плюс поле для новой.
+ * Отдельного экрана управления группами нет намеренно — группа это одна строка
+ * текста, и заводить ради неё раздел настроек не за что.
+ */
+@Composable
+private fun GroupPicker(
+    current: String?,
+    known: List<String>,
+    onDismiss: () -> Unit,
+    onPick: (String?) -> Unit,
+) {
+    var fresh by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.clod_group_move)) },
+        confirmButton = {
+            TextButton(
+                onClick = { onPick(fresh) },
+                enabled = fresh.isNotBlank(),
+            ) {
+                Text(stringResource(R.string.clod_group_create))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        },
+        text = {
+            Column {
+                GroupOption(
+                    label = stringResource(R.string.clod_group_none),
+                    selected = current == null,
+                    onClick = { onPick(null) },
+                )
+                known.forEach { group ->
+                    GroupOption(
+                        label = group,
+                        selected = group == current,
+                        onClick = { onPick(group) },
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = fresh,
+                    onValueChange = { fresh = it },
+                    label = { Text(stringResource(R.string.clod_group_new)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun GroupOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Text(label)
     }
 }
 

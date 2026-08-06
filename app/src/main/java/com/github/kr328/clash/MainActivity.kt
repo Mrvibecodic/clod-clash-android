@@ -23,7 +23,9 @@ import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.queryPanelInfo
+import com.github.kr328.clash.util.querySubscriptionGroups
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.update.UpdatePrompt
@@ -176,6 +178,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                             )
                         is MainDesign.Request.DeleteProfile ->
                             withProfile { delete(request.profile.uuid) }
+                        is MainDesign.Request.SetSubscriptionGroup -> {
+                            patchSubscriptionGroup(request.profile.uuid, request.group)
+
+                            design.fetch()
+                        }
                         MainDesign.Request.OpenProviders ->
                             startActivity(ProvidersActivity::class.intent)
                         MainDesign.Request.OpenAccessControl ->
@@ -218,7 +225,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         setHasProviders(providers.isNotEmpty())
 
         val profiles = withProfile { queryAll() }
-        val items = profiles.map { SubscriptionItem(it, queryPanelInfo(it.uuid)) }
+        val groups = querySubscriptionGroups()
+        val items = profiles.map {
+            SubscriptionItem(it, queryPanelInfo(it.uuid), groups[it.uuid])
+        }
 
         setProfiles(items)
         setActiveProfile(items.firstOrNull { it.profile.active })
