@@ -72,10 +72,11 @@ subprojects {
             minSdk = 23
             targetSdk = 35
 
-            // clod: своя нумерация с нуля, апстримная (2.11.32 / 211032) не наследуется.
-            // versionCode = major * 1_000_000 + minor * 10_000 + patch
-            versionName = "0.1.0"
-            versionCode = 10000
+            // clod: нумерация как на десктопе — начинаем с 0.0.1-alpha.
+            // versionCode = major * 1_000_000 + minor * 10_000 + patch,
+            // суффикс -alpha на versionCode не влияет (система сравнивает только число).
+            versionName = "0.0.1-alpha"
+            versionCode = 1
 
             resValue("string", "release_name", "v$versionName")
             resValue("integer", "release_code", "$versionCode")

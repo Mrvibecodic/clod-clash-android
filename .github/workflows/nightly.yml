@@ -141,6 +141,7 @@ jobs:
               if [[ "$name" == *"-$candidate-"* ]]; then abi="$candidate"; break; fi
             done
             cp "$apk" "dist/clodclash-$VERSION-$abi.apk"
+            echo "$abi clodclash-$VERSION-$abi.apk" >> dist/abis.txt
           done
           cd dist && sha256sum *.apk > SHA256SUMS.txt
 
@@ -159,9 +160,10 @@ jobs:
             --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
             --arg base "$BASE" \
             --slurpfile sums <(
-              cd dist && while read -r hash file; do
-                jq -n --arg f "$file" --arg h "$hash" '{file:$f, sha256:$h}'
-              done < SHA256SUMS.txt | jq -s .
+              cd dist && while read -r abi file; do
+                hash=$(awk -v f="$file" '$2 == f {print $1}' SHA256SUMS.txt)
+                jq -n --arg abi "$abi" --arg f "$file" --arg h "$hash" '{abi:$abi, file:$f, sha256:$h}'
+              done < abis.txt | jq -s .
             ) '
             {
               version: $version,
@@ -170,7 +172,7 @@ jobs:
               pub_date: $pub_date,
               channel: "nightly",
               platforms: ($sums[0] | map({
-                key: (.file | capture("clodclash-.*-(?<abi>[a-z0-9_\\-]+)\\.apk$").abi),
+                key: .abi,
                 value: {url: ($base + "/" + .file), sha256: .sha256}
               }) | from_entries)
             }' > dist/latest.json
