@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.Traffic
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.trafficDownload
@@ -15,6 +16,7 @@ import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.screen.MainAction
 import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
+import com.github.kr328.clash.design.compose.screen.ProxyGroupState
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.databinding.DesignAboutBinding
@@ -30,15 +32,21 @@ import kotlinx.coroutines.withContext
  * переезде остальных экранов её цикл событий не переписывается каждый раз.
  */
 class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
-    enum class Request {
-        ToggleStatus,
-        OpenProxy,
-        OpenProfiles,
-        OpenProviders,
-        OpenLogs,
-        OpenSettings,
-        OpenHelp,
-        OpenAbout,
+    sealed interface Request {
+        data object ToggleStatus : Request
+        data object OpenProfiles : Request
+        data object OpenProviders : Request
+        data object OpenLogs : Request
+        data object OpenSettings : Request
+        data object OpenHelp : Request
+        data object OpenAbout : Request
+
+        /** Перечитать имена групп: состав меняется при смене профиля. */
+        data object ReloadProxies : Request
+        data class ReloadGroup(val index: Int) : Request
+        data class SelectProxy(val index: Int, val name: String) : Request
+        data class UrlTest(val index: Int) : Request
+        data class PatchMode(val mode: TunnelState.Mode) : Request
     }
 
     /**
@@ -59,18 +67,30 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     private fun onAction(action: MainAction) {
         when (action) {
             MainAction.ToggleStatus -> request(Request.ToggleStatus)
-            MainAction.OpenProxy -> request(Request.OpenProxy)
             MainAction.OpenProfiles -> request(Request.OpenProfiles)
             MainAction.OpenProviders -> request(Request.OpenProviders)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenSettings -> request(Request.OpenSettings)
             MainAction.OpenHelp -> request(Request.OpenHelp)
             MainAction.OpenAbout -> request(Request.OpenAbout)
+            MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
+            is MainAction.SetMode -> request(Request.PatchMode(action.mode))
+            is MainAction.SelectGroup -> {
+                state = state.copy(servers = state.servers.copy(selected = action.index))
+                request(Request.ReloadGroup(action.index))
+            }
+            is MainAction.SelectProxy ->
+                request(Request.SelectProxy(state.servers.selected, action.name))
+
             is MainAction.SelectTab -> when (action.tab) {
-                // «Серверы» и «Подписки» пока открывают старые Activity, поэтому
-                // вкладка не переключается: иначе, вернувшись назад, пользователь
-                // увидел бы пустой экран выбранной вкладки.
-                MainTab.Servers -> request(Request.OpenProxy)
+                MainTab.Servers -> {
+                    state = state.copy(selectedTab = MainTab.Servers)
+                    // Состав групп меняется при смене профиля, а список задержек
+                    // протухает — перечитываем при каждом заходе на вкладку.
+                    request(Request.ReloadProxies)
+                }
+                // «Подписки» пока открывают старую Activity, поэтому вкладка не
+                // переключается: иначе по «Назад» пользователь попадал бы на пустой экран.
                 MainTab.Subscriptions -> request(Request.OpenProfiles)
                 MainTab.Home, MainTab.More -> state = state.copy(selectedTab = action.tab)
             }
@@ -114,14 +134,60 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
 
     suspend fun setMode(mode: TunnelState.Mode) {
         withContext(Dispatchers.Main) {
+            state = state.copy(mode = mode)
+        }
+    }
+
+    /** Индекс группы, открытой на вкладке «Серверы». */
+    val selectedGroup: Int
+        get() = state.servers.selected
+
+    /**
+     * Имена групп. Уже загруженные узлы переносятся по совпадению имени: без
+     * этого возврат на вкладку каждый раз мигал бы пустым списком, хотя данные
+     * не изменились.
+     */
+    suspend fun setProxyGroupNames(names: List<String>) {
+        withContext(Dispatchers.Main) {
+            val previous = state.servers.groups.associateBy { it.name }
+            val groups = names.map { name ->
+                previous[name] ?: ProxyGroupState(
+                    name = name,
+                    now = "",
+                    selectable = false,
+                    proxies = emptyList(),
+                )
+            }
             state = state.copy(
-                mode = when (mode) {
-                    TunnelState.Mode.Direct -> context.getString(R.string.direct_mode)
-                    TunnelState.Mode.Global -> context.getString(R.string.global_mode)
-                    TunnelState.Mode.Rule -> context.getString(R.string.rule_mode)
-                    else -> context.getString(R.string.rule_mode)
-                },
+                servers = state.servers.copy(
+                    groups = groups,
+                    selected = state.servers.selected.coerceIn(0, maxOf(groups.size - 1, 0)),
+                ),
             )
+        }
+    }
+
+    suspend fun setProxyGroup(index: Int, now: String, selectable: Boolean, proxies: List<Proxy>) {
+        withContext(Dispatchers.Main) {
+            val groups = state.servers.groups
+            if (index !in groups.indices) return@withContext
+            state = state.copy(
+                servers = state.servers.copy(
+                    groups = groups.toMutableList().also {
+                        it[index] = it[index].copy(
+                            now = now,
+                            selectable = selectable,
+                            proxies = proxies,
+                        )
+                    },
+                ),
+            )
+        }
+    }
+
+    suspend fun setProxyTesting(testing: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(servers = state.servers.copy(testing = testing))
         }
     }
 

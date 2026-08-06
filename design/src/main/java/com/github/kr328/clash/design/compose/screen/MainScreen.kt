@@ -22,7 +22,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +37,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -40,6 +47,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
@@ -58,6 +67,26 @@ enum class MainTab {
 }
 
 /**
+ * Одна группа прокси в том виде, в каком её показывает вкладка «Серверы».
+ *
+ * @param selectable группа типа Selector — узел в ней можно выбрать руками.
+ *   В url-test и fallback узел выбирает ядро, и патч селектора там не сработает.
+ */
+data class ProxyGroupState(
+    val name: String,
+    val now: String,
+    val selectable: Boolean,
+    val proxies: List<Proxy>,
+)
+
+/** Состояние вкладки «Серверы». */
+data class ServersState(
+    val groups: List<ProxyGroupState> = emptyList(),
+    val selected: Int = 0,
+    val testing: Boolean = false,
+)
+
+/**
  * Всё, что показывает главный экран. Отдельный неизменяемый снимок вместо
  * россыпи параметров: экран перерисовывается одним `setState`, и ни один
  * промежуточный кадр не может застать половину полей обновлёнными.
@@ -65,24 +94,28 @@ enum class MainTab {
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
     val profileName: String? = null,
-    val mode: String = "",
+    val mode: TunnelState.Mode = TunnelState.Mode.Rule,
     val downloaded: String = "",
     val uploaded: String = "",
     val hasProviders: Boolean = false,
     val selectedTab: MainTab = MainTab.Home,
+    val servers: ServersState = ServersState(),
 )
 
 /** Действия пользователя. Экран сам ничего не делает — только сообщает наверх. */
 sealed interface MainAction {
     data object ToggleStatus : MainAction
-    data object OpenProxy : MainAction
     data object OpenProfiles : MainAction
     data object OpenProviders : MainAction
     data object OpenLogs : MainAction
     data object OpenSettings : MainAction
     data object OpenHelp : MainAction
     data object OpenAbout : MainAction
+    data object TestDelays : MainAction
+    data class SetMode(val mode: TunnelState.Mode) : MainAction
     data class SelectTab(val tab: MainTab) : MainAction
+    data class SelectGroup(val index: Int) : MainAction
+    data class SelectProxy(val name: String) : MainAction
 }
 
 @Composable
@@ -98,6 +131,7 @@ fun MainScreen(
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (state.selectedTab) {
+                MainTab.Servers -> ServersTab(state.servers, onAction)
                 MainTab.More -> MoreTab(state, onAction)
                 else -> HomeTab(state, onAction)
             }
@@ -218,9 +252,10 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
         SelectorRow(
             label = stringResource(R.string.clod_selector_group),
-            value = state.mode.ifEmpty { stringResource(R.string.proxy) },
+            value = state.servers.groups.getOrNull(state.servers.selected)?.now
+                ?: stringResource(R.string.proxy),
             leading = painterResource(R.drawable.ic_nav_servers),
-            onClick = { onAction(MainAction.OpenProxy) },
+            onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
         )
         Spacer(Modifier.height(10.dp))
         SelectorRow(
@@ -270,6 +305,71 @@ private fun MainHeader(profileName: String?, onAction: (MainAction) -> Unit) {
  * Вкладка «Ещё». Собирает то, что на десктопе живёт в боковом меню, а у CMFA
  * лежало прямо на главном экране вперемешку с кнопкой подключения.
  */
+/** Подпись режима туннеля. Ключи строк те же, что у XML-слоя. */
+@Composable
+fun modeLabel(mode: TunnelState.Mode): String = stringResource(
+    when (mode) {
+        TunnelState.Mode.Direct -> R.string.direct_mode
+        TunnelState.Mode.Global -> R.string.global_mode
+        else -> R.string.rule_mode
+    },
+)
+
+/**
+ * Выбор режима туннеля. У CMFA он прятался в меню с тремя точками на экране
+ * прокси; в макете это отдельный пункт в «Ещё», где его и ищут.
+ *
+ * Script в списке нет намеренно: ядро его больше не поддерживает, а показывать
+ * пункт, который не применится, — врать пользователю.
+ */
+@Composable
+private fun ModeRow(mode: TunnelState.Mode, onAction: (MainAction) -> Unit) {
+    var picking by remember { mutableStateOf(false) }
+
+    ActionRow(
+        title = stringResource(R.string.clod_mode),
+        subtitle = modeLabel(mode),
+        icon = painterResource(R.drawable.ic_baseline_vpn_lock),
+        onClick = { picking = true },
+    )
+
+    if (picking) {
+        AlertDialog(
+            onDismissRequest = { picking = false },
+            title = { Text(stringResource(R.string.clod_mode)) },
+            confirmButton = {
+                TextButton(onClick = { picking = false }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            },
+            text = {
+                Column {
+                    listOf(
+                        TunnelState.Mode.Rule,
+                        TunnelState.Mode.Global,
+                        TunnelState.Mode.Direct,
+                    ).forEach { candidate ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    picking = false
+                                    onAction(MainAction.SetMode(candidate))
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(selected = candidate == mode, onClick = null)
+                            Spacer(Modifier.width(12.dp))
+                            Text(modeLabel(candidate))
+                        }
+                    }
+                }
+            },
+        )
+    }
+}
+
 @Composable
 private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
     Surface(color = MaterialTheme.colorScheme.background) {
@@ -284,6 +384,7 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 12.dp),
             )
+            ModeRow(state.mode, onAction)
             if (state.hasProviders) {
                 ActionRow(
                     title = stringResource(R.string.providers),

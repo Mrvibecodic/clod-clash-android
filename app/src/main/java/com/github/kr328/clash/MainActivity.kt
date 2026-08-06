@@ -13,6 +13,7 @@ import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.design.MainDesign
@@ -55,16 +56,53 @@ class MainActivity : BaseActivity<MainDesign>() {
                         else -> Unit
                     }
                 }
-                design.requests.onReceive {
-                    when (it) {
+                design.requests.onReceive { request ->
+                    when (request) {
                         MainDesign.Request.ToggleStatus -> {
                             if (clashRunning)
                                 stopClashService()
                             else
                                 design.startClash()
                         }
-                        MainDesign.Request.OpenProxy ->
-                            startActivity(ProxyActivity::class.intent)
+                        MainDesign.Request.ReloadProxies -> design.reloadProxyGroups()
+                        is MainDesign.Request.ReloadGroup ->
+                            design.reloadProxyGroup(request.index)
+                        is MainDesign.Request.SelectProxy -> {
+                            proxyGroupNames.getOrNull(request.index)?.let { group ->
+                                withClash { patchSelector(group, request.name) }
+
+                                design.reloadProxyGroup(request.index)
+                            }
+                        }
+                        is MainDesign.Request.UrlTest -> {
+                            proxyGroupNames.getOrNull(request.index)?.let { group ->
+                                // В отдельной корутине: проверка группы занимает
+                                // секунды, а цикл событий должен остаться живым —
+                                // иначе на это время замирает и кнопка подключения.
+                                launch {
+                                    design.setProxyTesting(true)
+
+                                    try {
+                                        withClash { healthCheck(group) }
+
+                                        design.reloadProxyGroup(request.index)
+                                    } finally {
+                                        design.setProxyTesting(false)
+                                    }
+                                }
+                            }
+                        }
+                        is MainDesign.Request.PatchMode -> {
+                            withClash {
+                                val override = queryOverride(Clash.OverrideSlot.Session)
+
+                                override.mode = request.mode
+
+                                patchOverride(Clash.OverrideSlot.Session, override)
+                            }
+
+                            design.fetch()
+                        }
                         MainDesign.Request.OpenProfiles ->
                             startActivity(ProfilesActivity::class.intent)
                         MainDesign.Request.OpenProviders ->
@@ -109,6 +147,35 @@ class MainActivity : BaseActivity<MainDesign>() {
         withProfile {
             setProfileName(queryActive()?.name)
         }
+
+        reloadProxyGroups()
+    }
+
+    /**
+     * Имена групп в том же порядке, в каком они лежат в состоянии экрана: запросы
+     * от экрана приходят с индексом, а ядру нужно имя.
+     */
+    private var proxyGroupNames: List<String> = emptyList()
+
+    private suspend fun MainDesign.reloadProxyGroups() {
+        val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
+
+        proxyGroupNames = names
+
+        setProxyGroupNames(names)
+
+        if (names.isNotEmpty()) {
+            reloadProxyGroup(selectedGroup)
+        }
+    }
+
+    private suspend fun MainDesign.reloadProxyGroup(index: Int) {
+        val name = proxyGroupNames.getOrNull(index) ?: return
+        val group = withClash { queryProxyGroup(name, uiStore.proxySort) }
+
+        // Выбор руками осмыслен только у Selector: в url-test и fallback узел
+        // назначает ядро, и patchSelector там молча ничего не делает.
+        setProxyGroup(index, group.now, group.type == "Selector", group.proxies)
     }
 
     private suspend fun MainDesign.fetchTraffic() {

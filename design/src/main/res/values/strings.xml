@@ -380,6 +380,10 @@
     <string name="clod_selector_group">Group</string>
     <string name="clod_selector_server">Server</string>
     <string name="clod_no_subscription">No subscription selected</string>
+    <string name="clod_mode">Mode</string>
+    <string name="clod_test_delays">Test delays</string>
+    <string name="clod_no_servers">No servers</string>
+    <string name="clod_no_servers_hint">Add a subscription and connect — the list comes from the panel.</string>
     <string name="clod_action_connect">Connect</string>
     <string name="clod_action_disconnect">Disconnect</string>
     <string name="clod_refresh_profile">Update subscription</string>
