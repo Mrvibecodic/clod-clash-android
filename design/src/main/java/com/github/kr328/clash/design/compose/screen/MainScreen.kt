@@ -24,6 +24,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
@@ -57,6 +61,7 @@ import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.StatusTextStyle
+import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 
 /** Вкладки нижней навигации. Порядок совпадает с утверждённым макетом. */
@@ -80,16 +85,35 @@ data class ProxyGroupState(
     val proxies: List<Proxy>,
 )
 
-/** Состояние вкладки «Серверы». */
+/**
+ * Состояние вкладки «Серверы».
+ *
+ * @param offline список собран из файла подписки, а не из работающего ядра:
+ *   задержек нет и выбрать узел нельзя, пока туннель не поднят.
+ */
 data class ServersState(
     val groups: List<ProxyGroupState> = emptyList(),
     val selected: Int = 0,
     val testing: Boolean = false,
+    val offline: Boolean = false,
 )
+
+/**
+ * Подписка в том виде, в каком её показывает список: сам профиль плюс то,
+ * что панель прислала заголовками (название, ссылки, объявления).
+ */
+data class SubscriptionItem(
+    val profile: Profile,
+    val panel: PanelInfo? = null,
+) {
+    /** Название от панели, а если его нет — то, под которым профиль сохранён. */
+    val title: String
+        get() = panel?.title?.takeIf { it.isNotBlank() } ?: profile.name
+}
 
 /** Состояние вкладки «Подписки». */
 data class SubscriptionsState(
-    val profiles: List<Profile> = emptyList(),
+    val profiles: List<SubscriptionItem> = emptyList(),
     val updating: Boolean = false,
 )
 
@@ -100,7 +124,8 @@ data class SubscriptionsState(
  */
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
-    val profileName: String? = null,
+    /** Активная подписка вместе с данными панели. Null — ни одной не выбрано. */
+    val active: SubscriptionItem? = null,
     val mode: TunnelState.Mode = TunnelState.Mode.Rule,
     val downloaded: String = "",
     val uploaded: String = "",
@@ -125,6 +150,7 @@ sealed interface MainAction {
     data class SelectGroup(val index: Int) : MainAction
     data class SelectProxy(val name: String) : MainAction
 
+    data class OpenUrl(val url: String) : MainAction
     data object NewProfile : MainAction
     data object UpdateAllProfiles : MainAction
     data class ActivateProfile(val profile: Profile) : MainAction
@@ -200,7 +226,11 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
-        MainHeader(state.profileName, onAction)
+        MainHeader(state.active?.title, onAction)
+
+        state.active?.let { active ->
+            PanelBanner(active, onAction)
+        }
 
         AnimatedVisibility(
             visible = connected,
@@ -276,7 +306,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
         Spacer(Modifier.height(10.dp))
         SelectorRow(
             label = stringResource(R.string.clod_tab_subscriptions),
-            value = state.profileName ?: stringResource(R.string.clod_no_subscription),
+            value = state.active?.title ?: stringResource(R.string.clod_no_subscription),
             leading = painterResource(R.drawable.ic_baseline_view_list),
             onClick = { onAction(MainAction.SelectTab(MainTab.Subscriptions)) },
         )
@@ -321,6 +351,82 @@ private fun MainHeader(profileName: String?, onAction: (MainAction) -> Unit) {
  * Вкладка «Ещё». Собирает то, что на десктопе живёт в боковом меню, а у CMFA
  * лежало прямо на главном экране вперемешку с кнопкой подключения.
  */
+/**
+ * Баннер объявления и кнопки оплаты — то, что панель прислала заголовками
+ * вместе с подпиской.
+ *
+ * Показывается только если панель что-то прислала: пустой блок на главном
+ * экране занимал бы место у кнопки подключения ни за чем. Объявление серое
+ * и не мигает акцентом — это информация, а не действие.
+ */
+@Composable
+private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit) {
+    val panel = active.panel ?: return
+    val notice = panel.announce.takeIf { it.isNotBlank() } ?: panel.promo
+    val noticeUrl = if (panel.announce.isNotBlank()) panel.announceUrl else panel.promoUrl
+    val hasButtons = panel.renewUrl.isNotBlank() || panel.topupUrl.isNotBlank()
+
+    if (notice.isBlank() && !hasButtons) return
+
+    Column(modifier = Modifier.padding(bottom = 4.dp)) {
+        if (notice.isNotBlank()) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .then(
+                            if (noticeUrl.isNotBlank()) {
+                                Modifier.clickable { onAction(MainAction.OpenUrl(noticeUrl)) }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(14.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_outline_info),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = notice,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        if (hasButtons) {
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (panel.renewUrl.isNotBlank()) {
+                    Button(
+                        onClick = { onAction(MainAction.OpenUrl(panel.renewUrl)) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.clod_renew))
+                    }
+                }
+                if (panel.topupUrl.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = { onAction(MainAction.OpenUrl(panel.topupUrl)) },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.clod_topup))
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Заголовок группы пунктов во вкладке «Ещё». */
 @Composable
 private fun SectionHeader(title: String) {

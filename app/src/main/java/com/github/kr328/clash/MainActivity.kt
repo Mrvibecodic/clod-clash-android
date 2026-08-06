@@ -17,7 +17,13 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
+import android.net.Uri
+import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.design.MainDesign
+import com.github.kr328.clash.design.compose.screen.SubscriptionItem
+import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.update.UpdatePrompt
@@ -73,9 +79,19 @@ class MainActivity : BaseActivity<MainDesign>() {
                             design.reloadProxyGroup(request.index)
                         is MainDesign.Request.SelectProxy -> {
                             proxyGroupNames.getOrNull(request.index)?.let { group ->
-                                withClash { patchSelector(group, request.name) }
+                                val patched = withClash { patchSelector(group, request.name) }
 
-                                design.reloadProxyGroup(request.index)
+                                if (patched) {
+                                    design.reloadProxyGroup(request.index)
+                                } else {
+                                    // Ядро отказалось: узел мог исчезнуть после
+                                    // обновления подписки. Молчать нельзя — нажатие
+                                    // выглядело бы как несработавшее.
+                                    design.showToast(
+                                        DesignR.string.clod_select_failed,
+                                        ToastDuration.Long,
+                                    )
+                                }
                             }
                         }
                         is MainDesign.Request.UrlTest -> {
@@ -107,6 +123,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.fetch()
                         }
+                        is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
                         MainDesign.Request.NewProfile ->
                             startActivity(AddProfileActivity::class.intent)
                         MainDesign.Request.UpdateAllProfiles -> {
@@ -200,10 +217,11 @@ class MainActivity : BaseActivity<MainDesign>() {
         setMode(state.mode)
         setHasProviders(providers.isNotEmpty())
 
-        withProfile {
-            setProfileName(queryActive()?.name)
-            setProfiles(queryAll())
-        }
+        val profiles = withProfile { queryAll() }
+        val items = profiles.map { SubscriptionItem(it, queryPanelInfo(it.uuid)) }
+
+        setProfiles(items)
+        setActiveProfile(items.firstOrNull { it.profile.active })
 
         reloadProxyGroups()
     }
@@ -214,25 +232,91 @@ class MainActivity : BaseActivity<MainDesign>() {
      */
     private var proxyGroupNames: List<String> = emptyList()
 
+    /**
+     * Состав групп из файла подписки. Пока туннель не поднят, спрашивать ядро
+     * бесполезно, и переключение чипов обслуживается отсюда.
+     */
+    private var offlineGroups: List<PanelGroup> = emptyList()
+
     private suspend fun MainDesign.reloadProxyGroups() {
         val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
 
+        if (names.isEmpty()) {
+            // Туннель не поднят — ядро о группах ничего не знает. Берём состав
+            // из файла подписки: список серверов человек хочет видеть и до
+            // подключения, хотя бы без задержек.
+            loadOfflineProxyGroups()
+
+            return
+        }
+
         proxyGroupNames = names
+        offlineGroups = emptyList()
 
         setProxyGroupNames(names)
 
-        if (names.isNotEmpty()) {
-            reloadProxyGroup(selectedGroup)
-        }
+        reloadProxyGroup(selectedGroup)
+    }
+
+    private suspend fun MainDesign.loadOfflineProxyGroups() {
+        val active = withProfile { queryActive() }
+        val panel = active?.let { queryPanelInfo(it.uuid) }
+        offlineGroups = panel?.groups.orEmpty()
+        proxyGroupNames = offlineGroups.map { it.name }
+
+        setProxyGroupNames(proxyGroupNames, offline = true)
+
+        fillOfflineProxyGroup(selectedGroup)
+    }
+
+    private suspend fun MainDesign.fillOfflineProxyGroup(index: Int) {
+        val group = offlineGroups.getOrNull(index) ?: return
+
+        setProxyGroup(
+            index = index,
+            now = "",
+            selectable = false,
+            proxies = group.proxies.map { name ->
+                // Задержки нет и быть не может: измеряет её только ядро,
+                // а оно ещё не запущено. Ноль экран показывает прочерком.
+                Proxy(
+                    name = name,
+                    title = name,
+                    subtitle = "",
+                    type = "",
+                    delay = 0,
+                    isGroup = false,
+                )
+            },
+        )
     }
 
     private suspend fun MainDesign.reloadProxyGroup(index: Int) {
+        if (offlineGroups.isNotEmpty()) {
+            fillOfflineProxyGroup(index)
+
+            return
+        }
+
         val name = proxyGroupNames.getOrNull(index) ?: return
         val group = withClash { queryProxyGroup(name, uiStore.proxySort) }
 
-        // Выбор руками осмыслен только у Selector: в url-test и fallback узел
-        // назначает ядро, и patchSelector там молча ничего не делает.
-        setProxyGroup(index, group.now, group.type == "Selector", group.proxies)
+        setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
+    }
+
+    private companion object {
+        /**
+         * Группы, в которых узел можно закрепить руками.
+         *
+         * Это ровно те типы, что реализуют `SelectAble` в mihomo: `Selector`,
+         * `URLTest` и `Fallback` (`adapter/outboundgroup/util.go`). Раньше здесь
+         * стоял только `Selector` — и в подписках Remnawave, где основная группа
+         * почти всегда `url-test`, выбор сервера не работал вообще.
+         *
+         * NB: у `url-test` закрепление не вечное — ядро уводит с закреплённого
+         * узла, если тот перестал отвечать, и это правильное поведение.
+         */
+        private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
     }
 
     private suspend fun MainDesign.fetchTraffic() {
@@ -279,6 +363,21 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: Exception) {
             setClashRunning(clashRunning)
             design?.showToast(DesignR.string.unable_to_start_vpn, ToastDuration.Long)
+        }
+    }
+
+    /**
+     * Ссылки панели (продлить, докупить, объявление) открываются браузером.
+     * Своего окна для них нет и не нужно: это страницы оплаты чужого сервиса.
+     */
+    private fun openExternalUrl(url: String) {
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        } catch (e: Exception) {
+            launch { design?.showExceptionToast(e) }
         }
     }
 

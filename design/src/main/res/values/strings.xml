@@ -402,7 +402,13 @@
     <string name="clod_section_app">App</string>
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
+    <string name="clod_renew">Renew</string>
+    <string name="clod_topup">Add traffic</string>
+    <string name="clod_servers_offline">List from the subscription file. Connect to measure delays and pick a server.</string>
+    <string name="clod_select_offline">Connect first, then pick a server.</string>
+    <string name="clod_select_not_selectable">The core picks the node in this group automatically.</string>
     <string name="clod_mode">Mode</string>
+    <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>
     <string name="clod_no_servers_hint">Add a subscription and connect — the list comes from the panel.</string>

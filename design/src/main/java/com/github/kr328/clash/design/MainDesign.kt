@@ -17,12 +17,15 @@ import com.github.kr328.clash.design.compose.screen.MainAction
 import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
 import com.github.kr328.clash.design.compose.screen.ProxyGroupState
+import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.databinding.DesignAboutBinding
+import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.layoutInflater
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -49,6 +52,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class UrlTest(val index: Int) : Request
         data class PatchMode(val mode: TunnelState.Mode) : Request
 
+        data class OpenUrl(val url: String) : Request
         data object NewProfile : Request
         data object UpdateAllProfiles : Request
         data class ActivateProfile(val profile: Profile) : Request
@@ -83,6 +87,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.OpenAbout -> request(Request.OpenAbout)
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
+            is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
             MainAction.NewProfile -> request(Request.NewProfile)
             MainAction.UpdateAllProfiles -> request(Request.UpdateAllProfiles)
             is MainAction.ActivateProfile -> request(Request.ActivateProfile(action.profile))
@@ -93,8 +98,15 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 state = state.copy(servers = state.servers.copy(selected = action.index))
                 request(Request.ReloadGroup(action.index))
             }
-            is MainAction.SelectProxy ->
-                request(Request.SelectProxy(state.servers.selected, action.name))
+            is MainAction.SelectProxy -> {
+                val group = state.servers.groups.getOrNull(state.servers.selected)
+
+                when {
+                    state.servers.offline -> toast(R.string.clod_select_offline)
+                    group?.selectable != true -> toast(R.string.clod_select_not_selectable)
+                    else -> request(Request.SelectProxy(state.servers.selected, action.name))
+                }
+            }
 
             is MainAction.SelectTab -> when (action.tab) {
                 MainTab.Servers -> {
@@ -109,9 +121,14 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    suspend fun setProfileName(name: String?) {
+    /** Короткая подсказка вместо тишины, когда нажатие ничего не может сделать. */
+    private fun toast(resId: Int) {
+        launch { showToast(resId, ToastDuration.Long) }
+    }
+
+    suspend fun setActiveProfile(active: SubscriptionItem?) {
         withContext(Dispatchers.Main) {
-            state = state.copy(profileName = name)
+            state = state.copy(active = active)
         }
     }
 
@@ -159,7 +176,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
      * этого возврат на вкладку каждый раз мигал бы пустым списком, хотя данные
      * не изменились.
      */
-    suspend fun setProxyGroupNames(names: List<String>) {
+    suspend fun setProxyGroupNames(names: List<String>, offline: Boolean = false) {
         withContext(Dispatchers.Main) {
             val previous = state.servers.groups.associateBy { it.name }
             val groups = names.map { name ->
@@ -174,6 +191,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 servers = state.servers.copy(
                     groups = groups,
                     selected = state.servers.selected.coerceIn(0, maxOf(groups.size - 1, 0)),
+                    offline = offline,
                 ),
             )
         }
@@ -210,7 +228,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    suspend fun setProfiles(profiles: List<Profile>) {
+    suspend fun setProfiles(profiles: List<SubscriptionItem>) {
         withContext(Dispatchers.Main) {
             state = state.copy(subscriptions = state.subscriptions.copy(profiles = profiles))
         }

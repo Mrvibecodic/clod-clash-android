@@ -36,6 +36,10 @@ type Status struct {
 type fetchHeader struct {
 	SubscriptionUserInfo  string
 	ProfileUpdateInterval string
+	// Полный набор заголовков ответа: из него берутся название подписки,
+	// объявления и ссылки панели (см. panel.go). Держать их по одному полю
+	// на заголовок — значит править эту структуру на каждый новый.
+	Raw http.Header
 }
 
 func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error) {
@@ -48,6 +52,7 @@ func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error
 	return response.Body, fetchHeader{
 		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
 		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
+		Raw:                   response.Header,
 	}, nil
 }
 
@@ -177,6 +182,12 @@ func FetchAndValid(
 		}
 
 		reportSubscriptionInfo(header, reportStatus)
+
+		// Заголовки панели сохраняем сразу: дальше по коду ответа уже нет,
+		// а разбор конфига может и не дойти до конца.
+		info := readPanelInfo(path)
+		applyHeaders(&info, header.Raw)
+		writePanelInfo(path, info)
 	}
 
 	defer runtime.GC()
@@ -185,6 +196,12 @@ func FetchAndValid(
 	if err != nil {
 		return err
 	}
+
+	// Состав групп и узлов кладём рядом с конфигом: пока туннель не поднят,
+	// ядро о них ничего не знает, а список серверов нужен и до подключения.
+	panelInfo := readPanelInfo(path)
+	applyGroups(&panelInfo, rawCfg)
+	writePanelInfo(path, panelInfo)
 
 	forEachProviders(rawCfg, func(index int, total int, name string, provider map[string]any, prefix string) {
 		bytes, _ := json.Marshal(&Status{

@@ -64,7 +64,8 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
             } else {
                 IconButton(
                     onClick = { onAction(MainAction.TestDelays) },
-                    enabled = state.groups.isNotEmpty(),
+                    // Пока туннель не поднят, мерить нечем: список собран из файла.
+                    enabled = state.groups.isNotEmpty() && !state.offline,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_flash_on),
@@ -96,6 +97,15 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
             }
         }
 
+        if (state.offline) {
+            Text(
+                text = stringResource(R.string.clod_servers_offline),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+            )
+        }
+
         val group = state.groups.getOrNull(state.selected)
         if (group == null || group.proxies.isEmpty()) {
             EmptyServers()
@@ -118,12 +128,9 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
                     subtitle = proxy.subtitle,
                     delay = proxy.delay,
                     selected = proxy.name == group.now,
-                    // Выбор руками имеет смысл только в группе типа Selector:
-                    // url-test и fallback узел выбирают сами, и патч там молча
-                    // не применится — лучше не давать нажимать вовсе.
-                    onClick = {
-                        if (group.selectable) onAction(MainAction.SelectProxy(proxy.name))
-                    },
+                    // Нажатие обрабатывается всегда: если выбрать нельзя,
+                    // человек получит внятное объяснение, а не тишину.
+                    onClick = { onAction(MainAction.SelectProxy(proxy.name)) },
                 )
             }
         }

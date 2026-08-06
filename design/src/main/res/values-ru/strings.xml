@@ -361,7 +361,13 @@
     <string name="clod_section_app">Приложение</string>
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
+    <string name="clod_renew">Продлить</string>
+    <string name="clod_topup">Докупить трафик</string>
+    <string name="clod_servers_offline">Список из файла подписки. Подключитесь, чтобы измерить задержки и выбрать сервер.</string>
+    <string name="clod_select_offline">Сначала подключитесь, потом выбирайте сервер.</string>
+    <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>
     <string name="clod_mode">Режим</string>
+    <string name="clod_select_failed">Не удалось выбрать этот сервер. Обновите подписку и попробуйте снова.</string>
     <string name="clod_test_delays">Проверить задержки</string>
     <string name="clod_no_servers">Серверов нет</string>
     <string name="clod_no_servers_hint">Добавьте подписку и подключитесь — список приходит из панели.</string>

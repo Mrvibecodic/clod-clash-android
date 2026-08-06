@@ -153,15 +153,16 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(items = state.profiles, key = { it.uuid.toString() }) { profile ->
-                SubscriptionCard(profile, onAction)
+            items(items = state.profiles, key = { it.profile.uuid.toString() }) { item ->
+                SubscriptionCard(item, onAction)
             }
         }
     }
 }
 
 @Composable
-private fun SubscriptionCard(profile: Profile, onAction: (MainAction) -> Unit) {
+private fun SubscriptionCard(item: SubscriptionItem, onAction: (MainAction) -> Unit) {
+    val profile = item.profile
     val context = LocalContext.current
     // Время берём на момент отрисовки: карточка перерисовывается при возврате на
     // вкладку и при любом обновлении списка, а секундной точности здесь не нужно.
@@ -185,7 +186,9 @@ private fun SubscriptionCard(profile: Profile, onAction: (MainAction) -> Unit) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = profile.name,
+                    // Название от панели, а не «New Profile»: своё имя подписке
+                    // человек в нашем сценарии добавления не задаёт вовсе.
+                    text = item.title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
