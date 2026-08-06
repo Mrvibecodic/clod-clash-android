@@ -34,8 +34,13 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                     }
                 }
                 design.requests.onReceive {
-                    ApplicationObserver.createdActivities.forEach {
-                        it.recreate()
+                    when (it) {
+                        AppSettingsDesign.Request.ReCreateAllActivities ->
+                            ApplicationObserver.createdActivities.forEach { activity ->
+                                activity.recreate()
+                            }
+
+                        AppSettingsDesign.Request.Back -> finish()
                     }
                 }
             }

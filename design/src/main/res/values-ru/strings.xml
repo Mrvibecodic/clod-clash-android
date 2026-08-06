@@ -357,6 +357,11 @@
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
+    <string name="hide_app_icon_title">Скрыть значок</string>
+    <string name="hide_app_icon_desc">Убрать значок приложения из списка программ</string>
+    <string name="hide_from_recents_title">Скрыть из недавних</string>
+    <string name="hide_from_recents_desc">Не показывать приложение на экране недавних</string>
+    <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
     <string name="clod_section_settings">Настройки</string>

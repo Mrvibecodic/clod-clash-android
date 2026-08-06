@@ -2,104 +2,102 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
-import com.github.kr328.clash.design.databinding.DesignSettingsCommonBinding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.screen.AppSettingsAction
+import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
+import com.github.kr328.clash.design.compose.screen.AppSettingsState
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
-import com.github.kr328.clash.design.preference.*
 import com.github.kr328.clash.design.store.UiStore
-import com.github.kr328.clash.design.util.applyFrom
-import com.github.kr328.clash.design.util.bindAppBarElevation
-import com.github.kr328.clash.design.util.layoutInflater
-import com.github.kr328.clash.design.util.root
 import com.github.kr328.clash.service.store.ServiceStore
 
 class AppSettingsDesign(
     context: Context,
-    uiStore: UiStore,
-    srvStore: ServiceStore,
-    behavior: Behavior,
+    private val uiStore: UiStore,
+    private val srvStore: ServiceStore,
+    private val behavior: Behavior,
     running: Boolean,
-    onHideIconChange: (hide: Boolean) -> Unit,
+    private val onHideIconChange: (hide: Boolean) -> Unit,
 ) : Design<AppSettingsDesign.Request>(context) {
-    enum class Request {
-        ReCreateAllActivities
+    sealed interface Request {
+        /** Тема или режим в недавних сменились — открытые экраны надо пересобрать. */
+        data object ReCreateAllActivities : Request
+        data object Back : Request
     }
 
-    private val binding = DesignSettingsCommonBinding
-        .inflate(context.layoutInflater, context.root, false)
+    private val darkModes = DarkMode.entries
 
-    override val root: View
-        get() = binding.root
+    private var state by mutableStateOf(
+        AppSettingsState(
+            autoRestart = behavior.autoRestart,
+            darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+            hideAppIcon = uiStore.hideAppIcon,
+            hideFromRecents = uiStore.hideFromRecents,
+            dynamicNotification = srvStore.dynamicNotification,
+            // Уведомление собирается при запуске службы: на ходу его состав
+            // не поменять, поэтому при работающем туннеле строка погашена.
+            notificationEditable = !running,
+        ),
+    )
 
-    init {
-        binding.surface = surface
-
-        binding.activityBarLayout.applyFrom(context)
-
-        binding.scrollRoot.bindAppBarElevation(binding.activityBarLayout)
-
-        val screen = preferenceScreen(context) {
-            category(R.string.behavior)
-
-            switch(
-                value = behavior::autoRestart,
-                icon = R.drawable.ic_baseline_restore,
-                title = R.string.auto_restart,
-                summary = R.string.allow_clash_auto_restart,
-            )
-
-            category(R.string.interface_)
-
-            selectableList(
-                value = uiStore::darkMode,
-                values = DarkMode.values(),
-                valuesText = arrayOf(
-                    R.string.follow_system_android_10,
-                    R.string.always_light,
-                    R.string.always_dark
-                ),
-                icon = R.drawable.ic_baseline_brightness_4,
-                title = R.string.dark_mode
-            ) {
-                listener = OnChangedListener {
-                    requests.trySend(Request.ReCreateAllActivities)
-                }
-            }
-
-            switch(
-                value = uiStore::hideAppIcon,
-                icon = R.drawable.ic_baseline_hide,
-                title = R.string.hide_app_icon_title,
-                summary = R.string.hide_app_icon_desc,
-            ) {
-                listener = OnChangedListener {
-                    onHideIconChange(uiStore::hideAppIcon.get())
-                }
-            }
-
-            switch(
-                value = uiStore::hideFromRecents,
-                icon = R.drawable.ic_baseline_stack,
-                title = R.string.hide_from_recents_title,
-                summary = R.string.hide_from_recents_desc,
-            ) {
-                listener = OnChangedListener {
-                    requests.trySend(Request.ReCreateAllActivities)
-                }
-            }
-
-            category(R.string.service)
-
-            switch(
-                value = srvStore::dynamicNotification,
-                icon = R.drawable.ic_baseline_domain,
-                title = R.string.show_traffic,
-                summary = R.string.show_traffic_summary
-            ) {
-                enabled = !running
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                AppSettingsScreen(state = state, onAction = ::onAction)
             }
         }
+    }
 
-        binding.content.addView(screen.root)
+    /**
+     * Каждое переключение пишется сразу.
+     *
+     * Так вёл себя и старый экран: настройки применяются по месту, кнопки
+     * «сохранить» тут нет и не было. Состояние экрана обновляется отдельно
+     * от записи — хранилище читать обратно незачем, а сама запись у части
+     * настроек не мгновенная (переключение компонента в PackageManager).
+     */
+    private fun onAction(action: AppSettingsAction) {
+        when (action) {
+            AppSettingsAction.Back -> requests.trySend(Request.Back)
+            is AppSettingsAction.SetAutoRestart -> {
+                behavior.autoRestart = action.enabled
+
+                state = state.copy(autoRestart = action.enabled)
+            }
+            is AppSettingsAction.SetDarkMode -> {
+                val mode = darkModes.getOrNull(action.index) ?: return
+
+                uiStore.darkMode = mode
+
+                state = state.copy(darkMode = action.index)
+
+                // Тему нельзя поменять на месте: она задаётся при создании
+                // активити, поэтому пересоздаём все открытые.
+                requests.trySend(Request.ReCreateAllActivities)
+            }
+            is AppSettingsAction.SetHideAppIcon -> {
+                uiStore.hideAppIcon = action.enabled
+
+                state = state.copy(hideAppIcon = action.enabled)
+
+                onHideIconChange(action.enabled)
+            }
+            is AppSettingsAction.SetHideFromRecents -> {
+                uiStore.hideFromRecents = action.enabled
+
+                state = state.copy(hideFromRecents = action.enabled)
+
+                requests.trySend(Request.ReCreateAllActivities)
+            }
+            is AppSettingsAction.SetDynamicNotification -> {
+                srvStore.dynamicNotification = action.enabled
+
+                state = state.copy(dynamicNotification = action.enabled)
+            }
+        }
     }
 }

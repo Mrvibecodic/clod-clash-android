@@ -398,6 +398,7 @@
     <string name="clod_no_subscriptions">No subscriptions</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_section_connection">Connection</string>
+    <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_no_logs">No saved logs yet</string>
     <string name="clod_section_settings">Settings</string>
