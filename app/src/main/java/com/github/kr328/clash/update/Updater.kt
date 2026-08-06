@@ -229,10 +229,17 @@ object Updater {
 
     /**
      * Один User-Agent на всё приложение — им же ходит за подпиской ядро
-     * (`config/fetch.go`). Панель считает устройства по User-Agent, и два разных
-     * агента из одного клиента выглядят как два устройства. Формат `ClodClash/<версия>`
-     * ещё и обязателен для Server Description: панель отдаёт его только клиентам,
-     * попавшим в `additionalExtendedClientsRegex ^ClodClash/`.
+     * (`config/fetch.go`), и строки должны совпадать байт в байт.
+     *
+     * Начало `ClodClash/<версия>` — ровно как у десктопной версии, поэтому правила
+     * ответов в панели переделывать не нужно: `additionalExtendedClientsRegex`
+     * там `^ClodClash/` без якоря на конец, и суффикс его не ломает. Панель ещё
+     * и считает устройства по User-Agent, так что два разных агента из одного
+     * клиента выглядели бы как два устройства.
+     *
+     * Суффикс `(Android)` — чтобы в списке устройств панели телефон отличался
+     * от компьютера. До этапа A3 отдельных заголовков `x-ver-os`/`x-device-model`
+     * у нас нет, и платформу больше показать негде.
      */
-    val USER_AGENT: String = "ClodClash/" + BuildConfig.VERSION_NAME
+    val USER_AGENT: String = "ClodClash/" + BuildConfig.VERSION_NAME + " (Android)"
 }
