@@ -1,45 +1,76 @@
 cmake_minimum_required(VERSION 3.0)
 
-# 获取git hash
+# Версия ядра для «О приложении».
+#
+# Считается по КОНКРЕТНОМУ пути сабмодуля, а не через `git submodule foreach`.
+# Тот обходит все сабмодули сразу, а из его вывода бралась строка номер один —
+# приём держится на том, что сабмодуль ровно один и что каталог `.git` на месте.
+# Стоит появиться второму сабмодулю (а он появится: наш общий Rust — следующий
+# этап плана) или собраться из архива без `.git`, и `list(GET)` либо падает,
+# либо молча отдаёт мусор. Ровно так версия ядра стала «unknown» у Prizrak-Box.
+#
+# Здесь всё, что может не получиться, не получается тихо: версия остаётся
+# «unknown», сборка идёт дальше.
 
-message(STATUS "CMAKE_CURRENT_SOURCE_DIR= ${CMAKE_CURRENT_SOURCE_DIR}")
-execute_process(
-  COMMAND git submodule foreach git log -1 --format=%H   
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-  OUTPUT_VARIABLE COMMIT_HASH
-)
-string(REPLACE "\n" ";" COMMIT_HASH "${COMMIT_HASH}")
-list(GET COMMIT_HASH 1 COMMIT_HASH)
-string (REGEX REPLACE "[\n\t\r]" "" COMMIT_HASH ${COMMIT_HASH})
-string(SUBSTRING ${COMMIT_HASH} 0 7 COMMIT_HASH)
-message(STATUS "git hash= ${COMMIT_HASH}")
+set(CLASH_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../foss/golang/clash")
 
-# 获取分支名称
-execute_process(
-  COMMAND git submodule foreach git branch -r --contains ${COMMIT_HASH}
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} 
-  OUTPUT_VARIABLE CURRENT_BRANCH
-)
-string(REPLACE "\n" ";" CURRENT_BRANCH "${CURRENT_BRANCH}")
-list(GET CURRENT_BRANCH 1 CURRENT_BRANCH)
-string (REGEX REPLACE "origin/" "" CURRENT_BRANCH ${CURRENT_BRANCH})
-string (REGEX REPLACE "[\n\t\r]" "" CURRENT_BRANCH ${CURRENT_BRANCH})
-#string(SUBSTRING ${CURRENT_BRANCH} 0 8 CURRENT_BRANCH)
-message(STATUS "git current branch = ${CURRENT_BRANCH}")
+set(COMMIT_HASH "unknown")
+set(CURRENT_BRANCH "unknown")
 
-# 获取生成时间
+find_package(Git QUIET)
+
+if (GIT_FOUND AND EXISTS "${CLASH_SOURCE_DIR}")
+    execute_process(
+            COMMAND ${GIT_EXECUTABLE} log -1 --format=%H
+            WORKING_DIRECTORY ${CLASH_SOURCE_DIR}
+            OUTPUT_VARIABLE CLASH_COMMIT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE CLASH_COMMIT_RESULT
+    )
+
+    if (CLASH_COMMIT_RESULT EQUAL 0 AND NOT "${CLASH_COMMIT}" STREQUAL "")
+        string(SUBSTRING "${CLASH_COMMIT}" 0 7 COMMIT_HASH)
+
+        execute_process(
+                COMMAND ${GIT_EXECUTABLE} branch -r --contains ${CLASH_COMMIT}
+                WORKING_DIRECTORY ${CLASH_SOURCE_DIR}
+                OUTPUT_VARIABLE CLASH_BRANCHES
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE CLASH_BRANCH_RESULT
+        )
+
+        # В мелком клоне удалённых веток может не быть вовсе — тогда остаётся
+        # «unknown», и это честнее, чем падать на пустом списке.
+        if (CLASH_BRANCH_RESULT EQUAL 0 AND NOT "${CLASH_BRANCHES}" STREQUAL "")
+            string(REPLACE "\n" ";" CLASH_BRANCHES "${CLASH_BRANCHES}")
+            list(GET CLASH_BRANCHES 0 CURRENT_BRANCH)
+            string(REGEX REPLACE "^[ \t]+" "" CURRENT_BRANCH "${CURRENT_BRANCH}")
+            string(REGEX REPLACE "^origin/" "" CURRENT_BRANCH "${CURRENT_BRANCH}")
+            string(REGEX REPLACE "[ \t].*$" "" CURRENT_BRANCH "${CURRENT_BRANCH}")
+        endif ()
+    endif ()
+endif ()
+
+message(STATUS "core version = ${CURRENT_BRANCH}_${COMMIT_HASH}")
+
+# Дата сборки
 string(TIMESTAMP COMPILE_TIME "%y%m%d")
-string (REGEX REPLACE "[\n\t\r]" "" COMPILE_TIME ${COMPILE_TIME})
-string(REGEX REPLACE "\"" "" COMPILE_TIME ${COMPILE_TIME})
 
-# 生成版本信息
-set(GIT_VERSION "${CURRENT_BRANCH}_${COMMIT_HASH}_${COMPILE_TIME}")
-message(STATUS "version info = ${GIT_VERSION}")
+# Ветку в версию добавляем, только если её удалось узнать: в мелком клоне
+# удалённых веток нет, и «unknown_e26714a» читается хуже, чем просто хеш.
+if ("${CURRENT_BRANCH}" STREQUAL "unknown")
+    set(GIT_VERSION "${COMMIT_HASH}_${COMPILE_TIME}")
+else ()
+    set(GIT_VERSION "${CURRENT_BRANCH}_${COMMIT_HASH}_${COMPILE_TIME}")
+endif ()
 
-# 去除空格
-string(REGEX REPLACE "[ ]+" "" GIT_VERSION "${GIT_VERSION}")
+# Версия подставляется в `version.h` как голый токен препроцессора, поэтому
+# всё, что не буква, цифра или подчёркивание, заменяем: имя ветки вида
+# `upstream/Alpha` иначе не соберётся.
+string(REGEX REPLACE "[^A-Za-z0-9_]" "_" GIT_VERSION "${GIT_VERSION}")
 
-# 保存变量到文件
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.in ${CMAKE_CURRENT_SOURCE_DIR}/version.h @ONLY)
 
 project(clash-bridge C)
