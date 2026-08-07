@@ -422,5 +422,15 @@
     <string name="clod_favorite_add">В избранное</string>
     <string name="clod_favorite_remove">Убрать из избранного</string>
     <string name="clod_servers_direct">Включён режим «Прямое соединение»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим переключается на главном экране.</string>
+    <string name="clod_one_per_line">По одному в строке</string>
+    <string name="clod_key_value_per_line">По паре «ключ = значение» в строке</string>
+<string name="secret">Секрет</string>
+    <string name="external_controller">Внешнее управление</string>
+    <string name="external_controller_tls">Внешнее управление по TLS</string>
+    <string name="allow_origins">Разрешённые источники</string>
+    <string name="allow_private_network">Разрешить из локальной сети</string>
+    <string name="blacklist">Чёрный список</string>
+    <string name="whitelist">Белый список</string>
+    <string name="fakeip_filter_mode">Режим фильтра fake-ip</string>
 
 </resources>

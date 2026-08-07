@@ -39,6 +39,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
+                        OverrideSettingsDesign.Request.Back -> finish()
                         OverrideSettingsDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
                                 defer {

@@ -455,5 +455,7 @@
     <string name="clod_favorite_add">Add to favorites</string>
     <string name="clod_favorite_remove">Remove from favorites</string>
     <string name="clod_servers_direct">Direct mode is on: traffic goes past the servers, so picking one changes nothing. Switch the mode on the home screen.</string>
+    <string name="clod_one_per_line">One per line</string>
+    <string name="clod_key_value_per_line">One «key = value» pair per line</string>
 
 </resources>
