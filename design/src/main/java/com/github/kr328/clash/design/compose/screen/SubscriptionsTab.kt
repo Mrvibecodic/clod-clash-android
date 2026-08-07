@@ -24,15 +24,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +55,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.SyncIcon
+import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.service.model.Profile
 import java.util.Date
@@ -131,21 +129,15 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            if (state.updating) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .size(24.dp),
-                    strokeWidth = 2.dp,
+            // Кнопка не подменяется крутилкой, а крутится сама: подмена
+            // прыгала вёрсткой и на глаз читалась как «кнопка пропала»,
+            // а не как «идёт обновление».
+            if (state.profiles.isNotEmpty()) {
+                SyncIconButton(
+                    spinning = state.updating,
+                    contentDescription = stringResource(R.string.clod_sub_update_all),
+                    onClick = { onAction(MainAction.UpdateAllProfiles) },
                 )
-            } else if (state.profiles.isNotEmpty()) {
-                IconButton(onClick = { onAction(MainAction.UpdateAllProfiles) }) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_baseline_sync),
-                        contentDescription = stringResource(R.string.clod_sub_update_all),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
             IconButton(onClick = { onAction(MainAction.NewProfile) }) {
                 Icon(
@@ -203,7 +195,12 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(items = visible, key = { it.profile.uuid.toString() }) { item ->
-                SubscriptionCard(item, groups, onAction)
+                SubscriptionCard(
+                    item = item,
+                    known = groups,
+                    updating = item.profile.uuid in state.updatingUuids,
+                    onAction = onAction,
+                )
             }
         }
     }
@@ -213,6 +210,7 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
 private fun SubscriptionCard(
     item: SubscriptionItem,
     known: List<String>,
+    updating: Boolean,
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
@@ -262,6 +260,27 @@ private fun SubscriptionCard(
                     modifier = Modifier.weight(1f),
                 )
                 StatusBadge(status.label(), status.color())
+                // Пока подписка обновляется, у её карточки крутится значок:
+                // на «Обновить» жмут из меню, и после закрытия меню человеку
+                // больше негде увидеть, что запрос вообще ушёл.
+                //
+                // Место под значок занято всегда: появись он по месту, метка
+                // состояния и кнопка меню дёргались бы влево-вправо на каждом
+                // старте и финише обновления.
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(18.dp),
+                ) {
+                    if (updating) {
+                        SyncIcon(
+                            spinning = true,
+                            contentDescription = stringResource(R.string.clod_sub_updating),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(
@@ -276,6 +295,10 @@ private fun SubscriptionCard(
                         if (profile.type != Profile.Type.File) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.update)) },
+                                // Пока предыдущее обновление не закончилось,
+                                // повторное нажатие только поставит в очередь
+                                // ещё один поход в сеть за тем же файлом.
+                                enabled = !updating,
                                 onClick = {
                                     menuOpen = false
                                     onAction(MainAction.UpdateProfile(profile))

@@ -33,7 +33,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -65,6 +64,7 @@ import com.github.kr328.clash.design.compose.component.PowerButton
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.SelectorRow
+import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
@@ -72,6 +72,7 @@ import com.github.kr328.clash.design.compose.theme.StatusTextStyle
 import com.github.kr328.clash.design.compose.theme.TimerTextStyle
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
+import java.util.UUID
 
 /** Вкладки нижней навигации. Порядок совпадает с утверждённым макетом. */
 enum class MainTab {
@@ -153,10 +154,22 @@ data class SubscriptionItem(
 /** Состояние вкладки «Подписки». */
 data class SubscriptionsState(
     val profiles: List<SubscriptionItem> = emptyList(),
-    val updating: Boolean = false,
+    /**
+     * Подписки, которые прямо сейчас обновляются.
+     *
+     * Именно множество, а не общий флаг: обновление идёт в служебном процессе
+     * (`ProfileWorker`), запускается по одной подписке и заканчивается
+     * широковещательным сообщением с её uuid. Пока крутится одна карточка,
+     * остальные должны оставаться живыми.
+     */
+    val updatingUuids: Set<UUID> = emptySet(),
     /** Выбранный фильтр по группе; null — показывать все. */
     val selectedGroup: String? = null,
-)
+) {
+    /** Идёт ли обновление хоть чего-нибудь: для кнопки «обновить всё» в шапке. */
+    val updating: Boolean
+        get() = updatingUuids.isNotEmpty()
+}
 
 /**
  * Всё, что показывает главный экран. Отдельный неизменяемый снимок вместо
@@ -295,7 +308,12 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp),
     ) {
-        MainHeader(state.active?.title, state.active?.logoPath, onAction)
+        MainHeader(
+            profileName = state.active?.title,
+            logoPath = state.active?.logoPath,
+            updating = state.subscriptions.updating,
+            onAction = onAction,
+        )
 
         state.active?.let { active ->
             PanelBanner(active, onAction)
@@ -402,7 +420,12 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 }
 
 @Composable
-private fun MainHeader(profileName: String?, logoPath: String?, onAction: (MainAction) -> Unit) {
+private fun MainHeader(
+    profileName: String?,
+    logoPath: String?,
+    updating: Boolean,
+    onAction: (MainAction) -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -441,13 +464,11 @@ private fun MainHeader(profileName: String?, logoPath: String?, onAction: (MainA
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        IconButton(onClick = { onAction(MainAction.UpdateAllProfiles) }) {
-            Icon(
-                painter = painterResource(R.drawable.ic_baseline_sync),
-                contentDescription = stringResource(R.string.clod_refresh_profile),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        SyncIconButton(
+            spinning = updating,
+            contentDescription = stringResource(R.string.clod_refresh_profile),
+            onClick = { onAction(MainAction.UpdateAllProfiles) },
+        )
     }
 }
 

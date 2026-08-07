@@ -29,6 +29,7 @@ import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.patchSubscriptionGroup
+import com.github.kr328.clash.util.ProfileUpdates
 import com.github.kr328.clash.service.util.profileLogoFile
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
@@ -45,6 +46,8 @@ import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -58,12 +61,33 @@ import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
 
 class MainActivity : BaseActivity<MainDesign>() {
+    override fun onProfileUpdateCompleted(uuid: UUID?) {
+        super.onProfileUpdateCompleted(uuid)
+
+        uuid?.let { ProfileUpdates.finish(it) }
+    }
+
+    override fun onProfileUpdateFailed(uuid: UUID?, reason: String?) {
+        super.onProfileUpdateFailed(uuid, reason)
+
+        uuid?.let { ProfileUpdates.finish(it) }
+    }
+
     override suspend fun main() {
         val design = MainDesign(this)
 
         setContentDesign(design)
 
         design.fetch()
+
+        // Экран мог быть закрыт, пока обновление заканчивалось: наблюдателя
+        // не было, ответ не дошёл. Чистим протухшее до первой подписки, иначе
+        // свежий экран успел бы моргнуть крутящимся значком.
+        ProfileUpdates.prune()
+
+        launch {
+            ProfileUpdates.running.collect { design.setUpdatingProfiles(it.keys) }
+        }
 
         // Один раз за жизнь экрана: версия не меняется, а номер нужен уже
         // на вкладке «Ещё» — он стоит подписью к пункту «О приложении».
@@ -201,23 +225,51 @@ class MainActivity : BaseActivity<MainDesign>() {
                         MainDesign.Request.NewProfile ->
                             startActivity(AddProfileActivity::class.intent)
                         MainDesign.Request.UpdateAllProfiles -> {
-                            // Отдельная корутина: обновление всех подписок ходит
-                            // в сеть по очереди, а цикл событий должен жить.
+                            // Отдельная корутина: перебор подписок ходит в
+                            // служебный процесс, а цикл событий должен жить.
                             launch {
-                                design.setProfilesUpdating(true)
+                                var targets = emptyList<UUID>()
 
                                 try {
-                                    withProfile {
-                                        queryAll().forEach { profile ->
-                                            if (profile.imported &&
-                                                profile.type != Profile.Type.File
-                                            ) {
-                                                update(profile.uuid)
-                                            }
-                                        }
+                                    // Сначала список, потом отметка, и только
+                                    // потом запросы. Отмечать внутри
+                                    // `withProfile` нельзя: при смерти
+                                    // служебного процесса он повторяет блок
+                                    // целиком, и уже завершившиеся подписки
+                                    // получили бы отметку повторно — снимать
+                                    // её было бы уже нечем.
+                                    targets = withProfile {
+                                        queryAll()
+                                            .filter { it.imported && it.type != Profile.Type.File }
+                                            .map { it.uuid }
                                     }
-                                } finally {
-                                    design.setProfilesUpdating(false)
+
+                                    if (targets.isEmpty()) {
+                                        // Обновлять нечего: на главном экране
+                                        // кнопка есть всегда, в том числе когда
+                                        // подписок нет вовсе, и молчание в ответ
+                                        // на нажатие читалось бы как поломка.
+                                        design.showToast(
+                                            DesignR.string.clod_sub_nothing_to_update,
+                                            ToastDuration.Short,
+                                        )
+
+                                        return@launch
+                                    }
+
+                                    ProfileUpdates.start(targets)
+
+                                    withProfile { targets.forEach { update(it) } }
+                                } catch (e: CancellationException) {
+                                    // Экран уничтожают (например, поворотом), а
+                                    // обновление в служебном процессе живёт
+                                    // дальше. Отметку снимать нельзя — её
+                                    // должен снять ответ от процесса.
+                                    throw e
+                                } catch (e: Exception) {
+                                    targets.forEach { ProfileUpdates.finish(it) }
+
+                                    design.showExceptionToast(e)
                                 }
                             }
                         }
@@ -242,8 +294,32 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
                             }
                         }
-                        is MainDesign.Request.UpdateProfile ->
-                            withProfile { update(request.profile.uuid) }
+                        is MainDesign.Request.UpdateProfile -> {
+                            // Отдельная корутина: запрос идёт в служебный
+                            // процесс, а цикл событий должен оставаться живым,
+                            // иначе экран не перерисуется и значок не поедет.
+                            launch {
+                                val uuid = request.profile.uuid
+
+                                ProfileUpdates.start(listOf(uuid))
+
+                                try {
+                                    withProfile { update(uuid) }
+                                } catch (e: CancellationException) {
+                                    // Отмена корутины — это уничтожение экрана,
+                                    // а не отказ обновления: отметку оставляем
+                                    // жить, её снимет ответ служебного процесса.
+                                    throw e
+                                } catch (e: Exception) {
+                                    // Иначе карточка крутилась бы до истечения
+                                    // срока отметки, хотя обновление даже не
+                                    // началось.
+                                    ProfileUpdates.finish(uuid)
+
+                                    design.showExceptionToast(e)
+                                }
+                            }
+                        }
                         is MainDesign.Request.EditProfile ->
                             startActivity(
                                 PropertiesActivity::class.intent.setUUID(request.profile.uuid),
@@ -298,6 +374,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                     ticker.onReceive {
                         design.fetchTraffic()
                         design.fetchSession()
+
+                        // Сообщение о завершении могло не дойти: пока экран был
+                        // остановлен, наблюдателя не было. Здесь отметки с
+                        // истёкшим сроком снимаются.
+                        ProfileUpdates.prune()
                     }
                 }
             }

@@ -392,6 +392,8 @@
     <string name="clod_sub_until">until %1$s</string>
     <string name="clod_sub_add">Add subscription</string>
     <string name="clod_sub_update_all">Update all</string>
+    <string name="clod_sub_updating">Updating</string>
+    <string name="clod_sub_nothing_to_update">Nothing to update</string>
     <string name="clod_no_subscriptions">No subscriptions</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_section_connection">Connection</string>

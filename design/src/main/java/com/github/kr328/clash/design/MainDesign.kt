@@ -24,6 +24,7 @@ import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -340,9 +341,16 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    suspend fun setProfilesUpdating(updating: Boolean) {
+    /**
+     * Какие подписки сейчас обновляются.
+     *
+     * Набор целиком, а не «добавь/убери»: он живёт в активити, где его сводят
+     * запрос на обновление и широковещательное сообщение о завершении из
+     * служебного процесса. Экрану остаётся показать то, что уже сведено.
+     */
+    suspend fun setUpdatingProfiles(uuids: Set<UUID>) {
         withContext(Dispatchers.Main) {
-            state = state.copy(subscriptions = state.subscriptions.copy(updating = updating))
+            state = state.copy(subscriptions = state.subscriptions.copy(updatingUuids = uuids))
         }
     }
 

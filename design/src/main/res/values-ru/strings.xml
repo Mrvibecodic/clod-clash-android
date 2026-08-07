@@ -347,6 +347,8 @@
     <string name="clod_sub_until">до %1$s</string>
     <string name="clod_sub_add">Добавить подписку</string>
     <string name="clod_sub_update_all">Обновить все</string>
+    <string name="clod_sub_updating">Обновляется</string>
+    <string name="clod_sub_nothing_to_update">Нечего обновлять</string>
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
