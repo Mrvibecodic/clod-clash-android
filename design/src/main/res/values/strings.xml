@@ -465,5 +465,21 @@
     <string name="clod_hwid_not_supported">The panel expects a device id</string>
     <string name="clod_hwid_not_supported_message">Turn on «Identify this device» in app settings, otherwise the panel will not hand out the configuration.</string>
     <string name="clod_support">Support</string>
+    <string name="clod_no_servers_device_title">Device limit reached</string>
+    <string name="clod_no_servers_device">Too many devices are using this subscription. Disconnect one in your account, or contact support.</string>
+    <string name="clod_no_servers_device_count">This subscription allows %1$d device(s), and there are more. Disconnect one in your account, or contact support.</string>
+    <string name="clod_no_servers_unidentified_title">Device not identified</string>
+    <string name="clod_no_servers_unidentified">This subscription needs the device to be identified. Turn on «Identify this device» in app settings.</string>
+    <string name="clod_no_servers_expired_title">Subscription expired</string>
+    <string name="clod_no_servers_expired">The subscription has expired. Renew it and the servers come back with the next update.</string>
+    <string name="clod_no_servers_expired_date">The subscription expired on %1$s. Renew it and the servers come back with the next update.</string>
+    <string name="clod_no_servers_traffic_title">Out of traffic</string>
+    <string name="clod_no_servers_traffic">The traffic is used up. Buy more, or wait for the next reset.</string>
+    <string name="clod_no_servers_traffic_date">The traffic is used up. It resets on %1$s — or buy more now.</string>
+    <string name="clod_no_servers_provider_title">No servers available</string>
+    <string name="clod_no_servers_provider">The subscription is valid and has traffic left, but no servers were given out. Contact support — this is fixed on their side.</string>
+    <string name="clod_no_servers_state">Nothing to connect to</string>
+    <string name="clod_no_servers_state_sub">No servers were given out</string>
+    <string name="clod_open_settings">Settings</string>
 
 </resources>

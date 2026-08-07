@@ -43,7 +43,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.ProxyRow
+import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.SelectorRow
 
 /**
@@ -56,7 +58,16 @@ import com.github.kr328.clash.design.compose.component.SelectorRow
  * справа.
  */
 @Composable
-fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
+fun ServersTab(
+    state: ServersState,
+    active: SubscriptionItem?,
+    onAction: (MainAction) -> Unit,
+) {
+    // Серверов может не быть не потому, что список не загрузился, а потому,
+    // что их не выдали. Тогда вкладка не притворяется списком, а называет
+    // причину — теми же словами, что и главный экран.
+    val noServers = noServersReason(active?.profile, active?.panel)
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -85,7 +96,7 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
                     // Работает и до подключения: там задержки меряет не ядро,
                     // а разовый разбор файла подписки. Не работает только там,
                     // где ядро уже занято, а групп не отдаёт (см. readOnly).
-                    enabled = state.groups.isNotEmpty() && !state.readOnly,
+                    enabled = state.groups.isNotEmpty() && !state.readOnly && noServers == null,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_flash_on),
@@ -94,6 +105,25 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
                     )
                 }
             }
+        }
+
+        if (noServers != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 24.dp),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                NoServersCard(
+                    reason = noServers,
+                    panel = active?.panel,
+                    profile = active?.profile,
+                    onOpenUrl = { onAction(MainAction.OpenUrl(it)) },
+                    onOpenSettings = { onAction(MainAction.OpenAppSettings) },
+                )
+            }
+
+            return@Column
         }
 
         if (state.groups.isEmpty()) {

@@ -451,5 +451,21 @@
     <string name="clod_hwid_not_supported">Панель ждёт идентификатор устройства</string>
     <string name="clod_hwid_not_supported_message">Включите «Опознавать это устройство» в настройках приложения, иначе панель не отдаст конфигурацию.</string>
     <string name="clod_support">Поддержка</string>
+    <string name="clod_no_servers_device_title">Превышен лимит устройств</string>
+    <string name="clod_no_servers_device">Подписку используют слишком много устройств. Отключите лишнее в личном кабинете или свяжитесь с поддержкой.</string>
+    <string name="clod_no_servers_device_count">Подписка разрешает устройств: %1$d, а сейчас их больше. Отключите лишнее в личном кабинете или свяжитесь с поддержкой.</string>
+    <string name="clod_no_servers_unidentified_title">Устройство не опознано</string>
+    <string name="clod_no_servers_unidentified">Для этой подписки нужно опознание устройства. Включите «Опознавать это устройство» в настройках приложения.</string>
+    <string name="clod_no_servers_expired_title">Подписка истекла</string>
+    <string name="clod_no_servers_expired">Срок подписки закончился. Продлите её — серверы вернутся при следующем обновлении.</string>
+    <string name="clod_no_servers_expired_date">Срок подписки закончился %1$s. Продлите её — серверы вернутся при следующем обновлении.</string>
+    <string name="clod_no_servers_traffic_title">Трафик закончился</string>
+    <string name="clod_no_servers_traffic">Трафик израсходован. Докупите или дождитесь обновления.</string>
+    <string name="clod_no_servers_traffic_date">Трафик израсходован. Обновится %1$s — или докупите сейчас.</string>
+    <string name="clod_no_servers_provider_title">Серверы недоступны</string>
+    <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
+    <string name="clod_no_servers_state">Подключаться не к чему</string>
+    <string name="clod_no_servers_state_sub">Серверы не выданы</string>
+    <string name="clod_open_settings">Настройки</string>
 
 </resources>

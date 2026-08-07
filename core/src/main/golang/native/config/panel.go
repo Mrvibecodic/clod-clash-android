@@ -7,6 +7,7 @@ import (
 	P "path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/metacubex/mihomo/config"
 )
@@ -38,6 +39,16 @@ type PanelInfo struct {
 	// `not-supported` — панель ждёт идентификатор, которого мы не прислали.
 	HwidState      string `json:"hwidState,omitempty"`
 	HwidMaxDevices int    `json:"hwidMaxDevices,omitempty"`
+
+	// Когда обновится трафик, в секундах Unix. Срок подписки и обновление
+	// трафика — разные вещи: трафик может обновиться в середине оплаченного
+	// месяца, и человеку важно знать когда.
+	RefillDate int64 `json:"refillDate,omitempty"`
+
+	// В конфигурации не осталось ни одного настоящего сервера: пришли одни
+	// узлы-обманки. Это не ошибка загрузки, а состояние, о котором экрану
+	// надо рассказать словами.
+	NoServers bool `json:"noServers,omitempty"`
 
 	// Состав конфига: нужен, чтобы показать список серверов ДО подключения.
 	// Пока туннель не поднят, ядро ничего не знает о группах и узлах —
@@ -111,6 +122,7 @@ func applyHeaders(info *PanelInfo, header map[string][]string) {
 	// число устройств — значит его больше нет, а не «оставим прошлое».
 	info.HwidState = hwidState(header)
 	info.HwidMaxDevices, _ = parseUint(headerValue(header, "x-hwid-max-devices"))
+	info.RefillDate = parseRefillDate(headerValue(header, "subscription-refill-date"))
 }
 
 // applyGroups достаёт из разобранного конфига состав групп.
@@ -266,4 +278,42 @@ func parseUint(raw string) (int, bool) {
 	}
 
 	return value, true
+}
+
+// parseRefillDate разбирает дату обновления трафика.
+//
+// Формат сервисы шлют разный: и секунды Unix, и миллисекунды, и обычную дату.
+// Разбираем всё, что узнаём, остальное молча игнорируем — неверная дата хуже,
+// чем её отсутствие.
+func parseRefillDate(raw string) int64 {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0
+	}
+
+	if value, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		// Миллисекунды: всё, что больше «года 33658-го» в секундах.
+		if value > 1e12 {
+			value /= 1000
+		}
+
+		if value > 0 {
+			return value
+		}
+
+		return 0
+	}
+
+	for _, layout := range []string{
+		time.RFC3339,
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+	} {
+		if parsed, err := time.Parse(layout, raw); err == nil {
+			return parsed.Unix()
+		}
+	}
+
+	return 0
 }

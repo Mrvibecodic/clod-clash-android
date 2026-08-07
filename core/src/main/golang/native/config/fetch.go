@@ -19,6 +19,7 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/provider"
 	clashHttp "github.com/metacubex/mihomo/component/http"
+	"github.com/metacubex/mihomo/log"
 	RB "github.com/metacubex/mihomo/rules/bundle"
 )
 
@@ -242,6 +243,18 @@ func FetchAndValid(
 	// ядро о них ничего не знает, а список серверов нужен и до подключения.
 	panelInfo := readPanelInfo(path)
 	applyGroups(&panelInfo, rawCfg)
+
+	// Узлы-обманки к этому месту уже выброшены фильтром (`filterSentinels`
+	// в списке процессоров), но факт «настоящих серверов не было ни одного»
+	// экрану нужен: без него пустой список выглядит как поломка приложения,
+	// а не как отказ сервиса.
+	report := inspectSentinels(rawCfg)
+	panelInfo.NoServers = report.OnlySentinels
+
+	if len(report.Remarks) > 0 {
+		log.Infoln("Subscription sent placeholders instead of servers: %s", strings.Join(report.Remarks, " | "))
+	}
+
 	writePanelInfo(path, panelInfo)
 
 	forEachProviders(rawCfg, func(index int, total int, name string, provider map[string]any, prefix string) {
