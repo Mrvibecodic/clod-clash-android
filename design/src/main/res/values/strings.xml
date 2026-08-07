@@ -447,5 +447,10 @@
     <string name="clod_geo_updated">Routing data updated</string>
     <string name="clod_geo_update_failed">Could not download routing data</string>
     <string name="clod_geo_missing">Not downloaded</string>
+    <string name="clod_group_index">Group \u00b7 %1$d of %2$d</string>
+    <plurals name="clod_nodes_count">
+        <item quantity="one">%d node</item>
+        <item quantity="other">%d nodes</item>
+    </plurals>
 
 </resources>

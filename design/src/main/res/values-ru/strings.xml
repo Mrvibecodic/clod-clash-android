@@ -412,5 +412,12 @@
     <string name="clod_geo_updated">Данные маршрутизации обновлены</string>
     <string name="clod_geo_update_failed">Не удалось скачать данные маршрутизации</string>
     <string name="clod_geo_missing">Не скачан</string>
+    <string name="clod_group_index">Группа \u00b7 %1$d из %2$d</string>
+    <plurals name="clod_nodes_count">
+        <item quantity="one">%d узел</item>
+        <item quantity="few">%d узла</item>
+        <item quantity="many">%d узлов</item>
+        <item quantity="other">%d узла</item>
+    </plurals>
 
 </resources>
