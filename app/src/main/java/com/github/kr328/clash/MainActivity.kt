@@ -303,7 +303,12 @@ class MainActivity : BaseActivity<MainDesign>() {
     private var healthCheckedGroups: List<String> = emptyList()
 
     private suspend fun MainDesign.reloadProxyGroups() {
-        val names = withClash { queryProxyGroupNames(uiStore.proxyExcludeNotSelectable) }
+        // Только группы, в которых узел можно выбрать руками. Балансировщик
+        // (`load-balance`) в списке групп не нужен: открыть его можно,
+        // а выбрать внутри нечего. Настройкой это не делаем — показывать
+        // человеку тумблер «показывать группы, в которых ничего нельзя
+        // сделать» не за чем.
+        val names = withClash { queryProxyGroupNames(true) }
 
         if (names.isEmpty()) {
             // Туннель не поднят — ядро о группах ничего не знает. Берём состав
