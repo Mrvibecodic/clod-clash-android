@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -46,8 +47,33 @@ type fetchHeader struct {
 	Raw map[string][]string
 }
 
+// subscriptionHeaders — то, чем клиент представляется панели.
+//
+// `User-Agent` — ровно один на всё приложение: панель Remnawave показывает его
+// в списке устройств рядом с `x-hwid`, и два разных UA от одного клиента она
+// считает двумя устройствами (грабля koala-clash). Формат `имя/версия`
+// с пометкой платформы: имя матчится регулярками правил подписки
+// с учётом регистра, поэтому оно захардкожено, а не собирается из названия.
+//
+// Заголовки опознания устройства добавляются, только если оно включено:
+// см. `app.DeviceHeaders`.
+func subscriptionHeaders() http.Header {
+	header := http.Header{
+		"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"},
+		// Обязателен: правила ответа Remnawave отдают браузерам HTML-страницу,
+		// а не конфигурацию, и опознают их как раз по `Accept`.
+		"Accept": {"*/*"},
+	}
+
+	for name, value := range app.DeviceHeaders() {
+		header.Set(name, value)
+	}
+
+	return header
+}
+
 func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error) {
-	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, http.Header{"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"}}, nil)
+	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(), nil)
 
 	if err != nil {
 		return nil, fetchHeader{}, err
@@ -192,6 +218,17 @@ func FetchAndValid(
 		info := readPanelInfo(path)
 		applyHeaders(&info, header.Raw)
 		writePanelInfo(path, info)
+
+		// Панель отказалась выдать конфигурацию этому устройству — значит
+		// в теле ответа заглушка: узлы там с адресом 0.0.0.0. Записать её
+		// поверх рабочей подписки означает отнять у человека рабочие серверы
+		// за то, что он подключил лишний телефон. Обновление отменяем.
+		//
+		// Файл уже перезаписан, но это `processingDir`: в рабочий каталог
+		// он переезжает только после успеха, а на ошибке выбрасывается.
+		if err := deviceRefused(info); err != nil {
+			return err
+		}
 	}
 
 	defer runtime.GC()
@@ -274,6 +311,24 @@ func FetchAndValid(
 	}
 
 	DestroyProviders(cfg)
+
+	return nil
+}
+
+// Ошибки отказа панели по устройству. Разбираются на стороне Kotlin
+// и превращаются в человеческий текст — переводов в ядре нет.
+var (
+	ErrHwidLimitReached = errors.New("clod-hwid-limit")
+	ErrHwidNotSupported = errors.New("clod-hwid-not-supported")
+)
+
+func deviceRefused(info PanelInfo) error {
+	switch info.HwidState {
+	case HwidLimitReached:
+		return ErrHwidLimitReached
+	case HwidNotSupported:
+		return ErrHwidNotSupported
+	}
 
 	return nil
 }

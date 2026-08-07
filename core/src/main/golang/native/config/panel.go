@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	P "path"
+	"strconv"
 	"strings"
 
 	"github.com/metacubex/mihomo/config"
@@ -27,6 +28,16 @@ type PanelInfo struct {
 	TopupURL    string `json:"topupUrl,omitempty"`
 	Promo       string `json:"promo,omitempty"`
 	PromoURL    string `json:"promoUrl,omitempty"`
+
+	// Состояние устройства по ответу панели.
+	//
+	// `unknown` — про устройства ничего не пришло: панель их не считает
+	// либо мы не отправили `x-hwid`. `active` — устройство зарегистрировано.
+	// `limit` — лимит исчерпан, и ТЕЛО ОТВЕТА при этом заглушка: узлы там
+	// с адресом 0.0.0.0, перезаписывать ими рабочую конфигурацию нельзя.
+	// `not-supported` — панель ждёт идентификатор, которого мы не прислали.
+	HwidState      string `json:"hwidState,omitempty"`
+	HwidMaxDevices int    `json:"hwidMaxDevices,omitempty"`
 
 	// Состав конфига: нужен, чтобы показать список серверов ДО подключения.
 	// Пока туннель не поднят, ядро ничего не знает о группах и узлах —
@@ -94,6 +105,12 @@ func applyHeaders(info *PanelInfo, header map[string][]string) {
 	info.TopupURL = firstNonEmpty(headerValue(header, "clod-topup-url"), info.TopupURL)
 	info.Promo = firstNonEmpty(truncate(headerValue(header, "clod-promo"), announceMaxChars), info.Promo)
 	info.PromoURL = firstNonEmpty(headerValue(header, "clod-promo-url"), info.PromoURL)
+
+	// Оба поля перезаписываются безусловно, а не «если пришло»: это состояние
+	// последнего ответа, а не накопленное знание. Панель перестала слать
+	// число устройств — значит его больше нет, а не «оставим прошлое».
+	info.HwidState = hwidState(header)
+	info.HwidMaxDevices, _ = parseUint(headerValue(header, "x-hwid-max-devices"))
 }
 
 // applyGroups достаёт из разобранного конфига состав групп.
@@ -200,4 +217,53 @@ func truncate(value string, max int) string {
 	}
 
 	return strings.TrimSpace(string(runes[:max])) + "…"
+}
+
+// Состояния устройства, как их видит экран.
+const (
+	HwidUnknown      = ""
+	HwidActive       = "active"
+	HwidLimitReached = "limit"
+	HwidNotSupported = "not-supported"
+)
+
+// hwidState разбирает ответные заголовки семейства `x-hwid-*`.
+//
+// Порядок проверок важен. `x-hwid-not-supported` идёт первым намеренно:
+// Remnawave 3.x в ветке блокировки по устройствам ставит `x-hwid-limit: true`
+// ВСЕГДА, а `x-hwid-max-devices-reached` — только при настоящем превышении.
+// Пара «limit без max-devices-reached» означает «панель ждёт идентификатор,
+// которого не получила», а не «лимит исчерпан».
+func hwidState(header map[string][]string) string {
+	if boolHeader(header, "x-hwid-not-supported") {
+		return HwidNotSupported
+	}
+
+	if boolHeader(header, "x-hwid-max-devices-reached") || boolHeader(header, "x-hwid-limit") {
+		return HwidLimitReached
+	}
+
+	if boolHeader(header, "x-hwid-active") {
+		return HwidActive
+	}
+
+	return HwidUnknown
+}
+
+func boolHeader(header map[string][]string, name string) bool {
+	switch strings.ToLower(strings.TrimSpace(headerValue(header, name))) {
+	case "true", "1", "yes", "on":
+		return true
+	}
+
+	return false
+}
+
+func parseUint(raw string) (int, bool) {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || value < 0 {
+		return 0, false
+	}
+
+	return value, true
 }

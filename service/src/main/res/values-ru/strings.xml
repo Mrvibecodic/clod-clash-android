@@ -18,4 +18,7 @@
     <string name="provider_files">Файлы провайдера</string>
     <string name="profile_updater">Обновление профиля</string>
     <string name="profile_updating">Профиль обновляется</string>
+    <string name="clod_fetch_hwid_limit">Лимит устройств исчерпан: панель отказалась выдать конфигурацию. Прежняя оставлена как есть.</string>
+    <string name="clod_fetch_hwid_not_supported">Панель ждёт идентификатор устройства. Включите «Опознавать это устройство» в настройках приложения.</string>
+
 </resources>

@@ -443,5 +443,13 @@
     <string name="skip_src_address">Пропускать адреса источника</string>
     <string name="skip_dst_address">Пропускать адреса назначения</string>
     <string name="import_asn_file">Загрузить файл ASN</string>
+    <string name="clod_hwid_title">Опознавать это устройство</string>
+    <string name="clod_hwid_summary">Панели, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
+    <string name="clod_hwid_limit">Лимит устройств исчерпан</string>
+    <string name="clod_hwid_limit_message">Панель разрешает устройств: %1$d, и это — сверх лимита. Удалите старое устройство в личном кабинете или напишите в поддержку.</string>
+    <string name="clod_hwid_limit_message_no_count">Это устройство сверх лимита панели. Удалите старое устройство в личном кабинете или напишите в поддержку.</string>
+    <string name="clod_hwid_not_supported">Панель ждёт идентификатор устройства</string>
+    <string name="clod_hwid_not_supported_message">Включите «Опознавать это устройство» в настройках приложения, иначе панель не отдаст конфигурацию.</string>
+    <string name="clod_support">Поддержка</string>
 
 </resources>

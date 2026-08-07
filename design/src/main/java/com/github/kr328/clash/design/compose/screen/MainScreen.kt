@@ -455,9 +455,17 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
     val noticeUrl = if (panel.announce.isNotBlank()) panel.announceUrl else panel.promoUrl
     val hasButtons = panel.renewUrl.isNotBlank() || panel.topupUrl.isNotBlank()
 
-    if (notice.isBlank() && !hasButtons) return
+    val deviceProblem = panel.hwidState == HWID_LIMIT_REACHED || panel.hwidState == HWID_NOT_SUPPORTED
+
+    if (notice.isBlank() && !hasButtons && !deviceProblem) return
 
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
+        if (deviceProblem) {
+            DeviceNotice(panel = panel, onAction = onAction)
+
+            Spacer(Modifier.height(8.dp))
+        }
+
         if (notice.isNotBlank()) {
             Card(
                 colors = CardDefaults.cardColors(
@@ -669,6 +677,78 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 onClick = { onAction(MainAction.OpenSubScreen(SubScreen.About)) },
             )
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/** Состояния устройства, которые присылает ядро в `panel.json`. */
+private const val HWID_LIMIT_REACHED = "limit"
+private const val HWID_NOT_SUPPORTED = "not-supported"
+
+/**
+ * Панель отказалась выдать конфигурацию этому устройству.
+ *
+ * Молчать нельзя: в обоих случаях панель отдаёт вместо серверов заглушку,
+ * и без объяснения человек видит просто «ничего не работает». Красным, а не
+ * серым, — это единственное на экране, что требует действия от человека,
+ * а не от приложения.
+ */
+@Composable
+private fun DeviceNotice(panel: PanelInfo, onAction: (MainAction) -> Unit) {
+    val limit = panel.hwidState == HWID_LIMIT_REACHED
+
+    val title = if (limit) {
+        stringResource(R.string.clod_hwid_limit)
+    } else {
+        stringResource(R.string.clod_hwid_not_supported)
+    }
+
+    val message = when {
+        !limit -> stringResource(R.string.clod_hwid_not_supported_message)
+        panel.hwidMaxDevices > 0 ->
+            stringResource(R.string.clod_hwid_limit_message, panel.hwidMaxDevices)
+        // Панель сказала «лимит», но не сказала какой: пересказывать
+        // несуществующее число нельзя.
+        else -> stringResource(R.string.clod_hwid_limit_message_no_count)
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_baseline_key),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+
+            if (panel.supportUrl.isNotBlank()) {
+                Spacer(Modifier.height(10.dp))
+
+                Button(onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) }) {
+                    Text(stringResource(R.string.clod_support))
+                }
+            }
         }
     }
 }

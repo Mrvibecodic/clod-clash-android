@@ -30,6 +30,7 @@ data class AppSettingsState(
     val hideFromRecents: Boolean = false,
     val dynamicNotification: Boolean = false,
     val notificationEditable: Boolean = true,
+    val enableHwid: Boolean = true,
 )
 
 sealed interface AppSettingsAction {
@@ -39,6 +40,7 @@ sealed interface AppSettingsAction {
     data class SetHideAppIcon(val enabled: Boolean) : AppSettingsAction
     data class SetHideFromRecents(val enabled: Boolean) : AppSettingsAction
     data class SetDynamicNotification(val enabled: Boolean) : AppSettingsAction
+    data class SetEnableHwid(val enabled: Boolean) : AppSettingsAction
 }
 
 /**
@@ -114,6 +116,15 @@ fun AppSettingsScreen(
                 checked = state.dynamicNotification,
                 enabled = state.notificationEditable,
                 onCheckedChange = { onAction(AppSettingsAction.SetDynamicNotification(it)) },
+            )
+
+            SectionHeader(stringResource(R.string.clod_tab_subscriptions))
+            SwitchRow(
+                title = stringResource(R.string.clod_hwid_title),
+                subtitle = stringResource(R.string.clod_hwid_summary),
+                icon = painterResource(R.drawable.ic_baseline_key),
+                checked = state.enableHwid,
+                onCheckedChange = { onAction(AppSettingsAction.SetEnableHwid(it)) },
             )
 
             Spacer(Modifier.height(24.dp))

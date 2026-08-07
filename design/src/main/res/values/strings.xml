@@ -457,5 +457,13 @@
     <string name="clod_servers_direct">Direct mode is on: traffic goes past the servers, so picking one changes nothing. Switch the mode on the home screen.</string>
     <string name="clod_one_per_line">One per line</string>
     <string name="clod_key_value_per_line">One «key = value» pair per line</string>
+    <string name="clod_hwid_title">Identify this device</string>
+    <string name="clod_hwid_summary">Panels that limit the number of devices count them by this. The id is derived from a device value and hashed — the raw value never leaves the phone.</string>
+    <string name="clod_hwid_limit">Device limit reached</string>
+    <string name="clod_hwid_limit_message">The panel allows %1$d device(s) and this one is over the limit. Remove an old device in your account, or ask support.</string>
+    <string name="clod_hwid_limit_message_no_count">This device is over the panel device limit. Remove an old device in your account, or ask support.</string>
+    <string name="clod_hwid_not_supported">The panel expects a device id</string>
+    <string name="clod_hwid_not_supported_message">Turn on «Identify this device» in app settings, otherwise the panel will not hand out the configuration.</string>
+    <string name="clod_support">Support</string>
 
 </resources>

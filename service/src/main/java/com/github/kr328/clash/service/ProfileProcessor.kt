@@ -14,8 +14,10 @@ import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
+import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.sendProfileChanged
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -143,6 +145,11 @@ object ProfileProcessor {
         var subscriptionInfo: FetchStatus? = null
         var cb = callback
 
+        // Панель считает устройства по заголовкам запроса, поэтому отдать их
+        // ядру надо ДО запроса. Обновляем каждый раз: тумблер «опознавать
+        // устройство» иначе доезжал бы до ядра только после перезапуска службы.
+        context.applyDeviceInfo()
+
         Clash.fetchAndValid(context.processingDir, source, force) {
             if (it.action == FetchStatus.Action.SubscriptionInfo) {
                 subscriptionInfo = it
@@ -156,9 +163,30 @@ object ProfileProcessor {
 
                 Log.w("Report fetch status: $e", e)
             }
-        }.await()
+        }.await(context)
 
         return subscriptionInfo
+    }
+
+    /**
+     * Ждём загрузку и переводим отказы панели по устройству в человеческий текст.
+     *
+     * Ядро отдаёт метку, а не сообщение: переводов в нём нет и быть не должно.
+     * Место одно на все пути обновления — и первый импорт, и обновление
+     * по кнопке, и обновление по расписанию идут через `fetchProfile`.
+     */
+    private suspend fun CompletableDeferred<Unit>.await(context: Context) {
+        try {
+            await()
+        } catch (e: Exception) {
+            val message = when (e.message) {
+                "clod-hwid-limit" -> context.getString(R.string.clod_fetch_hwid_limit)
+                "clod-hwid-not-supported" -> context.getString(R.string.clod_fetch_hwid_not_supported)
+                else -> throw e
+            }
+
+            throw IllegalStateException(message, e)
+        }
     }
 
     suspend fun delete(context: Context, uuid: UUID) {

@@ -41,6 +41,7 @@ class AppSettingsDesign(
             // Уведомление собирается при запуске службы: на ходу его состав
             // не поменять, поэтому при работающем туннеле строка погашена.
             notificationEditable = !running,
+            enableHwid = srvStore.enableHwid,
         ),
     )
 
@@ -92,6 +93,11 @@ class AppSettingsDesign(
                 state = state.copy(hideFromRecents = action.enabled)
 
                 requests.trySend(Request.ReCreateAllActivities)
+            }
+            is AppSettingsAction.SetEnableHwid -> {
+                srvStore.enableHwid = action.enabled
+
+                state = state.copy(enableHwid = action.enabled)
             }
             is AppSettingsAction.SetDynamicNotification -> {
                 srvStore.dynamicNotification = action.enabled

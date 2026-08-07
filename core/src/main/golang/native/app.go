@@ -59,3 +59,8 @@ func queryConfiguration() *C.char {
 func init() {
 	app.ApplyContentContext(openRemoteContent)
 }
+
+//export setDeviceInfo
+func setDeviceInfo(hwid, os, osVersion, model C.c_string) {
+	app.ApplyDeviceInfo(C.GoString(hwid), C.GoString(os), C.GoString(osVersion), C.GoString(model))
+}

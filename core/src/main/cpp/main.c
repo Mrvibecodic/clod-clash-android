@@ -211,6 +211,21 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeTestProfileDelays(JNIEnv *e
 }
 
 JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetDeviceInfo(JNIEnv *env, jobject thiz,
+                                                                  jstring hwid, jstring os,
+                                                                  jstring os_version,
+                                                                  jstring model) {
+    TRACE_METHOD();
+
+    scoped_string _hwid = get_string(hwid);
+    scoped_string _os = get_string(os);
+    scoped_string _os_version = get_string(os_version);
+    scoped_string _model = get_string(model);
+
+    setDeviceInfo(_hwid, _os, _os_version, _model);
+}
+
+JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckAll(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
 
