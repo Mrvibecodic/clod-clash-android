@@ -300,7 +300,7 @@
     <string name="geox_geosite">Geosite URL</string>
     <string name="geox_files" >Geo Files</string>
     <string name="import_geoip_file">Import GeoIP Database</string>
-    <string name="press_to_import">Press to import...</string>
+    <string name="press_to_import">Нажмите, чтобы выбрать файл</string>
     <string name="import_geosite_file">Import GeoSite Database</string>
     <string name="import_country_file">Import Country Database</string>
     <string name="geofile_import_failed">Import failed</string>
@@ -432,5 +432,16 @@
     <string name="blacklist">Чёрный список</string>
     <string name="whitelist">Белый список</string>
     <string name="fakeip_filter_mode">Режим фильтра fake-ip</string>
+    <string name="age_key_type_x25519">Ключи age (x25519)</string>
+    <string name="age_key_type_hybrid">Ключи age (гибридные)</string>
+    <string name="sniff_http_ports">Порты HTTP</string>
+    <string name="sniff_http_override_destination">Подменять адрес назначения для HTTP</string>
+    <string name="sniff_tls_ports">Порты TLS</string>
+    <string name="sniff_tls_override_destination">Подменять адрес назначения для TLS</string>
+    <string name="sniff_quic_ports">Порты QUIC</string>
+    <string name="sniff_quic_override_destination">Подменять адрес назначения для QUIC</string>
+    <string name="skip_src_address">Пропускать адреса источника</string>
+    <string name="skip_dst_address">Пропускать адреса назначения</string>
+    <string name="import_asn_file">Загрузить файл ASN</string>
 
 </resources>

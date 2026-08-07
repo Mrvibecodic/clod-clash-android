@@ -43,6 +43,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
+                        MetaFeatureSettingsDesign.Request.Back -> finish()
                         MetaFeatureSettingsDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
                                 defer {
