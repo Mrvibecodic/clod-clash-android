@@ -107,6 +107,19 @@ data class ServersState(
     val selected: Int = 0,
     val testing: Boolean = false,
     val offline: Boolean = false,
+    /**
+     * Список из файла, но ядро при этом работает: так бывает в режиме
+     * «Прямое соединение», где ядро групп не отдаёт вовсе. Мерить задержки
+     * своим разбором конфига поверх живого ядра нельзя, а запоминать выбор
+     * «на потом» бессмысленно — человек уже подключён.
+     */
+    val readOnly: Boolean = false,
+    /**
+     * Имена узлов, отмеченных звездой. Хранятся отдельно от списка, а не полем
+     * в [Proxy]: список приходит от ядра, а отметки — наши, и мешать их значило
+     * бы перекладывать набор на каждую перерисовку.
+     */
+    val favorites: Set<String> = emptySet(),
 )
 
 /**
@@ -176,6 +189,7 @@ sealed interface MainAction {
     data class SelectTab(val tab: MainTab) : MainAction
     data class SelectGroup(val index: Int) : MainAction
     data class SelectProxy(val name: String) : MainAction
+    data class ToggleFavorite(val name: String) : MainAction
 
     data class OpenUrl(val url: String) : MainAction
     data object CheckUpdate : MainAction

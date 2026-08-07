@@ -82,8 +82,10 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
             } else {
                 IconButton(
                     onClick = { onAction(MainAction.TestDelays) },
-                    // Пока туннель не поднят, мерить нечем: список собран из файла.
-                    enabled = state.groups.isNotEmpty() && !state.offline,
+                    // Работает и до подключения: там задержки меряет не ядро,
+                    // а разовый разбор файла подписки. Не работает только там,
+                    // где ядро уже занято, а групп не отдаёт (см. readOnly).
+                    enabled = state.groups.isNotEmpty() && !state.readOnly,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_flash_on),
@@ -103,7 +105,9 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
 
         if (state.offline) {
             Text(
-                text = stringResource(R.string.clod_servers_offline),
+                text = stringResource(
+                    if (state.readOnly) R.string.clod_servers_direct else R.string.clod_servers_offline,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
@@ -116,6 +120,17 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
             return@Column
         }
 
+        // Отмеченные звездой — наверх, как на ПК. Сортировка устойчивая,
+        // поэтому внутри каждой половины порядок остаётся тот, который прислало
+        // ядро (по умолчанию — как в подписке, либо по имени/задержке).
+        val proxies = remember(group.proxies, state.favorites) {
+            if (state.favorites.isEmpty()) {
+                group.proxies
+            } else {
+                group.proxies.sortedByDescending { it.name in state.favorites }
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -126,15 +141,17 @@ fun ServersTab(state: ServersState, onAction: (MainAction) -> Unit) {
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(items = group.proxies, key = { it.name }) { proxy ->
+            items(items = proxies, key = { it.name }) { proxy ->
                 ProxyRow(
                     title = proxy.title,
                     subtitle = proxy.subtitle,
                     delay = proxy.delay,
                     selected = proxy.name == group.now,
+                    favorite = proxy.name in state.favorites,
                     // Нажатие обрабатывается всегда: если выбрать нельзя,
                     // человек получит внятное объяснение, а не тишину.
                     onClick = { onAction(MainAction.SelectProxy(proxy.name)) },
+                    onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
                 )
             }
         }

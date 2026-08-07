@@ -20,6 +20,7 @@ import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
 import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.design.MainDesign
@@ -48,6 +49,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
 
@@ -90,8 +95,17 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 launch { design.startUpdate() }
                             }
                         }
+                        Event.ClashStop -> {
+                            // Задержки, померенные до и во время подключения,
+                            // к новой сети отношения не имеют: телефон мог
+                            // уехать с Wi-Fi на LTE ровно тем же движением,
+                            // которым туннель и выключили.
+                            offlineDelays = emptyMap()
+
+                            design.fetch()
+                        }
                         Event.ServiceRecreated,
-                        Event.ClashStop, Event.ClashStart,
+                        Event.ClashStart,
                         Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
                         else -> Unit
                     }
@@ -109,6 +123,27 @@ class MainActivity : BaseActivity<MainDesign>() {
                             design.reloadProxyGroup(request.index)
                         is MainDesign.Request.SelectProxy -> {
                             proxyGroupNames.getOrNull(request.index)?.let { group ->
+                                if (serversReadOnly) {
+                                    // Досюда доходить нечему: экран глушит
+                                    // такое нажатие тостом. Но если дойдёт —
+                                    // трогать живое ядро именами из файла
+                                    // точно не нужно.
+                                    return@let
+                                }
+
+                                if (offlineGroups.isNotEmpty()) {
+                                    // Туннель не поднят: ядру выбор отдать некуда,
+                                    // запоминаем в базе. Он применится сам сразу
+                                    // после загрузки профиля.
+                                    withClash { rememberSelection(group, request.name) }
+
+                                    offlineSelections[group] = request.name
+
+                                    design.fillOfflineProxyGroup(request.index)
+
+                                    return@let
+                                }
+
                                 val patched = withClash { patchSelector(group, request.name) }
 
                                 if (patched) {
@@ -125,6 +160,20 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         is MainDesign.Request.UrlTest -> launch { design.runHealthCheck() }
+                        is MainDesign.Request.ToggleFavorite -> {
+                            favoritesProfile?.let { profile ->
+                                val current = uiStore.favorites(profile)
+                                val next = if (request.name in current) {
+                                    current - request.name
+                                } else {
+                                    current + request.name
+                                }
+
+                                uiStore.setFavorites(profile, next)
+
+                                design.setFavorites(next)
+                            }
+                        }
                         is MainDesign.Request.PatchMode -> {
                             withClash {
                                 val override = queryOverride(Clash.OverrideSlot.Session)
@@ -282,7 +331,13 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         setProfiles(items)
-        setActiveProfile(items.firstOrNull { it.profile.active })
+
+        val active = items.firstOrNull { it.profile.active }
+
+        setActiveProfile(active)
+
+        favoritesProfile = active?.profile?.uuid
+        setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
 
         reloadProxyGroups()
     }
@@ -302,25 +357,61 @@ class MainActivity : BaseActivity<MainDesign>() {
     /** Набор групп, для которого задержки уже мерили в этой сессии. */
     private var healthCheckedGroups: List<String> = emptyList()
 
+    /**
+     * Задержки, измеренные до подключения: имя узла -> мс.
+     *
+     * Ядро в этот момент профиля не знает, поэтому держать их негде, кроме
+     * как здесь. Сбрасываются при смене подписки: узлы у разных подписок
+     * называются одинаково, а цифры от предыдущей — вранье.
+     */
+    private var offlineDelays: Map<String, Int> = emptyMap()
+
+    /** Профиль, к которому относятся [offlineDelays] и [offlineSelections]. */
+    private var offlineProfile: UUID? = null
+
+    /** Сохранённый выбор узла по группам — показываем его и до подключения. */
+    private val offlineSelections: MutableMap<String, String> = mutableMapOf()
+
+    /** Подписка, к чьему набору избранного относятся отметки на экране. */
+    private var favoritesProfile: UUID? = null
+
+    /**
+     * Список показан из файла, но ядро работает: режим «Прямое соединение».
+     * Ни мерить своим разбором, ни запоминать выбор в таком состоянии нельзя.
+     */
+    private var serversReadOnly: Boolean = false
+
     private suspend fun MainDesign.reloadProxyGroups() {
         // Только группы, в которых узел можно выбрать руками. Балансировщик
         // (`load-balance`) в списке групп не нужен: открыть его можно,
         // а выбрать внутри нечего. Настройкой это не делаем — показывать
         // человеку тумблер «показывать группы, в которых ничего нельзя
         // сделать» не за чем.
-        val names = withClash { queryProxyGroupNames(true) }
+        val names = if (clashRunning) withClash { queryProxyGroupNames(true) } else emptyList()
 
         if (names.isEmpty()) {
-            // Туннель не поднят — ядро о группах ничего не знает. Берём состав
-            // из файла подписки: список серверов человек хочет видеть и до
-            // подключения, хотя бы без задержек.
-            loadOfflineProxyGroups()
+            // Список берём из файла подписки: видеть свои серверы человек
+            // хочет и до подключения.
+            //
+            // Отдельный случай — режим «Прямое соединение»: ядро работает,
+            // но групп не отдаёт намеренно. Там ни мерить своим разбором
+            // конфига (он лезет в те же глобальные настройки ядра), ни
+            // запоминать выбор «на потом» нельзя — человек уже подключён.
+            //
+            // Проверяем именно режим, а не «ядро работает»: между стартом
+            // службы и загрузкой профиля групп тоже нет, и без этой проверки
+            // экран на пару секунд каждого подключения врал бы про Direct.
+            val direct = clashRunning &&
+                withClash { queryTunnelState() }.mode == TunnelState.Mode.Direct
+
+            loadOfflineProxyGroups(readOnly = direct)
 
             return
         }
 
         proxyGroupNames = names
         offlineGroups = emptyList()
+        serversReadOnly = false
 
         setProxyGroupNames(names)
 
@@ -346,7 +437,13 @@ class MainActivity : BaseActivity<MainDesign>() {
      * любой группы обновляет задержки и во всех остальных.
      */
     private suspend fun MainDesign.runHealthCheck() {
-        if (proxyGroupNames.isEmpty() || offlineGroups.isNotEmpty()) return
+        if (proxyGroupNames.isEmpty() || serversReadOnly) return
+
+        if (offlineGroups.isNotEmpty()) {
+            runOfflineHealthCheck()
+
+            return
+        }
 
         setProxyTesting(true)
 
@@ -365,7 +462,42 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun MainDesign.loadOfflineProxyGroups() {
+    /**
+     * Проверка задержек до подключения.
+     *
+     * Ядро о профиле ещё не знает, поэтому меряет не оно: `testProfileDelays`
+     * разбирает файл подписки, создаёт узлы, опрашивает их и выбрасывает,
+     * не трогая состояние ядра. Проба — обычный сокет до сервера узла, туннель
+     * для неё не нужен, и цифры получаются те же, что и после подключения.
+     */
+    private suspend fun MainDesign.runOfflineHealthCheck() {
+        val active = withProfile { queryActive() } ?: return
+
+        setProxyTesting(true)
+
+        try {
+            val raw = withClash { testProfileDelays(active.uuid) }
+
+            offlineProfile = active.uuid
+            offlineDelays = try {
+                Json.Default.decodeFromString(DELAYS_SERIALIZER, raw)
+            } catch (e: Exception) {
+                Log.w("Parse offline delays: $e", e)
+
+                emptyMap()
+            }
+
+            fillOfflineProxyGroup(selectedGroup)
+        } catch (e: Exception) {
+            Log.w("Offline health check: $e", e)
+        } finally {
+            setProxyTesting(false)
+        }
+    }
+
+    private suspend fun MainDesign.loadOfflineProxyGroups(readOnly: Boolean) {
+        serversReadOnly = readOnly
+
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }
         offlineGroups = panel?.groups.orEmpty()
@@ -374,7 +506,28 @@ class MainActivity : BaseActivity<MainDesign>() {
         // задержки к новой сети отношения не имеют.
         healthCheckedGroups = emptyList()
 
-        setProxyGroupNames(proxyGroupNames, offline = true)
+        if (active?.uuid != offlineProfile) {
+            // Сменилась подписка: узлы у разных подписок называются одинаково,
+            // и старые цифры относились бы не к тем серверам.
+            offlineProfile = active?.uuid
+            offlineDelays = emptyMap()
+            offlineSelections.clear()
+        }
+
+        // Что выбрано — знает база: выборы там переживают и перезапуск, и то,
+        // что ядро о них ещё не слышало. Пропавшие записи убираем, иначе
+        // на экране осталась бы галочка на узле, которого уже нет.
+        proxyGroupNames.forEach { group ->
+            val selected = withClash { querySelection(group) }
+
+            if (selected != null) {
+                offlineSelections[group] = selected
+            } else {
+                offlineSelections.remove(group)
+            }
+        }
+
+        setProxyGroupNames(proxyGroupNames, offline = true, readOnly = readOnly)
 
         fillOfflineProxyGroup(selectedGroup)
     }
@@ -382,19 +535,23 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.fillOfflineProxyGroup(index: Int) {
         val group = offlineGroups.getOrNull(index) ?: return
 
+        val readOnly = serversReadOnly
+
         setProxyGroup(
             index = index,
-            now = "",
-            selectable = false,
+            now = offlineSelections[group.name].orEmpty(),
+            // Выбирать можно и до подключения — но только там, где выбор
+            // потом примут: в `load-balance` и `relay` ядро откажет,
+            // и запись из базы молча пропала бы, а человеку уже пообещали.
+            selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
             proxies = group.proxies.map { name ->
-                // Задержки нет и быть не может: измеряет её только ядро,
-                // а оно ещё не запущено. Ноль экран показывает прочерком.
                 Proxy(
                     name = name,
                     title = name,
                     subtitle = "",
                     type = "",
-                    delay = 0,
+                    // Ноль означает «ещё не мерили»; экран рисует его прочерком.
+                    delay = offlineDelays[name] ?: 0,
                     isGroup = false,
                 )
             },
@@ -427,6 +584,15 @@ class MainActivity : BaseActivity<MainDesign>() {
          * узла, если тот перестал отвечать, и это правильное поведение.
          */
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
+
+        /**
+         * То же самое, но как это записано в самом файле подписки: до подключения
+         * тип группы известен только оттуда (`panel.json` пишет его как есть).
+         */
+        private val OFFLINE_SELECTABLE_GROUPS = setOf("select", "url-test", "fallback")
+
+        /** Ответ `testProfileDelays`: имя узла -> задержка в мс. */
+        private val DELAYS_SERIALIZER = MapSerializer(String.serializer(), Int.serializer())
 
         /**
          * Порт локального прокси ядра. Через него апдейтер повторяет запрос,

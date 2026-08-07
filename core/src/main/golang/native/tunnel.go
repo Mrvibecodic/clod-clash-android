@@ -74,6 +74,11 @@ func healthCheck(completable unsafe.Pointer, name C.c_string) {
 	}(C.GoString(name))
 }
 
+//export testProfileDelays
+func testProfileDelays(path C.c_string) *C.char {
+	return marshalJson(tunnel.TestProfileDelays(C.GoString(path)))
+}
+
 //export healthCheckAll
 func healthCheckAll() {
 	tunnel.HealthCheckAll()

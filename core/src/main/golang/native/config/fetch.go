@@ -273,7 +273,7 @@ func FetchAndValid(
 		return err
 	}
 
-	destroyProviders(cfg)
+	DestroyProviders(cfg)
 
 	return nil
 }

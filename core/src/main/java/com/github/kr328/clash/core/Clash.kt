@@ -129,6 +129,19 @@ object Clash {
         Bridge.nativeHealthCheckAll()
     }
 
+    /**
+     * Задержки узлов профиля, измеренные БЕЗ подъёма ядра.
+     *
+     * Отдаётся сырым JSON'ом «имя узла -> задержка»: разбор оставлен вызывающей
+     * стороне, потому что дальше это едет через IPC, а гонять карту через
+     * биндер дороже и капризнее, чем строку.
+     *
+     * Вызов блокирующий и длится секунды — звать только с фонового диспетчера.
+     */
+    fun testProfileDelays(path: File): String {
+        return Bridge.nativeTestProfileDelays(path.absolutePath) ?: "{}"
+    }
+
     fun patchSelector(selector: String, name: String): Boolean {
         return Bridge.nativePatchSelector(selector, name)
     }

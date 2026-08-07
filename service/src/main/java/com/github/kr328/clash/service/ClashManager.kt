@@ -9,9 +9,11 @@ import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ReceiveChannel
+import java.util.UUID
 
 class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
@@ -56,6 +58,24 @@ class ClashManager(private val context: Context) : IClashManager,
                 SelectionDao().removeSelected(current, group)
             }
         }
+    }
+
+    override fun rememberSelection(group: String, name: String) {
+        val current = store.activeProfile ?: return
+
+        SelectionDao().setSelected(Selection(current, group, name))
+    }
+
+    override suspend fun querySelection(group: String): String? {
+        val current = store.activeProfile ?: return null
+
+        return SelectionDao().querySelections(current)
+            .firstOrNull { it.proxy == group }
+            ?.selected
+    }
+
+    override suspend fun testProfileDelays(uuid: UUID): String = withContext(Dispatchers.IO) {
+        Clash.testProfileDelays(context.importedDir.resolve(uuid.toString()))
     }
 
     override fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride) {

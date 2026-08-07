@@ -8,6 +8,7 @@ import com.github.kr328.clash.common.store.asStoreProvider
 import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.model.DarkMode
+import java.util.UUID
 
 class UiStore(context: Context) {
     private val store = Store(
@@ -40,6 +41,23 @@ class UiStore(context: Context) {
         key = "hide_from_recents",
         defaultValue = false,
     )
+
+    /**
+     * Избранные узлы — свои у каждой подписки.
+     *
+     * Ключ динамический, поэтому не делегатом: у разных подписок узлы
+     * называются одинаково («Нидерланды 1»), и общий набор отмечал бы
+     * звездой чужие серверы.
+     */
+    fun favorites(profile: UUID): Set<String> {
+        return store.provider.getStringSet(favoritesKey(profile), emptySet())
+    }
+
+    fun setFavorites(profile: UUID, favorites: Set<String>) {
+        store.provider.setStringSet(favoritesKey(profile), favorites)
+    }
+
+    private fun favoritesKey(profile: UUID): String = "favorites_$profile"
 
     var proxySort: ProxySort by store.enum(
         key = "proxy_sort",

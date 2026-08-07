@@ -66,6 +66,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object ReloadProxies : Request
         data class ReloadGroup(val index: Int) : Request
         data class SelectProxy(val index: Int, val name: String) : Request
+        data class ToggleFavorite(val name: String) : Request
         data class UrlTest(val index: Int) : Request
         data class PatchMode(val mode: TunnelState.Mode) : Request
 
@@ -134,6 +135,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             }
             MainAction.UpdateRoutingData -> request(Request.UpdateRoutingData)
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
+            is MainAction.ToggleFavorite -> request(Request.ToggleFavorite(action.name))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
@@ -163,9 +165,18 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 val group = state.servers.groups.getOrNull(state.servers.selected)
 
                 when {
-                    state.servers.offline -> toast(R.string.clod_select_offline)
+                    state.servers.readOnly -> toast(R.string.clod_servers_direct)
                     group?.selectable != true -> toast(R.string.clod_select_not_selectable)
-                    else -> request(Request.SelectProxy(state.servers.selected, action.name))
+                    else -> {
+                        request(Request.SelectProxy(state.servers.selected, action.name))
+
+                        // До подключения выбор ничего видимого не меняет: узел
+                        // просто ложится в базу. Без подсказки нажатие выглядит
+                        // как несработавшее.
+                        if (state.servers.offline) {
+                            toast(R.string.clod_select_offline)
+                        }
+                    }
                 }
             }
 
@@ -260,7 +271,11 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
      * этого возврат на вкладку каждый раз мигал бы пустым списком, хотя данные
      * не изменились.
      */
-    suspend fun setProxyGroupNames(names: List<String>, offline: Boolean = false) {
+    suspend fun setProxyGroupNames(
+        names: List<String>,
+        offline: Boolean = false,
+        readOnly: Boolean = false,
+    ) {
         withContext(Dispatchers.Main) {
             val previous = state.servers.groups.associateBy { it.name }
             val groups = names.map { name ->
@@ -276,6 +291,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                     groups = groups,
                     selected = state.servers.selected.coerceIn(0, maxOf(groups.size - 1, 0)),
                     offline = offline,
+                    readOnly = readOnly,
                 ),
             )
         }
@@ -296,6 +312,12 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                     },
                 ),
             )
+        }
+    }
+
+    suspend fun setFavorites(favorites: Set<String>) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(servers = state.servers.copy(favorites = favorites))
         }
     }
 

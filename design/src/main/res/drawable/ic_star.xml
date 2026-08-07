@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Звезда «в избранном». Форма скруглённая, под стать остальному набору
+     (Solar Bold Duotone): у плоской звезды Material углы острые и в этом
+     наборе она выглядит чужой. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M11.245 3.634a0.85 0.85 0 0 1 1.51 0l2.16 4.38a0.85 0.85 0 0 0 0.64 0.465l4.834 0.703a0.85 0.85 0 0 1 0.471 1.45l-3.497 3.409a0.85 0.85 0 0 0-0.245 0.752l0.826 4.814a0.85 0.85 0 0 1-1.234 0.896l-4.323-2.273a0.85 0.85 0 0 0-0.79 0l-4.324 2.273a0.85 0.85 0 0 1-1.233-0.896l0.826-4.814a0.85 0.85 0 0 0-0.245-0.752L3.128 10.63a0.85 0.85 0 0 1 0.472-1.45l4.834-0.702a0.85 0.85 0 0 0 0.64-0.466z" />
+</vector>

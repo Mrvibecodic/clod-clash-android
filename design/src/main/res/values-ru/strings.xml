@@ -374,8 +374,8 @@
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
     <string name="clod_renew">Продлить</string>
     <string name="clod_topup">Докупить трафик</string>
-    <string name="clod_servers_offline">Список из файла подписки. Подключитесь, чтобы измерить задержки и выбрать сервер.</string>
-    <string name="clod_select_offline">Сначала подключитесь, потом выбирайте сервер.</string>
+    <string name="clod_servers_offline">Без подключения: задержки меряются напрямую, а выбранный сервер применится, когда подключитесь.</string>
+    <string name="clod_select_offline">Запомнили. Применится при подключении.</string>
     <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>
     <string name="clod_group_all">Все</string>
     <string name="clod_group_none">Без группы</string>
@@ -419,5 +419,8 @@
         <item quantity="many">%d узлов</item>
         <item quantity="other">%d узла</item>
     </plurals>
+    <string name="clod_favorite_add">В избранное</string>
+    <string name="clod_favorite_remove">Убрать из избранного</string>
+    <string name="clod_servers_direct">Включён режим «Прямое соединение»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим переключается на главном экране.</string>
 
 </resources>

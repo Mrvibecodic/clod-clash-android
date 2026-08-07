@@ -8,18 +8,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 
 /**
@@ -105,7 +110,9 @@ fun ProxyRow(
     subtitle: String,
     delay: Int,
     selected: Boolean,
+    favorite: Boolean,
     onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val (flag, name) = splitFlag(title)
@@ -149,5 +156,34 @@ fun ProxyRow(
         }
         Spacer(Modifier.width(8.dp))
         PingBadge(delay)
+        // Звезда — отдельная зона нажатия справа от бейджа, как на ПК.
+        // Долгое нажатие по строке для этого не годится: на строке уже висит
+        // выбор узла, и человек, промахнувшись длительностью, переключил бы
+        // сервер вместо отметки.
+        // Не `IconButton`: он тянет за собой минимальный размер зоны нажатия
+        // в 48 dp и раздувает строку списка. Зона в 32 dp пальцем берётся,
+        // а высота строки остаётся та же, что была до появления звезды.
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(50))
+                .clickable(onClick = onToggleFavorite),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painter = painterResource(
+                    if (favorite) R.drawable.ic_star else R.drawable.ic_star_outline,
+                ),
+                contentDescription = stringResource(
+                    if (favorite) R.string.clod_favorite_remove else R.string.clod_favorite_add,
+                ),
+                tint = if (favorite) {
+                    ClodTheme.extraColors.statusConnecting
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }

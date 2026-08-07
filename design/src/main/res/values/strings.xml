@@ -409,8 +409,8 @@
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_renew">Renew</string>
     <string name="clod_topup">Add traffic</string>
-    <string name="clod_servers_offline">List from the subscription file. Connect to measure delays and pick a server.</string>
-    <string name="clod_select_offline">Connect first, then pick a server.</string>
+    <string name="clod_servers_offline">Not connected: delays are measured directly, and the server you pick is applied once you connect.</string>
+    <string name="clod_select_offline">Saved. It will be applied when you connect.</string>
     <string name="clod_select_not_selectable">The core picks the node in this group automatically.</string>
     <string name="clod_group_all">All</string>
     <string name="clod_group_none">No group</string>
@@ -452,5 +452,8 @@
         <item quantity="one">%d node</item>
         <item quantity="other">%d nodes</item>
     </plurals>
+    <string name="clod_favorite_add">Add to favorites</string>
+    <string name="clod_favorite_remove">Remove from favorites</string>
+    <string name="clod_servers_direct">Direct mode is on: traffic goes past the servers, so picking one changes nothing. Switch the mode on the home screen.</string>
 
 </resources>
