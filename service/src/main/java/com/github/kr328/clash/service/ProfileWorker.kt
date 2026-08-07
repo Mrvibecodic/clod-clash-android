@@ -16,6 +16,7 @@ import com.github.kr328.clash.common.id.UndefinedIds
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.service.data.ImportedDao
+import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import kotlinx.coroutines.*
@@ -82,16 +83,21 @@ class ProfileWorker : BaseService() {
     private suspend fun run(uuid: UUID) {
         val imported = ImportedDao().queryByUUID(uuid) ?: return
 
+        // В уведомлениях — то же название, что человек видит в списке подписок:
+        // название от панели, а если его нет — имя из базы.
+        val name = displayProfileName(imported.uuid, imported.name)
+
         try {
-            processing(imported.name) {
+            processing(name) {
                 ProfileProcessor.update(this, imported.uuid, null)
             }
 
-            completed(imported.uuid, imported.name)
+            // Название читаем заново: обновление могло принести новое.
+            completed(imported.uuid, displayProfileName(imported.uuid, imported.name))
 
             ProfileReceiver.scheduleNext(this, imported)
         } catch (e: Exception) {
-            failed(imported.uuid, imported.name, e.message ?: "Unknown")
+            failed(imported.uuid, name, e.message ?: "Unknown")
         }
     }
 

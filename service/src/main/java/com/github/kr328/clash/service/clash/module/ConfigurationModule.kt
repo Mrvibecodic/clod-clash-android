@@ -8,6 +8,7 @@ import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendProfileLoaded
 import kotlinx.coroutines.channels.Channel
@@ -65,7 +66,12 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
 
                 SelectionDao().removeSelections(active.uuid, remove)
 
-                StatusProvider.currentProfile = active.name
+                // Это значение уезжает в шторку и в тайл быстрых настроек.
+                // Берём название от панели: в базе у подписки, добавленной
+                // по ссылке, лежит «Новый профиль» — название приходит
+                // заголовком уже потом и в базу не переносится.
+                StatusProvider.currentProfile =
+                    service.displayProfileName(active.uuid, active.name)
 
                 service.sendProfileLoaded(current)
 
