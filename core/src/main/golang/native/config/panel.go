@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/url"
 	"os"
 	P "path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -21,14 +23,24 @@ import (
 type PanelInfo struct {
 	// Заголовки ответа панели.
 	Title       string `json:"title,omitempty"`
+	LogoURL     string `json:"logoUrl,omitempty"`
 	Announce    string `json:"announce,omitempty"`
 	AnnounceURL string `json:"announceUrl,omitempty"`
 	SupportURL  string `json:"supportUrl,omitempty"`
 	HomeURL     string `json:"homeUrl,omitempty"`
-	RenewURL    string `json:"renewUrl,omitempty"`
-	TopupURL    string `json:"topupUrl,omitempty"`
+	PortalURL   string `json:"portalUrl,omitempty"`
 	Promo       string `json:"promo,omitempty"`
 	PromoURL    string `json:"promoUrl,omitempty"`
+
+	// Имя файла с логотипом рядом с `config.yaml`, если его удалось скачать.
+	// Держим именно имя, а не путь: каталог профиля приложение и так знает,
+	// а путь пережил бы переезд каталога только на бумаге.
+	LogoFile string `json:"logoFile,omitempty"`
+
+	// Текст провайдера для диалогов устройства (`clod-hwid-limit`).
+	// Отдельный заголовок, а не `announce`: объявление на главной видят все,
+	// а это объяснение адресовано одному заблокированному устройству.
+	HwidLimitMessage string `json:"hwidLimitMessage,omitempty"`
 
 	// Состояние устройства по ответу панели.
 	//
@@ -108,14 +120,18 @@ func applyHeaders(info *PanelInfo, header map[string][]string) {
 	}
 
 	info.Title = firstNonEmpty(headerValue(header, "profile-title"), info.Title)
+	info.LogoURL = firstNonEmpty(httpsURL(headerValue(header, "profile-logo")), info.LogoURL)
 	info.Announce = firstNonEmpty(truncate(headerValue(header, "announce"), announceMaxChars), info.Announce)
-	info.AnnounceURL = firstNonEmpty(headerValue(header, "announce-url"), info.AnnounceURL)
-	info.SupportURL = firstNonEmpty(headerValue(header, "support-url"), info.SupportURL)
-	info.HomeURL = firstNonEmpty(headerValue(header, "profile-web-page-url"), info.HomeURL)
-	info.RenewURL = firstNonEmpty(headerValue(header, "clod-renew-url"), info.RenewURL)
-	info.TopupURL = firstNonEmpty(headerValue(header, "clod-topup-url"), info.TopupURL)
+	info.AnnounceURL = firstNonEmpty(httpsURL(headerValue(header, "announce-url")), info.AnnounceURL)
+	info.SupportURL = firstNonEmpty(contactURL(headerValue(header, "support-url")), info.SupportURL)
+	info.HomeURL = firstNonEmpty(httpsURL(headerValue(header, "profile-web-page-url")), info.HomeURL)
+	info.PortalURL = firstNonEmpty(httpsURL(headerValue(header, "clod-portal-url")), info.PortalURL)
 	info.Promo = firstNonEmpty(truncate(headerValue(header, "clod-promo"), announceMaxChars), info.Promo)
-	info.PromoURL = firstNonEmpty(headerValue(header, "clod-promo-url"), info.PromoURL)
+	info.PromoURL = firstNonEmpty(httpsURL(headerValue(header, "clod-promo-url")), info.PromoURL)
+	info.HwidLimitMessage = firstNonEmpty(
+		truncate(headerValue(header, "clod-hwid-limit"), announceMaxChars),
+		info.HwidLimitMessage,
+	)
 
 	// Оба поля перезаписываются безусловно, а не «если пришло»: это состояние
 	// последнего ответа, а не накопленное знание. Панель перестала слать
@@ -169,14 +185,25 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 }
 
 // headerValue ищет заголовок по суффиксу имени и разбирает `base64:`.
+//
+// Ключи перебираются по алфавиту, а не в порядке обхода map: если панель
+// прислала и `announce`, и `x-amz-meta-announce`, победитель должен быть один
+// и тот же от запуска к запуску, иначе баннер меняется сам по себе.
 func headerValue(header map[string][]string, name string) string {
-	for key, values := range header {
+	keys := make([]string, 0, len(header))
+	for key := range header {
+		keys = append(keys, key)
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
 		lower := strings.ToLower(key)
 		if lower != name && !strings.HasSuffix(lower, "-"+name) {
 			continue
 		}
 
-		for _, value := range values {
+		for _, value := range header[key] {
 			if decoded := decodeHeaderValue(value); decoded != "" {
 				return decoded
 			}
@@ -184,6 +211,51 @@ func headerValue(header map[string][]string, name string) string {
 	}
 
 	return ""
+}
+
+// httpsURL пропускает только `https://` с непустым хостом.
+//
+// Значение уходит прямо в `Intent(ACTION_VIEW)`, то есть открывается одним
+// нажатием из содержимого, которым панель распоряжается целиком. `http://` —
+// это и понижение, и признак кривой настройки; `javascript:`, `file:`,
+// `intent:` и прочее не должны доезжать до системы вообще.
+func httpsURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return ""
+	}
+
+	return value
+}
+
+// contactURL — то же, плюс схемы, которыми законно пользуется поддержка.
+func contactURL(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return ""
+	}
+
+	switch parsed.Scheme {
+	case "https":
+		if parsed.Host == "" {
+			return ""
+		}
+	case "tg", "mailto":
+	default:
+		return ""
+	}
+
+	return value
 }
 
 func decodeHeaderValue(raw string) string {
@@ -209,7 +281,9 @@ func decodeHeaderValue(raw string) string {
 		}
 	}
 
-	return value
+	// Значение объявило себя base64 и им не оказалось: считаем, что заголовка
+	// не было. Литерал `base64:…` в баннере хуже пустого места.
+	return ""
 }
 
 func firstNonEmpty(values ...string) string {

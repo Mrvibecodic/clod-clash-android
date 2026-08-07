@@ -218,6 +218,10 @@ func FetchAndValid(
 		// а разбор конфига может и не дойти до конца.
 		info := readPanelInfo(path)
 		applyHeaders(&info, header.Raw)
+		// Логотип провайдера кладём рядом с конфигом сразу же. Тянуть его с
+		// чужого хоста на каждую отрисовку экрана значило бы отдавать этому
+		// хосту адрес человека и мигать пустотой на холодном старте и офлайн.
+		info.LogoFile = fetchLogo(path, info.LogoURL)
 		writePanelInfo(path, info)
 
 		// Панель отказалась выдать конфигурацию этому устройству — значит
@@ -331,8 +335,8 @@ func FetchAndValid(
 // Ошибки отказа панели по устройству. Разбираются на стороне Kotlin
 // и превращаются в человеческий текст — переводов в ядре нет.
 var (
-	ErrHwidLimitReached = errors.New("clod-hwid-limit")
-	ErrHwidNotSupported = errors.New("clod-hwid-not-supported")
+	ErrHwidLimitReached = errors.New("clod-device-limit")
+	ErrHwidNotSupported = errors.New("clod-device-not-identified")
 )
 
 func deviceRefused(info PanelInfo) error {

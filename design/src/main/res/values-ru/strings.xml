@@ -372,8 +372,6 @@
     <string name="clod_settings_meta_subtitle">Sniffer, источники geodata, TLS</string>
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
-    <string name="clod_renew">Продлить</string>
-    <string name="clod_topup">Докупить трафик</string>
     <string name="clod_servers_offline">Без подключения: задержки меряются напрямую, а выбранный сервер применится, когда подключитесь.</string>
     <string name="clod_select_offline">Запомнили. Применится при подключении.</string>
     <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>
@@ -445,11 +443,7 @@
     <string name="import_asn_file">Загрузить файл ASN</string>
     <string name="clod_hwid_title">Опознавать это устройство</string>
     <string name="clod_hwid_summary">Панели, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
-    <string name="clod_hwid_limit">Лимит устройств исчерпан</string>
-    <string name="clod_hwid_limit_message">Панель разрешает устройств: %1$d, и это — сверх лимита. Удалите старое устройство в личном кабинете или напишите в поддержку.</string>
-    <string name="clod_hwid_limit_message_no_count">Это устройство сверх лимита панели. Удалите старое устройство в личном кабинете или напишите в поддержку.</string>
-    <string name="clod_hwid_not_supported">Панель ждёт идентификатор устройства</string>
-    <string name="clod_hwid_not_supported_message">Включите «Опознавать это устройство» в настройках приложения, иначе панель не отдаст конфигурацию.</string>
+    <string name="clod_portal">Личный кабинет</string>
     <string name="clod_support">Поддержка</string>
     <string name="clod_no_servers_device_title">Превышен лимит устройств</string>
     <string name="clod_no_servers_device">Подписку используют слишком много устройств. Отключите лишнее в личном кабинете или свяжитесь с поддержкой.</string>
@@ -464,8 +458,6 @@
     <string name="clod_no_servers_traffic_date">Трафик израсходован. Обновится %1$s — или докупите сейчас.</string>
     <string name="clod_no_servers_provider_title">Серверы недоступны</string>
     <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
-    <string name="clod_no_servers_state">Подключаться не к чему</string>
-    <string name="clod_no_servers_state_sub">Серверы не выданы</string>
     <string name="clod_open_settings">Настройки</string>
 
 </resources>

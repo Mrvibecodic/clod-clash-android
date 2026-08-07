@@ -32,6 +32,26 @@ fun Context.readPanelInfo(uuid: UUID): PanelInfo? {
 }
 
 /**
+ * Абсолютный путь к скачанному логотипу провайдера или `null`.
+ *
+ * Картинку кладёт ядро рядом с `config.yaml` при обновлении подписки
+ * (`native/config/logo.go`), в `panel.json` попадает только имя файла:
+ * каталог профиля приложение и так знает, а путь пережил бы переезд каталога
+ * только на бумаге.
+ */
+fun Context.profileLogoFile(uuid: UUID, panel: PanelInfo?): String? {
+    val name = panel?.logoFile?.takeIf { it.isNotBlank() } ?: return null
+
+    // Имя приходит из файла, который писало ядро, но проверить его дешевле,
+    // чем однажды прочитать по нему что-нибудь из соседнего каталога.
+    if (name.contains('/') || name.contains('\\') || name.contains("..")) return null
+
+    val file = importedDir.resolve(uuid.toString()).resolve(name)
+
+    return file.takeIf { it.isFile }?.absolutePath
+}
+
+/**
  * Название подписки в том виде, в каком его надо показывать человеку.
  *
  * Панель присылает его заголовком `profile-title`, и это то же название,

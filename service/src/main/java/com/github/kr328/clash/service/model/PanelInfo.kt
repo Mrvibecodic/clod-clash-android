@@ -17,15 +17,22 @@ import kotlinx.serialization.Serializable
 data class PanelInfo(
     /** Название подписки от панели (`profile-title`). */
     val title: String = "",
+    /** `profile-logo` — адрес логотипа провайдера, уже проверенный на https. */
+    val logoUrl: String = "",
+    /**
+     * Имя файла с логотипом в каталоге профиля, если его удалось скачать.
+     * Ядро кладёт картинку рядом с `config.yaml` при обновлении подписки:
+     * так она не мигает на холодном старте, работает офлайн и не отдаёт
+     * чужому хосту адрес человека на каждой отрисовке экрана.
+     */
+    val logoFile: String = "",
     /** Объявление провайдера (`announce`) и ссылка «подробнее» к нему. */
     val announce: String = "",
     val announceUrl: String = "",
     val supportUrl: String = "",
     val homeUrl: String = "",
-    /** `clod-renew-url` — кнопка «Продлить»; пусто означает «кнопки нет». */
-    val renewUrl: String = "",
-    /** `clod-topup-url` — кнопка «Докупить трафик». */
-    val topupUrl: String = "",
+    /** `clod-portal-url` — кнопка «Личный кабинет»; пусто означает «кнопки нет». */
+    val portalUrl: String = "",
     val promo: String = "",
     val promoUrl: String = "",
     /**
@@ -34,6 +41,14 @@ data class PanelInfo(
      * (`native/config/panel.go`).
      */
     val hwidState: String = "",
+
+    /**
+     * `clod-hwid-limit` — текст провайдера для карточек «лимит устройств»
+     * и «устройство не опознано». Необязательный и отдельный от `announce`:
+     * объявление на главной видят все, а это объяснение адресовано одному
+     * заблокированному устройству.
+     */
+    val hwidLimitMessage: String = "",
 
     /** Сколько устройств разрешено подпиской; 0 — не сказано. */
     val hwidMaxDevices: Int = 0,
@@ -56,7 +71,7 @@ data class PanelInfo(
 ) {
     val isEmpty: Boolean
         get() = title.isBlank() && announce.isBlank() && promo.isBlank() &&
-            renewUrl.isBlank() && topupUrl.isBlank() && groups.isEmpty()
+            portalUrl.isBlank() && logoFile.isBlank() && groups.isEmpty()
 }
 
 @Serializable

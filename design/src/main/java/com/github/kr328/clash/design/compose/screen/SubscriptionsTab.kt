@@ -449,27 +449,29 @@ fun ActiveSubscriptionCard(
                 )
             }
 
-            // Кнопки повторяются здесь только в критическом состоянии: в спокойной
-            // сессии они уже показаны баннером выше, и дублировать их незачем.
+            // clod: платёжных кнопок нет — единственная ссылка провайдера,
+            // ведущая к оплате, это личный кабинет. Здесь она повторяется
+            // только в критическом состоянии: в спокойной сессии кабинет и
+            // поддержка уже показаны баннером на главной.
             if (critical && panel != null &&
-                (panel.renewUrl.isNotBlank() || panel.topupUrl.isNotBlank())
+                (panel.portalUrl.isNotBlank() || panel.supportUrl.isNotBlank())
             ) {
                 Spacer(Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (panel.renewUrl.isNotBlank()) {
+                    if (panel.portalUrl.isNotBlank()) {
                         Button(
-                            onClick = { onAction(MainAction.OpenUrl(panel.renewUrl)) },
+                            onClick = { onAction(MainAction.OpenUrl(panel.portalUrl)) },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(stringResource(R.string.clod_renew))
+                            Text(stringResource(R.string.clod_portal))
                         }
                     }
-                    if (panel.topupUrl.isNotBlank()) {
+                    if (panel.supportUrl.isNotBlank()) {
                         OutlinedButton(
-                            onClick = { onAction(MainAction.OpenUrl(panel.topupUrl)) },
+                            onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(stringResource(R.string.clod_topup))
+                            Text(stringResource(R.string.clod_support))
                         }
                     }
                 }

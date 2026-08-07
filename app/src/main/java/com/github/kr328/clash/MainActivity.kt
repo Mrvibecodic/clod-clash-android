@@ -29,6 +29,7 @@ import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.patchSubscriptionGroup
+import com.github.kr328.clash.service.util.profileLogoFile
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
 import com.github.kr328.clash.design.compose.screen.MainTab
@@ -327,7 +328,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         val profiles = withProfile { queryAll() }
         val groups = querySubscriptionGroups()
         val items = profiles.map {
-            SubscriptionItem(it, queryPanelInfo(it.uuid), groups[it.uuid])
+            val panel = queryPanelInfo(it.uuid)
+
+            SubscriptionItem(it, panel, groups[it.uuid], profileLogoFile(it.uuid, panel))
         }
 
         setProfiles(items)

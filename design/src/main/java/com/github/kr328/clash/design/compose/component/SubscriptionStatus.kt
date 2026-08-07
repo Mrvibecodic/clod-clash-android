@@ -63,6 +63,10 @@ enum class NoServersReason {
     Provider,
 }
 
+/** Причина про устройство, а не про подписку: только к ним относится `clod-hwid-limit`. */
+private val NoServersReason.isDeviceRelated: Boolean
+    get() = this == NoServersReason.DeviceLimit || this == NoServersReason.DeviceNotIdentified
+
 private const val HWID_LIMIT_REACHED = "limit"
 private const val HWID_NOT_SUPPORTED = "not-supported"
 
@@ -94,10 +98,9 @@ fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.cur
 /**
  * Карточка «подключаться не к чему»: что случилось и что с этим делать.
  *
- * Кнопки берутся из того, что прислал владелец подписки: «Продлить» —
- * из `clod-renew-url`, «Докупить» — из `clod-topup-url`, «Поддержка» —
- * из `support-url`. Нет адреса — нет кнопки: кнопка, ведущая в никуда,
- * хуже её отсутствия.
+ * Платёжных кнопок здесь нет — их нет во всём приложении. Остаются «Поддержка»
+ * (`support-url`) и, для неопознанного устройства, переход в настройки. Нет
+ * адреса — нет кнопки: кнопка, ведущая в никуда, хуже её отсутствия.
  */
 @Composable
 fun NoServersCard(
@@ -142,6 +145,22 @@ fun NoServersCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
+            // clod: слово провайдера про заблокированное устройство —
+            // из `clod-hwid-limit`. Отдельный заголовок, а не `announce`:
+            // объявление на главной видят все, а здесь нужно объяснение
+            // одному человеку, у которого не обновляется подписка.
+            val providerNote = panel?.hwidLimitMessage.orEmpty()
+
+            if (providerNote.isNotBlank() && reason.isDeviceRelated) {
+                Spacer(Modifier.height(6.dp))
+
+                Text(
+                    text = providerNote,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             Actions(
                 reason = reason,
                 panel = panel,
@@ -159,17 +178,13 @@ private fun Actions(
     onOpenUrl: (String) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    val renew = panel?.renewUrl.orEmpty()
-    val topup = panel?.topupUrl.orEmpty()
     val support = panel?.supportUrl.orEmpty()
 
-    // Главное действие своё у каждой причины: продлить истёкшую, докупить
-    // кончившийся трафик, включить опознание. Там, где сделать нечего,
-    // главным становится обращение в поддержку.
+    // Единственное действие, которое приложение может предложить само, —
+    // включить опознание устройства. Всё остальное решается на стороне
+    // провайдера, поэтому главной кнопкой становится обращение в поддержку.
     val primary: Pair<Int, () -> Unit>? = when {
         reason == NoServersReason.DeviceNotIdentified -> R.string.clod_open_settings to onOpenSettings
-        reason == NoServersReason.Expired && renew.isNotBlank() -> R.string.clod_renew to { onOpenUrl(renew) }
-        reason == NoServersReason.Traffic && topup.isNotBlank() -> R.string.clod_topup to { onOpenUrl(topup) }
         support.isNotBlank() -> R.string.clod_support to { onOpenUrl(support) }
         else -> null
     }

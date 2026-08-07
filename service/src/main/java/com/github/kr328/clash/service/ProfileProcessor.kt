@@ -180,8 +180,11 @@ object ProfileProcessor {
             await()
         } catch (e: Exception) {
             val message = when (e.message) {
-                "clod-hwid-limit" -> context.getString(R.string.clod_fetch_hwid_limit)
-                "clod-hwid-not-supported" -> context.getString(R.string.clod_fetch_hwid_not_supported)
+                // Маркеры ошибок ядра, а не имена заголовков: имя
+                // `clod-hwid-limit` теперь занято настоящим заголовком
+                // с текстом провайдера, и путать их нельзя.
+                "clod-device-limit" -> context.getString(R.string.clod_fetch_hwid_limit)
+                "clod-device-not-identified" -> context.getString(R.string.clod_fetch_hwid_not_supported)
                 else -> throw e
             }
 
