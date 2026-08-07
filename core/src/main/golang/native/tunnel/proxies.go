@@ -8,7 +8,6 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	C "github.com/metacubex/mihomo/constant"
-	"github.com/metacubex/mihomo/constant/provider"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel"
 )
@@ -145,8 +144,7 @@ func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.
 		return nil
 	}
 
-	proxies := convertProxies(g.Proxies(), uiSubtitlePattern)
-	// 	proxies := collectProviders(g.Providers(), uiSubtitlePattern)
+	proxies := convertProxies(g.Proxies(), uiSubtitlePattern, GroupTestURL(g))
 
 	switch sortMode {
 	case Title:
@@ -212,7 +210,16 @@ func PatchSelector(selector, name string) bool {
 	return true
 }
 
-func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Proxy {
+// convertProxies переводит узлы ядра в модель для интерфейса.
+//
+// `groupTestURL` — адрес, по которому эту группу проверяют. Задержка у узла
+// хранится по адресу пробы (`Proxy.extra` в mihomo), и узел, входящий сразу
+// в две группы с разными адресами, держит две записи. Раньше здесь бралась
+// первая попавшаяся запись перебором map — а порядок обхода map в Go случайный,
+// то есть на одном и том же экране задержка бралась то от одной группы,
+// то от другой. Берём адрес своей группы, и только если по нему пробы
+// ещё не было, соглашаемся на любую известную.
+func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
 	for _, p := range proxies {
@@ -230,13 +237,31 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Pro
 				}
 			}
 		}
-		testURL := "https://www.gstatic.com/generate_204"
-		for k := range p.ExtraDelayHistories() {
-			if len(k) > 0 {
-				testURL = k
-				break
+
+		testURL := groupTestURL
+		if testURL == "" {
+			testURL = C.DefaultTestURL
+		}
+
+		histories := p.ExtraDelayHistories()
+		if _, ok := histories[testURL]; !ok {
+			// Порядок обхода map в Go случайный, поэтому берём не первый
+			// попавшийся адрес, а наименьший: иначе на соседних перерисовках
+			// у одного узла показывалась бы задержка то от одной группы,
+			// то от другой.
+			fallback := ""
+
+			for k := range histories {
+				if len(k) > 0 && (fallback == "" || k < fallback) {
+					fallback = k
+				}
+			}
+
+			if fallback != "" {
+				testURL = fallback
 			}
 		}
+
 		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
 		result = append(result, &Proxy{
@@ -248,48 +273,5 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp) []*Pro
 			IsGroup:  isGroup,
 		})
 	}
-	return result
-}
-
-func collectProviders(providers []provider.ProxyProvider, uiSubtitlePattern *regexp2.Regexp) []*Proxy {
-	result := make([]*Proxy, 0, 128)
-
-	for _, p := range providers {
-		for _, px := range p.Proxies() {
-			name := px.Name()
-			title := name
-			subtitle := px.Type().String()
-
-			if uiSubtitlePattern != nil {
-				if _, ok := px.Adapter().(outboundgroup.ProxyGroup); !ok {
-					runes := []rune(name)
-					match, err := uiSubtitlePattern.FindRunesMatch(runes)
-					if err == nil && match != nil {
-						title = string(runes[:match.Index]) + string(runes[match.Index+match.Length:])
-						subtitle = string(runes[match.Index : match.Index+match.Length])
-					}
-				}
-			}
-
-			testURL := "https://www.gstatic.com/generate_204"
-			for k := range px.ExtraDelayHistories() {
-				if len(k) > 0 {
-					testURL = k
-					break
-				}
-			}
-			_, isGroup := px.Adapter().(outboundgroup.ProxyGroup)
-
-			result = append(result, &Proxy{
-				Name:     name,
-				Title:    strings.TrimSpace(title),
-				Subtitle: strings.TrimSpace(subtitle),
-				Type:     px.Type().String(),
-				Delay:    int(px.LastDelayForTestUrl(testURL)),
-				IsGroup:  isGroup,
-			})
-		}
-	}
-
 	return result
 }

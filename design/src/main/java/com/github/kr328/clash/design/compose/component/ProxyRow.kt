@@ -51,15 +51,30 @@ fun splitFlag(title: String): Pair<String?, String> {
 }
 
 /**
+ * Задержка, которой нет.
+ *
+ * Ядро отдаёт `0xffff` (65535) и для узла, который ещё не проверяли, и для
+ * того, который не ответил: `LastDelayForTestUrl` в mihomo возвращает
+ * максимум `uint16`. В модели значение оставлено как есть — на нём держится
+ * сортировка «сначала быстрые», с нулём непроверенные уехали бы в начало
+ * списка. Разбирается оно здесь.
+ *
+ * Ноль приходит с другой стороны: пока туннель не поднят, список собирается
+ * из файла подписки, и задержки там нет вовсе.
+ */
+private const val DELAY_UNKNOWN = 0xffff
+
+/**
  * Бейдж задержки. Пороги те же, что в макете: до 100 мс зелёный, до 200 —
- * янтарный, дальше красный. Ноль означает «не проверялся или недоступен» —
- * показываем прочерк, а не «0 ms», иначе узел выглядит самым быстрым.
+ * янтарный, дальше красный. Нет данных — прочерк: и «0 ms», и «65535 ms»
+ * человек читает как измеренное значение.
  */
 @Composable
 fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
+    val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
     val extra = ClodTheme.extraColors
     val color = when {
-        delay <= 0 -> extra.statusStopped
+        unknown -> extra.statusStopped
         delay < 100 -> extra.statusConnected
         delay < 200 -> extra.statusConnecting
         else -> MaterialTheme.colorScheme.error
@@ -71,7 +86,7 @@ fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
-            text = if (delay <= 0) "—" else "$delay ms",
+            text = if (unknown) "—" else "$delay ms",
             color = color,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
