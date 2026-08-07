@@ -23,7 +23,6 @@ dependencies {
     implementation(libs.androidx.coordinator)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.fragment)
-    implementation(libs.androidx.viewpager)
     implementation(libs.google.material)
 
     // Jetpack Compose. Живёт рядом с XML-слоем: экраны переезжают по одному,

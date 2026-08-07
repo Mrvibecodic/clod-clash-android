@@ -3,15 +3,18 @@ agp = "8.8.0"
 kotlin = "2.1.0"
 ksp = "2.1.0-1.0.29"
 golang = "1.0.4"
-coroutine = "1.10.1"
+coroutine = "1.10.2"
 coreKtx = "1.16.0"
 activity = "1.10.1"
 fragment = "1.8.9"
 appcompat = "1.7.1"
-coordinator = "1.2.0"
+coordinator = "1.3.0"
 recyclerview = "1.4.0"
-viewpager = "1.0.0"
-material = "1.6.1"
+# Material Components (XML-слой на Theme.MaterialComponents.*). ПОТОЛОК — 1.12.0:
+# с 1.13.0 библиотека собирается с non-transitive R и перестаёт переэкспортировать
+# атрибуты appcompat, а design/adapter/PopupListAdapter.kt читает через неё
+# colorPrimary и colorControlNormal.
+material = "1.12.0"
 serialization = "1.3.3"
 kaidl = "1.15"
 room = "2.4.2"
@@ -53,7 +56,6 @@ androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "frag
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-coordinator = { module = "androidx.coordinatorlayout:coordinatorlayout", version.ref = "coordinator" }
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
-androidx-viewpager = { module = "androidx.viewpager2:viewpager2", version.ref = "viewpager" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
