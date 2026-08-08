@@ -30,6 +30,7 @@ import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
+import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.profileLogoFile
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
@@ -128,6 +129,24 @@ class MainActivity : BaseActivity<MainDesign>() {
                             offlineDelays = emptyMap()
 
                             design.fetch()
+
+                            // Напоминания о сроке и трафике подписки.
+                            // Обновления расписаны будильником, но интервал
+                            // можно поставить в «вручную» — тогда будильника
+                            // нет вовсе, а подписка кончается всё равно.
+                            // Открытие экрана — второй и последний повод
+                            // проверить пороги.
+                            launch {
+                                try {
+                                    withProfile { queryActive() }?.let {
+                                        reportSubscriptionAlerts(it.uuid)
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    Log.w("Subscription alerts: $e", e)
+                                }
+                            }
                         }
                         Event.ServiceRecreated,
                         Event.ClashStart,

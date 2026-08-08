@@ -443,6 +443,8 @@
     <string name="import_asn_file">Загрузить файл ASN</string>
     <string name="clod_hwid_title">Опознавать это устройство</string>
     <string name="clod_hwid_summary">Панели, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
+    <string name="clod_sub_notify_title">Напоминания о подписке</string>
+    <string name="clod_sub_notify_summary">Предупреждать, когда подписка заканчивается или трафик на исходе. Пороги задаёт ваш сервис.</string>
     <string name="clod_portal">Личный кабинет</string>
     <string name="clod_support">Поддержка</string>
     <string name="clod_no_servers_device_title">Превышен лимит устройств</string>

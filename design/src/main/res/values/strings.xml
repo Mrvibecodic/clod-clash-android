@@ -457,6 +457,8 @@
     <string name="clod_key_value_per_line">One «key = value» pair per line</string>
     <string name="clod_hwid_title">Identify this device</string>
     <string name="clod_hwid_summary">Panels that limit the number of devices count them by this. The id is derived from a device value and hashed — the raw value never leaves the phone.</string>
+    <string name="clod_sub_notify_title">Subscription reminders</string>
+    <string name="clod_sub_notify_summary">Notify when the subscription is about to end or the traffic runs low. Thresholds are set by your provider.</string>
     <string name="clod_portal">Customer portal</string>
     <string name="clod_support">Support</string>
     <string name="clod_no_servers_device_title">Device limit reached</string>

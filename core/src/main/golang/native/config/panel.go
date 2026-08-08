@@ -57,6 +57,16 @@ type PanelInfo struct {
 	// месяца, и человеку важно знать когда.
 	RefillDate int64 `json:"refillDate,omitempty"`
 
+	// Пороги напоминаний: за сколько дней до конца подписки (`notify-expire-days`)
+	// и на каком проценте израсходованного трафика (`notify-traffic-percent`).
+	//
+	// БЕЗ `omitempty` намеренно: `null` и `[]` здесь значат РАЗНОЕ. `null` —
+	// панель про напоминания не сказала ничего, и клиент берёт свои умолчания.
+	// Пустой список — панель напоминания выключила, и молчать надо совсем.
+	// С `omitempty` оба случая записались бы одинаково.
+	NotifyExpireDays     []int `json:"notifyExpireDays"`
+	NotifyTrafficPercent []int `json:"notifyTrafficPercent"`
+
 	// В конфигурации не осталось ни одного настоящего сервера: пришли одни
 	// узлы-обманки. Это не ошибка загрузки, а состояние, о котором экрану
 	// надо рассказать словами.
@@ -139,6 +149,16 @@ func applyHeaders(info *PanelInfo, header map[string][]string) {
 	info.HwidState = hwidState(header)
 	info.HwidMaxDevices, _ = parseUint(headerValue(header, "x-hwid-max-devices"))
 	info.RefillDate = parseRefillDate(headerValue(header, "subscription-refill-date"))
+
+	// Тоже безусловно: пороги — состояние последнего ответа. Панель перестала
+	// их слать — значит вернулись умолчания, а не «оставим прошлые».
+	info.NotifyExpireDays = thresholds(headerValue(header, "notify-expire-days"), 1, 365)
+	if info.NotifyExpireDays == nil && boolHeader(header, "notification-subs-expire") {
+		// Совместимость с Happ: голый тумблер без списка включает умолчания.
+		info.NotifyExpireDays = append([]int(nil), defaultNotifyExpireDays...)
+	}
+
+	info.NotifyTrafficPercent = thresholds(headerValue(header, "notify-traffic-percent"), 1, 100)
 }
 
 // applyGroups достаёт из разобранного конфига состав групп.
@@ -334,6 +354,54 @@ func hwidState(header map[string][]string) string {
 	}
 
 	return HwidUnknown
+}
+
+// Умолчания напоминаний, если панель прислала только тумблер `notification-subs-expire`.
+var defaultNotifyExpireDays = []int{1, 3, 7}
+
+// Сколько порогов панели позволено задать. Ограничение от чужой ошибки:
+// список на тысячу значений — это тысяча уведомлений, а не забота.
+const maxThresholds = 10
+
+// thresholds разбирает список порогов вида `7,3,1`.
+//
+// Возвращает nil, если панель ничего внятного не сказала (клиент возьмёт свои
+// умолчания), и ПУСТОЙ список на `off`/`false` — это осознанное «напоминаний
+// не надо», и его нельзя путать с молчанием.
+func thresholds(raw string, lo, hi int) []int {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil
+	}
+
+	if strings.EqualFold(trimmed, "off") || strings.EqualFold(trimmed, "false") {
+		return []int{}
+	}
+
+	seen := make(map[int]bool)
+	values := make([]int, 0, maxThresholds)
+
+	for _, part := range strings.Split(trimmed, ",") {
+		value, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || value < lo || value > hi || seen[value] {
+			continue
+		}
+
+		seen[value] = true
+		values = append(values, value)
+	}
+
+	if len(values) == 0 {
+		return nil
+	}
+
+	sort.Ints(values)
+
+	if len(values) > maxThresholds {
+		values = values[:maxThresholds]
+	}
+
+	return values
 }
 
 func boolHeader(header map[string][]string, name string) bool {

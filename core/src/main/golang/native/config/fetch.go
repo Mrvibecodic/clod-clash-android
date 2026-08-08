@@ -169,7 +169,16 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 
 	if userinfo != "" {
 		info := provider.NewSubscriptionInfo(userinfo)
-		expire := info.Expire * 1000
+
+		// `subscription-userinfo` требует секунды, но панели встречаются и с
+		// миллисекундами. Умножение вслепую давало бы срок в пятидесятитысячном
+		// году: карточка подписки показывала бы бессмыслицу, а напоминания
+		// о конце срока молчали бы вечно. Граница 10^12 — это 2001 год
+		// в секундах и 1970-й в миллисекундах, ошибиться нечем.
+		expire := info.Expire
+		if expire > 0 && expire < 1_000_000_000_000 {
+			expire *= 1000
+		}
 		status.SubUpload = &info.Upload
 		status.SubDownload = &info.Download
 		status.SubTotal = &info.Total

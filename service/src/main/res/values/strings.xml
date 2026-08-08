@@ -21,4 +21,12 @@
     <string name="clod_fetch_hwid_limit">Device limit reached: the panel refused to hand out the configuration. The previous one is kept.</string>
     <string name="clod_fetch_hwid_not_supported">The panel expects a device id. Turn on «Identify this device» in app settings.</string>
 
+    <!-- clod: напоминания о сроке и трафике подписки -->
+    <string name="clod_alert_channel">Subscription reminders</string>
+    <string name="clod_alert_expired">Subscription has ended</string>
+    <string name="clod_alert_traffic">%d%% of traffic used</string>
+    <plurals name="clod_alert_expires_in">
+        <item quantity="one">%d day of subscription left</item>
+        <item quantity="other">%d days of subscription left</item>
+    </plurals>
 </resources>

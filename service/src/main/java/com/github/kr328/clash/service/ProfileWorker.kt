@@ -15,11 +15,14 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.id.UndefinedIds
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.data.ImportedDao
+import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import kotlinx.coroutines.*
+import kotlinx.coroutines.CancellationException
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -98,6 +101,18 @@ class ProfileWorker : BaseService() {
             ProfileReceiver.scheduleNext(this, imported)
         } catch (e: Exception) {
             failed(imported.uuid, name, e.message ?: "Unknown")
+        }
+
+        // Напоминания о сроке и трафике — и после неудачи тоже: срок считается
+        // по системным часам и не зависит от того, дошло ли обновление.
+        // Своей ошибкой напоминание обновление не роняет: оно тут не главное.
+        try {
+            reportSubscriptionAlerts(uuid)
+        } catch (e: CancellationException) {
+            // Службу останавливают — это не ошибка напоминаний.
+            throw e
+        } catch (e: Exception) {
+            Log.w("Subscription alerts of $uuid: $e", e)
         }
     }
 

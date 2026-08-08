@@ -42,6 +42,7 @@ class AppSettingsDesign(
             // не поменять, поэтому при работающем туннеле строка погашена.
             notificationEditable = !running,
             enableHwid = srvStore.enableHwid,
+            subNotifications = srvStore.enableSubNotifications,
         ),
     )
 
@@ -98,6 +99,11 @@ class AppSettingsDesign(
                 srvStore.enableHwid = action.enabled
 
                 state = state.copy(enableHwid = action.enabled)
+            }
+            is AppSettingsAction.SetSubNotifications -> {
+                srvStore.enableSubNotifications = action.enabled
+
+                state = state.copy(subNotifications = action.enabled)
             }
             is AppSettingsAction.SetDynamicNotification -> {
                 srvStore.dynamicNotification = action.enabled
