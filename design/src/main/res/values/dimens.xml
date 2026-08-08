@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Common -->
-
     <!-- Dialog -->
     <dimen name="dialog_padding">20dp</dimen>
     <dimen name="dialog_button_margin">5dp</dimen>
@@ -14,15 +12,9 @@
     <dimen name="toolbar_elevation">5dp</dimen>
     <dimen name="toolbar_image_action_padding">5dp</dimen>
 
-    <!--  Tab Layout  -->
-    <dimen name="tab_layout_height">48dp</dimen>
-    <dimen name="tab_layout_elevation">5dp</dimen>
-
     <!--  Bottom Sheet  -->
     <dimen name="bottom_sheet_background_padding_top">10dp</dimen>
     <dimen name="bottom_sheet_header_height">5dp</dimen>
-
-    <!-- Large Item -->
 
     <!--  Common Item  -->
     <dimen name="item_min_height">75dp</dimen>
@@ -32,38 +24,7 @@
     <dimen name="item_padding_vertical">16dp</dimen>
     <dimen name="item_text_margin">5dp</dimen>
 
-    <!-- Large Card -->
-
     <!-- Tips -->
     <dimen name="tips_icon_size">25dp</dimen>
     <dimen name="tips_icon_margin">20dp</dimen>
-
-    <!-- Preference -->
-
-    <!-- Main Design -->
-    <dimen name="main_card_margin_vertical">5dp</dimen>
-    <dimen name="main_label_margin_vertical">2dp</dimen>
-    <dimen name="main_padding_horizontal">30dp</dimen>
-    <dimen name="main_logo_size">50dp</dimen>
-    <dimen name="main_top_banner_height">90dp</dimen>
-
-    <!--  Proxy Design -->
-    <dimen name="proxy_layout_padding">3dp</dimen>
-    <dimen name="proxy_content_padding">15dp</dimen>
-    <dimen name="proxy_content_padding_grid3">12dp</dimen>
-    <dimen name="proxy_text_margin">10dp</dimen>
-    <dimen name="proxy_text_margin_grid3">5dp</dimen>
-    <dimen name="proxy_text_size">12sp</dimen>
-    <dimen name="proxy_text_size_grid3">11sp</dimen>
-    <dimen name="proxy_card_radius">5dp</dimen>
-    <dimen name="proxy_card_offset">0dp</dimen>
-
-    <!-- Properties Design -->
-    <dimen name="properties_element_margin_vertical">2.5dp</dimen>
-
-    <!-- About Design -->
-    <dimen name="about_icon_size">50dp</dimen>
-    <dimen name="about_text_margin">15dp</dimen>
-
-    <!-- Logcat Design -->
 </resources>

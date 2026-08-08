@@ -1,18 +1,13 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
-    <string name="stopped">Остановлен</string>
     <string name="tap_to_start">Нажмите для запуска</string>
     <string name="running">Запущен</string>
-    <string name="format_traffic_forwarded">%s перенаправлено</string>
 
     <string name="proxy">Прокси</string>
     <string name="direct_mode">Прямой режим</string>
     <string name="rule_mode">Режим правил</string>
     <string name="global_mode">Глобальный режим</string>
-    <string name="proxy_empty_tips">Нет групп для отображения</string>
 
     <string name="profiles">Профили</string>
-    <string name="not_selected">Не выбран</string>
-    <string name="format_profile_activated">%s активирован</string>
 
     <string name="logs">Логи</string>
     <string name="settings">Настройки</string>
@@ -23,14 +18,9 @@
 
     <string name="recently">Недавно</string>
 
-    <string name="format_minutes">%d мин.</string>
-    <string name="format_elements">%d элементов</string>
-
     <string name="format_minutes_ago">%d мин. назад</string>
     <string name="format_hours_ago">%d час. назад</string>
     <string name="format_days_ago">%d дн. назад</string>
-    <string name="format_months_ago">%d мес. назад</string>
-    <string name="format_years_ago">%d лет назад</string>
 
     <string name="create_profile">Создать профиль</string>
     <string name="file">Файл</string>
@@ -39,7 +29,6 @@
     <string name="import_from_url">Импорт из URL</string>
     <string name="external">Внешний</string>
     <string name="import_from_qr">Импорт из QR-кода</string>
-    <string name="format_type_unsaved">%s (не сохранён)</string>
 
     <string name="application_broken">Приложение сломано</string>
     <string name="application_crashed">Приложение упало</string>
@@ -50,7 +39,6 @@
     <string name="profile">Профиль</string>
     <string name="name">Название</string>
     <string name="profile_name">Название профиля</string>
-    <string name="profile_url">URL профиля</string>
     <string name="auto_update">Автообновление</string>
     <string name="auto_update_minutes">Автообновление (минут)</string>
 
@@ -60,7 +48,6 @@
     <string name="age_secret_key">Секретный ключ Age</string>
     <string name="age_secret_key_hint">AGE-SECRET-KEY-… (необязательно)</string>
     <string name="age_secret_key_error">Недопустимый формат. Ключ должен начинаться с AGE-SECRET-KEY-</string>
-    <string name="age_key_helper">Ключ Age</string>
     <string name="age_key_category">Ключ Age</string>
     <string name="age_key_generate_summary">Нажмите, чтобы сгенерировать</string>
     <string name="age_public_key">Открытый ключ Age</string>
@@ -75,7 +62,6 @@
     <string name="export">Экспорт</string>
     <string name="import_">Импорт</string>
     <string name="properties">Свойства</string>
-    <string name="duplicate">Создать копию</string>
     <string name="active_unsaved_tips">Профиль должен быть сохранён перед активацией</string>
 
     <string name="exit_without_save">Выйти без сохранения</string>
@@ -83,7 +69,6 @@
 
     <string name="raw_cn" translatable="false">cn</string>
     <string name="disabled">Отключен</string>
-    <string name="unavailable">Недоступен</string>
     <string name="empty_name">Пустое название</string>
     <string name="invalid_url">Неверный URL</string>
     <string name="loading">Загрузка</string>
@@ -95,13 +80,11 @@
 
     <string name="new_profile">Новый профиль</string>
 
-    <string name="delay">Задержка</string>
     <string name="sort">Сортировка</string>
     <string name="default_">По умолчанию</string>
 
     <string name="ok">OK</string>
     <string name="cancel">Отмена</string>
-    <string name="reset">Сброс</string>
 
     <string name="clash_logcat">Clash Logcat</string>
     <string name="history">История</string>
@@ -127,8 +110,6 @@
     <string name="bypass_private_network_summary">Игнорировать адреса частных сетей</string>
     <string name="dns_hijacking">Перехват DNS</string>
     <string name="dns_hijacking_summary">Обрабатывать все DNS запросы</string>
-    <string name="block_loopback">Заблокировать loopback</string>
-    <string name="block_loopback_summary">Заблокировать loopback-соединения</string>
     <string name="allow_bypass">Разрешить обход</string>
     <string name="allow_bypass_summary">Разрешить приложениям обходить VPN соединение</string>
     <string name="system_proxy">Системный прокси</string>
@@ -155,7 +136,6 @@
     <string name="ipv6">IPv6</string>
     <string name="hosts">Hosts</string>
     <string name="_new">Новый</string>
-    <string name="value">Значение</string>
 
     <string name="strategy">Стратегия</string>
     <string name="listen">Ожидать</string>
@@ -207,14 +187,8 @@
     <string name="clash_meta_for_android">Clod Clash</string>
 
     <string name="document">Документ</string>
-    <string name="feedback">Обратная связь</string>
     <string name="sources">Исходный код</string>
-    <string name="donate">Сделать пожертвование</string>
-    <string name="github_issues">Сообщения об ошибках на GitHub</string>
-    <string name="google_play">Google Play</string>
     <string name="clash_meta_core">Ядро Clash Meta</string>
-
-
 
     <string name="app">Приложение</string>
     <string name="service">Сервис</string>
@@ -234,12 +208,6 @@
 
     <string name="no_profile_selected">Профиль не выбран</string>
 
-    <string name="layout">Отображение</string>
-    <string name="single">Одиночное</string>
-    <string name="doubles">Двойное</string>
-    <string name="multiple">Множественное</string>
-    <string name="not_selectable">Not Selectable</string>
-
     <string name="providers">Провайдеры</string>
 
     <string name="files">Файлы</string>
@@ -251,12 +219,10 @@
 
     <string name="reset_override_settings">Сбросить переопределённые настройки</string>
     <string name="reset_override_settings_message">Все переопределённые настройки будут сброшены</string>
-    <string name="key">Ключ</string>
 
     <string name="use_built_in">Использовать встроенный</string>
     <string name="more">Ещё</string>
     <string name="save">Сохранить</string>
-    <string name="delay_test">Проверка задержки</string>
 
     <string name="format_provider_type">%1$s(%2$s)</string>
     <string name="rule">Правило</string>
@@ -270,11 +236,6 @@
     <string name="invalid_log_file">Недопустимый лог файл</string>
     <string name="unable_to_start_vpn">Не удалось запустить компонент VPN</string>
 
-    <string name="version_updated">Приложение обновлено</string>
-    <string name="version_updated_tips">Настройки были сброшены, старые профили необходимо сохранить повторно</string>
-
-    <string name="mode_switch_tips">Действует только для текущей сессии</string>
-
     <string name="clash_meta_wiki">Clash Meta Wiki</string>
 
     <string name="meta_features">Функции Meta</string>
@@ -284,7 +245,6 @@
     <string name="find_process_mode">Найти режим процесса</string>
 
     <string name="sniffer_setting">Настройки перехвата доменов</string>
-    <string name="sniffer">Перехват доменов</string>
     <string name="sniffing">Режим перехвата доменов</string>
     <string name="force_domain">Принудительный перехват доменов</string>
     <string name="skip_domain">Исключения перехвата доменов</string>
@@ -293,10 +253,6 @@
     <string name="sniffer_config">Использовать перехват доменов из конфига</string>
     <string name="sniffer_override">Переопределить настройки перехвата доменов</string>
 
-    <string name="geox_url_setting">Настройка GeoX URL</string>
-    <string name="geox_geoip">GeoIP URL</string>
-    <string name="geox_mmdb">MMDB URL</string>
-    <string name="geox_geosite">Geosite URL</string>
     <string name="geox_files" >Geo Files</string>
     <string name="import_geoip_file">Import GeoIP Database</string>
     <string name="press_to_import">Нажмите, чтобы выбрать файл</string>
@@ -306,8 +262,6 @@
     <string name="geofile_unknown_db_format">Unknown Database format</string>
     <string name="geofile_unknown_db_format_message">Only %1$s are supported</string>
     <string name="geofile_imported">%1$s imported</string>
-    <string name="toast_profile_updated_complete">Update profile %s completed</string>
-    <string name="toast_profile_updated_failed">Update profile %1$s failed: %2$s</string>
     <string name="external_control_activity">External Control</string>
     <string name="external_control_started">Clash.Meta service started</string>
     <string name="external_control_stopped">Clash.Meta service stopped</string>
@@ -327,7 +281,6 @@
     <string name="clod_tap_to_connect">Нажмите, чтобы подключиться</string>
     <string name="clod_traffic_downloaded">Скачано</string>
     <string name="clod_traffic_uploaded">Отправлено</string>
-    <string name="clod_selector_server">Сервер</string>
     <string name="clod_sub_url_label">Ссылка на подписку</string>
     <string name="clod_sub_url_hint">Ссылку выдаёт ваш сервис. Всё остальное подтянется само.</string>
     <string name="clod_sub_other_ways">Другие способы импорта</string>
@@ -386,7 +339,6 @@
     <string name="clod_update_downloading">Загружаем\u2026</string>
     <string name="clod_update_check">Проверить обновление</string>
     <string name="clod_update_none">Установлена последняя версия</string>
-    <string name="clod_update_failed">Не удалось проверить обновление</string>
     <string name="clod_update_permission">Разрешите приложению установку, чтобы оно могло обновить себя. Система откроет свой экран — включите там переключатель.</string>
     <string name="clod_mode">Режим</string>
     <string name="clod_mode_locked">%s · задан вашим сервисом</string>
@@ -463,5 +415,4 @@
     <string name="clod_no_servers_provider_title">Серверы недоступны</string>
     <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
     <string name="clod_open_settings">Настройки</string>
-
 </resources>
