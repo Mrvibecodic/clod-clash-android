@@ -328,9 +328,7 @@
     <string name="clod_tap_to_connect">Нажмите, чтобы подключиться</string>
     <string name="clod_traffic_downloaded">Скачано</string>
     <string name="clod_traffic_uploaded">Отправлено</string>
-    <string name="clod_selector_group">Группа</string>
     <string name="clod_selector_server">Сервер</string>
-    <string name="clod_no_subscription">Подписка не выбрана</string>
     <string name="clod_sub_url_label">Ссылка на подписку</string>
     <string name="clod_sub_url_hint">Ссылку выдаёт ваш сервис. Всё остальное подтянется само.</string>
     <string name="clod_sub_other_ways">Другие способы импорта</string>

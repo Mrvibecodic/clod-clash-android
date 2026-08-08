@@ -373,9 +373,7 @@
     <string name="clod_tap_to_connect">Tap to connect</string>
     <string name="clod_traffic_downloaded">Downloaded</string>
     <string name="clod_traffic_uploaded">Uploaded</string>
-    <string name="clod_selector_group">Group</string>
     <string name="clod_selector_server">Server</string>
-    <string name="clod_no_subscription">No subscription selected</string>
     <string name="clod_sub_url_label">Subscription link</string>
     <string name="clod_sub_url_hint">Your provider issues the link. Everything else is pulled from it.</string>
     <string name="clod_sub_other_ways">Other ways to import</string>

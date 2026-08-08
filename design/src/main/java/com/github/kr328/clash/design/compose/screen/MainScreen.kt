@@ -400,20 +400,23 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
         Spacer(Modifier.height(28.dp))
 
-        SelectorRow(
-            label = stringResource(R.string.clod_selector_group),
-            value = state.servers.groups.getOrNull(state.servers.selected)?.now
-                ?: stringResource(R.string.proxy),
-            leading = painterResource(R.drawable.ic_nav_servers),
-            onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
-        )
-        Spacer(Modifier.height(10.dp))
-        SelectorRow(
-            label = stringResource(R.string.clod_tab_subscriptions),
-            value = state.active?.title ?: stringResource(R.string.clod_no_subscription),
-            leading = painterResource(R.drawable.ic_baseline_view_list),
-            onClick = { onAction(MainAction.SelectTab(MainTab.Subscriptions)) },
-        )
+        // Подписью строки идёт НАСТОЯЩЕЕ имя группы, а не слово «Группа»: то, что
+        // это строка выбора, и так видно по стрелке, а вот в какой группе выбран
+        // узел — больше нигде на главном не написано. Групп нет вовсе (ядро молчит,
+        // подписки нет) — строки тоже нет: пустая строка «Прокси / Прокси» ничего
+        // не даёт и занимает место.
+        //
+        // Строки «Подписки» здесь больше нет намеренно: она вела на вкладку, до
+        // которой два сантиметра вниз, а название активной подписки и так стоит
+        // в шапке экрана.
+        state.servers.groups.getOrNull(state.servers.selected)?.let { group ->
+            SelectorRow(
+                label = group.name,
+                value = group.now.ifBlank { stringResource(R.string.proxy) },
+                leading = painterResource(R.drawable.ic_nav_servers),
+                onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
+            )
+        }
 
         Spacer(Modifier.height(24.dp))
     }
