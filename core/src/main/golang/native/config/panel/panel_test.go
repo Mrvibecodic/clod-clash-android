@@ -1,4 +1,4 @@
-package config
+package panel
 
 import (
 	"encoding/base64"
@@ -371,9 +371,9 @@ func TestOptionalBool(t *testing.T) {
 func TestApplyHeaders(t *testing.T) {
 	const current = "https://panel.example.com/sub/token"
 
-	var info PanelInfo
+	var info Info
 
-	applyHeaders(&info, map[string][]string{
+	ApplyHeaders(&info, map[string][]string{
 		"profile-title":            {"base64:" + base64.StdEncoding.EncodeToString([]byte("Провайдер"))},
 		"profile-web-page-url":     {"https://example.com"},
 		"support-url":              {"tg://resolve?domain=support"},
@@ -435,9 +435,9 @@ func TestApplyHeaders(t *testing.T) {
 func TestApplyHeadersNewURLWinsOverDomain(t *testing.T) {
 	const current = "https://panel.example.com/sub/token"
 
-	var info PanelInfo
+	var info Info
 
-	applyHeaders(&info, map[string][]string{
+	ApplyHeaders(&info, map[string][]string{
 		"new-url":    {"https://first.example.com/sub"},
 		"new-domain": {"second.example.com"},
 	}, current)
@@ -448,19 +448,19 @@ func TestApplyHeadersNewURLWinsOverDomain(t *testing.T) {
 }
 
 func TestApplyHeadersBareExpireToggle(t *testing.T) {
-	var info PanelInfo
+	var info Info
 
 	// Совместимость с Happ: голый тумблер без списка включает умолчания.
-	applyHeaders(&info, map[string][]string{"notification-subs-expire": {"true"}}, "https://panel.example.com/sub")
+	ApplyHeaders(&info, map[string][]string{"notification-subs-expire": {"true"}}, "https://panel.example.com/sub")
 
 	if !reflect.DeepEqual(info.NotifyExpireDays, defaultNotifyExpireDays) {
 		t.Fatalf("ожидались умолчания %#v, получено %#v", defaultNotifyExpireDays, info.NotifyExpireDays)
 	}
 
 	// Явный список сильнее тумблера.
-	info = PanelInfo{}
+	info = Info{}
 
-	applyHeaders(&info, map[string][]string{
+	ApplyHeaders(&info, map[string][]string{
 		"notification-subs-expire": {"true"},
 		"notify-expire-days":       {"5"},
 	}, "https://panel.example.com/sub")
@@ -473,7 +473,7 @@ func TestApplyHeadersBareExpireToggle(t *testing.T) {
 func TestApplyHeadersResetsStateFields(t *testing.T) {
 	// Состояние последнего ответа, а не накопленное знание: панель перестала
 	// слать число устройств — значит его больше нет.
-	info := PanelInfo{
+	info := Info{
 		HwidState:            HwidActive,
 		HwidMaxDevices:       5,
 		RefillDate:           1786309200,
@@ -482,7 +482,7 @@ func TestApplyHeadersResetsStateFields(t *testing.T) {
 		Title:                "Провайдер",
 	}
 
-	applyHeaders(&info, map[string][]string{}, "https://panel.example.com/sub")
+	ApplyHeaders(&info, map[string][]string{}, "https://panel.example.com/sub")
 
 	if info.HwidState != HwidUnknown || info.HwidMaxDevices != 0 || info.RefillDate != 0 {
 		t.Fatalf("состояние устройства должно сбрасываться: %q %d %d", info.HwidState, info.HwidMaxDevices, info.RefillDate)
@@ -500,12 +500,12 @@ func TestApplyHeadersResetsStateFields(t *testing.T) {
 }
 
 func TestApplyHeadersClockSkew(t *testing.T) {
-	var info PanelInfo
+	var info Info
 
 	// Час вперёд — как на телефоне со сбитыми часами.
 	served := time.Now().UTC().Add(time.Hour)
 
-	applyHeaders(&info, map[string][]string{
+	ApplyHeaders(&info, map[string][]string{
 		"Date": {served.Format(http.TimeFormat)},
 	}, "https://panel.example.com/sub")
 
@@ -520,31 +520,31 @@ func TestApplyHeadersClockSkew(t *testing.T) {
 	// Ответ без `Date` ничего не говорит о часах: прошлое измерение остаётся.
 	before := info.ClockSkew
 
-	applyHeaders(&info, map[string][]string{}, "https://panel.example.com/sub")
+	ApplyHeaders(&info, map[string][]string{}, "https://panel.example.com/sub")
 
 	if info.ClockSkew != before {
 		t.Fatalf("поправка часов не должна теряться: было %d, стало %d", before, info.ClockSkew)
 	}
 }
 
-func TestPanelInfoRoundTrip(t *testing.T) {
+func TestInfoRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 
 	// Файла нет — не ошибка: панель могла и не прислать ничего.
-	if got := readPanelInfo(dir); got.Title != "" {
+	if got := Read(dir); got.Title != "" {
 		t.Fatalf("пустой каталог должен давать пустую структуру, получено %#v", got)
 	}
 
-	want := PanelInfo{
+	want := Info{
 		Title:                "Провайдер",
 		NotifyExpireDays:     []int{},
 		NotifyTrafficPercent: []int{80, 90},
 		LockMode:             new(bool),
 	}
 
-	writePanelInfo(dir, want)
+	Write(dir, want)
 
-	got := readPanelInfo(dir)
+	got := Read(dir)
 
 	// Пустой список должен пережить запись и чтение: с omitempty он стал бы
 	// неотличим от молчания панели, и напоминания включились бы обратно.

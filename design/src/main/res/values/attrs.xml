@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Класс FullScreenDialog удалён вместе с переездом на Compose, но атрибут
-         нужен: на него ссылаются темы в values, values-v23, values-v27
-         и values-v29. Снимать его надо вместе с ними, а темы без телефона
-         не проверить. -->
-    <attr name="fullScreenDialogTheme" format="reference" />
-
     <attr name="colorClashStopped" format="color" />
     <attr name="colorControlDisabled" format="color" />
     <attr name="colorLogo" format="color" />

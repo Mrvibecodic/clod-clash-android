@@ -63,14 +63,18 @@ jobs:
       #     echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
       # Разбор заголовков панели живёт в Go, и проверяется он тоже на Go —
-      # самым первым шагом: пакет `native/config` собирается на хост-платформе
-      # за секунды, а красный разбор не должен ждать ни Gradle, ни NDK.
-      # Каталог модуля — тот же, что собирает golang-плагин.
+      # самым первым шагом: пакет `native/config/panel` не зависит ни от ядра,
+      # ни от Android, собирается из одной стандартной библиотеки за секунду,
+      # и ждать ради него Gradle с NDK незачем.
+      #
+      # Именно этот пакет, а не `native/config` целиком: соседи по каталогу
+      # тянут `native/app`, а тот зовёт mihomo-функции из файла с тегами
+      # `android && cmfa` — на хост-платформе их нет, и сборка падает.
       - name: Go unit tests
         id: go-tests
         if: success()
         working-directory: core/src/main/golang
-        run: go test ./native/config/...
+        run: go test ./native/config/panel/...
 
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная
