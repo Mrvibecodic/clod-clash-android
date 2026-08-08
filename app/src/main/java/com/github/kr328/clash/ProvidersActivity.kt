@@ -38,6 +38,10 @@ class ProvidersActivity : BaseActivity<ProvidersDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
+                        ProvidersDesign.Request.Back -> {
+                            finish()
+                        }
+
                         is ProvidersDesign.Request.Update -> {
                             launch {
                                 try {

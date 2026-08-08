@@ -4,67 +4,71 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.view.View
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.getSystemService
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.github.kr328.clash.core.model.LogMessage
-import com.github.kr328.clash.design.adapter.LogMessageAdapter
-import com.github.kr328.clash.design.databinding.DesignLogcatBinding
+import com.github.kr328.clash.design.compose.screen.LogcatAction
+import com.github.kr328.clash.design.compose.screen.LogcatScreen
+import com.github.kr328.clash.design.compose.screen.LogcatState
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.design.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class LogcatDesign(
     context: Context,
-    private val streaming: Boolean,
+    streaming: Boolean,
 ) : Design<LogcatDesign.Request>(context) {
     enum class Request {
-        Close, Delete, Export
+        Back, Close, Delete, Export
     }
 
-    private val binding = DesignLogcatBinding
-        .inflate(context.layoutInflater, context.root, false)
-    private val adapter = LogMessageAdapter(context) {
-        launch {
-            val data = ClipData.newPlainText("log_message", it.message)
+    private var state by mutableStateOf(LogcatState(streaming = streaming))
 
-            context.getSystemService<ClipboardManager>()?.setPrimaryClip(data)
-
-            showToast(R.string.copied, ToastDuration.Short)
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                LogcatScreen(state = state, onAction = ::onAction)
+            }
         }
     }
 
+    private fun onAction(action: LogcatAction) {
+        when (action) {
+            LogcatAction.Back -> requests.trySend(Request.Back)
+            LogcatAction.Close -> requests.trySend(Request.Close)
+            LogcatAction.Delete -> requests.trySend(Request.Delete)
+            LogcatAction.Export -> requests.trySend(Request.Export)
+            is LogcatAction.Copy -> launch {
+                val data = ClipData.newPlainText("log_message", action.message.message)
+
+                context.getSystemService<ClipboardManager>()?.setPrimaryClip(data)
+
+                showToast(R.string.copied, ToastDuration.Short)
+            }
+        }
+    }
+
+    /**
+     * @param removed сколько строк выпало из начала буфера с прошлого раза.
+     *   `RecyclerView` получал это число, чтобы знать, какие именно строки
+     *   ушли; списку на Compose хватает нового списка целиком, но из этого
+     *   числа складывается СКВОЗНОЙ номер первой строки — опознание, которого
+     *   у сообщения больше нет ниоткуда. Без него у человека, отлиставшего
+     *   назад читать, текст съезжал бы на строку дважды в секунду.
+     * @param appended не нужен: что именно добавилось, список сверяет сам.
+     */
+    @Suppress("UNUSED_PARAMETER")
     suspend fun patchMessages(messages: List<LogMessage>, removed: Int, appended: Int) {
         withContext(Dispatchers.Main) {
-            adapter.messages = messages
-
-            adapter.notifyItemRangeInserted(adapter.messages.size, appended)
-            adapter.notifyItemRangeRemoved(0, removed)
-
-            if (streaming && binding.recyclerList.isTop) {
-                binding.recyclerList.scrollToPosition(messages.size - 1)
-            }
+            state = state.copy(
+                messages = messages,
+                firstLine = state.firstLine + removed,
+            )
         }
-    }
-
-    override val root: View
-        get() = binding.root
-
-    init {
-        binding.self = this
-        binding.streaming = streaming
-
-        binding.activityBarLayout.applyFrom(context)
-
-        binding.recyclerList.bindAppBarElevation(binding.activityBarLayout)
-
-        binding.recyclerList.layoutManager = LinearLayoutManager(context).apply {
-            if (streaming) {
-                reverseLayout = true
-                stackFromEnd = true
-            }
-        }
-        binding.recyclerList.adapter = adapter
     }
 }

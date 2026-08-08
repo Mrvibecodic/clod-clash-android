@@ -61,6 +61,9 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
         while (isActive) {
             when (design.requests.receive()) {
+                LogcatDesign.Request.Back -> {
+                    finish()
+                }
                 LogcatDesign.Request.Delete -> {
                     withContext(Dispatchers.IO) {
                         logsDir.resolve(file.fileName).delete()
@@ -113,6 +116,11 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                         LogcatDesign.Request.Close -> {
                             stopService(LogcatService::class.intent)
                             startActivity(LogsActivity::class.intent)
+                            finish()
+                        }
+                        // Уход с экрана запись НЕ останавливает — для этого
+                        // есть кнопка «стоп». Так было и на старом экране.
+                        LogcatDesign.Request.Back -> {
                             finish()
                         }
                         else -> Unit
