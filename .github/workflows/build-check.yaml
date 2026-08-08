@@ -65,7 +65,22 @@ jobs:
       - name: Build
         if: success()
         run: ./gradlew --no-daemon app:assembleStandardDebug -Pclod.abi=arm64-v8a
-          
+
+      # Unit-тесты на чистые считалки. В том же джобе, а не отдельным:
+      # им нужен собранный :core, а Go на него уже потрачен выше.
+      - name: Unit tests
+        if: success()
+        run: ./gradlew --no-daemon service:testStandardDebugUnitTest -Pclod.abi=arm64-v8a
+
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v7
+        if: ${{ failure() }}
+        with:
+          name: unit-test-report
+          if-no-files-found: ignore
+          path: |
+            service/build/reports/tests/
+
       # Один артефакт вместо четырёх: сборка идёт по одной ABI (-Pclod.abi=arm64-v8a),
       # flavor схлопнут в standard, тип debug. Прежние четыре шага указывали на
       # apk/alpha/release/* — этого каталога после ребрендинга не существует,

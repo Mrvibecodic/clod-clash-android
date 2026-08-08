@@ -19,6 +19,10 @@ material = "1.12.0"
 # 1.8.1 подтянула бы 2.1.20, а с 1.9.0 метаданные уже 2.2 и их не прочитать.
 serialization = "1.8.0"
 kaidl = "1.15"
+# JUnit 4, а не 5: Android Gradle Plugin запускает unit-тесты через JUnit 4
+# из коробки, а JUnit 5 требует стороннего плагина и своего runner'а. Проверяем
+# чистые считалки, и ничего из JUnit 5 им не нужно.
+junit = "4.13.2"
 # 2.6.1, а не 2.7.x: у 2.7 меняется генератор и валидация identity_hash, это надо
 # проверять обновлением поверх установленной сборки; 2.8.x нельзя — room-compiler
 # тянет kotlin-stdlib 2.2.0.
@@ -65,6 +69,7 @@ androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref =
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 google-material = { module = "com.google.android.material:material", version.ref = "material" }
+junit = { module = "junit:junit", version.ref = "junit" }
 kaidl-compiler = { module = "com.github.kr328.kaidl:kaidl", version.ref = "kaidl" }
 kaidl-runtime = { module = "com.github.kr328.kaidl:kaidl-runtime", version.ref = "kaidl" }
 rikkax-multiprocess = { module = "dev.rikka.rikkax.preference:multiprocess", version.ref = "multiprocess" }
