@@ -305,10 +305,34 @@ class SubscriptionAlertsTest {
     }
 
     @Test
-    fun `умолчания совпадают с теми, что рассылает панель`() {
-        // Ядро (`native/config/panel.go`) при голом `notification-subs-expire`
-        // подставляет тот же набор. Разъедутся — человек получит разные
-        // напоминания от одной и той же панели на ПК и на телефоне.
+    fun `панель выключила срок — отметка о конце подписки не хранится`() {
+        val expired = SubscriptionAlerts.evaluate(snapshot(expireAt = now - day), now)
+        assertTrue(expired.notified.containsKey("expired"))
+
+        // Панель перестала слать `notify-expire-days`: держать отметку не к чему,
+        // иначе она пережила бы и возврат порогов, и о конце не сказали бы.
+        val off = SubscriptionAlerts.evaluate(
+            snapshot(expireAt = now - day, expireDays = emptyList(), notified = expired.notified),
+            now,
+        )
+
+        assertEquals(emptyList<SubscriptionAlert>(), off.alerts)
+        assertFalse(off.notified.containsKey("expired"))
+        assertFalse(off.notified.containsKey("expire_1d"))
+        // Привязка к сроку переживает выключение: вернутся пороги — вернётся
+        // и знание о том, к какому именно сроку относились отметки.
+        assertEquals(setOf("expire_base"), off.notified.keys)
+    }
+
+    @Test
+    fun `умолчания срока — те же, что подставляет ядро`() {
+        // `defaultNotifyExpireDays` в `native/config/panel.go`: панель прислала
+        // голый тумблер `notification-subs-expire` — ядро подставляет этот набор,
+        // и клиентские умолчания обязаны совпасть, иначе одна и та же панель
+        // напоминала бы по-разному в зависимости от того, кто подставил список.
+        //
+        // Умолчаний ПО ТРАФИКУ у ядра нет вовсе: там `notify-traffic-percent`
+        // разбирается без запасного варианта, и 80/90/100 — решение клиента.
         assertEquals(listOf(1, 3, 7), SubscriptionAlerts.DEFAULT_EXPIRE_DAYS)
         assertEquals(listOf(80, 90, 100), SubscriptionAlerts.DEFAULT_TRAFFIC_PERCENT)
     }

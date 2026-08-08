@@ -62,24 +62,30 @@ jobs:
       #     echo keystore.password="$SIGNING_STORE_PASSWORD" > signing.properties
       #     echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
-      - name: Build
-        if: success()
-        run: ./gradlew --no-daemon app:assembleStandardDebug -Pclod.abi=arm64-v8a
-
-      # Unit-тесты на чистые считалки. В том же джобе, а не отдельным:
-      # им нужен собранный :core, а Go на него уже потрачен выше.
+      # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
+      # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная
+      # считалка не должна стоить полного прогона до фидбэка. В том же джобе,
+      # а не отдельным: Go на :core тратится один раз на оба шага.
       - name: Unit tests
+        id: unit-tests
         if: success()
         run: ./gradlew --no-daemon service:testStandardDebugUnitTest -Pclod.abi=arm64-v8a
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v7
-        if: ${{ failure() }}
+        if: ${{ !cancelled() && steps.unit-tests.outcome == 'failure' }}
         with:
           name: unit-test-report
           if-no-files-found: ignore
+          # HTML — читать глазами, XML — машине: без него результат теста
+          # виден только внутри архива.
           path: |
             service/build/reports/tests/
+            service/build/test-results/
+
+      - name: Build
+        if: success()
+        run: ./gradlew --no-daemon app:assembleStandardDebug -Pclod.abi=arm64-v8a
 
       # Один артефакт вместо четырёх: сборка идёт по одной ABI (-Pclod.abi=arm64-v8a),
       # flavor схлопнут в standard, тип debug. Прежние четыре шага указывали на

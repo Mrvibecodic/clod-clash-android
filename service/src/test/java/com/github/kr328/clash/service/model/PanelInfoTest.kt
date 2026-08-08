@@ -72,6 +72,14 @@ class PanelInfoTest {
 
     // --- поправка часов ---
 
+    /**
+     * Часы читаются с запасом в минуту назад намеренно. Прод сравнивает возраст
+     * измерения с нулём (`age in 0..MAX`), а `clockSkewMillis()` читает часы
+     * ВТОРОЙ раз — шаг NTP назад между двумя чтениями дал бы `age == -1`
+     * и невоспроизводимо красный CI.
+     */
+    private fun measuredJustNow() = System.currentTimeMillis() / 1000 - 60
+
     private fun nowSeconds() = System.currentTimeMillis() / 1000
 
     @Test
@@ -83,14 +91,14 @@ class PanelInfoTest {
 
     @Test
     fun `свежее измерение применяется в миллисекундах`() {
-        val info = PanelInfo(clockSkew = 120, clockSkewAt = nowSeconds())
+        val info = PanelInfo(clockSkew = 120, clockSkewAt = measuredJustNow())
 
         assertEquals(120_000L, info.clockSkewMillis())
     }
 
     @Test
     fun `отставание часов устройства тоже поправка`() {
-        val info = PanelInfo(clockSkew = -90, clockSkewAt = nowSeconds())
+        val info = PanelInfo(clockSkew = -90, clockSkewAt = measuredJustNow())
 
         assertEquals(-90_000L, info.clockSkewMillis())
     }
