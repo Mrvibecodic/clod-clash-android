@@ -12,6 +12,15 @@ val Context.pendingDir: File
 val Context.processingDir: File
     get() = filesDir.resolve("processing")
 
+/**
+ * Каталог пробной загрузки при переезде подписки на новый адрес.
+ *
+ * Отдельный от `processing`: проверка чужого адреса не должна трогать то,
+ * что прямо сейчас применяется к рабочему профилю.
+ */
+val Context.migrationDir: File
+    get() = filesDir.resolve("migration")
+
 val File.directoryLastModified: Long?
     get() {
         return walk().map { it.lastModified() }.maxOrNull()

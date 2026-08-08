@@ -67,6 +67,12 @@ type PanelInfo struct {
 	NotifyExpireDays     []int `json:"notifyExpireDays"`
 	NotifyTrafficPercent []int `json:"notifyTrafficPercent"`
 
+	// Куда провайдер просит переехать (`new-url` или `new-domain`), уже
+	// проверенный адрес. Пусто — переезда не просили. Сам переезд делает
+	// приложение и только после пробной загрузки: опечатка в панели иначе
+	// оставила бы человека на мёртвом адресе.
+	MigrateURL string `json:"migrateUrl,omitempty"`
+
 	// `clod-lock-mode` — провайдер запрещает менять режим туннеля.
 	// Указатель ради третьего состояния: панель может ничего не сказать,
 	// и это не то же самое, что «разрешаю».
@@ -129,7 +135,7 @@ func writePanelInfo(dir string, info PanelInfo) {
 // то как `announce`, то как `x-announce`. Значение может прийти как
 // `base64:<payload>` — так панели передают кириллицу, которую нельзя положить
 // в заголовок сырыми байтами.
-func applyHeaders(info *PanelInfo, header map[string][]string) {
+func applyHeaders(info *PanelInfo, header map[string][]string, current string) {
 	if header == nil {
 		return
 	}
@@ -165,9 +171,17 @@ func applyHeaders(info *PanelInfo, header map[string][]string) {
 
 	info.NotifyTrafficPercent = thresholds(headerValue(header, "notify-traffic-percent"), 1, 100)
 
+	// Переезд подписки: `new-url` — адрес целиком, `new-domain` — только хост
+	// (можно с портом) в текущем адресе. Первый приоритетнее.
+	info.MigrateURL = firstNonEmpty(
+		validateNewURL(current, headerValue(header, "new-url")),
+		swapDomain(current, headerValue(header, "new-domain")),
+	)
+
+	info.LockMode = optionalBool(header, "clod-lock-mode")
+
 	// `global-mode: false` у панелей, настроенных под Prizrak-Box, значит
 	// «спрячьте переключатель режимов» — то же самое, что наш замок.
-	info.LockMode = optionalBool(header, "clod-lock-mode")
 	if info.LockMode == nil {
 		if allowed := optionalBool(header, "global-mode"); allowed != nil {
 			locked := !*allowed
@@ -417,6 +431,91 @@ func thresholds(raw string, lo, hi int) []int {
 	}
 
 	return values
+}
+
+// validateNewURL проверяет адрес, на который панель просит переехать.
+//
+// Понижение https → http запрещено: заголовком ответа могла бы увести
+// загрузку подписки на открытый канал та же сторона, которую мы и проверяем.
+// Совпадающий с текущим адрес переездом не считается.
+func validateNewURL(current, candidate string) string {
+	candidate = strings.TrimSpace(candidate)
+	if candidate == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(candidate)
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return ""
+	}
+
+	if now, err := url.Parse(current); err == nil && now.Scheme == "https" && parsed.Scheme != "https" {
+		return ""
+	}
+
+	if parsed.String() == current {
+		return ""
+	}
+
+	return parsed.String()
+}
+
+// swapDomain меняет в текущем адресе хост (и порт, если он задан).
+//
+// Принимает `example.com`, `example.com:8443` и `https://example.com` — панели
+// пишут по-разному, а смысл один.
+func swapDomain(current, domain string) string {
+	domain = strings.TrimRight(strings.TrimSpace(domain), "/")
+	if domain == "" || current == "" {
+		return ""
+	}
+
+	// Схему из значения выбрасываем: меняем хост в текущем адресе, а не адрес
+	// целиком — для адреса целиком есть `new-url`.
+	if _, rest, ok := strings.Cut(domain, "://"); ok {
+		domain = rest
+	}
+
+	domain, _, _ = strings.Cut(domain, "/")
+	if domain == "" {
+		return ""
+	}
+
+	// Порт разрешён, но только числом в допустимом диапазоне: «example.com:abc»
+	// и «example.com:99999» это не адреса, а полная пробная загрузка по такому
+	// кандидату стоит столько же, сколько по настоящему.
+	//
+	// Режем по ПОСЛЕДНЕМУ двоеточию: у адреса IPv6 их много, и первый же
+	// разрез превратил бы `[2001:db8::1]:8443` в мусор.
+	if at := strings.LastIndex(domain, ":"); at >= 0 && !strings.HasSuffix(domain, "]") {
+		host, port := domain[:at], domain[at+1:]
+
+		if host == "" || port == "" {
+			return ""
+		}
+
+		number, err := strconv.Atoi(port)
+		if err != nil || number < 1 || number > 65535 || strings.ContainsAny(port, "+-") {
+			return ""
+		}
+	}
+
+	parsed, err := url.Parse(current)
+	if err != nil || parsed.Host == "" {
+		return ""
+	}
+
+	parsed.Host = domain
+
+	if parsed.String() == current {
+		return ""
+	}
+
+	return parsed.String()
 }
 
 // optionalBool отличает «панель сказала false» от «панель промолчала».

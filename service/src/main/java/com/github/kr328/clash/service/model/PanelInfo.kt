@@ -69,6 +69,12 @@ data class PanelInfo(
     val notifyTrafficPercent: List<Int>? = null,
 
     /**
+     * Куда провайдер просит переехать (`new-url` или `new-domain`), уже
+     * проверенный ядром адрес. Пусто — переезда не просили.
+     */
+    val migrateUrl: String = "",
+
+    /**
      * `clod-lock-mode` — провайдер запрещает менять режим туннеля.
      * `null` — панель промолчала, решение остаётся за человеком.
      */

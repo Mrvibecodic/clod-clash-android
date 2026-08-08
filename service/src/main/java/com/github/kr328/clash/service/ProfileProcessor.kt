@@ -13,19 +13,39 @@ import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.migrationDir
 import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.processingDir
+import com.github.kr328.clash.service.util.readPanelInfo
 import com.github.kr328.clash.service.util.sendProfileChanged
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import java.io.File
 import java.util.*
 import java.util.concurrent.TimeUnit
 
 object ProfileProcessor {
+    /**
+     * Сколько раз подряд провайдеру позволено переселять подписку.
+     * Две панели могут указывать друг на друга — без предела клиент ходил бы
+     * между ними по кругу.
+     */
+    private const val MAX_MIGRATION_HOPS = 3
+
+    /** Сколько прежних адресов помним на случай, если переезд увёл не туда. */
+    private const val MAX_MIGRATION_HISTORY = 10
+
+    /** Состояние переездов, файлом в каталоге профиля. */
+    private const val MIGRATION_FILE = "migration.json"
+
+    private val migrationJson = Json { ignoreUnknownKeys = true }
+
     private val profileLock = Mutex()
     private val processLock = Mutex()
 
@@ -41,6 +61,11 @@ object ProfileProcessor {
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
 
+                    // Каталог пробной загрузки могло оставить убитым процессом:
+                    // это полная копия чужой подписки, и лежать вечно она
+                    // не должна.
+                    context.migrationDir.deleteRecursively()
+
                     context.pendingDir.resolve(pending.uuid.toString())
                         .copyRecursively(context.processingDir, overwrite = true)
 
@@ -50,7 +75,7 @@ object ProfileProcessor {
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
 
                 val force = snapshot.type != Profile.Type.File
-                val subscriptionInfo = fetchProfile(context, snapshot.source, force, callback)
+                val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, force, callback)
 
                 profileLock.withLock {
                     if (PendingDao().queryByUUID(snapshot.uuid) == snapshot) {
@@ -101,6 +126,11 @@ object ProfileProcessor {
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
 
+                    // Каталог пробной загрузки могло оставить убитым процессом:
+                    // это полная копия чужой подписки, и лежать вечно она
+                    // не должна.
+                    context.migrationDir.deleteRecursively()
+
                     context.importedDir.resolve(imported.uuid.toString())
                         .copyRecursively(context.processingDir, overwrite = true)
 
@@ -109,7 +139,7 @@ object ProfileProcessor {
 
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
 
-                val subscriptionInfo = fetchProfile(context, snapshot.source, true, callback)
+                val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, true, callback)
 
                 profileLock.withLock {
                     val imported = ImportedDao().queryByUUID(snapshot.uuid)
@@ -132,12 +162,136 @@ object ProfileProcessor {
                         context.sendProfileChanged(snapshot.uuid)
                     }
                 }
+
+                followMigration(context, snapshot.uuid, snapshot.source, callback)
             }
+        }
+    }
+
+    /**
+     * Переезд подписки на новый адрес по заголовкам `new-url` / `new-domain`.
+     *
+     * Адрес меняется ТОЛЬКО после пробной загрузки: опечатка в панели иначе
+     * оставила бы человека на мёртвом адресе без единого рабочего сервера,
+     * и вернуть его было бы нечем — старого адреса он не помнит.
+     *
+     * Прыжки считаются: две панели могут указывать друг на друга, и без
+     * ограничения клиент ходил бы между ними по кругу вечно. Ответ без просьбы
+     * о переезде счётчик обнуляет — значит цепочка кончилась, и следующий
+     * законный переезд снова получит все попытки.
+     */
+    private suspend fun followMigration(
+        context: Context,
+        uuid: UUID,
+        current: String,
+        callback: IFetchObserver?,
+    ) {
+        val profileDir = context.importedDir.resolve(uuid.toString())
+        val stateFile = profileDir.resolve(MIGRATION_FILE)
+
+        val candidate = context.readPanelInfo(uuid)?.migrateUrl.orEmpty()
+        if (candidate.isBlank() || candidate == current) {
+            // Переезда не просят — цепочка кончилась, и следующий законный
+            // переезд снова получит все попытки.
+            stateFile.delete()
+
+            return
+        }
+
+        val state = readMigration(stateFile)
+        if (state.hops >= MAX_MIGRATION_HOPS) {
+            Log.w("Migration of $uuid ignored: ${state.hops} hops already followed")
+
+            return
+        }
+
+        val probe = context.migrationDir
+
+        val info = try {
+            probe.deleteRecursively()
+            probe.mkdirs()
+
+            // Пробная загрузка идёт в отдельный каталог: рабочая конфигурация
+            // не должна пострадать от проверки чужого адреса.
+            fetchProfile(context, probe, candidate, true, callback)
+        } catch (e: Exception) {
+            Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
+
+            probe.deleteRecursively()
+
+            return
+        }
+
+        profileLock.withLock {
+            val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock
+
+            // Скачанное по новому адресу и становится рабочей конфигурацией:
+            // выбросить его значило бы жить до следующего обновления
+            // с названием, логотипом и порогами СТАРОГО провайдера при новом
+            // адресе.
+            profileDir.deleteRecursively()
+            probe.copyRecursively(profileDir, overwrite = true)
+
+            ImportedDao().update(
+                imported.copy(
+                    source = candidate,
+                    upload = info?.subUpload ?: imported.upload,
+                    download = info?.subDownload ?: imported.download,
+                    total = info?.subTotal ?: imported.total,
+                    expire = info?.subExpire ?: imported.expire,
+                ),
+            )
+
+            // Прежний адрес храним рядом со счётчиком: пробная загрузка спасает
+            // от мёртвого адреса, но не от адреса, который увёл подписку
+            // на чужую панель. Без записи вернуться было бы некуда — человек
+            // своего адреса не помнит.
+            writeMigration(
+                stateFile,
+                MigrationState(
+                    hops = state.hops + 1,
+                    previous = (state.previous + current).takeLast(MAX_MIGRATION_HISTORY),
+                ),
+            )
+        }
+
+        probe.deleteRecursively()
+
+        Log.i("Subscription $uuid migrated to a new address by the provider")
+
+        context.sendProfileChanged(uuid)
+    }
+
+    /** Состояние переезда: сколько прыжков подряд и по каким адресам ходили. */
+    @Serializable
+    private data class MigrationState(
+        val hops: Int = 0,
+        val previous: List<String> = emptyList(),
+    )
+
+    private fun readMigration(file: File): MigrationState {
+        if (!file.isFile) return MigrationState()
+
+        return try {
+            migrationJson.decodeFromString(MigrationState.serializer(), file.readText())
+        } catch (e: Exception) {
+            Log.w("Read $MIGRATION_FILE: $e", e)
+
+            MigrationState()
+        }
+    }
+
+    private fun writeMigration(file: File, state: MigrationState) {
+        try {
+            file.writeText(migrationJson.encodeToString(MigrationState.serializer(), state))
+        } catch (e: Exception) {
+            Log.w("Write $MIGRATION_FILE: $e", e)
         }
     }
 
     private suspend fun fetchProfile(
         context: Context,
+        dir: File,
         source: String,
         force: Boolean,
         callback: IFetchObserver?,
@@ -150,7 +304,7 @@ object ProfileProcessor {
         // устройство» иначе доезжал бы до ядра только после перезапуска службы.
         context.applyDeviceInfo()
 
-        Clash.fetchAndValid(context.processingDir, source, force) {
+        Clash.fetchAndValid(dir, source, force) {
             if (it.action == FetchStatus.Action.SubscriptionInfo) {
                 subscriptionInfo = it
                 return@fetchAndValid
