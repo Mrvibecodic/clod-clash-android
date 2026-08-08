@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/base64"
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"os"
 	P "path"
@@ -66,6 +67,14 @@ type PanelInfo struct {
 	// С `omitempty` оба случая записались бы одинаково.
 	NotifyExpireDays     []int `json:"notifyExpireDays"`
 	NotifyTrafficPercent []int `json:"notifyTrafficPercent"`
+
+	// Насколько часы панели опережают часы устройства, в секундах, и когда
+	// это измерено (по часам устройства). Заголовок `Date` есть у любого
+	// сервера с часами, поэтому мера бесплатная — ни запроса, ни договорённости
+	// с провайдером. Нужна затем, что срок подписки считается по часам
+	// устройства, а они на телефоне бывают сбиты на часы и дни.
+	ClockSkew   int64 `json:"clockSkew,omitempty"`
+	ClockSkewAt int64 `json:"clockSkewAt,omitempty"`
 
 	// Куда провайдер просит переехать (`new-url` или `new-domain`), уже
 	// проверенный адрес. Пусто — переезда не просили. Сам переезд делает
@@ -170,6 +179,17 @@ func applyHeaders(info *PanelInfo, header map[string][]string, current string) {
 	}
 
 	info.NotifyTrafficPercent = thresholds(headerValue(header, "notify-traffic-percent"), 1, 100)
+
+	// `Date` берём ПРЯМЫМ ключом: это стандартный заголовок, и ни поиск
+	// по суффиксу, ни разбор base64, которыми живут заголовки панели,
+	// к нему не применимы. Ответ без `Date` ничего не говорит о часах
+	// устройства, поэтому прошлое измерение остаётся как было.
+	if served := serverTime(header); served > 0 {
+		now := time.Now().Unix()
+
+		info.ClockSkew = served - now
+		info.ClockSkewAt = now
+	}
 
 	// Переезд подписки: `new-url` — адрес целиком, `new-domain` — только хост
 	// (можно с портом) в текущем адресе. Первый приоритетнее.
@@ -431,6 +451,23 @@ func thresholds(raw string, lo, hi int) []int {
 	}
 
 	return values
+}
+
+// serverTime — часы сервера из заголовка `Date` в секундах Unix, 0 — нет.
+func serverTime(header map[string][]string) int64 {
+	for key, values := range header {
+		if !strings.EqualFold(key, "date") {
+			continue
+		}
+
+		for _, value := range values {
+			if parsed, err := http.ParseTime(strings.TrimSpace(value)); err == nil {
+				return parsed.Unix()
+			}
+		}
+	}
+
+	return 0
 }
 
 // validateNewURL проверяет адрес, на который панель просит переехать.

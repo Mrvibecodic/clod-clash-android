@@ -217,7 +217,9 @@ private fun SubscriptionCard(
     val context = LocalContext.current
     // Время берём на момент отрисовки: карточка перерисовывается при возврате на
     // вкладку и при любом обновлении списка, а секундной точности здесь не нужно.
-    val now = remember(profile) { System.currentTimeMillis() }
+    // С поправкой на часы панели: «осталось 3 дня» на сбитых часах телефона
+    // иначе показывалось бы днём раньше или позже, чем на самом деле.
+    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
     val used = profile.upload + profile.download
     var menuOpen by remember { mutableStateOf(false) }
@@ -391,7 +393,7 @@ fun ActiveSubscriptionCard(
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
-    val now = remember(profile) { System.currentTimeMillis() }
+    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
     val critical = status != SubscriptionState.Active
 

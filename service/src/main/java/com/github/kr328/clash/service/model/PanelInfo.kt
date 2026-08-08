@@ -69,6 +69,13 @@ data class PanelInfo(
     val notifyTrafficPercent: List<Int>? = null,
 
     /**
+     * Насколько часы панели опережают часы устройства (секунды) и когда это
+     * измерено по часам устройства. Считает ядро по заголовку `Date`.
+     */
+    val clockSkew: Long = 0,
+    val clockSkewAt: Long = 0,
+
+    /**
      * Куда провайдер просит переехать (`new-url` или `new-domain`), уже
      * проверенный ядром адрес. Пусто — переезда не просили.
      */
@@ -93,10 +100,29 @@ data class PanelInfo(
      */
     val groups: List<PanelGroup> = emptyList(),
 ) {
+    /**
+     * Поправка к часам устройства в миллисекундах.
+     *
+     * Измерение старше месяца выбрасывается, а не используется: опасен не уход
+     * кварца (секунды в месяц), а то, что человек поправил часы сам или их
+     * подтянула синхронизация после загрузки — в этот момент сохранённая
+     * поправка превращается в ошибку ровно своего размера. Отрицательный
+     * возраст означает то же самое: часы устройства ушли назад под измерением.
+     */
+    fun clockSkewMillis(): Long {
+        if (clockSkew == 0L || clockSkewAt == 0L) return 0
+
+        val age = System.currentTimeMillis() / 1000 - clockSkewAt
+
+        return if (age in 0..MAX_CLOCK_SKEW_AGE_SECONDS) clockSkew * 1000 else 0
+    }
+
     val isEmpty: Boolean
         get() = title.isBlank() && announce.isBlank() && promo.isBlank() &&
             portalUrl.isBlank() && logoFile.isBlank() && groups.isEmpty()
 }
+
+private const val MAX_CLOCK_SKEW_AGE_SECONDS = 30L * 24 * 60 * 60
 
 @Serializable
 data class PanelGroup(
