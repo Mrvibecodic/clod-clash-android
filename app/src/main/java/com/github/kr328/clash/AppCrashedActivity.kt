@@ -6,6 +6,7 @@ import com.github.kr328.clash.design.AppCrashedDesign
 import com.github.kr328.clash.log.SystemLogcat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 
 class AppCrashedActivity : BaseActivity<AppCrashedDesign>() {
@@ -27,7 +28,16 @@ class AppCrashedActivity : BaseActivity<AppCrashedDesign>() {
         design.setAppLogs(logs)
 
         while (isActive) {
-            events.receive()
+            select<Unit> {
+                events.onReceive {
+
+                }
+                design.requests.onReceive {
+                    when (it) {
+                        AppCrashedDesign.Request.Back -> finish()
+                    }
+                }
+            }
         }
     }
 }

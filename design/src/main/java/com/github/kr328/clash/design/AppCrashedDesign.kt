@@ -2,28 +2,37 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
-import com.github.kr328.clash.design.databinding.DesignAppCrashedBinding
-import com.github.kr328.clash.design.util.applyFrom
-import com.github.kr328.clash.design.util.bindAppBarElevation
-import com.github.kr328.clash.design.util.layoutInflater
-import com.github.kr328.clash.design.util.root
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.screen.AppCrashedAction
+import com.github.kr328.clash.design.compose.screen.AppCrashedScreen
+import com.github.kr328.clash.design.compose.screen.AppCrashedState
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 
-class AppCrashedDesign(context: Context) : Design<Unit>(context) {
-    private val binding = DesignAppCrashedBinding
-        .inflate(context.layoutInflater, context.root, false)
-
-    override val root: View
-        get() = binding.root
-
-    fun setAppLogs(logs: String) {
-        binding.logsView.text = logs
+class AppCrashedDesign(context: Context) : Design<AppCrashedDesign.Request>(context) {
+    enum class Request {
+        Back,
     }
 
-    init {
-        binding.self = this
+    private var state by mutableStateOf(AppCrashedState())
 
-        binding.activityBarLayout.applyFrom(context)
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                AppCrashedScreen(state = state, onAction = ::onAction)
+            }
+        }
+    }
 
-        binding.scrollRoot.bindAppBarElevation(binding.activityBarLayout)
+    private fun onAction(action: AppCrashedAction) {
+        when (action) {
+            AppCrashedAction.Back -> requests.trySend(Request.Back)
+        }
+    }
+
+    fun setAppLogs(logs: String) {
+        state = state.copy(logs = logs)
     }
 }

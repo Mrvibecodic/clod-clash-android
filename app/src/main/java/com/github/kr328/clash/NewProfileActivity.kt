@@ -49,6 +49,10 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
+                        NewProfileDesign.Request.Back -> {
+                            finish()
+                        }
+
                         is NewProfileDesign.Request.Create -> {
                             withProfile {
                                 val name = getString(R.string.new_profile)
