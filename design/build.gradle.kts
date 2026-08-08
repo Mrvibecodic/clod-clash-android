@@ -21,7 +21,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.coordinator)
-    implementation(libs.androidx.recyclerview)
+    // RecyclerView убран: списков на нём не осталось, все переехали на LazyColumn.
     implementation(libs.androidx.fragment)
     implementation(libs.google.material)
 

@@ -291,7 +291,6 @@
     <string name="update_all">Update All</string>
 
     <string name="close">Close</string>
-    <string name="keyword">Keyword</string>
 
     <string name="invalid_log_file">Invalid log file</string>
     <string name="unable_to_start_vpn">Unable to start VPN component</string>

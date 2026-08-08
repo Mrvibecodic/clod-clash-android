@@ -266,7 +266,6 @@
     <string name="update_all">Обновить всё</string>
 
     <string name="close">Закрыть</string>
-    <string name="keyword">Ключевое слово</string>
 
     <string name="invalid_log_file">Недопустимый лог файл</string>
     <string name="unable_to_start_vpn">Не удалось запустить компонент VPN</string>

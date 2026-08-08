@@ -2,10 +2,6 @@ package com.github.kr328.clash.design.preference
 
 import android.view.View
 
-fun interface OnChangedListener {
-    fun onChanged()
-}
-
 interface Preference {
     val view: View
 

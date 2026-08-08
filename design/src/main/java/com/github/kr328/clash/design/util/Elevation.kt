@@ -1,7 +1,6 @@
 package com.github.kr328.clash.design.util
 
 import android.animation.ValueAnimator
-import androidx.recyclerview.widget.RecyclerView
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.view.ActivityBarLayout
 import com.github.kr328.clash.design.view.ObservableScrollView
@@ -40,16 +39,13 @@ private class AppBarElevationController(
         }
 }
 
-fun RecyclerView.bindAppBarElevation(activityBar: ActivityBarLayout) {
-    addOnScrollListener(object : RecyclerView.OnScrollListener() {
-        private val controller = AppBarElevationController(activityBar)
-
-        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-            controller.elevated = !recyclerView.isTop
-        }
-    })
-}
-
+/**
+ * Тень под шапкой, пока содержимое отлистано вниз.
+ *
+ * Вариант для `RecyclerView` убран вместе с последним списком на нём:
+ * все списки теперь на `LazyColumn`, и единственный оставшийся экран
+ * на разметке — «APK повреждён» — прокручивается `ObservableScrollView`.
+ */
 fun ObservableScrollView.bindAppBarElevation(activityBar: ActivityBarLayout) {
     val controller = AppBarElevationController(activityBar)
 
