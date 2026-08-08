@@ -1,52 +1,88 @@
 package com.github.kr328.clash.design
 
-import android.app.Dialog
 import android.content.Context
 import android.view.View
-import com.github.kr328.clash.design.adapter.FileAdapter
-import com.github.kr328.clash.design.databinding.DesignFilesBinding
-import com.github.kr328.clash.design.databinding.DialogFilesMenuBinding
-import com.github.kr328.clash.design.dialog.AppBottomSheetDialog
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.screen.FilesAction
+import com.github.kr328.clash.design.compose.screen.FilesScreen
+import com.github.kr328.clash.design.compose.screen.FilesState
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.dialog.requestModelTextInput
 import com.github.kr328.clash.design.model.File
-import com.github.kr328.clash.design.util.*
+import com.github.kr328.clash.design.util.ValidatorFileName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
-    sealed class Request {
-        data class OpenFile(val file: File) : Request()
-        data class OpenDirectory(val file: File) : Request()
-        data class RenameFile(val file: File) : Request()
-        data class DeleteFile(val file: File) : Request()
-        data class ImportFile(val file: File?) : Request()
-        data class ExportFile(val file: File) : Request()
+    sealed interface Request {
+        data class OpenFile(val file: File) : Request
+        data class OpenDirectory(val file: File) : Request
+        data class RenameFile(val file: File) : Request
+        data class DeleteFile(val file: File) : Request
+        data class ImportFile(val file: File?) : Request
+        data class ExportFile(val file: File) : Request
 
-        object PopStack : Request()
+        /** Шаг вверх по каталогам, а из корня — уход с экрана. */
+        data object PopStack : Request
     }
 
-    private val binding = DesignFilesBinding
-        .inflate(context.layoutInflater, context.root, false)
-    private val adapter: FileAdapter = FileAdapter(context, this::requestOpen, this::requestMore)
+    private var state by mutableStateOf(FilesState(currentTime = System.currentTimeMillis()))
 
-    override val root: View
-        get() = binding.root
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                FilesScreen(state = state, onAction = ::onAction)
+            }
+        }
+    }
 
     var configurationEditable: Boolean
-        get() = binding.configurationEditable
+        get() = state.configurationEditable
         set(value) {
-            binding.configurationEditable = value
+            state = state.copy(configurationEditable = value)
         }
+
+    private fun onAction(action: FilesAction) {
+        when (action) {
+            FilesAction.Back -> requests.trySend(Request.PopStack)
+            FilesAction.New -> requests.trySend(Request.ImportFile(null))
+            FilesAction.CloseMenu -> state = state.copy(menuFor = null)
+            is FilesAction.More -> state = state.copy(menuFor = action.file)
+            is FilesAction.Open -> {
+                if (action.file.isDirectory) {
+                    requests.trySend(Request.OpenDirectory(action.file))
+                } else {
+                    requests.trySend(Request.OpenFile(action.file))
+                }
+            }
+            // Меню закрывается сразу: работа за ним идёт в активити и может
+            // спросить имя файла или открыть системный выбор — лист поверх
+            // всего этого висел бы до самого конца.
+            is FilesAction.Import -> pick(Request.ImportFile(action.file))
+            is FilesAction.Export -> pick(Request.ExportFile(action.file))
+            is FilesAction.Rename -> pick(Request.RenameFile(action.file))
+            is FilesAction.Delete -> pick(Request.DeleteFile(action.file))
+        }
+    }
+
+    private fun pick(request: Request) {
+        state = state.copy(menuFor = null)
+
+        requests.trySend(request)
+    }
 
     suspend fun swapFiles(files: List<File>, currentInBaseDir: Boolean) {
         withContext(Dispatchers.Main) {
-            adapter.swapDataSet(adapter::files, files)
-            binding.currentInBaseDir = currentInBaseDir
+            state = state.copy(files = files, inBaseDir = currentInBaseDir)
         }
     }
 
+    /** Пересчитать строки «N минут назад»: активити зовёт раз в минуту. */
     fun updateElapsed() {
-        adapter.updateElapsed()
+        state = state.copy(currentTime = System.currentTimeMillis())
     }
 
     suspend fun requestFileName(name: String): String {
@@ -57,67 +93,5 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
             error = context.getText(R.string.invalid_file_name),
             validator = ValidatorFileName,
         )
-    }
-
-    init {
-        binding.self = this
-
-        binding.activityBarLayout.applyFrom(context)
-
-        binding.mainList.recyclerList.also {
-            it.applyLinearAdapter(context, adapter)
-            it.bindAppBarElevation(binding.activityBarLayout)
-        }
-    }
-
-    private fun requestOpen(file: File) {
-        if (file.isDirectory) {
-            requests.trySend(Request.OpenDirectory(file))
-        } else {
-            requests.trySend(Request.OpenFile(file))
-        }
-    }
-
-    fun requestRename(dialog: Dialog, file: File) {
-        requests.trySend(Request.RenameFile(file))
-
-        dialog.dismiss()
-    }
-
-    fun requestImport(dialog: Dialog, file: File) {
-        requests.trySend(Request.ImportFile(file))
-
-        dialog.dismiss()
-    }
-
-    fun requestExport(dialog: Dialog, file: File) {
-        requests.trySend(Request.ExportFile(file))
-
-        dialog.dismiss()
-    }
-
-    fun requestDelete(dialog: Dialog, file: File) {
-        requests.trySend(Request.DeleteFile(file))
-
-        dialog.dismiss()
-    }
-
-    fun requestNew() {
-        requests.trySend(Request.ImportFile(null))
-    }
-
-    private fun requestMore(file: File) {
-        val dialog = AppBottomSheetDialog(context)
-
-        val binding = DialogFilesMenuBinding.inflate(context.layoutInflater)
-
-        binding.master = this
-        binding.self = dialog
-        binding.file = file
-        binding.currentInBase = this.binding.currentInBaseDir
-        binding.configurationEditable = this.binding.configurationEditable
-
-        dialog.setContentView(binding.root)
-        dialog.show()
     }
 }

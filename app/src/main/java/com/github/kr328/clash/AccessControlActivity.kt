@@ -54,6 +54,10 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
+                        AccessControlDesign.Request.Back -> {
+                            finish()
+                        }
+
                         AccessControlDesign.Request.ReloadApps -> {
                             design.patchApps(loadApps(selected))
                         }

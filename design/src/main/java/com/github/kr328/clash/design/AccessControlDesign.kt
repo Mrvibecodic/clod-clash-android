@@ -2,24 +2,34 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
-import androidx.core.widget.addTextChangedListener
-import com.github.kr328.clash.design.adapter.AppAdapter
-import com.github.kr328.clash.design.component.AccessControlMenu
-import com.github.kr328.clash.design.databinding.DesignAccessControlBinding
-import com.github.kr328.clash.design.databinding.DialogSearchBinding
-import com.github.kr328.clash.design.dialog.FullScreenDialog
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.screen.AccessControlAction
+import com.github.kr328.clash.design.compose.screen.AccessControlScreen
+import com.github.kr328.clash.design.compose.screen.AccessControlState
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.store.UiStore
-import com.github.kr328.clash.design.util.*
-import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
+/**
+ * Экран «Приложения» — какие приложения пускать в туннель.
+ *
+ * @param selected НАСТОЯЩИЙ набор выбранного: активити сохраняет его в
+ *   настройки при уходе с экрана и по изменению перезапускает ядро. Экран
+ *   правит его на месте, а Compose перерисовывает по снимку в состоянии —
+ *   на самом изменяемом множестве галочки не двигались бы вовсе.
+ */
 class AccessControlDesign(
     context: Context,
-    uiStore: UiStore,
+    private val uiStore: UiStore,
     private val selected: MutableSet<String>,
 ) : Design<AccessControlDesign.Request>(context) {
     enum class Request {
+        Back,
         ReloadApps,
         SelectAll,
         SelectNone,
@@ -28,107 +38,96 @@ class AccessControlDesign(
         Export,
     }
 
-    private val binding = DesignAccessControlBinding
-        .inflate(context.layoutInflater, context.root, false)
-
-    private val adapter = AppAdapter(context, selected)
-
-    private val menu: AccessControlMenu by lazy {
-        AccessControlMenu(context, binding.menuView, uiStore, requests)
-    }
+    private var state by mutableStateOf(
+        AccessControlState(
+            selected = selected.toSet(),
+            sort = uiStore.accessControlSort,
+            reverse = uiStore.accessControlReverse,
+            systemApps = uiStore.accessControlSystemApp,
+        ),
+    )
 
     val apps: List<AppInfo>
-        get() = adapter.apps
+        get() = state.apps
 
-    override val root: View
-        get() = binding.root
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                AccessControlScreen(state = state, onAction = ::onAction)
+            }
+        }
+    }
+
+    private fun onAction(action: AccessControlAction) {
+        when (action) {
+            AccessControlAction.Back -> request(Request.Back)
+            AccessControlAction.SelectAll -> request(Request.SelectAll)
+            AccessControlAction.SelectNone -> request(Request.SelectNone)
+            AccessControlAction.SelectInvert -> request(Request.SelectInvert)
+            AccessControlAction.Import -> request(Request.Import)
+            AccessControlAction.Export -> request(Request.Export)
+            is AccessControlAction.Toggle -> {
+                if (!selected.remove(action.packageName)) {
+                    selected.add(action.packageName)
+                }
+
+                syncSelected()
+            }
+            is AccessControlAction.Search -> {
+                // Уход из поиска стирает слово: вернуться к отфильтрованному
+                // списку через закрытый поиск было бы нечем.
+                state = if (action.enabled) {
+                    state.copy(searching = true)
+                } else {
+                    state.copy(searching = false, query = "")
+                }
+            }
+            is AccessControlAction.Query -> state = state.copy(query = action.value)
+            is AccessControlAction.Sort -> {
+                uiStore.accessControlSort = action.value
+                state = state.copy(sort = action.value, loaded = false)
+
+                request(Request.ReloadApps)
+            }
+            is AccessControlAction.Reverse -> {
+                uiStore.accessControlReverse = action.value
+                state = state.copy(reverse = action.value, loaded = false)
+
+                request(Request.ReloadApps)
+            }
+            is AccessControlAction.SystemApps -> {
+                uiStore.accessControlSystemApp = action.value
+                state = state.copy(systemApps = action.value, loaded = false)
+
+                request(Request.ReloadApps)
+            }
+        }
+    }
 
     suspend fun patchApps(apps: List<AppInfo>) {
-        adapter.swapDataSet(adapter::apps, apps, false)
+        withContext(Dispatchers.Main) {
+            state = state.copy(apps = apps, loaded = true)
+        }
     }
 
+    /**
+     * Показать то, что сейчас в наборе.
+     *
+     * Зовётся после того, как набор поменяла активити (выделить всё, снять всё,
+     * инвертировать, вставить из буфера) — она правит `selected` на месте,
+     * и без снимка экран об этом не узнает.
+     */
     suspend fun rebindAll() {
         withContext(Dispatchers.Main) {
-            adapter.rebindAll()
+            syncSelected()
         }
     }
 
-    init {
-        binding.self = this
-
-        binding.activityBarLayout.applyFrom(context)
-
-        binding.mainList.recyclerList.also {
-            it.bindAppBarElevation(binding.activityBarLayout)
-            it.applyLinearAdapter(context, adapter)
-        }
-
-        binding.menuView.setOnClickListener {
-            menu.show()
-        }
-
-        binding.searchView.setOnClickListener {
-            launch {
-                try {
-                    requestSearch()
-                } finally {
-                    withContext(NonCancellable) {
-                        rebindAll()
-                    }
-                }
-            }
-        }
+    private fun syncSelected() {
+        state = state.copy(selected = selected.toSet())
     }
 
-    private suspend fun requestSearch() {
-        coroutineScope {
-            val binding = DialogSearchBinding
-                .inflate(context.layoutInflater, context.root, false)
-            val adapter = AppAdapter(context, selected)
-            val dialog = FullScreenDialog(context)
-            val filter = Channel<Unit>(Channel.CONFLATED)
-
-            dialog.setContentView(binding.root)
-
-            binding.surface = dialog.surface
-            binding.mainList.applyLinearAdapter(context, adapter)
-            binding.keywordView.addTextChangedListener {
-                filter.trySend(Unit)
-            }
-            binding.closeView.setOnClickListener {
-                dialog.dismiss()
-            }
-
-            dialog.setOnDismissListener {
-                cancel()
-            }
-
-            dialog.setOnShowListener {
-                binding.keywordView.requestTextInput()
-            }
-
-            dialog.show()
-
-            while (isActive) {
-                filter.receive()
-
-                val keyword = binding.keywordView.text?.toString() ?: ""
-
-                val apps: List<AppInfo> = if (keyword.isEmpty()) {
-                    emptyList()
-                } else {
-                    withContext(Dispatchers.Default) {
-                        apps.filter {
-                            it.label.contains(keyword, ignoreCase = true) ||
-                                    it.packageName.contains(keyword, ignoreCase = true)
-                        }
-                    }
-                }
-
-                adapter.patchDataSet(adapter::apps, apps, false, AppInfo::packageName)
-
-                delay(200)
-            }
-        }
+    fun request(request: Request) {
+        requests.trySend(request)
     }
 }
