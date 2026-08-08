@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
@@ -179,19 +180,34 @@ private fun Actions(
     onOpenSettings: () -> Unit,
 ) {
     val support = panel?.supportUrl.orEmpty()
+    val portal = panel?.portalUrl.orEmpty()
 
     // Единственное действие, которое приложение может предложить само, —
-    // включить опознание устройства. Всё остальное решается на стороне
-    // провайдера, поэтому главной кнопкой становится обращение в поддержку.
+    // включить опознание устройства; там дело в настройке клиента, и посылать
+    // человека в личный кабинет незачем. Во всех остальных случаях — срок,
+    // трафик, лимит устройств — решение на стороне провайдера, и главной
+    // кнопкой идёт личный кабинет: платёжных кнопок в клиенте нет, и это
+    // единственная ссылка, ведущая к оплате. Нет кабинета — остаётся поддержка.
     val primary: Pair<Int, () -> Unit>? = when {
         reason == NoServersReason.DeviceNotIdentified -> R.string.clod_open_settings to onOpenSettings
+        portal.isNotBlank() -> R.string.clod_portal to { onOpenUrl(portal) }
         support.isNotBlank() -> R.string.clod_support to { onOpenUrl(support) }
         else -> null
     }
 
-    val secondary = support
-        .takeIf { it.isNotBlank() && primary?.first != R.string.clod_support }
-        ?.let { R.string.clod_support to { onOpenUrl(it) } }
+    // Второй кнопкой обычно поддержка. Но если её адреса нет, а первой кнопкой
+    // ушли «Настройки» (устройство не опознано), вторым идёт кабинет: подписка
+    // у неопознанного устройства может быть заодно и просроченной, и остаться
+    // вовсе без выхода к провайдеру человек не должен.
+    val secondary: Pair<Int, () -> Unit>? = when {
+        support.isNotBlank() && primary?.first != R.string.clod_support ->
+            R.string.clod_support to { onOpenUrl(support) }
+
+        portal.isNotBlank() && primary?.first != R.string.clod_portal ->
+            R.string.clod_portal to { onOpenUrl(portal) }
+
+        else -> null
+    }
 
     if (primary == null && secondary == null) return
 
@@ -204,14 +220,26 @@ private fun Actions(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                 ),
+                // Долю ширины забирает только первая кнопка: «Личный кабинет»
+                // при делении поровну не влезал и переносился на две строки,
+                // делая соседнюю кнопку ниже себя.
+                modifier = Modifier.weight(1f),
             ) {
-                Text(stringResource(label))
+                Text(
+                    text = stringResource(label),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
         secondary?.let { (label, action) ->
             OutlinedButton(onClick = action) {
-                Text(stringResource(label))
+                Text(
+                    text = stringResource(label),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }

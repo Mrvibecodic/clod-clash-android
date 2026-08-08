@@ -26,10 +26,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
@@ -325,6 +323,9 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             ActiveSubscriptionCard(
                 item = active,
                 expanded = connected,
+                // Когда сверху висит карточка «серверов нет», кнопки уже есть
+                // у неё, и повторять их ниже незачем.
+                showActions = noServersReason(active.profile, active.panel) == null,
                 onAction = onAction,
             )
         }
@@ -508,11 +509,14 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
     val panel = active.panel ?: return
     val notice = panel.announce.takeIf { it.isNotBlank() } ?: panel.promo
     val noticeUrl = if (panel.announce.isNotBlank()) panel.announceUrl else panel.promoUrl
-    val hasButtons = panel.portalUrl.isNotBlank() || panel.supportUrl.isNotBlank()
-
     val reason = noServersReason(active.profile, panel)
 
-    if (notice.isBlank() && !hasButtons && reason == null) return
+    // Кнопок здесь больше нет: та же пара «Личный кабинет» и «Поддержка»
+    // рисовалась и тут, и в карточке подписки, и сходились оба условия ровно
+    // тогда, когда человек смотрит на экран внимательнее всего. Теперь пара
+    // живёт в одном месте — рядом со сроком и трафиком, то есть там, где
+    // человек и понял, что подписка кончается.
+    if (notice.isBlank() && reason == null) return
 
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
         if (reason != null) {
@@ -557,30 +561,6 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-            }
-        }
-
-        // clod: платёжных кнопок в клиенте нет вовсе. Куда идти платить, знает
-        // только провайдер, и ведёт туда единственная ссылка — личный кабинет.
-        if (hasButtons) {
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (panel.portalUrl.isNotBlank()) {
-                    Button(
-                        onClick = { onAction(MainAction.OpenUrl(panel.portalUrl)) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.clod_portal))
-                    }
-                }
-                if (panel.supportUrl.isNotBlank()) {
-                    OutlinedButton(
-                        onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.clod_support))
-                    }
                 }
             }
         }
@@ -718,6 +698,28 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             )
 
             SectionHeader(stringResource(R.string.clod_section_support))
+
+            // clod: кабинет и поддержка провайдера. На главном экране они живут
+            // в карточке подписки, то есть видны в сессии и когда с подпиской
+            // что-то не так; в спокойном состоянии карточки нет, и искать их
+            // человек будет здесь — рядом с помощью и логами.
+            state.active?.panel?.let { panel ->
+                if (panel.portalUrl.isNotBlank()) {
+                    ActionRow(
+                        title = stringResource(R.string.clod_portal),
+                        icon = painterResource(R.drawable.ic_baseline_account),
+                        onClick = { onAction(MainAction.OpenUrl(panel.portalUrl)) },
+                    )
+                }
+                if (panel.supportUrl.isNotBlank()) {
+                    ActionRow(
+                        title = stringResource(R.string.clod_support),
+                        icon = painterResource(R.drawable.ic_baseline_chat),
+                        onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) },
+                    )
+                }
+            }
+
             ActionRow(
                 title = stringResource(R.string.logs),
                 icon = painterResource(R.drawable.ic_baseline_assignment),

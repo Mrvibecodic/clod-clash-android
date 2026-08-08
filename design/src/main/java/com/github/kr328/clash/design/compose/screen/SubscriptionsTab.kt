@@ -387,6 +387,7 @@ private fun SubscriptionCard(
 fun ActiveSubscriptionCard(
     item: SubscriptionItem,
     expanded: Boolean,
+    showActions: Boolean,
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
@@ -473,10 +474,10 @@ fun ActiveSubscriptionCard(
             }
 
             // clod: платёжных кнопок нет — единственная ссылка провайдера,
-            // ведущая к оплате, это личный кабинет. Здесь она повторяется
-            // только в критическом состоянии: в спокойной сессии кабинет и
-            // поддержка уже показаны баннером на главной.
-            if (critical && panel != null &&
+            // ведущая к оплате, это личный кабинет. Место у пары одно на весь
+            // экран: раньше она же рисовалась баннером выше, и в критическом
+            // состоянии человек видел две одинаковые пары подряд.
+            if (showActions && panel != null &&
                 (panel.portalUrl.isNotBlank() || panel.supportUrl.isNotBlank())
             ) {
                 Spacer(Modifier.height(12.dp))
@@ -484,17 +485,37 @@ fun ActiveSubscriptionCard(
                     if (panel.portalUrl.isNotBlank()) {
                         Button(
                             onClick = { onAction(MainAction.OpenUrl(panel.portalUrl)) },
+                            // Долю ширины забирает только «Личный кабинет»:
+                            // при делении поровну он не влезал в половину
+                            // экрана, переносился на две строки и тянул вверх
+                            // соседнюю кнопку. «Поддержка» короче и занимает
+                            // ровно столько, сколько ей надо.
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(stringResource(R.string.clod_portal))
+                            Text(
+                                text = stringResource(R.string.clod_portal),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                     if (panel.supportUrl.isNotBlank()) {
                         OutlinedButton(
                             onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) },
-                            modifier = Modifier.weight(1f),
+                            // Ширину делит только соседняя кнопка. Но если её
+                            // нет вовсе, одинокая «Поддержка» не должна липнуть
+                            // к левому краю — тогда долю забирает она.
+                            modifier = if (panel.portalUrl.isBlank()) {
+                                Modifier.weight(1f)
+                            } else {
+                                Modifier
+                            },
                         ) {
-                            Text(stringResource(R.string.clod_support))
+                            Text(
+                                text = stringResource(R.string.clod_support),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
                     }
                 }
