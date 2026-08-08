@@ -67,6 +67,11 @@ type PanelInfo struct {
 	NotifyExpireDays     []int `json:"notifyExpireDays"`
 	NotifyTrafficPercent []int `json:"notifyTrafficPercent"`
 
+	// `clod-lock-mode` — провайдер запрещает менять режим туннеля.
+	// Указатель ради третьего состояния: панель может ничего не сказать,
+	// и это не то же самое, что «разрешаю».
+	LockMode *bool `json:"lockMode,omitempty"`
+
 	// В конфигурации не осталось ни одного настоящего сервера: пришли одни
 	// узлы-обманки. Это не ошибка загрузки, а состояние, о котором экрану
 	// надо рассказать словами.
@@ -159,6 +164,16 @@ func applyHeaders(info *PanelInfo, header map[string][]string) {
 	}
 
 	info.NotifyTrafficPercent = thresholds(headerValue(header, "notify-traffic-percent"), 1, 100)
+
+	// `global-mode: false` у панелей, настроенных под Prizrak-Box, значит
+	// «спрячьте переключатель режимов» — то же самое, что наш замок.
+	info.LockMode = optionalBool(header, "clod-lock-mode")
+	if info.LockMode == nil {
+		if allowed := optionalBool(header, "global-mode"); allowed != nil {
+			locked := !*allowed
+			info.LockMode = &locked
+		}
+	}
 }
 
 // applyGroups достаёт из разобранного конфига состав групп.
@@ -402,6 +417,26 @@ func thresholds(raw string, lo, hi int) []int {
 	}
 
 	return values
+}
+
+// optionalBool отличает «панель сказала false» от «панель промолчала».
+//
+// Обычный boolHeader на оба случая отвечает false, а для замка режимов это
+// разные вещи: молчание оставляет решение человеку, явный false — снимает
+// замок, который мог стоять раньше.
+func optionalBool(header map[string][]string, name string) *bool {
+	switch strings.ToLower(strings.TrimSpace(headerValue(header, name))) {
+	case "true", "1", "yes", "on":
+		value := true
+
+		return &value
+	case "false", "0", "no", "off":
+		value := false
+
+		return &value
+	}
+
+	return nil
 }
 
 func boolHeader(header map[string][]string, name string) bool {

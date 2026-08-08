@@ -50,6 +50,15 @@ sealed interface OverrideSettingsAction {
 data class OverrideSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
+    /**
+     * Провайдер запретил менять режим (`clod-lock-mode`).
+     *
+     * Замок обязан доезжать и сюда: строка «Режим» на этом экране пишет
+     * не сессионный слот, а постоянный — то есть переживает перезапуск
+     * и применяется к любой подписке. Без проверки замок с главного экрана
+     * обходился бы в два нажатия и навсегда.
+     */
+    val modeLocked: Boolean = false,
 )
 
 /**
@@ -201,31 +210,33 @@ fun OverrideSettingsScreen(
                 empty = stringResource(R.string.default_),
                 onValue = { configuration.secret = it; changed() },
             )
-            SelectRow(
-                title = stringResource(R.string.mode),
-                options = listOf(
-                    dontModify,
-                    stringResource(R.string.direct_mode),
-                    stringResource(R.string.global_mode),
-                    stringResource(R.string.rule_mode),
-                ),
-                selectedIndex = when (configuration.mode) {
-                    null -> 0
-                    TunnelState.Mode.Direct -> 1
-                    TunnelState.Mode.Global -> 2
-                    TunnelState.Mode.Rule -> 3
-                    else -> 0
-                },
-                onSelect = {
-                    configuration.mode = when (it) {
-                        1 -> TunnelState.Mode.Direct
-                        2 -> TunnelState.Mode.Global
-                        3 -> TunnelState.Mode.Rule
-                        else -> null
-                    }
-                    changed()
-                },
-            )
+            if (!state.modeLocked) {
+                SelectRow(
+                    title = stringResource(R.string.mode),
+                    options = listOf(
+                        dontModify,
+                        stringResource(R.string.direct_mode),
+                        stringResource(R.string.global_mode),
+                        stringResource(R.string.rule_mode),
+                    ),
+                    selectedIndex = when (configuration.mode) {
+                        null -> 0
+                        TunnelState.Mode.Direct -> 1
+                        TunnelState.Mode.Global -> 2
+                        TunnelState.Mode.Rule -> 3
+                        else -> 0
+                    },
+                    onSelect = {
+                        configuration.mode = when (it) {
+                            1 -> TunnelState.Mode.Direct
+                            2 -> TunnelState.Mode.Global
+                            3 -> TunnelState.Mode.Rule
+                            else -> null
+                        }
+                        changed()
+                    },
+                )
+            }
             SelectRow(
                 title = stringResource(R.string.log_level),
                 options = listOf(

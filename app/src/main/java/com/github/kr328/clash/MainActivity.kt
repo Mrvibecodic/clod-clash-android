@@ -219,15 +219,29 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         is MainDesign.Request.PatchMode -> {
-                            withClash {
-                                val override = queryOverride(Clash.OverrideSlot.Session)
+                            // Замок проверяется ЗДЕСЬ, а не только в интерфейсе:
+                            // это единственная воронка, через которую режим
+                            // вообще меняется, и спрятанная строка сама по себе
+                            // замком не является.
+                            val locked = withProfile { queryActive() }
+                                ?.let { queryPanelInfo(it.uuid)?.lockMode } == true
 
-                                override.mode = request.mode
+                            if (locked) {
+                                design.showToast(
+                                    DesignR.string.clod_mode_locked_toast,
+                                    ToastDuration.Long,
+                                )
+                            } else {
+                                withClash {
+                                    val override = queryOverride(Clash.OverrideSlot.Session)
 
-                                patchOverride(Clash.OverrideSlot.Session, override)
+                                    override.mode = request.mode
+
+                                    patchOverride(Clash.OverrideSlot.Session, override)
+                                }
+
+                                design.fetch()
                             }
-
-                            design.fetch()
                         }
                         is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
                         MainDesign.Request.CheckUpdate ->

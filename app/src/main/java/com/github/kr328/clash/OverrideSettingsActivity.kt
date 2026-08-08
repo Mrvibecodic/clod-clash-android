@@ -8,7 +8,9 @@ import com.github.kr328.clash.design.OverrideSettingsDesign
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withClash
+import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -19,6 +21,17 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
         val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
         val service = ServiceStore(this)
 
+        // Замок провайдера (`clod-lock-mode`). Строка «Режим» тут пишет
+        // ПОСТОЯННЫЙ слот: он переживает перезапуск и накладывается на любую
+        // подписку, поэтому при замке её нельзя просто спрятать — надо ещё
+        // и снять то, что человек успел выставить до прихода замка.
+        val modeLocked = withProfile { queryActive() }
+            ?.let { queryPanelInfo(it.uuid)?.lockMode } == true
+
+        if (modeLocked) {
+            configuration.mode = null
+        }
+
         defer {
             withClash {
                 patchOverride(Clash.OverrideSlot.Persist, configuration)
@@ -27,7 +40,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
 
         val design = OverrideSettingsDesign(
             this,
-            configuration
+            configuration,
+            modeLocked = modeLocked,
         )
 
         setContentDesign(design)

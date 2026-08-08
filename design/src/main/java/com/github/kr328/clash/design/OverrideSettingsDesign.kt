@@ -18,13 +18,16 @@ import kotlin.coroutines.resume
 class OverrideSettingsDesign(
     context: Context,
     private val configuration: ConfigurationOverride,
+    modeLocked: Boolean = false,
 ) : Design<OverrideSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ResetOverride : Request
         data object Back : Request
     }
 
-    private var state by mutableStateOf(OverrideSettingsState(configuration))
+    private var state by mutableStateOf(
+        OverrideSettingsState(configuration, modeLocked = modeLocked),
+    )
 
     override val root: View = ComposeView(context).apply {
         setContent {

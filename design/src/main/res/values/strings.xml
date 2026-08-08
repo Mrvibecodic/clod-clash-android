@@ -425,6 +425,9 @@
     <string name="clod_update_failed">Could not check for updates</string>
     <string name="clod_update_permission">Allow installation so the app can update itself. The system will open its own screen — turn the switch on there.</string>
     <string name="clod_mode">Mode</string>
+    <string name="clod_mode_locked">%s · set by your provider</string>
+    <string name="clod_mode_locked_hint">Your provider has fixed the routing mode for this subscription. It cannot be changed in the app.</string>
+    <string name="clod_mode_locked_toast">The routing mode is set by your provider</string>
     <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>

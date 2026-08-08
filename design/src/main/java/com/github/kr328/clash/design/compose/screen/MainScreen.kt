@@ -585,15 +585,38 @@ fun modeLabel(mode: TunnelState.Mode): String = stringResource(
  * пункт, который не применится, — врать пользователю.
  */
 @Composable
-private fun ModeRow(mode: TunnelState.Mode, onAction: (MainAction) -> Unit) {
+private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainAction) -> Unit) {
     var picking by remember { mutableStateOf(false) }
 
     ActionRow(
         title = stringResource(R.string.clod_mode),
-        subtitle = modeLabel(mode),
+        // Замок виден строкой, а не только при нажатии: человек должен понимать,
+        // почему выбор не открывается, ДО того как ткнул.
+        subtitle = if (locked) {
+            stringResource(R.string.clod_mode_locked, modeLabel(mode))
+        } else {
+            modeLabel(mode)
+        },
         icon = painterResource(R.drawable.ic_baseline_vpn_lock),
         onClick = { picking = true },
     )
+
+    if (picking && locked) {
+        // Не список с выключенными строками, а объяснение: выбор, который
+        // ничего не делает, читается как поломка приложения.
+        AlertDialog(
+            onDismissRequest = { picking = false },
+            title = { Text(stringResource(R.string.clod_mode)) },
+            text = { Text(stringResource(R.string.clod_mode_locked_hint)) },
+            confirmButton = {
+                TextButton(onClick = { picking = false }) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+        )
+
+        return
+    }
 
     if (picking) {
         AlertDialog(
@@ -647,7 +670,12 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 12.dp),
             )
             SectionHeader(stringResource(R.string.clod_section_connection))
-            ModeRow(state.mode, onAction)
+            ModeRow(
+                mode = state.mode,
+                // Провайдер вправе запретить смену режима (`clod-lock-mode`).
+                locked = state.active?.panel?.lockMode == true,
+                onAction = onAction,
+            )
             ActionRow(
                 title = stringResource(R.string.clod_apps),
                 subtitle = stringResource(R.string.clod_apps_subtitle),
