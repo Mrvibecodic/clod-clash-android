@@ -51,6 +51,10 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.kotlin.coroutine)
     implementation(libs.kotlin.serialization.json)
+
+    // Тесты на разбор упакованного счётчика трафика. Native-часть им не нужна:
+    // проверяется договор между `bridge_helper.c` и Kotlin, а не само ядро.
+    testImplementation(libs.junit)
 }
 
 afterEvaluate {

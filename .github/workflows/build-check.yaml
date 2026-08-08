@@ -62,14 +62,32 @@ jobs:
       #     echo keystore.password="$SIGNING_STORE_PASSWORD" > signing.properties
       #     echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
+      # Разбор заголовков панели живёт в Go, и проверяется он тоже на Go —
+      # самым первым шагом: пакет `native/config` собирается на хост-платформе
+      # за секунды, а красный разбор не должен ждать ни Gradle, ни NDK.
+      # Каталог модуля — тот же, что собирает golang-плагин.
+      - name: Go unit tests
+        id: go-tests
+        if: success()
+        working-directory: core/src/main/golang
+        run: go test ./native/config/...
+
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная
       # считалка не должна стоить полного прогона до фидбэка. В том же джобе,
       # а не отдельным: Go на :core тратится один раз на оба шага.
+      #
+      # Три модуля: :service (пороги напоминаний, разбор panel.json),
+      # :core (упакованный счётчик трафика), :design (размеры, имена файлов
+      # логов, проверки полей ввода).
       - name: Unit tests
         id: unit-tests
         if: success()
-        run: ./gradlew --no-daemon service:testStandardDebugUnitTest -Pclod.abi=arm64-v8a
+        run: >-
+          ./gradlew --no-daemon -Pclod.abi=arm64-v8a
+          service:testStandardDebugUnitTest
+          core:testStandardDebugUnitTest
+          design:testStandardDebugUnitTest
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v7
@@ -82,6 +100,10 @@ jobs:
           path: |
             service/build/reports/tests/
             service/build/test-results/
+            core/build/reports/tests/
+            core/build/test-results/
+            design/build/reports/tests/
+            design/build/test-results/
 
       - name: Build
         if: success()

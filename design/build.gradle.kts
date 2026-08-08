@@ -16,6 +16,11 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":service"))
 
+    // Тесты на чистые считалки слоя интерфейса (размер трафика, имя файла
+    // логов, проверки полей ввода). Считают на JVM: ни телефона, ни эмулятора,
+    // ни разметки им не нужно.
+    testImplementation(libs.junit)
+
     implementation(libs.kotlin.coroutine)
     implementation(libs.androidx.core)
     implementation(libs.androidx.appcompat)
