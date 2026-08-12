@@ -38,6 +38,11 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
 	}(C.GoString(path), C.GoString(url), callback)
 }
 
+//export setSecureChannel
+func setSecureChannel(enabled C.int) {
+	config.SetSecureChannel(enabled != 0)
+}
+
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
 	go func(path string) {

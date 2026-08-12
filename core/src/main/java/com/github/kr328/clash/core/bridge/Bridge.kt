@@ -32,6 +32,7 @@ object Bridge {
     external fun nativeTestProfileDelays(path: String): String?
     external fun nativeSetDeviceInfo(hwid: String, os: String, osVersion: String, model: String)
     external fun nativePatchSelector(selector: String, name: String): Boolean
+    external fun nativeSetSecureChannel(enabled: Boolean)
     external fun nativeFetchAndValid(
         completable: FetchCallback,
         path: String,

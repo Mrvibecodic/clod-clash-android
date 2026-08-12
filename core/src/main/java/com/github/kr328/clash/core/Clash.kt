@@ -192,6 +192,18 @@ object Clash {
         return Bridge.nativePatchSelector(selector, name)
     }
 
+    /**
+     * clod:chan — включить защищённый канал до прослойки для следующей загрузки.
+     *
+     * Признак ставится отдельным вызовом, а не параметром `fetchAndValid`:
+     * менять её подпись пришлось бы через Go export → C → JNI → Kotlin, где
+     * ошибка ловится только `UnsatisfiedLinkError` в рантайме. Тем же способом
+     * ядру отдаётся секретный ключ age.
+     */
+    fun setSecureChannel(enabled: Boolean) {
+        Bridge.nativeSetSecureChannel(enabled)
+    }
+
     fun fetchAndValid(
         path: File,
         url: String,

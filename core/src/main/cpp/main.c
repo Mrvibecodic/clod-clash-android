@@ -226,6 +226,14 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetDeviceInfo(JNIEnv *env, 
 }
 
 JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetSecureChannel(JNIEnv *env, jobject thiz,
+                                                                     jboolean enabled) {
+    TRACE_METHOD();
+
+    setSecureChannel((int) enabled);
+}
+
+JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckAll(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
 

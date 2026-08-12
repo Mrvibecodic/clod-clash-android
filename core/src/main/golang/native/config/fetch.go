@@ -91,6 +91,30 @@ func openContent(url string) (io.ReadCloser, error) {
 	return app.OpenContent(url)
 }
 
+// fetchConfig — загрузка САМОЙ подписки, в отличие от `fetch`, которым качаются
+// провайдеры правил и узлов: защищённый канал бывает только у неё.
+//
+// Ключ прослойки кладётся рядом с конфигурацией, поэтому каталог берём
+// из пути файла — отдельным параметром его пришлось бы протаскивать через
+// все ветки запасных адресов.
+func fetchConfig(url *U.URL, file string) (fetchHeader, error) {
+	if !SecureChannel() || (url.Scheme != "http" && url.Scheme != "https") {
+		return fetch(url, file)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	reader, header, err := openUrlSecure(ctx, url.String(), P.Dir(file))
+	if err != nil {
+		return fetchHeader{}, err
+	}
+
+	defer reader.Close()
+
+	return header, writeFile(file, reader)
+}
+
 func fetch(url *U.URL, file string) (fetchHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -230,7 +254,7 @@ func fetchFromSpare(
 
 		reportStatus(string(bytes))
 
-		header, err := fetch(parsed, configPath)
+		header, err := fetchConfig(parsed, configPath)
 		if err != nil {
 			log.Warnln("Spare address %s failed as well: %s", parsed.Host, err.Error())
 
@@ -274,7 +298,7 @@ func FetchAndValid(
 		// адреса, а перезапишем мы его через несколько строк.
 		info := readPanelInfo(path)
 
-		header, err := fetch(url, configPath)
+		header, err := fetchConfig(url, configPath)
 		if err != nil {
 			header, err = fetchFromSpare(info, url, configPath, err, reportStatus)
 			if err != nil {
