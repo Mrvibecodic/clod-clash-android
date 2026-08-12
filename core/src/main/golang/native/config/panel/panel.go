@@ -90,6 +90,14 @@ type Info struct {
 	// надо рассказать словами.
 	NoServers bool `json:"noServers,omitempty"`
 
+	// `clod-show-0hosts` — провайдер просит НЕ прятать узлы-обманки.
+	//
+	// Наши экраны «серверов нет» — поведение по умолчанию, и оно остаётся.
+	// Заголовок их отключает: узлы-заглушки показываются как есть, со своими
+	// названиями, фильтр не работает. Нужен тем, кто складывает в эти узлы
+	// собственный текст для человека и хочет, чтобы человек его прочитал.
+	ShowZeroHosts bool `json:"showZeroHosts,omitempty"`
+
 	// Состав конфига: нужен, чтобы показать список серверов ДО подключения.
 	// Пока туннель не поднят, ядро ничего не знает о группах и узлах —
 	// спрашивать у него нечего, а список человек хочет видеть сразу.
@@ -195,6 +203,11 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 		validateNewURL(current, headerValue(header, "new-url")),
 		swapDomain(current, headerValue(header, "new-domain")),
 	)
+
+	// Мусор в значении режим НЕ включает (`boolHeader`, а не `optionalBool`):
+	// молча отдать человеку чужой текст вместо объяснения хуже, чем
+	// проигнорировать кривую панель. Как на ПК.
+	info.ShowZeroHosts = boolHeader(header, "clod-show-0hosts")
 
 	info.LockMode = optionalBool(header, "clod-lock-mode")
 

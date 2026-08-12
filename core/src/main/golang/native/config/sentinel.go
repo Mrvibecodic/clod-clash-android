@@ -140,8 +140,17 @@ func inspectSentinels(cfg *config.RawConfig) SentinelReport {
 // Оставить их означало бы показать человеку список серверов, к которым нельзя
 // подключиться, и дать ядру возможность на них переключиться. Из групп имена
 // тоже убираются: иначе группа осталась бы ссылаться на несуществующий узел.
-func filterSentinels(cfg *config.RawConfig, _ string) error {
+//
+// Исключение — заголовок `clod-show-0hosts`: провайдер прямо просит показать
+// узлы как есть. Файл `panel.json` к этому месту уже записан (заголовки
+// сохраняются сразу после загрузки, до разбора конфига), поэтому читаем его
+// из каталога профиля.
+func filterSentinels(cfg *config.RawConfig, profileDir string) error {
 	if len(cfg.Proxy) == 0 {
+		return nil
+	}
+
+	if profileShowsZeroHosts(profileDir) {
 		return nil
 	}
 
@@ -194,4 +203,15 @@ func filterSentinels(cfg *config.RawConfig, _ string) error {
 	}
 
 	return nil
+}
+
+// profileShowsZeroHosts — просил ли провайдер этого профиля показывать
+// узлы-обманки. Каталога нет (проверка конфига не из профиля) — значит
+// и панели нет, работает поведение по умолчанию.
+func profileShowsZeroHosts(profileDir string) bool {
+	if profileDir == "" {
+		return false
+	}
+
+	return readPanelInfo(profileDir).ShowZeroHosts
 }

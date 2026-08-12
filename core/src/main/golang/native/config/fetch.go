@@ -262,7 +262,12 @@ func FetchAndValid(
 	// экрану нужен: без него пустой список выглядит как поломка приложения,
 	// а не как отказ сервиса.
 	report := inspectSentinels(rawCfg)
-	panelInfo.NoServers = report.OnlySentinels
+
+	// При `clod-show-0hosts` фильтр не работал, и узлы-обманки остались
+	// в конфиге намеренно. Статус «серверов нет» тогда не поднимаем: провайдер
+	// просил показать список как есть, а карточка с объяснением поверх него
+	// была бы ровно тем, что заголовок и отключает.
+	panelInfo.NoServers = report.OnlySentinels && !panelInfo.ShowZeroHosts
 
 	if len(report.Remarks) > 0 {
 		log.Infoln("Subscription sent placeholders instead of servers: %s", strings.Join(report.Remarks, " | "))

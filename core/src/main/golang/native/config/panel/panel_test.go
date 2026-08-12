@@ -564,3 +564,39 @@ func TestInfoRoundTrip(t *testing.T) {
 		t.Fatalf("название = %q", got.Title)
 	}
 }
+
+func TestApplyHeadersShowZeroHosts(t *testing.T) {
+	// Заголовок отключает НАШИ экраны «серверов нет»: узлы-обманки
+	// показываются как есть. Поведение по умолчанию — экраны включены,
+	// поэтому включать режим имеет право только внятное «да».
+	for _, raw := range []string{"true", "TRUE", "1", "yes", "on"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-Show-0Hosts": []string{raw}}, "https://panel.example/sub")
+
+		if !info.ShowZeroHosts {
+			t.Fatalf("%q должно включать показ заглушек", raw)
+		}
+	}
+
+	for _, raw := range []string{"", "  ", "false", "0", "off", "no", "мусор", "maybe"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-Show-0Hosts": []string{raw}}, "https://panel.example/sub")
+
+		if info.ShowZeroHosts {
+			t.Fatalf("%q не должно включать показ заглушек", raw)
+		}
+	}
+}
+
+func TestApplyHeadersShowZeroHostsFollowsPanel(t *testing.T) {
+	// Поле — состояние последнего ответа, а не накопленное знание. Убрали
+	// заголовок в панели — наши экраны возвращаются со следующим обновлением,
+	// а не живут до переустановки приложения.
+	info := Info{ShowZeroHosts: true}
+
+	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, "https://panel.example/sub")
+
+	if info.ShowZeroHosts {
+		t.Fatal("панель перестала слать заголовок — режим должен сняться")
+	}
+}

@@ -5,7 +5,8 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 репозитории, здесь только Android.
 
 > **Статус: ранняя разработка.** База — история апстрима (ClashMetaForAndroid v2.11.32),
-> поверх неё сделан ребрендинг. Свой интерфейс на Compose и логика Remnawave — впереди.
+> поверх неё сделан ребрендинг. Интерфейс целиком переведён на Jetpack Compose,
+> заголовки подписки Remnawave разбираются наравне с десктопом.
 
 ## На чём это основано
 
@@ -14,10 +15,10 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 | Что | Откуда | Лицензия |
 |---|---|---|
 | **Оболочка приложения**: `VpnService`, JNI-мост Go↔Kotlin, многопроцессный сервисный слой, хранилище профилей, сборка Go-ядра, CI | [MetaCubeX/ClashMetaForAndroid](https://github.com/MetaCubeX/ClashMetaForAndroid) — база этого репозитория, история сохранена целиком | GPL-3.0 |
-| **Ядро** | [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo), подключено submodule'ом (ветка Alpha), **не форкается и не патчится** | GPL-3.0 |
+| **Ядро** | [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo), подключено submodule'ом, **не форкается и не патчится**; закреплено на стабильном теге `v1.19.29` (`e26714a1`) — в `.gitmodules` стоит `branch = Alpha`, но CI тянет submodule только по `--init`, без `--remote`, поэтому пин держится. Двигать пин осознанно и вместе с обоими `go.mod` | GPL-3.0 |
 | **Интерфейс на Jetpack Compose** | [fUS1ONd/Prizrak-Box-android](https://github.com/fUS1ONd/Prizrak-Box-android) — их миграция UI на Compose переносится к нам как основа (планируется) | GPL-3.0 |
 | **Визуальный референс главного экрана** | [coolcoala/KoalaClash-Android](https://github.com/coolcoala/KoalaClash-Android) — идея раскрывающегося экрана вместо переключателя режимов | GPL-3.0 |
-| **Логика подписок и заголовков Remnawave** | наш собственный Rust-крейт из [Mrvibecodic/clod-clash](https://github.com/Mrvibecodic/clod-clash), подключается через FFI | GPL-3.0 |
+| **Логика подписок и заголовков Remnawave** | наша, написана здесь: заголовки разбирает Go (`core/…/config/panel/`), решения по подписке — Kotlin (`service/…/SubscriptionAlerts.kt`). Правила те же, что в десктопном [Mrvibecodic/clod-clash](https://github.com/Mrvibecodic/clod-clash), но код отдельный — общего крейта через FFI у Android нет | GPL-3.0 |
 
 Отдельная благодарность авторам [ClashForAndroid](https://github.com/Kr328/ClashForAndroid)
 (Kr328) — с него начинался апстрим, и его код до сих пор составляет заметную часть оболочки.
@@ -36,15 +37,20 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 с солью, 32 hex), `x-device-os: Android`, `x-ver-os`, `x-device-model`.
 Выключили опознание — не уходит ни один из четырёх.
 
-**Понимаем в ответе** (`core/…/config/panel.go`): `profile-title`, `profile-logo`,
-`subscription-userinfo`, `subscription-refill-date`, `profile-update-interval`,
-`announce` + `announce-url`, `clod-promo` + `clod-promo-url`, `clod-portal-url`,
-`support-url`, `clod-hwid-limit`, всё семейство `x-hwid-*`.
+**Понимаем в ответе** (`core/…/config/panel/panel.go`): `profile-title`,
+`profile-logo`, `subscription-userinfo`, `subscription-refill-date`,
+`profile-update-interval`, `announce` + `announce-url`, `clod-promo` +
+`clod-promo-url`, `clod-portal-url`, `profile-web-page-url`, `support-url`,
+`clod-hwid-limit`, всё семейство `x-hwid-*`, пороги напоминаний
+`notify-expire-days` / `notify-traffic-percent` (плюс голый
+`notification-subs-expire` и `global-mode` для совместимости), переезд подписки
+`new-url` / `new-domain`, часы панели по стандартному `Date`, `clod-lock-mode`
+и `clod-show-0hosts`.
 
-Чего пока нет по сравнению с десктопом: смены адреса подписки (`new-url`,
-`new-domain`, `fallback-url`, `fallback-domain`), порогов уведомлений
-(`notify-*`), часов панели (`Date`) и заголовков режима интерфейса
-(`clod-simple-mode`, `clod-lock-mode`).
+Чего пока нет по сравнению с десктопом: запасных адресов (`fallback-url`,
+`fallback-domain`) и простого режима интерфейса (`clod-simple-mode`) — простого
+режима на Android нет как понятия, и делаться он будет экраном, а не
+заголовком.
 
 Отличия в поведении:
 
@@ -53,7 +59,11 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 * `profile-update-interval` применяется только к новой подписке с пустым
   интервалом; у уже добавленной интервал остаётся тот, что стоит в свойствах;
 * `subscription-refill-date` дополнительно понимает миллисекунды и `RFC3339`;
-* `profile-web-page-url` разбирается, но пока нигде не показывается.
+* `profile-web-page-url` разбирается, но пока нигде не показывается;
+* `clod-show-0hosts` отключает наши экраны «серверов нет»: узлы-обманки
+  показываются как есть, фильтр не работает. Диалог лимита устройств заголовок
+  НЕ отключает — он живёт от `x-hwid-*`, а не от узлов, и заглушечный ответ
+  по-прежнему отбивается до записи конфига.
 
 Правила разбора те же, что на десктопе: регистр не важен, ищется суффикс
 (`x-amz-meta-announce` подойдёт), `base64:<payload>` декодируется четырьмя
