@@ -9,17 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.getSystemService
-import androidx.core.widget.doOnTextChanged
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
+import com.github.kr328.clash.design.compose.component.AgeKeyContent
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsAction
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsScreen
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsState
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
-import com.github.kr328.clash.design.databinding.DialogAgeKeyHelperBinding
 import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.design.util.layoutInflater
-import com.github.kr328.clash.design.util.root
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -78,14 +75,18 @@ class MetaFeatureSettingsDesign(
         }
     }
 
+    /**
+     * Помощник по ключам age: сгенерировать пару, вывести открытый ключ
+     * из секретного, скопировать любой из них.
+     *
+     * Кнопок подтверждения у диалога нет и не было: значения отсюда уносят
+     * буфером обмена, а не «сохранением», — поля в настройках человек
+     * заполняет сам.
+     */
     private fun requestAgeKeyHelper(hybrid: Boolean) {
         launch(Dispatchers.Main) {
-            val binding = DialogAgeKeyHelperBinding
-                .inflate(context.layoutInflater, context.root, false)
-            val dialog = MaterialAlertDialogBuilder(context)
-                .setTitle(if (hybrid) R.string.age_key_type_hybrid else R.string.age_key_type_x25519)
-                .setView(binding.root)
-                .create()
+            var secretKey by mutableStateOf("")
+            var publicKey by mutableStateOf("")
 
             fun copy(label: String, value: String) {
                 if (value.isBlank())
@@ -97,53 +98,49 @@ class MetaFeatureSettingsDesign(
                 launch { showToast(R.string.copied, ToastDuration.Short) }
             }
 
-            fun patchSecretKeyState() {
-                val secretKey = binding.secretKeyView.text?.toString() ?: ""
-                val valid = secretKey.isBlank() || Clash.veritySecretKeys(secretKey)
+            val view = ComposeView(context).apply {
+                setContent {
+                    ClodClashTheme {
+                        AgeKeyContent(
+                            secretKey = secretKey,
+                            publicKey = publicKey,
+                            onSecretKeyChange = { secretKey = it },
+                            onPublicKeyChange = { publicKey = it },
+                            // Не ссылками на методы: у них vararg,
+                            // и к `(String) -> Boolean` он не приводится.
+                            isSecretValid = { Clash.veritySecretKeys(it) },
+                            isPublicValid = { Clash.verityPublicKeys(it) },
+                            onGenerate = {
+                                val keyPair = if (hybrid) {
+                                    Clash.genHybridKeyPair()
+                                } else {
+                                    Clash.genX25519KeyPair()
+                                }
 
-                binding.secretKeyLayout.error = if (valid) null else context.getText(R.string.age_secret_key_error)
-            }
-
-            fun patchPublicKeyState() {
-                val publicKey = binding.publicKeyView.text?.toString() ?: ""
-                val valid = publicKey.isBlank() || Clash.verityPublicKeys(publicKey)
-
-                binding.publicKeyLayout.error = if (valid) null else context.getText(R.string.age_public_key_error)
-            }
-
-            dialog.setOnShowListener {
-                binding.secretKeyView.doOnTextChanged { _, _, _, _ -> patchSecretKeyState() }
-                binding.publicKeyView.doOnTextChanged { _, _, _, _ -> patchPublicKeyState() }
-
-                binding.generateView.setOnClickListener {
-                    val keyPair = if (hybrid) {
-                        Clash.genHybridKeyPair()
-                    } else {
-                        Clash.genX25519KeyPair()
+                                secretKey = keyPair.secretKey
+                                publicKey = keyPair.publicKey
+                            },
+                            onDerivePublic = {
+                                publicKey = Clash.toPublicKeys(secretKey).firstOrNull() ?: ""
+                            },
+                            onCopySecret = { copy("age_secret_key", secretKey) },
+                            onCopyPublic = { copy("age_public_key", publicKey) },
+                            secretLabel = context.getString(R.string.age_secret_key),
+                            publicLabel = context.getString(R.string.age_public_key),
+                            secretError = context.getString(R.string.age_secret_key_error),
+                            publicError = context.getString(R.string.age_public_key_error),
+                            generateLabel = context.getString(R.string.age_key_generate),
+                            derivePublicLabel = context.getString(R.string.age_key_to_public),
+                            copyLabel = context.getString(R.string.age_key_copy),
+                        )
                     }
-
-                    binding.secretKeyView.setText(keyPair.secretKey)
-                    binding.publicKeyView.setText(keyPair.publicKey)
-                }
-
-                binding.toPublicKeyView.setOnClickListener {
-                    val publicKey = Clash.toPublicKeys(binding.secretKeyView.text?.toString() ?: "")
-                        .firstOrNull()
-                        ?: ""
-
-                    binding.publicKeyView.setText(publicKey)
-                }
-
-                binding.copySecretKeyView.setOnClickListener {
-                    copy("age_secret_key", binding.secretKeyView.text?.toString() ?: "")
-                }
-
-                binding.copyPublicKeyView.setOnClickListener {
-                    copy("age_public_key", binding.publicKeyView.text?.toString() ?: "")
                 }
             }
 
-            dialog.show()
+            MaterialAlertDialogBuilder(context)
+                .setTitle(if (hybrid) R.string.age_key_type_hybrid else R.string.age_key_type_x25519)
+                .setView(view)
+                .show()
         }
     }
 }

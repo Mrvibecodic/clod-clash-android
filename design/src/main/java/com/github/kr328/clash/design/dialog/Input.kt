@@ -2,10 +2,12 @@ package com.github.kr328.clash.design.dialog
 
 import android.content.Context
 import androidx.appcompat.app.AlertDialog
-import androidx.core.widget.doOnTextChanged
+import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.R
-import com.github.kr328.clash.design.databinding.DialogTextFieldBinding
-import com.github.kr328.clash.design.util.*
+import com.github.kr328.clash.design.compose.component.TextInputContent
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
+import com.github.kr328.clash.design.util.Validator
+import com.github.kr328.clash.design.util.ValidatorAcceptAll
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -20,6 +22,14 @@ suspend fun Context.requestModelTextInput(
     return this.requestModelTextInput(initial, title, null, hint, error, validator)!!
 }
 
+/**
+ * Диалог с одним полем ввода. Возвращает введённое значение, `initial`
+ * при отмене и `null`, если нажата кнопка сброса.
+ *
+ * Рамка диалога материаловская, содержимое — Compose. Так осталась
+ * приостанавливаемая форма вызова, ради которой диалог и написан (экран
+ * просто ждёт строку), и при этом ушла разметка с полем ввода.
+ */
 suspend fun Context.requestModelTextInput(
     initial: String?,
     title: CharSequence,
@@ -28,69 +38,60 @@ suspend fun Context.requestModelTextInput(
     error: CharSequence? = null,
     validator: Validator = ValidatorAcceptAll,
 ): String? {
-    return suspendCancellableCoroutine {
-        val binding = DialogTextFieldBinding
-            .inflate(layoutInflater, this.root, false)
+    return suspendCancellableCoroutine { continuation ->
+        var current = initial ?: ""
+        var dialog: AlertDialog? = null
+
+        val view = ComposeView(this).apply {
+            setContent {
+                ClodClashTheme {
+                    TextInputContent(
+                        initial = initial ?: "",
+                        isValid = validator,
+                        onChanged = { text, valid ->
+                            current = text
+
+                            // До show() кнопок ещё не существует, поэтому
+                            // начальное состояние выставляется отдельно, ниже.
+                            dialog?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = valid
+                        },
+                        hint = hint?.toString(),
+                        error = error?.toString(),
+                    )
+                }
+            }
+        }
 
         val builder = MaterialAlertDialogBuilder(this)
             .setTitle(title)
-            .setView(binding.root)
+            .setView(view)
             .setCancelable(true)
             .setPositiveButton(R.string.ok) { _, _ ->
-                val text = binding.textField.text?.toString() ?: ""
-
-                if (validator(text))
-                    it.resume(text)
-                else
-                    it.resume(initial)
+                continuation.resume(if (validator(current)) current else initial)
             }
             .setNegativeButton(R.string.cancel) { _, _ -> }
-            .setOnDismissListener { _ ->
-                if (!it.isCompleted)
-                    it.resume(initial)
+            .setOnDismissListener {
+                if (!continuation.isCompleted) {
+                    continuation.resume(initial)
+                }
             }
 
         if (reset != null) {
             builder.setNeutralButton(reset) { _, _ ->
-                it.resume(null)
+                continuation.resume(null)
             }
         }
 
-        val dialog = builder.create()
+        val created = builder.create()
 
-        it.invokeOnCancellation {
-            dialog.dismiss()
+        dialog = created
+
+        continuation.invokeOnCancellation {
+            created.dismiss()
         }
 
-        dialog.setOnShowListener {
-            if (hint != null)
-                binding.textLayout.hint = hint
+        created.show()
 
-            binding.textField.apply {
-                binding.textLayout.isErrorEnabled = error != null
-
-                doOnTextChanged { text, _, _, _ ->
-                    if (!validator(text?.toString() ?: "")) {
-                        if (error != null)
-                            binding.textLayout.error = error
-
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
-                    } else {
-                        if (error != null)
-                            binding.textLayout.error = null
-
-                        dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
-                    }
-                }
-
-                setText(initial)
-
-                setSelection(0, initial?.length ?: 0)
-
-                requestTextInput()
-            }
-        }
-
-        dialog.show()
+        created.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = validator(current)
     }
 }

@@ -1,8 +1,13 @@
 package com.github.kr328.clash.design.dialog
 
 import android.content.Context
-import com.github.kr328.clash.design.databinding.DialogFetchStatusBinding
-import com.github.kr328.clash.design.util.layoutInflater
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.component.ProgressContent
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -18,35 +23,59 @@ interface ModelProgressBarScope {
     suspend fun configure(block: suspend ModelProgressBarConfigure.() -> Unit)
 }
 
+/**
+ * Диалог выполнения на время долгой работы: показывается на входе в [block]
+ * и закрывается на выходе из него, в том числе по ошибке.
+ *
+ * Содержимое — Compose поверх материаловской рамки. Значения хранятся
+ * состоянием Compose, поэтому `configure` просто присваивает поля, а
+ * перерисовку делает сам Compose; правки идут с главного потока, как и раньше.
+ */
 suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.() -> Unit) {
-    val view = DialogFetchStatusBinding.inflate(this.layoutInflater)
+    var indeterminate by mutableStateOf(true)
+    var message by mutableStateOf<String?>(null)
+    var current by mutableIntStateOf(0)
+    var maximum by mutableIntStateOf(0)
+
+    val view = ComposeView(this).apply {
+        setContent {
+            ClodClashTheme {
+                ProgressContent(
+                    indeterminate = indeterminate,
+                    progress = current,
+                    max = maximum,
+                    text = message,
+                )
+            }
+        }
+    }
+
     val dialog = MaterialAlertDialogBuilder(this)
         .setCancelable(false)
-        .setView(view.root)
+        .setView(view)
         .show()
 
     val configureImpl = object : ModelProgressBarConfigure {
         override var isIndeterminate: Boolean
-            get() = view.progressIndicator.isIndeterminate
+            get() = indeterminate
             set(value) {
-                view.progressIndicator.isIndeterminate = value
+                indeterminate = value
             }
         override var text: String?
-            get() = view.text.text?.toString()
+            get() = message
             set(value) {
-                view.text.text = value
+                message = value
             }
         override var progress: Int
-            get() = view.progressIndicator.progress
+            get() = current
             set(value) {
-                view.progressIndicator.setProgressCompat(value, true)
+                current = value
             }
         override var max: Int
-            get() = view.progressIndicator.max
+            get() = maximum
             set(value) {
-                view.progressIndicator.max = value
+                maximum = value
             }
-
     }
 
     val scopeImpl = object : ModelProgressBarScope {

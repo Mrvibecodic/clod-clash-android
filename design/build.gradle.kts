@@ -1,6 +1,5 @@
 plugins {
     kotlin("android")
-    kotlin("kapt")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.android.library")
 }
@@ -30,8 +29,8 @@ dependencies {
     implementation(libs.androidx.fragment)
     implementation(libs.google.material)
 
-    // Jetpack Compose. Живёт рядом с XML-слоем: экраны переезжают по одному,
-    // dataBinding остаётся включённым, пока жив хоть один старый layout.
+    // Jetpack Compose. Разметки в модуле не осталось ни одной: экраны, диалоги
+    // и списки живут только здесь, поэтому нет ни dataBinding, ни kapt.
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
     implementation(libs.androidx.compose.ui)

@@ -2,47 +2,32 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
-import com.github.kr328.clash.design.databinding.DesignSettingsCommonBinding
-import com.github.kr328.clash.design.preference.category
-import com.github.kr328.clash.design.preference.clickable
-import com.github.kr328.clash.design.preference.preferenceScreen
-import com.github.kr328.clash.design.preference.tips
-import com.github.kr328.clash.design.util.applyFrom
-import com.github.kr328.clash.design.util.bindAppBarElevation
-import com.github.kr328.clash.design.util.layoutInflater
-import com.github.kr328.clash.design.util.root
+import androidx.compose.ui.platform.ComposeView
+import com.github.kr328.clash.design.compose.screen.ApkBrokenAction
+import com.github.kr328.clash.design.compose.screen.ApkBrokenScreen
+import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 
 class ApkBrokenDesign(context: Context) : Design<ApkBrokenDesign.Request>(context) {
-    data class Request(val url: String)
+    sealed interface Request {
+        /** У экрана раньше не было своего выхода вовсе — только системная кнопка. */
+        data object Back : Request
 
-    private val binding = DesignSettingsCommonBinding
-        .inflate(context.layoutInflater, context.root, false)
+        data class OpenUrl(val url: String) : Request
+    }
 
-    override val root: View
-        get() = binding.root
-
-    init {
-        binding.surface = surface
-
-        binding.activityBarLayout.applyFrom(context)
-
-        binding.scrollRoot.bindAppBarElevation(binding.activityBarLayout)
-
-        val screen = preferenceScreen(context) {
-            tips(R.string.application_broken_tips)
-
-            category(R.string.reinstall)
-
-            clickable(
-                title = R.string.github_releases,
-                summary = R.string.meta_github_url
-            ) {
-                clicked {
-                    requests.trySend(Request(context.getString(R.string.meta_github_url)))
-                }
+    override val root: View = ComposeView(context).apply {
+        setContent {
+            ClodClashTheme {
+                ApkBrokenScreen(onAction = ::onAction)
             }
         }
+    }
 
-        binding.content.addView(screen.root)
+    private fun onAction(action: ApkBrokenAction) {
+        when (action) {
+            ApkBrokenAction.Back -> requests.trySend(Request.Back)
+            ApkBrokenAction.OpenReleases ->
+                requests.trySend(Request.OpenUrl(context.getString(R.string.meta_github_url)))
+        }
     }
 }

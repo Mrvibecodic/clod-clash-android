@@ -172,17 +172,6 @@ subprojects {
             }
         }
 
-        buildFeatures.apply {
-            // Вёрстка (восемь layout-файлов) осталась только в design, но app тоже обязан
-            // держать dataBinding включённым: класс design.BR генерируется на этапе
-            // сборки приложения, и без него R8 падает на minify.
-            // В core/service/common его нет — там задачи dataBinding отрабатывали
-            // вхолостую (~40 с на прогон).
-            dataBinding {
-                isEnabled = name == "design" || name == "app"
-            }
-        }
-
         if (isApp) {
             this as AppExtension
 

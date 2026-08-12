@@ -12,9 +12,11 @@ class ApkBrokenActivity : BaseActivity<ApkBrokenDesign>() {
         setContentDesign(design)
 
         while (isActive) {
-            val req = design.requests.receive()
-
-            startActivity(Intent(Intent.ACTION_VIEW).setData(Uri.parse(req.url)))
+            when (val req = design.requests.receive()) {
+                ApkBrokenDesign.Request.Back -> finish()
+                is ApkBrokenDesign.Request.OpenUrl ->
+                    startActivity(Intent(Intent.ACTION_VIEW).setData(Uri.parse(req.url)))
+            }
         }
     }
 }
