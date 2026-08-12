@@ -19,7 +19,20 @@ object Clash {
         Persist, Session
     }
 
-    private val ConfigurationOverrideJson = Json {
+    /**
+     * Один разбиратель JSON на все ответы ядра.
+     *
+     * `ignoreUnknownKeys` здесь не украшение: по эту сторону моста живёт Go,
+     * и любое новое поле в его ответе — а оно появляется с каждым подъёмом
+     * mihomo — роняло бы разбор с `JsonDecodingException`, то есть падало бы
+     * приложение на ровном месте. Раньше флаг стоял только у переопределений
+     * конфигурации, а состояние туннеля и строки лога разбирались дефолтным
+     * `Json`, самым строгим из возможных.
+     *
+     * `encodeDefaults = false` — для обратной стороны: в переопределениях
+     * пустое поле значит «не трогать», и записывать умолчания нельзя.
+     */
+    private val CoreJson = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
     }
@@ -39,7 +52,7 @@ object Clash {
     fun queryTunnelState(): TunnelState {
         val json = Bridge.nativeQueryTunnelState()
 
-        return Json.decodeFromString(TunnelState.serializer(), json)
+        return CoreJson.decodeFromString(TunnelState.serializer(), json)
     }
 
     fun queryTrafficNow(): Traffic {
@@ -101,7 +114,7 @@ object Clash {
     }
 
     fun queryGroupNames(excludeNotSelectable: Boolean): List<String> {
-        val names = Json.Default.decodeFromString(
+        val names = CoreJson.decodeFromString(
             JsonArray.serializer(),
             Bridge.nativeQueryGroupNames(excludeNotSelectable)
         )
@@ -115,7 +128,7 @@ object Clash {
 
     fun queryGroup(name: String, sort: ProxySort): ProxyGroup {
         return Bridge.nativeQueryGroup(name, sort.name)
-            ?.let { Json.Default.decodeFromString(ProxyGroup.serializer(), it) }
+            ?.let { CoreJson.decodeFromString(ProxyGroup.serializer(), it) }
             ?: ProxyGroup("Unknown", emptyList(), "")
     }
 
@@ -167,7 +180,7 @@ object Clash {
                 object : FetchCallback {
                     override fun report(statusJson: String) {
                         reportStatus(
-                            Json.Default.decodeFromString(
+                            CoreJson.decodeFromString(
                                 FetchStatus.serializer(),
                                 statusJson
                             )
@@ -196,10 +209,10 @@ object Clash {
 
     fun queryProviders(): List<Provider> {
         val providers =
-            Json.Default.decodeFromString(JsonArray.serializer(), Bridge.nativeQueryProviders())
+            CoreJson.decodeFromString(JsonArray.serializer(), Bridge.nativeQueryProviders())
 
         return List(providers.size) {
-            Json.Default.decodeFromJsonElement(Provider.serializer(), providers[it])
+            CoreJson.decodeFromJsonElement(Provider.serializer(), providers[it])
         }
     }
 
@@ -211,7 +224,7 @@ object Clash {
 
     fun queryOverride(slot: OverrideSlot): ConfigurationOverride {
         return try {
-            ConfigurationOverrideJson.decodeFromString(
+            CoreJson.decodeFromString(
                 ConfigurationOverride.serializer(),
                 Bridge.nativeReadOverride(slot.ordinal)
             )
@@ -223,7 +236,7 @@ object Clash {
     fun patchOverride(slot: OverrideSlot, configuration: ConfigurationOverride) {
         Bridge.nativeWriteOverride(
             slot.ordinal,
-            ConfigurationOverrideJson.encodeToString(
+            CoreJson.encodeToString(
                 ConfigurationOverride.serializer(),
                 configuration
             )
@@ -235,7 +248,7 @@ object Clash {
     }
 
     fun queryConfiguration(): UiConfiguration {
-        return Json.Default.decodeFromString(
+        return CoreJson.decodeFromString(
             UiConfiguration.serializer(),
             Bridge.nativeQueryConfiguration()
         )
@@ -245,7 +258,7 @@ object Clash {
         return Channel<LogMessage>(32).apply {
             Bridge.nativeSubscribeLogcat(object : LogcatInterface {
                 override fun received(jsonPayload: String) {
-                    trySend(Json.decodeFromString(LogMessage.serializer(), jsonPayload))
+                    trySend(CoreJson.decodeFromString(LogMessage.serializer(), jsonPayload))
                 }
             })
         }
@@ -269,7 +282,7 @@ object Clash {
 
     fun toPublicKeys(vararg secretKeys: String): List<String> {
         return Bridge.nativeToPublicKeys(secretKeys.firstOrNull() ?: "")
-            ?.let { Json.Default.decodeFromString(ListSerializer(String.serializer()), it) }
+            ?.let { CoreJson.decodeFromString(ListSerializer(String.serializer()), it) }
             ?: emptyList()
     }
 
@@ -278,6 +291,6 @@ object Clash {
     }
 
     private fun parseAgeKeyPair(value: String): AgeKeyPair {
-        return Json.Default.decodeFromString(AgeKeyPair.serializer(), value)
+        return CoreJson.decodeFromString(AgeKeyPair.serializer(), value)
     }
 }
