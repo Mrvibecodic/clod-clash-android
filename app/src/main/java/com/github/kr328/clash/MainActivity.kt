@@ -403,7 +403,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                             launch { design.updateRoutingData() }
                     }
                 }
-                if (clashRunning) {
+                // Секундный опрос — только пока экран виден. `fetchTraffic`
+                // и `fetchSession` уходят через Binder в процесс службы, то есть
+                // это два межпроцессных вызова в секунду; у свёрнутого приложения
+                // их результат некому показать, а телефон за них платит.
+                // Ветка `select` пересобирается на каждом обороте цикла,
+                // а `Event.ActivityStart` / `Event.ActivityStop` этот цикл будят —
+                // значит опрос возобновляется ровно тогда, когда экран вернулся.
+                if (clashRunning && activityStarted) {
                     ticker.onReceive {
                         design.fetchTraffic()
                         design.fetchSession()
