@@ -1,14 +1,19 @@
 package com.github.kr328.clash.design.compose.screen
 
 import android.graphics.BitmapFactory
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -248,6 +253,13 @@ sealed interface MainAction {
     data class DeleteProfile(val profile: Profile) : MainAction
 }
 
+/**
+ * Длительность переезда вкладки. 200 мс — верх диапазона, который Material
+ * отводит переходам внутри экрана: короче теряется само направление, длиннее
+ * начинает мешать быстрым переключениям туда-обратно.
+ */
+private const val TAB_TRANSITION_MILLIS = 200
+
 @Composable
 fun MainScreen(
     state: MainScreenState,
@@ -265,11 +277,35 @@ fun MainScreen(
             when (state.subScreen) {
                 SubScreen.About -> AboutScreen(state.about, onAction)
                 SubScreen.RoutingData -> RoutingDataScreen(state.routingData, onAction)
-                null -> when (state.selectedTab) {
-                    MainTab.Servers -> ServersTab(state.servers, state.active, onAction)
-                    MainTab.Subscriptions -> SubscriptionsTab(state.subscriptions, onAction)
-                    MainTab.More -> MoreTab(state, onAction)
-                    else -> HomeTab(state, onAction)
+                // Вкладка уезжает в ту сторону, в какую человек ткнул в нижней
+                // навигации: порядок кнопок в ней тот же, что в `MainTab`,
+                // поэтому направление считается сравнением порядковых номеров.
+                // Без этого переход между четырьмя разными по плотности
+                // экранами читается как мигание.
+                //
+                // Ключ анимации — сама вкладка: обновления внутри вкладки
+                // приходят своим состоянием и переход не запускают.
+                null -> AnimatedContent(
+                    targetState = state.selectedTab,
+                    transitionSpec = {
+                        val forward = targetState.ordinal > initialState.ordinal
+                        val enter = slideInHorizontally(tween(TAB_TRANSITION_MILLIS)) { width ->
+                            if (forward) width else -width
+                        } + fadeIn(tween(TAB_TRANSITION_MILLIS))
+                        val exit = slideOutHorizontally(tween(TAB_TRANSITION_MILLIS)) { width ->
+                            if (forward) -width else width
+                        } + fadeOut(tween(TAB_TRANSITION_MILLIS))
+
+                        enter togetherWith exit
+                    },
+                    label = "MainTab",
+                ) { tab ->
+                    when (tab) {
+                        MainTab.Servers -> ServersTab(state.servers, state.active, onAction)
+                        MainTab.Subscriptions -> SubscriptionsTab(state.subscriptions, onAction)
+                        MainTab.More -> MoreTab(state, onAction)
+                        else -> HomeTab(state, onAction)
+                    }
                 }
             }
         }

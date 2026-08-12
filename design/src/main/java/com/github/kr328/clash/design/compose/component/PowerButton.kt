@@ -27,6 +27,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -65,6 +67,12 @@ fun PowerButton(
 ) {
     val extra = ClodTheme.extraColors
     val scheme = MaterialTheme.colorScheme
+
+    // Отклик в палец на единственное действие выключенного экрана. Между
+    // нажатием и видимым результатом здесь проходит секунда с лишним — пока
+    // поднимется служба и ядро, — и без вибрации нажатие всё это время
+    // выглядит непринятым, а человек жмёт второй раз.
+    val haptic = LocalHapticFeedback.current
 
     val accent = when (status) {
         ConnectionStatus.Disconnected -> extra.statusStopped
@@ -112,7 +120,11 @@ fun PowerButton(
             .border(width = 3.dp, color = animatedAccent, shape = CircleShape)
             // clip(CircleShape) стоит выше по цепочке, поэтому стандартная
             // рябь сама обрезается по кругу — своё indication не нужно.
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(

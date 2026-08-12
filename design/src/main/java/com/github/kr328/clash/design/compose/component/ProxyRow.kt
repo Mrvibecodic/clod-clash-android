@@ -18,6 +18,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -116,6 +118,12 @@ fun ProxyRow(
     modifier: Modifier = Modifier,
 ) {
     val (flag, name) = splitFlag(title)
+
+    // Выбор узла и звезда — короткий отклик в палец. Ряд узкий, соседние
+    // строки близко, и подтверждение «нажалось именно это» стоит дешевле,
+    // чем взгляд на список после каждого касания.
+    val haptic = LocalHapticFeedback.current
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -127,7 +135,11 @@ fun ProxyRow(
                     MaterialTheme.colorScheme.surfaceContainerLow
                 },
             )
-            .clickable(onClick = onClick)
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
+                onClick()
+            }
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -167,7 +179,11 @@ fun ProxyRow(
             modifier = Modifier
                 .size(32.dp)
                 .clip(RoundedCornerShape(50))
-                .clickable(onClick = onToggleFavorite),
+                .clickable {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+
+                    onToggleFavorite()
+                },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
