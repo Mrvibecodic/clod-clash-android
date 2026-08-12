@@ -31,6 +31,13 @@ const (
 	salt      = "clod-chan-v1"
 	skew      = 300
 	maxAnswer = 32 << 20
+	// Запрос дополняется до кратного этому размеру. Без выравнивания длина
+	// адреса выдаёт длину карточки устройства: модель телефона, версию системы
+	// и сам момент, когда они поменялись, — то есть ровно то, что канал прячет.
+	padBlock = 512
+	// `,"pad":""` — столько занимает сам ключ в JSON. Дополнить короче нечем,
+	// поэтому если до кратности осталось меньше, добирается целый блок.
+	padKeyLen = 9
 )
 
 var b64 = base64.RawURLEncoding
@@ -102,6 +109,10 @@ type Session struct {
 type Answer struct {
 	Meta map[string][]string
 	Body string
+	// Status — код ответа, который в открытом режиме приехал бы снаружи.
+	// Снаружи на защищённом пути всегда 200: иначе посредник читал бы по коду,
+	// чем кончилось дело, — 404 у неизвестной подписки, 502 при обрыве.
+	Status int
 	// SP — текущий ключ прослойки. Клиент закрепляет его при первом успехе
 	// и дальше считает с ним DH: это даёт совершенную прямую секретность
 	// и страхует от короткого токена.
@@ -153,6 +164,7 @@ func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session,
 	if err != nil {
 		return "", nil, err
 	}
+	plain = pad(plain)
 
 	aead, err := chacha20poly1305.New(hkdf32(concat(psk, dh), kid, "req"+string(ephPub)))
 	if err != nil {
@@ -200,9 +212,14 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 		V    int                 `json:"v"`
 		T    int64               `json:"t"`
 		N    string              `json:"n"`
+		St   int                 `json:"st"`
 		SP   string              `json:"sp"`
 		Meta map[string][]string `json:"meta"`
 		Body string              `json:"body"`
+		// Тело подписки прослойка отдаёт байт в байт, а JSON так не умеет:
+		// одного байта не в UTF-8 хватает, чтобы кодирование не состоялось.
+		// В этом случае тело приезжает сюда.
+		BodyB64 string `json:"body_b64"`
 	}
 	if err := json.Unmarshal(plain, &answer); err != nil {
 		return nil, ErrBadAnswer
@@ -225,7 +242,21 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 		return nil, ErrBadAnswer
 	}
 
-	return &Answer{Meta: answer.Meta, Body: answer.Body, SP: sp}, nil
+	config := answer.Body
+	if answer.BodyB64 != "" {
+		raw, err := b64.DecodeString(answer.BodyB64)
+		if err != nil {
+			return nil, ErrBadAnswer
+		}
+		config = string(raw)
+	}
+
+	status := answer.St
+	if status == 0 {
+		status = 200
+	}
+
+	return &Answer{Meta: answer.Meta, Body: config, Status: status, SP: sp}, nil
 }
 
 // split делит адрес подписки на префикс и токен.
@@ -250,6 +281,29 @@ func split(base string) (prefix, token, query string, err error) {
 	}
 
 	return prefix, token, query, nil
+}
+
+// pad дополняет открытый текст запроса до кратного padBlock.
+//
+// Поле дописывается в уже собранный JSON, а не в структуру: так порядок полей
+// остаётся тем же, что в тестовых векторах, и не зависит от сериализатора.
+// Прослойка это поле не читает вовсе — выравнивание нужно только на проводе.
+func pad(plain []byte) []byte {
+	size := len(plain)
+	if size < 2 || size%padBlock == 0 {
+		return plain
+	}
+
+	need := (padBlock - (size+padKeyLen)%padBlock) % padBlock
+
+	out := make([]byte, 0, size+padKeyLen+need)
+	out = append(out, plain[:size-1]...)
+	out = append(out, `,"pad":"`...)
+	for i := 0; i < need; i++ {
+		out = append(out, '.')
+	}
+
+	return append(out, '"', '}')
 }
 
 func concat(parts ...[]byte) []byte {

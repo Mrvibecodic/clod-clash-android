@@ -1,6 +1,7 @@
 package chanx
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -11,16 +12,18 @@ import (
 )
 
 type vectors struct {
-	Token     string `json:"token"`
-	Psk       string `json:"psk"`
-	Epoch     int64  `json:"epoch"`
-	Kid       string `json:"kid"`
-	SpPublic  string `json:"sp_public"`
-	Spid      string `json:"spid"`
-	EphSecret string `json:"eph_secret"`
-	EphPublic string `json:"eph_public"`
-	Dh        string `json:"dh"`
-	Request   struct {
+	Token       string `json:"token"`
+	Psk         string `json:"psk"`
+	Epoch       int64  `json:"epoch"`
+	Kid         string `json:"kid"`
+	SpPublic    string `json:"sp_public"`
+	Spid        string `json:"spid"`
+	EphSecret   string `json:"eph_secret"`
+	EphPublic   string `json:"eph_public"`
+	Dh          string `json:"dh"`
+	ReqPadBlock int    `json:"req_pad_block"`
+	NonceLen    int    `json:"nonce_len"`
+	Request     struct {
 		Plain      string `json:"plain"`
 		KeyPinned  string `json:"key_pinned"`
 		BlobPinned string `json:"blob_pinned"`
@@ -29,11 +32,14 @@ type vectors struct {
 		PathPinned string `json:"path_pinned"`
 	} `json:"request"`
 	Response struct {
-		Body   string `json:"body"`
-		Expect struct {
+		Body       string `json:"body"`
+		BodyBinary string `json:"body_binary"`
+		Expect     struct {
 			MetaAnnounce string `json:"meta_announce"`
 			Config       string `json:"config"`
+			ConfigBinary string `json:"config_binary"`
 			Nonce        string `json:"nonce"`
+			St           int    `json:"st"`
 		} `json:"expect"`
 	} `json:"response"`
 }
@@ -158,6 +164,9 @@ func TestResponse(t *testing.T) {
 	if answer.Body != v.Response.Expect.Config {
 		t.Fatalf("тело: %q", answer.Body)
 	}
+	if answer.Status != v.Response.Expect.St {
+		t.Fatalf("код ответа: %d != %d", answer.Status, v.Response.Expect.St)
+	}
 	if hex.EncodeToString(answer.SP) != v.SpPublic {
 		t.Fatalf("ключ прослойки не тот")
 	}
@@ -199,5 +208,74 @@ func TestSplit(t *testing.T) {
 	}
 	if _, _, _, err := split("https://sub.dom/"); err == nil {
 		t.Fatal("адрес без токена обязан отбиваться")
+	}
+}
+
+// Тело подписки бывает не в UTF-8, и тогда прослойка кладёт его в body_b64.
+// Раньше этот случай был для неё фатальной ошибкой, а не ответом.
+func TestBinaryBody(t *testing.T) {
+	v := load(t)
+
+	sess := &Session{
+		psk:    Psk(v.Token),
+		kid:    v.Kid,
+		dh:     unhex(t, v.Dh),
+		ephPub: unhex(t, v.EphPublic),
+		priv:   unhex(t, v.EphSecret),
+		nonce:  v.Response.Expect.Nonce,
+	}
+
+	answer, err := sess.Open([]byte(v.Response.BodyBinary), 1786500000)
+	if err != nil {
+		t.Fatalf("разбор ответа: %v", err)
+	}
+
+	want, err := base64.StdEncoding.DecodeString(v.Response.Expect.ConfigBinary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if answer.Body != string(want) {
+		t.Fatalf("двоичное тело: %q != %q", answer.Body, string(want))
+	}
+}
+
+// Длина адреса не должна зависеть от того, что в карточке устройства: иначе
+// посредник различает по ней модель телефона и момент смены прошивки.
+func TestRequestIsPadded(t *testing.T) {
+	v := load(t)
+
+	if len(v.Request.Plain)%v.ReqPadBlock != 0 {
+		t.Fatalf("вектор запроса не выровнен: %d", len(v.Request.Plain))
+	}
+
+	short, _, err := Build("https://sub.dom/"+v.Token, nil, Fields{Hwid: "a"}, 1786500000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	long, _, err := Build("https://sub.dom/"+v.Token, nil, Fields{
+		Hwid:  "3f9c1d2e-aaaa-bbbb-cccc-ddddddddddddd",
+		OS:    "android",
+		OSVer: "15",
+		Model: "Pixel 8 Pro (полное имя устройства)",
+		UA:    "ClodClash/0.0.10 (Android)",
+	}, 1786500000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(short) != len(long) {
+		t.Fatalf("длина адреса выдаёт карточку устройства: %d != %d", len(short), len(long))
+	}
+}
+
+// Метка запроса — ровно 16 байт: прослойка короче не принимает.
+func TestNonceLength(t *testing.T) {
+	v := load(t)
+
+	_, sess, err := Build("https://sub.dom/"+v.Token, nil, Fields{}, 1786500000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sess.nonce) != v.NonceLen {
+		t.Fatalf("длина метки: %d != %d", len(sess.nonce), v.NonceLen)
 	}
 }

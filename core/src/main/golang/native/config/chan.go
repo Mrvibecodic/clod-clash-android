@@ -167,46 +167,25 @@ func writeChanPin(dir string, pin []byte) {
 // восстанавливаются и тело, и все заголовки панели — дальше по коду они
 // разбираются ровно теми же функциями, что и в открытом режиме.
 func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, fetchHeader, error) {
-	device := app.DeviceHeaders()
+	pin := readChanPin(dir)
 
-	fields := chanx.Fields{
-		Hwid:   device["x-hwid"],
-		OS:     device["x-device-os"],
-		OSVer:  device["x-ver-os"],
-		Model:  device["x-device-model"],
-		UA:     "ClodClash/" + app.VersionName() + " (Android)",
-		Accept: "*/*",
+	answer, err := chanRound(ctx, url, pin)
+	if err != nil && pin != nil {
+		// Закреплённый ключ мог перестать существовать: прослойку переставили,
+		// базу потеряли, ключ сменили дважды подряд. Тогда закрепление — это
+		// кирпич навсегда: прослойка отвечает как на мусорный путь, а клиент
+		// упрямо шлёт тот же отпечаток. Один повтор без закрепления лечит это
+		// сам, и заново закрепляет уже настоящий ключ.
+		//
+		// На открытый HTTP при этом не откатываемся НИКОГДА: повтор идёт по
+		// тому же защищённому каналу, только без DH с долгоживущим ключом.
+		log.Warnln("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
+
+		answer, err = chanRound(ctx, url, nil)
+		if err == nil {
+			_ = os.Remove(chanPinFile(dir))
+		}
 	}
-
-	now := time.Now().Unix()
-
-	secureURL, session, err := chanx.Build(url, readChanPin(dir), fields, now)
-	if err != nil {
-		return nil, fetchHeader{}, err
-	}
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
-	if err != nil {
-		return nil, fetchHeader{}, err
-	}
-
-	for _, pair := range chanBrowserHeaders {
-		request.Header.Set(pair[0], pair[1])
-	}
-
-	response, err := chanClient().Do(request)
-	if err != nil {
-		return nil, fetchHeader{}, err
-	}
-
-	defer response.Body.Close()
-
-	wire, err := io.ReadAll(io.LimitReader(response.Body, 32<<20))
-	if err != nil {
-		return nil, fetchHeader{}, err
-	}
-
-	answer, err := session.Open(wire, time.Now().Unix())
 	if err != nil {
 		return nil, fetchHeader{}, err
 	}
@@ -220,6 +199,10 @@ func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, 
 		}
 	}
 
+	if answer.Status != 200 {
+		log.Warnln("Secure channel: relay answered with status %d", answer.Status)
+	}
+
 	log.Infoln("Subscription fetched over the secure channel")
 
 	return io.NopCloser(strings.NewReader(answer.Body)), fetchHeader{
@@ -227,4 +210,47 @@ func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, 
 		ProfileUpdateInterval: meta.Get("profile-update-interval"),
 		Raw:                   map[string][]string(meta),
 	}, nil
+}
+
+// chanRound — один защищённый запрос с заданным закреплённым ключом
+// (или без него, если pin == nil).
+func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, error) {
+	device := app.DeviceHeaders()
+
+	fields := chanx.Fields{
+		Hwid:   device["x-hwid"],
+		OS:     device["x-device-os"],
+		OSVer:  device["x-ver-os"],
+		Model:  device["x-device-model"],
+		UA:     "ClodClash/" + app.VersionName() + " (Android)",
+		Accept: "*/*",
+	}
+
+	secureURL, session, err := chanx.Build(url, pin, fields, time.Now().Unix())
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, pair := range chanBrowserHeaders {
+		request.Header.Set(pair[0], pair[1])
+	}
+
+	response, err := chanClient().Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+
+	wire, err := io.ReadAll(io.LimitReader(response.Body, 32<<20))
+	if err != nil {
+		return nil, err
+	}
+
+	return session.Open(wire, time.Now().Unix())
 }
