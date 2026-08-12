@@ -33,7 +33,13 @@ class ProfileManager(private val context: Context) : IProfileManager,
         }
     }
 
-    override suspend fun create(type: Profile.Type, name: String, source: String, ageSecretKey: String?): UUID {
+    override suspend fun create(
+        type: Profile.Type,
+        name: String,
+        source: String,
+        ageSecretKey: String?,
+        secure: Boolean,
+    ): UUID {
         val uuid = generateProfileUUID()
         val pending = Pending(
             uuid = uuid,
@@ -46,6 +52,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
             download = 0,
             expire = 0,
             ageSecretKey = ageSecretKey,
+            secure = secure,
         )
 
         PendingDao().insert(pending)
@@ -78,7 +85,10 @@ class ProfileManager(private val context: Context) : IProfileManager,
             total = imported.total,
             download = imported.download,
             expire = imported.expire,
-            ageSecretKey = imported.ageSecretKey
+            ageSecretKey = imported.ageSecretKey,
+            // clod:chan — копия подписки наследует защиту: иначе её
+            // можно было бы снять клонированием профиля.
+            secure = imported.secure,
         )
 
         cloneImportedFiles(uuid, newUUID)
@@ -109,6 +119,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                     download = 0,
                     expire = 0,
                     ageSecretKey = ageSecretKey,
+                    secure = imported.secure,
                 )
             )
         } else {
@@ -121,6 +132,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 download = 0,
                 expire = 0,
                 ageSecretKey = ageSecretKey,
+                // Правка свойств защиту не трогает: `pending.copy` сохраняет её.
             )
 
             PendingDao().update(newPending)
@@ -204,6 +216,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
             imported = imported != null,
             pending = pending != null,
             ageSecretKey = if (pending != null) pending.ageSecretKey else imported?.ageSecretKey,
+            secure = if (pending != null) pending.secure else imported?.secure ?: false,
         )
     }
 

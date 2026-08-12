@@ -38,7 +38,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                 events.onReceive { }
                 design.requests.onReceive { request ->
                     when (request) {
-                        is AddProfileDesign.Request.Submit -> design.addProfile(request.url)
+                        is AddProfileDesign.Request.Submit -> design.addProfile(request.url, request.secure)
                         AddProfileDesign.Request.ScanQr -> scanLauncher.launch(null)
                         AddProfileDesign.Request.OtherWays ->
                             startActivity(NewProfileActivity::class.intent)
@@ -50,7 +50,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         }
     }
 
-    private suspend fun AddProfileDesign.addProfile(input: String) {
+    private suspend fun AddProfileDesign.addProfile(input: String, secure: Boolean) {
         val source = normalizeSource(input)
 
         if (source == null) {
@@ -65,7 +65,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         // в его каталог. Если загрузка сорвалась, отложенный профиль надо снять,
         // иначе он останется висеть в списке пустым.
         val uuid: UUID = withProfile {
-            create(Profile.Type.Url, getString(R.string.new_profile), source)
+            create(Profile.Type.Url, getString(R.string.new_profile), source, secure = secure)
         }
 
         try {

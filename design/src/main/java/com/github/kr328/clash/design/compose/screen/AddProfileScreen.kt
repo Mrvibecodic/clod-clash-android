@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -61,6 +63,13 @@ data class AddProfileState(
     val progressText: String = "",
     val progress: Float = 0f,
     val error: String? = null,
+    /**
+     * clod:chan — подписка ходит только по защищённому каналу до прослойки.
+     *
+     * Провайдер пишет об этом в инструкции. Галочку можно только поставить:
+     * снять её потом нельзя, профиль придётся удалить и завести заново.
+     */
+    val secure: Boolean = false,
     val result: Profile? = null,
     /** Название от панели. Профиль в базе всё ещё зовётся по умолчанию. */
     val resultTitle: String = "",
@@ -68,6 +77,7 @@ data class AddProfileState(
 
 sealed interface AddProfileAction {
     data class UrlChanged(val url: String) : AddProfileAction
+    data class SecureChanged(val secure: Boolean) : AddProfileAction
     data object Submit : AddProfileAction
     data object ScanQr : AddProfileAction
     data object OtherWays : AddProfileAction
@@ -142,6 +152,30 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+    Spacer(Modifier.height(16.dp))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onAction(AddProfileAction.SecureChanged(!state.secure)) },
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.clod_secure_channel),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = stringResource(R.string.clod_secure_channel_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = state.secure,
+            onCheckedChange = { onAction(AddProfileAction.SecureChanged(it)) },
+        )
+    }
     Spacer(Modifier.height(24.dp))
     Button(
         onClick = { onAction(AddProfileAction.Submit) },

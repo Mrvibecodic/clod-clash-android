@@ -420,4 +420,6 @@
     <string name="clod_network_switch">Переключение сети</string>
     <string name="clod_reset_connections">Разрывать соединения при смене сети</string>
     <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута.</string>
+    <string name="clod_secure_channel">Защищённое соединение</string>
+    <string name="clod_secure_channel_hint">Провайдер должен его поддерживать. Включённую защиту нельзя снять — придётся добавить подписку заново.</string>
 </resources>

@@ -3,7 +3,9 @@ package config
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	P "path"
@@ -14,7 +16,10 @@ import (
 	"cfa/native/app"
 	"cfa/native/chanx"
 
-	clashHttp "github.com/metacubex/mihomo/component/http"
+	"github.com/metacubex/mihomo/component/ca"
+	"github.com/metacubex/mihomo/component/dialer"
+	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/metacubex/mihomo/listener/inner"
 	"github.com/metacubex/mihomo/log"
 )
 
@@ -29,6 +34,8 @@ import (
 // переезжает вместе с её каталогом и не нужен ни одному экрану.
 var secureChannel atomic.Bool
 
+var errChanFingerprint = errors.New("clod-chan: отпечаток chrome недоступен в ядре")
+
 // SetSecureChannel — включить защищённый канал для следующей загрузки.
 func SetSecureChannel(enabled bool) {
 	secureChannel.Store(enabled)
@@ -39,12 +46,92 @@ func SecureChannel() bool {
 	return secureChannel.Load()
 }
 
-// User-Agent защищённого запроса.
+// Как защищённый запрос выглядит снаружи.
 //
-// Наружу уходит самый скучный из возможных: настоящий UA едет внутрь шифра,
-// а посреднику незачем знать, что за приложение к нему пришло. Пустой UA хуже —
-// часть WAF режет запросы без него.
-const chanNeutralUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+// Настоящий User-Agent, `x-hwid` и карточка устройства едут внутрь шифра,
+// а наружу уходит набор обычного браузера. Пустой UA хуже отсутствия
+// маскировки: часть WAF режет запросы без него.
+//
+// Набор заголовков — от того же Chrome, чьим рукопожатием мы представляемся
+// ниже: хромовский ClientHello при заголовках curl — это несоответствие,
+// которое антибот-системы CDN ловят лучше, чем честного неизвестного клиента.
+// Порядок здесь ни на что не влияет: net/http всё равно пишет заголовки
+// отсортированными, и повторить порядок Chrome можно только своим клиентом.
+var chanBrowserHeaders = [][2]string{
+	{"sec-ch-ua", `"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"`},
+	{"sec-ch-ua-mobile", "?0"},
+	{"sec-ch-ua-platform", `"Windows"`},
+	{"upgrade-insecure-requests", "1"},
+	{"user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"},
+	{"accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"},
+	{"sec-fetch-site", "none"},
+	{"sec-fetch-mode", "navigate"},
+	{"sec-fetch-user", "?1"},
+	{"sec-fetch-dest", "document"},
+	{"accept-language", "en-US,en;q=0.9"},
+}
+
+// chanClient — HTTP-клиент защищённого запроса.
+//
+// Рукопожатие TLS подменяется на хромовское через uTLS, который уже лежит
+// в дереве ядра ради Reality. Без этого клиент опознаётся по отпечатку
+// (JA3/JA4) как приложение на Go, а списками отпечатков блокировки как раз
+// и работают.
+//
+// ALPN сознательно только `http/1.1`: настоящий Chrome предлагает и `h2`,
+// но говорить по нему мы пока не умеем, а предложить и не поддержать —
+// это разрыв соединения. В JA4 разница видна, в JA3 — нет; полноценный `h2`
+// с хромовскими SETTINGS — отдельная работа.
+func chanClient() *http.Client {
+	transport := &http.Transport{
+		DisableKeepAlives:   true,
+		TLSHandshakeTimeout: 10 * time.Second,
+		DialTLSContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			// Дозваниваемся ровно так же, как остальные запросы ядра:
+			// через туннель, если он поднят, иначе напрямую.
+			conn, err := inner.HandleTcp(inner.GetTunnel(), address, "")
+			if err != nil {
+				conn, err = dialer.DialContext(ctx, network, address)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			host, _, err := net.SplitHostPort(address)
+			if err != nil {
+				host = address
+			}
+
+			config, err := ca.GetTLSConfig(ca.Option{})
+			if err != nil {
+				_ = conn.Close()
+
+				return nil, err
+			}
+
+			config.ServerName = host
+			config.NextProtos = []string{"http/1.1"}
+
+			fingerprint, ok := tlsC.GetFingerprint("chrome")
+			if !ok {
+				_ = conn.Close()
+
+				return nil, errChanFingerprint
+			}
+
+			tlsConn := tlsC.UClient(conn, tlsC.UConfig(config), fingerprint)
+			if err := tlsConn.HandshakeContext(ctx); err != nil {
+				_ = conn.Close()
+
+				return nil, err
+			}
+
+			return tlsConn, nil
+		},
+	}
+
+	return &http.Client{Transport: transport}
+}
 
 func chanPinFile(dir string) string {
 	return P.Join(dir, "chan.pin")
@@ -98,9 +185,16 @@ func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, 
 		return nil, fetchHeader{}, err
 	}
 
-	header := http.Header{"User-Agent": {chanNeutralUA}, "Accept": {"*/*"}}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
+	if err != nil {
+		return nil, fetchHeader{}, err
+	}
 
-	response, err := clashHttp.HttpRequest(ctx, secureURL, http.MethodGet, header, nil)
+	for _, pair := range chanBrowserHeaders {
+		request.Header.Set(pair[0], pair[1])
+	}
+
+	response, err := chanClient().Do(request)
 	if err != nil {
 		return nil, fetchHeader{}, err
 	}

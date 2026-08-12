@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
  */
 class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
-        data class Submit(val url: String) : Request
+        data class Submit(val url: String, val secure: Boolean) : Request
         data object ScanQr : Request
         data object OtherWays : Request
         data object Finish : Request
@@ -46,7 +46,8 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
             // Ошибка снимается при первой же правке: держать её на экране, пока
             // человек уже исправляет ссылку, — раздражать без пользы.
             is AddProfileAction.UrlChanged -> state = state.copy(url = action.url, error = null)
-            AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url))
+            is AddProfileAction.SecureChanged -> state = state.copy(secure = action.secure)
+            AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url, state.secure))
             AddProfileAction.ScanQr -> requests.trySend(Request.ScanQr)
             AddProfileAction.OtherWays -> requests.trySend(Request.OtherWays)
             AddProfileAction.Finish -> requests.trySend(Request.Finish)

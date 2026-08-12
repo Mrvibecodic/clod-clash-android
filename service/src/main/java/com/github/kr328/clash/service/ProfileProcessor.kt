@@ -73,6 +73,10 @@ object ProfileProcessor {
                 }
 
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
+                // clod:chan — признак канала отдаётся ядру ДО запроса, как и
+                // ключ age: у защищённой подписки отката на открытый запрос
+                // нет ни при каких условиях, включая самый первый.
+                Clash.setSecureChannel(snapshot.secure)
 
                 val force = snapshot.type != Profile.Type.File
                 val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, force, callback)
@@ -97,7 +101,8 @@ object ProfileProcessor {
                             subscriptionInfo?.subTotal ?: 0,
                             subscriptionInfo?.subExpire ?: 0,
                             old?.createdAt ?: System.currentTimeMillis(),
-                            ageSecretKey = snapshot.ageSecretKey
+                            ageSecretKey = snapshot.ageSecretKey,
+                            secure = snapshot.secure
                         )
                         if (old != null) {
                             ImportedDao().update(new)
@@ -138,6 +143,10 @@ object ProfileProcessor {
                 }
 
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
+                // clod:chan — признак канала отдаётся ядру ДО запроса, как и
+                // ключ age: у защищённой подписки отката на открытый запрос
+                // нет ни при каких условиях, включая самый первый.
+                Clash.setSecureChannel(snapshot.secure)
 
                 val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, true, callback)
 

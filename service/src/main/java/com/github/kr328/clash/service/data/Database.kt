@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 import androidx.room.Database as DB
 
 @DB(
-    version = 2,
+    version = 3,
     entities = [Imported::class, Pending::class, Selection::class],
     exportSchema = false,
 )

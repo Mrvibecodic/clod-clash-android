@@ -428,4 +428,6 @@
     <string name="clod_network_switch">Network switching</string>
     <string name="clod_reset_connections">Drop connections when the network changes</string>
     <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout.</string>
+    <string name="clod_secure_channel">Secure connection</string>
+    <string name="clod_secure_channel_hint">The provider must support it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
 </resources>

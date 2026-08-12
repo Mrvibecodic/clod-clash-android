@@ -135,7 +135,10 @@ class Picker(private val context: Context) {
                 imported.source,
                 imported.interval,
                 0,0,0,0,
-                ageSecretKey = imported.ageSecretKey
+                ageSecretKey = imported.ageSecretKey,
+                // clod:chan — пятый путь создания Pending; без этой строки
+                // профиль тихо терял бы защиту при пересоздании из импорта.
+                secure = imported.secure,
             )
         )
 
