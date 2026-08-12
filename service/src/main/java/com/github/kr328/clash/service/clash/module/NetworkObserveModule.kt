@@ -1,11 +1,15 @@
 package com.github.kr328.clash.service.clash.module
 
 import android.app.Service
+import android.content.Intent
 import android.net.*
 import android.os.Build
+import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
@@ -38,10 +42,63 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     @Volatile
     private var curDnsList = emptyList<String>()
 
+    private val store = ServiceStore(service)
+
+    /**
+     * Смена сети: сюда падает сигнал из колбэков, а разбирается он в цикле
+     * модуля. Канал схлопывающийся — при переезде Wi-Fi → LTE система сыплет
+     * колбэками пачкой, а сделать надо один раз.
+     */
+    private val networkChanges: Channel<Unit> = Channel(Channel.CONFLATED)
+
+    /**
+     * Сеть, которую мы считаем текущей. Сравнивается по объекту: система даёт
+     * новый `Network` на каждое подключение, поэтому даже возврат на тот же
+     * Wi-Fi после провала — это смена сети, и обойтись без сброса нельзя.
+     */
+    @Volatile
+    private var currentNetwork: Network? = null
+
+    /**
+     * Первое определение сети сменой не считается: при старте службы рвать
+     * ещё нечего, а проба только зря разбудит радиомодуль.
+     */
+    @Volatile
+    private var networkKnown = false
+
+    /** Когда сбрасывали в последний раз, по часам без учёта сна. */
+    @Volatile
+    private var lastResetAt = 0L
+
+    /** Экран был выключен в момент смены — пробу должны догнать при включении. */
+    @Volatile
+    private var probePending = false
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             Log.i("NetworkObserve onAvailable network=$network")
             networkInfos[network] = NetworkInfo()
+
+            onNetworkMaybeChanged(network)
+        }
+
+        /**
+         * Сеть подтвердила, что через неё есть интернет.
+         *
+         * Появление интерфейса ещё ничего не значит: Wi-Fi может отвечать
+         * на подключение и не пускать дальше портала, а LTE — подниматься
+         * секундами. `NET_CAPABILITY_VALIDATED` — единственный сигнал системы,
+         * означающий «проверено, интернет тут есть», и действовать надо по нему.
+         */
+        override fun onCapabilitiesChanged(
+            network: Network,
+            networkCapabilities: NetworkCapabilities,
+        ) {
+            if (!networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                return
+            }
+
+            onNetworkMaybeChanged(network)
         }
 
         override fun onLosing(network: Network, maxMsToLive: Int) {
@@ -56,6 +113,13 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             Log.i("NetworkObserve onLost network=$network")
             networkInfos.remove(network)
             notifyDnsChange()
+
+            // САМЫЙ ЧАСТЫЙ СЛУЧАЙ: ушёл Wi-Fi, а LTE уже был поднят фоном.
+            // Нового `onAvailable` для него не будет — система про него давно
+            // сообщила, — и без этой ветки смена сети прошла бы незамеченной.
+            if (network == currentNetwork) {
+                preferredNetwork()?.let(::onNetworkMaybeChanged)
+            }
 
             networks.trySend(network)
         }
@@ -116,6 +180,72 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
         } + (if (entry.value.isAvailable()) 0 else 10)
     }
 
+    /**
+     * Похоже, сеть сменилась — сообщить об этом циклу модуля.
+     *
+     * Проверка «стала ли эта сеть предпочтительной» отсекает фон: телефон
+     * держит и Wi-Fi, и LTE одновременно, и появление второй сети при живой
+     * первой ничего для нас не меняет.
+     */
+    private fun onNetworkMaybeChanged(network: Network) {
+        if (preferredNetwork()?.equals(network) == false) {
+            return
+        }
+
+        if (currentNetwork == network) {
+            return
+        }
+
+        currentNetwork = network
+
+        if (!networkKnown) {
+            networkKnown = true
+
+            return
+        }
+
+        Log.i("NetworkObserve network changed to $network")
+
+        networkChanges.trySend(Unit)
+    }
+
+    /**
+     * Сеть сменилась: сбросить состояние ядра и, если экран включён,
+     * проверить текущий узел.
+     *
+     * Сброс дешёвый и без сети — делается всегда. Проба стоит запроса,
+     * поэтому при выключенном экране откладывается до включения: разбудить
+     * радиомодуль ради цифры, которую некому показать, незачем.
+     */
+    private fun handleNetworkChanged() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastResetAt < RESET_THROTTLE_MS) {
+            Log.d("NetworkObserve reset throttled")
+
+            return
+        }
+
+        lastResetAt = now
+
+        Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
+
+        if (isInteractive()) {
+            Clash.probeCurrentNodes()
+        } else {
+            probePending = true
+        }
+    }
+
+    private fun isInteractive(): Boolean =
+        service.getSystemService<PowerManager>()?.isInteractive ?: true
+
+    /**
+     * Сеть, которой телефон пользуется прямо сейчас: с наименьшим весом
+     * по [networkToInt]. Их всегда несколько — Wi-Fi и LTE живут одновременно.
+     */
+    private fun preferredNetwork(): Network? =
+        networkInfos.asSequence().minByOrNull { networkToInt(it) }?.key
+
     private fun notifyDnsChange() {
         val dnsList = (networkInfos.asSequence().minByOrNull { networkToInt(it) }?.value?.dnsList
             ?: emptyList()).map { x -> x.asSocketAddressText(53) }
@@ -130,17 +260,28 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     override suspend fun run() {
         register()
 
+        val screenOn = receiveBroadcast(false, Channel.CONFLATED) {
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+
         try {
             while (true) {
-                val quit = select {
+                select<Unit> {
                     networks.onReceive {
                         enqueueEvent(it)
-
-                        false
                     }
-                }
-                if (quit) {
-                    return
+                    networkChanges.onReceive {
+                        handleNetworkChanged()
+                    }
+                    screenOn.onReceive {
+                        if (probePending) {
+                            probePending = false
+
+                            Log.i("NetworkObserve deferred probe after screen on")
+
+                            Clash.probeCurrentNodes()
+                        }
+                    }
                 }
             }
         } finally {
@@ -151,5 +292,14 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
                 Clash.notifyDnsChanged(emptyList())
             }
         }
+    }
+
+    companion object {
+        /**
+         * Переезд из сети в сеть система показывает пачкой колбэков за доли
+         * секунды. Пять секунд по переднему фронту: первый сигнал срабатывает
+         * сразу, остальные из той же пачки пропускаются.
+         */
+        private const val RESET_THROTTLE_MS = 5_000L
     }
 }

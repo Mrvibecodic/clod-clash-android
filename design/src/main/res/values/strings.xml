@@ -425,4 +425,7 @@
     <string name="clod_no_servers_provider_title">No servers available</string>
     <string name="clod_no_servers_provider">The subscription is valid and has traffic left, but no servers were given out. Contact support — this is fixed on their side.</string>
     <string name="clod_open_settings">Settings</string>
+    <string name="clod_network_switch">Network switching</string>
+    <string name="clod_reset_connections">Drop connections when the network changes</string>
+    <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout.</string>
 </resources>

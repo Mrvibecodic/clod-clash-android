@@ -48,6 +48,11 @@ data class NetworkSettingsState(
     val tunStack: Int = 0,
     val accessControlMode: Int = 0,
     val editable: Boolean = true,
+    /**
+     * Рвать ли живые соединения при смене сети. В отличие от остальных
+     * настроек читается на лету, поэтому меняется и при поднятом туннеле.
+     */
+    val resetConnections: Boolean = true,
 )
 
 sealed interface NetworkSettingsAction {
@@ -61,6 +66,7 @@ sealed interface NetworkSettingsAction {
     data class SetSystemProxy(val enabled: Boolean) : NetworkSettingsAction
     data class SetTunStack(val index: Int) : NetworkSettingsAction
     data class SetAccessControlMode(val index: Int) : NetworkSettingsAction
+    data class SetResetConnections(val enabled: Boolean) : NetworkSettingsAction
 }
 
 /**
@@ -170,6 +176,18 @@ fun NetworkSettingsScreen(
                 subtitle = stringResource(R.string.access_control_packages_summary),
                 icon = painterResource(R.drawable.ic_baseline_apps),
                 onClick = { onAction(NetworkSettingsAction.OpenAccessControlList) },
+            )
+
+            // Отдельной секцией и БЕЗ `vpnOptions`: остальное на этом экране
+            // описывает, как поднимать туннель, и меняется только пока он
+            // опущен. Это читается на лету, в момент смены сети, — значит
+            // и переключать его можно на ходу.
+            SectionHeader(stringResource(R.string.clod_network_switch))
+            SwitchRow(
+                title = stringResource(R.string.clod_reset_connections),
+                subtitle = stringResource(R.string.clod_reset_connections_summary),
+                checked = state.resetConnections,
+                onCheckedChange = { onAction(NetworkSettingsAction.SetResetConnections(it)) },
             )
 
             Spacer(Modifier.height(24.dp))

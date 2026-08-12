@@ -417,4 +417,7 @@
     <string name="shortcut_start_long">Включить VPN</string>
     <string name="shortcut_stop_short">Отключиться</string>
     <string name="shortcut_stop_long">Выключить VPN</string>
+    <string name="clod_network_switch">Переключение сети</string>
+    <string name="clod_reset_connections">Разрывать соединения при смене сети</string>
+    <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута.</string>
 </resources>

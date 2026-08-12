@@ -49,6 +49,7 @@ class NetworkSettingsDesign(
                 .indexOf(srvStore.accessControlMode)
                 .coerceAtLeast(0),
             editable = !running,
+            resetConnections = srvStore.resetConnectionsOnNetworkChange,
         ),
     )
 
@@ -90,6 +91,11 @@ class NetworkSettingsDesign(
                 srvStore.allowIpv6 = action.enabled
 
                 state = state.copy(allowIpv6 = action.enabled)
+            }
+            is NetworkSettingsAction.SetResetConnections -> {
+                srvStore.resetConnectionsOnNetworkChange = action.enabled
+
+                state = state.copy(resetConnections = action.enabled)
             }
             is NetworkSettingsAction.SetSystemProxy -> {
                 srvStore.systemProxy = action.enabled

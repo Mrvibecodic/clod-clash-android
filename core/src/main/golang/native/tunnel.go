@@ -84,6 +84,16 @@ func healthCheckAll() {
 	tunnel.HealthCheckAll()
 }
 
+//export notifyNetworkChanged
+func notifyNetworkChanged(closeConnections C.int) {
+	tunnel.OnNetworkChanged(closeConnections != 0)
+}
+
+//export probeCurrentNodes
+func probeCurrentNodes() {
+	tunnel.ProbeCurrentNodes()
+}
+
 //export patchSelector
 func patchSelector(selector, name C.c_string) C.int {
 	s := C.GoString(selector)

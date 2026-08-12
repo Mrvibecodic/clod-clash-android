@@ -232,6 +232,21 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckAll(JNIEnv *env,
     healthCheckAll();
 }
 
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeNotifyNetworkChanged(JNIEnv *env, jobject thiz,
+                                                                          jboolean close_connections) {
+    TRACE_METHOD();
+
+    notifyNetworkChanged((int) close_connections);
+}
+
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeProbeCurrentNodes(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    probeCurrentNodes();
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
                                                                    jstring selector, jstring name) {

@@ -191,6 +191,65 @@ func HealthCheck(name string) {
 	)
 }
 
+// ProbeCurrentNodes — проба ТЕКУЩЕГО узла каждой группы, по одной на группу.
+//
+// Зовётся после смены сети. Полная проверка группы (`HealthCheck`) здесь была
+// бы неоправданной: узлов в подписке бывают десятки, а вопрос всего один —
+// жив ли тот узел, через который человек сейчас работает. Если он не ответил,
+// группы с автоматическим выбором уведут сами: у них внутри та же проба,
+// и результат ложится в ту же историю задержек.
+//
+// Узел, общий для нескольких групп, проверяется один раз на адрес проверки:
+// объект узла в ядре один на имя, а вот адрес проверки у каждой группы свой,
+// и задержка хранится по адресу.
+func ProbeCurrentNodes() {
+	proxies := tunnel.Proxies()
+	seen := make(map[string]bool, len(proxies))
+
+	for _, p := range proxies {
+		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
+		if !ok {
+			continue
+		}
+
+		now := g.Now()
+		if now == "" {
+			continue
+		}
+
+		target := proxies[now]
+		if target == nil {
+			continue
+		}
+
+		url, expectedStatus := groupCheckOptions(g)
+		if url == "" {
+			continue
+		}
+
+		key := now + "|" + url
+		if seen[key] {
+			continue
+		}
+
+		seen[key] = true
+
+		go func(px C.Proxy, url string, expected utils.IntRanges[uint16]) {
+			ctx, cancel := context.WithTimeout(context.Background(), healthCheckProbeTimeout)
+			defer cancel()
+
+			delay, err := px.URLTest(ctx, url, expected)
+			if err != nil {
+				log.Infoln("Probe after network change: %s failed: %s", px.Name(), err.Error())
+
+				return
+			}
+
+			log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
+		}(target, url, expectedStatus)
+	}
+}
+
 func HealthCheckAll() {
 	// Здесь именно все группы, включая невыбираемые: узлы у групп общие
 	// (`tunnel.Proxies()` держит по одному объекту на имя), но адрес проверки
