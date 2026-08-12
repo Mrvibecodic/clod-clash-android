@@ -90,6 +90,24 @@ type Info struct {
 	// надо рассказать словами.
 	NoServers bool `json:"noServers,omitempty"`
 
+	// Запасные адреса подписки на случай, когда основной не отвечает.
+	//
+	// `fallback-url` — адрес целиком, `fallback-domain` — только хост, который
+	// подставляется в основной адрес. Отличие от переезда (`new-url`): сюда
+	// ходят ТОЛЬКО когда основной адрес не ответил, и сохранённый адрес
+	// подписки при этом не меняется — в следующий раз снова пробуется он.
+	// Провайдер обычно даёт запасной домен на случай блокировки основного,
+	// и подменять им рабочий адрес навсегда нельзя: заблокируют и его.
+	FallbackURL    string `json:"fallbackUrl,omitempty"`
+	FallbackDomain string `json:"fallbackDomain,omitempty"`
+
+	// Описания узлов из конфигурации (`serverDescription` у узла) по именам.
+	//
+	// Через API ядра они не приходят: mihomo о таком поле не знает и молча
+	// проносит его мимо. Поэтому собираем их при разборе конфигурации и кладём
+	// сюда — рядом с составом групп, который нужен по той же причине.
+	Descriptions map[string]string `json:"descriptions,omitempty"`
+
 	// `clod-show-0hosts` — провайдер просит НЕ прятать узлы-обманки.
 	//
 	// Наши экраны «серверов нет» — поведение по умолчанию, и оно остаётся.
@@ -207,6 +225,11 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	// Мусор в значении режим НЕ включает (`boolHeader`, а не `optionalBool`):
 	// молча отдать человеку чужой текст вместо объяснения хуже, чем
 	// проигнорировать кривую панель. Как на ПК.
+	// Запасные адреса — тоже состояние последнего ответа: убрал провайдер
+	// заголовок, значит запасного адреса больше нет.
+	info.FallbackURL = httpsURL(headerValue(header, "fallback-url"))
+	info.FallbackDomain = strings.TrimSpace(headerValue(header, "fallback-domain"))
+
 	info.ShowZeroHosts = boolHeader(header, "clod-show-0hosts")
 
 	info.LockMode = optionalBool(header, "clod-lock-mode")
@@ -597,4 +620,54 @@ func parseRefillDate(raw string) int64 {
 	}
 
 	return 0
+}
+
+// Ограничение длины описания узла. Панель Remnawave режет своё поле до
+// тридцати символов, но конфиг может прийти и не от неё, а строка эта живёт
+// подписью в строке списка — простыня там всё равно не поместится.
+const descriptionMaxChars = 60
+
+// Description приводит значение поля `serverDescription` к тому, что можно
+// показать. Не строка, пустая строка и пробелы дают пустой результат.
+func Description(raw any) string {
+	value, ok := raw.(string)
+	if !ok {
+		return ""
+	}
+
+	return truncate(strings.TrimSpace(value), descriptionMaxChars)
+}
+
+// SpareAddresses — куда идти, если основной адрес подписки не ответил.
+//
+// Порядок тот, которого ждёт панель: сначала целиком запасной адрес
+// (`fallback-url`), потом основной адрес с подменённым хостом
+// (`fallback-domain`). Совпадения с основным адресом отбрасываются: повторять
+// то, что уже не сработало, незачем.
+func (i Info) SpareAddresses(current string) []string {
+	spares := make([]string, 0, 2)
+
+	for _, candidate := range []string{
+		httpsURL(i.FallbackURL),
+		swapDomain(current, i.FallbackDomain),
+	} {
+		if candidate == "" || candidate == current {
+			continue
+		}
+
+		duplicate := false
+		for _, known := range spares {
+			if known == candidate {
+				duplicate = true
+
+				break
+			}
+		}
+
+		if !duplicate {
+			spares = append(spares, candidate)
+		}
+	}
+
+	return spares
 }

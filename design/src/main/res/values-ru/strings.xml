@@ -245,13 +245,8 @@
     <string name="find_process_mode">Найти режим процесса</string>
 
     <string name="sniffer_setting">Настройки перехвата доменов</string>
-    <string name="sniffing">Режим перехвата доменов</string>
     <string name="force_domain">Принудительный перехват доменов</string>
     <string name="skip_domain">Исключения перехвата доменов</string>
-    <string name="port_whitelist">Список портов для перехвата</string>
-    <string name="disable_sniffer">Отключить перехват доменов</string>
-    <string name="sniffer_config">Использовать перехват доменов из конфига</string>
-    <string name="sniffer_override">Переопределить настройки перехвата доменов</string>
 
     <string name="geox_files" >Geo Files</string>
     <string name="import_geoip_file">Import GeoIP Database</string>
@@ -415,4 +410,11 @@
     <string name="clod_no_servers_provider_title">Серверы недоступны</string>
     <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
     <string name="clod_open_settings">Настройки</string>
+    <string name="inline">В конфигурации</string>
+    <string name="shortcut_toggle_short">Переключить</string>
+    <string name="shortcut_toggle_long">Включить или выключить VPN</string>
+    <string name="shortcut_start_short">Подключиться</string>
+    <string name="shortcut_start_long">Включить VPN</string>
+    <string name="shortcut_stop_short">Отключиться</string>
+    <string name="shortcut_stop_long">Выключить VPN</string>
 </resources>

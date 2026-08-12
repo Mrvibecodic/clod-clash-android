@@ -50,6 +50,32 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 		}
 	}
 
+	// Описания узлов: панель кладёт их прямо в узел, ядро о таком поле
+	// не знает и через API его не отдаёт — собираем при разборе конфигурации.
+	// Ключ пишут по-разному: Remnawave шлёт `serverDescription`, клиенты-доноры
+	// принимают ещё две записи, а конфиг может прийти и не от панели.
+	descriptions := make(map[string]string, len(cfg.Proxy))
+	for _, proxy := range cfg.Proxy {
+		name, ok := proxy["name"].(string)
+		if !ok || name == "" {
+			continue
+		}
+
+		for _, key := range []string{"serverDescription", "server_description", "server-description"} {
+			if text := panel.Description(proxy[key]); text != "" {
+				descriptions[name] = text
+
+				break
+			}
+		}
+	}
+
+	if len(descriptions) == 0 {
+		descriptions = nil
+	}
+
+	info.Descriptions = descriptions
+
 	groups := make([]PanelGroup, 0, len(cfg.ProxyGroup))
 	for _, raw := range cfg.ProxyGroup {
 		name, _ := raw["name"].(string)

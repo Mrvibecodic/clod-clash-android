@@ -68,6 +68,12 @@ fun ServersTab(
     // причину — теми же словами, что и главный экран.
     val noServers = noServersReason(active?.profile, active?.panel)
 
+    // Описание узла от провайдера («Франкфурт, 10 Гбит») вместо типа протокола.
+    // Тип в подписи узла человеку не говорит ничего: он одинаковый у всех
+    // узлов подписки. Описания приходят не от ядра — оно о таком поле не знает,
+    // — а из разбора конфигурации, поэтому лежат в данных панели.
+    val descriptions = active?.panel?.descriptions.orEmpty()
+
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -174,7 +180,8 @@ fun ServersTab(
             items(items = proxies, key = { it.name }) { proxy ->
                 ProxyRow(
                     title = proxy.title,
-                    subtitle = proxy.subtitle,
+                    subtitle = descriptions[proxy.name]?.takeIf { it.isNotBlank() }
+                        ?: proxy.subtitle,
                     delay = proxy.delay,
                     selected = proxy.name == group.now,
                     favorite = proxy.name in state.favorites,

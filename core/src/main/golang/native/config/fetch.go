@@ -193,6 +193,60 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 	reportStatus(string(bytes))
 }
 
+// fetchFromSpare пробует запасные адреса, которые провайдер дал в прошлом
+// ответе (`fallback-url`, `fallback-domain`).
+//
+// Ходим сюда только после отказа основного адреса и только по порядку,
+// который задаёт панель. Сохранённый адрес подписки при этом НЕ меняется:
+// запасной домен даётся на случай блокировки основного, и переезжать на него
+// навсегда нельзя — в следующий раз снова пробуем основной. Переезд — это
+// отдельная история и отдельные заголовки (`new-url` / `new-domain`).
+func fetchFromSpare(
+	info PanelInfo,
+	primary *U.URL,
+	configPath string,
+	cause error,
+	reportStatus func(string),
+) (fetchHeader, error) {
+	spares := info.SpareAddresses(primary.String())
+	if len(spares) == 0 {
+		return fetchHeader{}, cause
+	}
+
+	log.Warnln("Subscription address failed (%s), trying %d spare address(es) from the provider", cause.Error(), len(spares))
+
+	for _, spare := range spares {
+		parsed, err := U.Parse(spare)
+		if err != nil {
+			continue
+		}
+
+		bytes, _ := json.Marshal(&Status{
+			Action:      "FetchConfiguration",
+			Args:        []string{parsed.Host},
+			Progress:    -1,
+			MaxProgress: -1,
+		})
+
+		reportStatus(string(bytes))
+
+		header, err := fetch(parsed, configPath)
+		if err != nil {
+			log.Warnln("Spare address %s failed as well: %s", parsed.Host, err.Error())
+
+			continue
+		}
+
+		log.Infoln("Subscription fetched from the spare address %s", parsed.Host)
+
+		return header, nil
+	}
+
+	// Возвращаем ПЕРВУЮ ошибку, а не последнюю: человеку важно, почему
+	// не ответил его основной адрес, а не запасной адрес провайдера.
+	return fetchHeader{}, cause
+}
+
 func FetchAndValid(
 	path string,
 	url string,
@@ -216,16 +270,25 @@ func FetchAndValid(
 
 		reportStatus(string(bytes))
 
+		// Прошлый ответ панели читаем ДО загрузки: в нём лежат запасные
+		// адреса, а перезапишем мы его через несколько строк.
+		info := readPanelInfo(path)
+
 		header, err := fetch(url, configPath)
 		if err != nil {
-			return err
+			header, err = fetchFromSpare(info, url, configPath, err, reportStatus)
+			if err != nil {
+				return err
+			}
 		}
 
 		reportSubscriptionInfo(header, reportStatus)
 
 		// Заголовки панели сохраняем сразу: дальше по коду ответа уже нет,
 		// а разбор конфига может и не дойти до конца.
-		info := readPanelInfo(path)
+		//
+		// Адрес для проверки переезда — ОСНОВНОЙ, даже если ответ пришёл
+		// с запасного: сохранённый адрес подписки не менялся.
 		applyHeaders(&info, header.Raw, url.String())
 		// Логотип провайдера кладём рядом с конфигом сразу же. Тянуть его с
 		// чужого хоста на каждую отрисовку экрана значило бы отдавать этому

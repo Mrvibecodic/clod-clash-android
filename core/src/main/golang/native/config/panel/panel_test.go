@@ -600,3 +600,97 @@ func TestApplyHeadersShowZeroHostsFollowsPanel(t *testing.T) {
 		t.Fatal("панель перестала слать заголовок — режим должен сняться")
 	}
 }
+
+func TestApplyHeadersFallbackAddresses(t *testing.T) {
+	// Запасные адреса — состояние последнего ответа: панель перестала их слать,
+	// значит запасного адреса больше нет. Иначе клиент годами ходил бы
+	// на домен, который провайдер давно отдал кому-то другому.
+	info := Info{FallbackURL: "https://old.example/sub", FallbackDomain: "old.example"}
+
+	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, "https://panel.example/sub")
+
+	if info.FallbackURL != "" || info.FallbackDomain != "" {
+		t.Fatalf("молчание панели должно снимать запасные адреса, получено %q / %q", info.FallbackURL, info.FallbackDomain)
+	}
+
+	ApplyHeaders(&info, http.Header{
+		"Fallback-Url":    []string{"https://backup.example/sub"},
+		"Fallback-Domain": []string{" backup.example:8443 "},
+	}, "https://panel.example/sub")
+
+	if info.FallbackURL != "https://backup.example/sub" {
+		t.Fatalf("fallback-url разобран неверно: %q", info.FallbackURL)
+	}
+
+	if info.FallbackDomain != "backup.example:8443" {
+		t.Fatalf("fallback-domain разобран неверно: %q", info.FallbackDomain)
+	}
+}
+
+func TestApplyHeadersFallbackURLRejectsPlainHTTP(t *testing.T) {
+	// Запасной адрес — такой же адрес подписки, и правило то же: только https.
+	var info Info
+
+	ApplyHeaders(&info, http.Header{"Fallback-Url": []string{"http://backup.example/sub"}}, "https://panel.example/sub")
+
+	if info.FallbackURL != "" {
+		t.Fatalf("http-адрес принимать нельзя, получено %q", info.FallbackURL)
+	}
+}
+
+func TestSpareAddresses(t *testing.T) {
+	const current = "https://panel.example/sub/token"
+
+	info := Info{
+		FallbackURL:    "https://backup.example/sub",
+		FallbackDomain: "spare.example",
+	}
+
+	got := info.SpareAddresses(current)
+	want := []string{"https://backup.example/sub", "https://spare.example/sub/token"}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("порядок и состав запасных адресов: получено %#v, ожидалось %#v", got, want)
+	}
+}
+
+func TestSpareAddressesSkipsCurrentAndEmpty(t *testing.T) {
+	const current = "https://panel.example/sub"
+
+	// Запасной адрес, равный основному, повторять незачем: он только что
+	// не ответил. То же и с доменом, который уже стоит в адресе.
+	info := Info{FallbackURL: current, FallbackDomain: "panel.example"}
+
+	if got := info.SpareAddresses(current); len(got) != 0 {
+		t.Fatalf("совпадающие с основным адреса должны отбрасываться, получено %#v", got)
+	}
+
+	if got := (Info{}).SpareAddresses(current); len(got) != 0 {
+		t.Fatalf("без заголовков запасных адресов быть не должно, получено %#v", got)
+	}
+}
+
+func TestDescription(t *testing.T) {
+	if got := Description("  Франкфурт, 10 Гбит  "); got != "Франкфурт, 10 Гбит" {
+		t.Fatalf("описание должно обрезаться по краям, получено %q", got)
+	}
+
+	for _, raw := range []any{nil, 42, "", "   ", map[string]any{}} {
+		if got := Description(raw); got != "" {
+			t.Fatalf("%#v должно давать пустое описание, получено %q", raw, got)
+		}
+	}
+
+	// Длинное режется: в строке списка его всё равно негде показать.
+	// `truncate` дописывает многоточие, поэтому длина на один знак больше.
+	long := strings.Repeat("я", descriptionMaxChars+20)
+	got := Description(long)
+
+	if len([]rune(got)) > descriptionMaxChars+1 {
+		t.Fatalf("описание должно резаться до %d символов, получено %d", descriptionMaxChars, len([]rune(got)))
+	}
+
+	if !strings.HasSuffix(got, "…") {
+		t.Fatalf("у обрезанного описания должно быть многоточие, получено %q", got)
+	}
+}
