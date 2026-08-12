@@ -17,6 +17,7 @@ import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.importedDir
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,13 +28,32 @@ class ProfileReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED -> {
+                // Без goAsync() система считает приёмник отработавшим сразу
+                // после выхода из onReceive и вправе убить процесс — вместе
+                // с только что запущенной корутиной. На загрузке устройства
+                // процессов много и пресс со стороны системы как раз тогда
+                // максимальный, то есть теряется именно то расписание
+                // обновлений, ради которого приёмник и заведён.
+                val pending = goAsync()
+
                 Global.launch {
-                    reset()
+                    try {
+                        reset()
 
-                    val service = Intent(Intents.ACTION_PROFILE_SCHEDULE_UPDATES)
-                        .setComponent(ProfileWorker::class.componentName)
+                        val service = Intent(Intents.ACTION_PROFILE_SCHEDULE_UPDATES)
+                            .setComponent(ProfileWorker::class.componentName)
 
-                    context.startForegroundServiceCompat(service)
+                        context.startForegroundServiceCompat(service)
+                    } catch (e: CancellationException) {
+                        // Отмена — не сбой приёмника, наверх её отдаём как есть.
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w("Reschedule updates on ${intent.action}: $e", e)
+                    } finally {
+                        // finish() обязателен на любом исходе: незакрытый
+                        // pendingResult держит процесс до таймаута системы.
+                        pending.finish()
+                    }
                 }
             }
             Intents.ACTION_PROFILE_REQUEST_UPDATE -> {
