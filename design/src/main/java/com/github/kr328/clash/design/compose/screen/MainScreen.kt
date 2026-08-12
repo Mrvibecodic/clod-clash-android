@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,6 +97,7 @@ enum class SubScreen {
  * @param selectable группа типа Selector — узел в ней можно выбрать руками.
  *   В url-test и fallback узел выбирает ядро, и патч селектора там не сработает.
  */
+@Immutable
 data class ProxyGroupState(
     val name: String,
     val now: String,
@@ -109,6 +111,7 @@ data class ProxyGroupState(
  * @param offline список собран из файла подписки, а не из работающего ядра:
  *   задержек нет и выбрать узел нельзя, пока туннель не поднят.
  */
+@Immutable
 data class ServersState(
     val groups: List<ProxyGroupState> = emptyList(),
     val selected: Int = 0,
@@ -133,6 +136,7 @@ data class ServersState(
  * Подписка в том виде, в каком её показывает список: сам профиль плюс то,
  * что панель прислала заголовками (название, ссылки, объявления).
  */
+@Immutable
 data class SubscriptionItem(
     val profile: Profile,
     val panel: PanelInfo? = null,
@@ -159,6 +163,7 @@ data class SubscriptionItem(
 }
 
 /** Состояние вкладки «Подписки». */
+@Immutable
 data class SubscriptionsState(
     val profiles: List<SubscriptionItem> = emptyList(),
     /**
@@ -183,6 +188,7 @@ data class SubscriptionsState(
  * россыпи параметров: экран перерисовывается одним `setState`, и ни один
  * промежуточный кадр не может застать половину полей обновлёнными.
  */
+@Immutable
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
     /** Активная подписка вместе с данными панели. Null — ни одной не выбрано. */

@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -28,6 +29,7 @@ import com.github.kr328.clash.design.compose.component.ReleaseNotes
  * @param progress доля скачанного от 0 до 1; отрицательное значение означает,
  *   что размер файла неизвестен и полосу надо показывать бегущей.
  */
+@Immutable
 data class UpdateState(
     val version: String,
     val sizeBytes: Long = 0,

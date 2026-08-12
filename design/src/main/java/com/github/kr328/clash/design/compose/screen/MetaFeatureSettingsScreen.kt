@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -38,6 +39,7 @@ sealed interface MetaFeatureSettingsAction {
 }
 
 /** @param revision см. [OverrideSettingsState]. */
+@Immutable
 data class MetaFeatureSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,

@@ -16,6 +16,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -33,6 +34,7 @@ import com.github.kr328.clash.design.compose.component.SwitchRow
  *   только вместе с ним: ядро вкомпилировано в APK, подменить его нечем.
  * @param checking идёт проверка обновления — кнопка занята.
  */
+@Immutable
 data class AboutState(
     val versionName: String = "",
     val coreVersion: String = "",

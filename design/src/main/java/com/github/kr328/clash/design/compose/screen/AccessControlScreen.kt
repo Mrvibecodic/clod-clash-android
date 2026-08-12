@@ -34,6 +34,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +68,7 @@ import com.github.kr328.clash.design.model.AppInfoSort
  * @param query строка поиска. Пустая — показываем всё; отдельного экрана
  *   поиска, как было на XML, больше нет: список фильтруется на месте.
  */
+@Immutable
 data class AccessControlState(
     val apps: List<AppInfo> = emptyList(),
     val selected: Set<String> = emptySet(),

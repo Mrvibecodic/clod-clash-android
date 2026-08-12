@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -32,12 +33,14 @@ import com.github.kr328.clash.design.compose.component.SubScreenScaffold
  *   из assets, и показывать вместо размера «0 Б» было бы неправдой.
  * @param updatedAt время последней записи в миллисекундах; 0 — файла нет.
  */
+@Immutable
 data class GeoFileState(
     val name: String,
     val sizeBytes: Long,
     val updatedAt: Long,
 )
 
+@Immutable
 data class RoutingDataState(
     val files: List<GeoFileState> = emptyList(),
     val updating: Boolean = false,

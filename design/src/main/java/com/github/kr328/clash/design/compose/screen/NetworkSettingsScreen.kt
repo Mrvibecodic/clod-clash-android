@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,6 +36,7 @@ import com.github.kr328.clash.design.compose.component.SwitchRow
  * @param tunStack индекс в `system` / `gvisor` / `mixed`.
  * @param accessControlMode индекс в `AccessControlMode.entries`.
  */
+@Immutable
 data class NetworkSettingsState(
     val enableVpn: Boolean = true,
     val bypassPrivateNetwork: Boolean = true,

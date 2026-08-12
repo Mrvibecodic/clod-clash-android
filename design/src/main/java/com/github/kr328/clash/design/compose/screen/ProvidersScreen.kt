@@ -16,6 +16,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +37,7 @@ import com.github.kr328.clash.design.util.type
  * с `notifyPropertyChanged` были нужны разметке, а здесь список целиком
  * лежит в состоянии экрана и меняется копией.
  */
+@Immutable
 data class ProviderRow(
     val provider: Provider,
     val updatedAt: Long,
@@ -49,6 +51,7 @@ data class ProviderRow(
         get() = provider.vehicleType == Provider.VehicleType.Inline
 }
 
+@Immutable
 data class ProvidersState(
     val providers: List<ProviderRow> = emptyList(),
     val currentTime: Long = 0,

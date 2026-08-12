@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -39,6 +40,7 @@ import com.github.kr328.clash.design.compose.component.ActivityScaffold
  * @param progress доля от 0 до 1; отрицательное значение — размер работы
  *   неизвестен, полосу надо показывать бегущей.
  */
+@Immutable
 data class FetchProgress(
     val text: String,
     val progress: Float = -1f,
@@ -53,6 +55,7 @@ data class FetchProgress(
  * @param processing идёт сохранение с перезагрузкой подписки; пока оно идёт,
  *   экран закрывать нельзя.
  */
+@Immutable
 data class PropertiesState(
     val name: String = "",
     val url: String = "",

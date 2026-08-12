@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 
+@Immutable
 data class AppCrashedState(
     val logs: String = "",
 )

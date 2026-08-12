@@ -30,6 +30,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +53,7 @@ enum class AddProfileStep {
     Done,
 }
 
+@Immutable
 data class AddProfileState(
     val url: String = "",
     val step: AddProfileStep = AddProfileStep.Input,

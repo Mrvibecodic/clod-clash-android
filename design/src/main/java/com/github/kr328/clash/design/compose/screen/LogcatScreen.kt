@@ -14,6 +14,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -34,6 +35,7 @@ import com.github.kr328.clash.design.util.format
  *   поэтому номер строки в списке — не её опознание: без сквозного счёта
  *   текст съезжал бы под пальцем у того, кто отлистал назад читать.
  */
+@Immutable
 data class LogcatState(
     val messages: List<LogMessage> = emptyList(),
     val streaming: Boolean = false,

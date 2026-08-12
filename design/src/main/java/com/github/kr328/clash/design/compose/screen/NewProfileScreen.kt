@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,6 +27,7 @@ import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.rememberDrawablePainter
 import com.github.kr328.clash.design.model.ProfileProvider
 
+@Immutable
 data class NewProfileState(
     val providers: List<ProfileProvider> = emptyList(),
 )

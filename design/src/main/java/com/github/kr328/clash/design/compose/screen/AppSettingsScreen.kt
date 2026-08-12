@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -23,6 +24,7 @@ import com.github.kr328.clash.design.compose.component.SwitchRow
  * @param notificationEditable уведомление со скоростью нельзя переключать
  *   на ходу — оно собирается при запуске службы.
  */
+@Immutable
 data class AppSettingsState(
     val autoRestart: Boolean = false,
     val darkMode: Int = 0,

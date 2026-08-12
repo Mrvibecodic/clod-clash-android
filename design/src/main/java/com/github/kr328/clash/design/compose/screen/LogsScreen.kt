@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -35,6 +36,7 @@ import com.github.kr328.clash.design.util.format
  *   что показывает, и снаружи это выглядит как одно состояние, а не как
  *   окно, живущее своей жизнью.
  */
+@Immutable
 data class LogsState(
     val files: List<LogFile> = emptyList(),
     val loaded: Boolean = false,

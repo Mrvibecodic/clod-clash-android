@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -47,6 +48,7 @@ sealed interface OverrideSettingsAction {
  * состояния с одним и тем же объектом равны, и перерисовки не будет.
  * Номер правки делает их различными — на этом вся перерисовка и держится.
  */
+@Immutable
 data class OverrideSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
