@@ -76,8 +76,8 @@ subprojects {
             // clod: нумерация как на десктопе — начинаем с 0.0.1-alpha.
             // versionCode = major * 1_000_000 + minor * 10_000 + patch,
             // суффикс -alpha на versionCode не влияет (система сравнивает только число).
-            versionName = "0.0.10-alpha"
-            versionCode = 10
+            versionName = "0.0.11-alpha"
+            versionCode = 11
 
             resValue("string", "release_name", "v$versionName")
             resValue("integer", "release_code", "$versionCode")
