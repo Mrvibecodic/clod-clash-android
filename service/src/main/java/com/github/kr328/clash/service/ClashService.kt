@@ -21,6 +21,9 @@ class ClashService : BaseService() {
 
     private var reason: String? = null
 
+    /** Отметка запуска ядра, поставленная этим запуском службы. */
+    private var sessionStartedAt: Long = 0
+
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
 
@@ -77,7 +80,7 @@ class ClashService : BaseService() {
         // Отметка нужна экрану для таймера сессии. Ставим здесь, а не в приложении:
         // служба переживает закрытие приложения, и только она знает, когда туннель
         // подняли на самом деле.
-        ServiceStore(this).clashStartedAt = System.currentTimeMillis()
+        sessionStartedAt = ServiceStore(this).markSessionStarted()
 
         StaticNotificationModule.createNotificationChannel(this)
         StaticNotificationModule.notifyLoadingNotification(this)
@@ -97,6 +100,10 @@ class ClashService : BaseService() {
 
     override fun onDestroy() {
         StatusProvider.serviceRunning = false
+
+        // Ядра больше нет — метка сессии не должна пережить остановку,
+        // иначе следующий, кто её прочитает, покажет часы «в подключении».
+        ServiceStore(this).clearSessionStarted(sessionStartedAt)
 
         sendClashStopped(reason)
 

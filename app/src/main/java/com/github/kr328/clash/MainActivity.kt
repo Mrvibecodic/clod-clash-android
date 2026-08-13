@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.PersistableBundle
+import android.os.SystemClock
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.app.ActivityCompat
@@ -32,6 +33,7 @@ import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.profileLogoFile
+import com.github.kr328.clash.service.util.SessionClock
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
 import com.github.kr328.clash.design.compose.screen.MainTab
@@ -428,11 +430,16 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.fetch() {
         setClashRunning(clashRunning)
 
-        sessionStartedAt = if (clashRunning) {
-            withContext(Dispatchers.IO) { ServiceStore(this@MainActivity).clashStartedAt }
+        val session = if (clashRunning) {
+            withContext(Dispatchers.IO) {
+                ServiceStore(this@MainActivity).run { clashStartedAt to clashStartedElapsed }
+            }
         } else {
-            0
+            0L to 0L
         }
+
+        sessionStartedAt = session.first
+        sessionStartedElapsed = session.second
 
         fetchSession()
 
@@ -727,21 +734,21 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     /**
-     * Момент подъёма туннеля по данным службы. Читается один раз на подключение:
-     * значение живёт в общих настройках, а это межпроцессный вызов — дёргать его
-     * каждую секунду ради тикающего таймера незачем.
+     * Момент подъёма туннеля по данным службы, в двух парах часов. Читается один
+     * раз на подключение: значение живёт в общих настройках, а это межпроцессный
+     * вызов — дёргать его каждую секунду ради тикающего таймера незачем.
      */
     private var sessionStartedAt: Long = 0
+    private var sessionStartedElapsed: Long = 0
 
     private suspend fun MainDesign.fetchSession() {
-        val startedAt = sessionStartedAt
-
         setSessionSeconds(
-            if (startedAt > 0) {
-                ((System.currentTimeMillis() - startedAt) / 1000).coerceAtLeast(0)
-            } else {
-                0
-            },
+            SessionClock.seconds(
+                startedAt = sessionStartedAt,
+                startedElapsed = sessionStartedElapsed,
+                nowWall = System.currentTimeMillis(),
+                nowElapsed = SystemClock.elapsedRealtime(),
+            ),
         )
     }
 

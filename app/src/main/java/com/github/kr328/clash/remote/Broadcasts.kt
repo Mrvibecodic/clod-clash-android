@@ -84,37 +84,52 @@ class Broadcasts(private val context: Application) {
         receivers.remove(observer)
     }
 
+    /**
+     * Зовётся каждый раз, когда приложение выходит на передний план.
+     *
+     * Два разных дела, которые раньше стояли под одним условием: подписка на
+     * события нужна ОДИН раз (поле `registered` не ставилось никогда, поэтому
+     * один и тот же приёмник регистрировался заново на каждый показ, и каждое
+     * событие приходило столько раз, сколько было показов за жизнь процесса),
+     * а состояние ядра нужно перечитывать ВСЕГДА — пока экран был закрыт,
+     * службу мог убить телефон, и сообщить об этом было некому.
+     *
+     * Снимать подписку при уходе в фон мы НЕ станем, хотя парная `unregister`
+     * для этого и писалась: она не работала ни дня, и на её бездействие уже
+     * опираются — например, `AccessControlActivity` после смены списка
+     * приложений ждёт остановки службы циклом по `clashRunning`, а этот цикл
+     * переживает уход человека на домашний экран. Широковещания у нас свои же
+     * и внутри процесса, так что постоянная подписка ничего не стоит.
+     */
     fun register() {
-        if (registered)
-            return
+        if (!registered) {
+            try {
+                context.registerReceiverCompat(broadcastReceiver, IntentFilter().apply {
+                    addAction(Intents.ACTION_SERVICE_RECREATED)
+                    addAction(Intents.ACTION_CLASH_STARTED)
+                    addAction(Intents.ACTION_CLASH_STOPPED)
+                    addAction(Intents.ACTION_PROFILE_CHANGED)
+                    addAction(Intents.ACTION_PROFILE_UPDATE_COMPLETED)
+                    addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
+                    addAction(Intents.ACTION_PROFILE_LOADED)
+                })
 
-        try {
-            context.registerReceiverCompat(broadcastReceiver, IntentFilter().apply {
-                addAction(Intents.ACTION_SERVICE_RECREATED)
-                addAction(Intents.ACTION_CLASH_STARTED)
-                addAction(Intents.ACTION_CLASH_STOPPED)
-                addAction(Intents.ACTION_PROFILE_CHANGED)
-                addAction(Intents.ACTION_PROFILE_UPDATE_COMPLETED)
-                addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
-                addAction(Intents.ACTION_PROFILE_LOADED)
-            })
-
-            clashRunning = StatusClient(context).currentProfile() != null
-        } catch (e: Exception) {
-            Log.w("Register global receiver: $e", e)
+                registered = true
+            } catch (e: Exception) {
+                Log.w("Register global receiver: $e", e)
+            }
         }
+
+        refreshRunning()
     }
 
-    fun unregister() {
-        if (!registered)
-            return
-
-        try {
-            context.unregisterReceiver(broadcastReceiver)
-
-            clashRunning = false
-        } catch (e: Exception) {
-            Log.w("Unregister global receiver: $e", e)
-        }
+    /**
+     * Спрашиваем состояние у процесса службы, а не помним своё.
+     *
+     * Ровно на этом ломаются соседние клиенты: экран рисует «подключено» из
+     * сохранённой переменной, туннеля при этом уже нет.
+     */
+    private fun refreshRunning() {
+        clashRunning = StatusClient(context).currentProfile() != null
     }
 }

@@ -39,7 +39,8 @@ object Remote {
             else {
                 Log.d("App becomes invisible")
                 service.unbind()
-                broadcasts.unregister()
+                // Подписку на широковещания при этом НЕ снимаем, см. `register`:
+                // события нужны и в фоне, а стоят они ничего.
             }
         }
 

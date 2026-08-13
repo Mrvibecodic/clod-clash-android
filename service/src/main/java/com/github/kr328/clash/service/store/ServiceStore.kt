@@ -1,6 +1,7 @@
 package com.github.kr328.clash.service.store
 
 import android.content.Context
+import android.os.SystemClock
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
 import com.github.kr328.clash.service.PreferenceProvider
@@ -87,6 +88,23 @@ class ServiceStore(context: Context) {
         defaultValue = 0L
     )
 
+    /**
+     * То же событие, но по монотонным часам (`SystemClock.elapsedRealtime`).
+     *
+     * Системные часы умеет двигать кто угодно: синхронизация времени после
+     * загрузки телефона, ручная правка, оператор связи. Сдвиг на трое суток
+     * назад превратит секундный таймер в «73:38:39» — ровно то, что видно
+     * у соседних клиентов. Монотонные часы не двигаются никогда, поэтому
+     * считаем по ним, а системные оставляем запасным путём.
+     *
+     * Отсчёт обнуляется при перезагрузке телефона, но это не мешает: после
+     * перезагрузки службы нет, а её следующий запуск перепишет обе метки.
+     */
+    var clashStartedElapsed: Long by store.long(
+        key = "clash_started_elapsed",
+        defaultValue = 0L
+    )
+
     var bypassPrivateNetwork: Boolean by store.boolean(
         key = "bypass_private_network",
         defaultValue = true
@@ -132,4 +150,36 @@ class ServiceStore(context: Context) {
         key = "dynamic_notification",
         defaultValue = true
     )
+
+    /**
+     * Отметить подъём туннеля обеими парами часов.
+     *
+     * Возвращает поставленную метку системных часов: служба держит её у себя,
+     * чтобы при остановке снять СВОЮ отметку, а не чужую.
+     */
+    fun markSessionStarted(): Long {
+        val startedAt = System.currentTimeMillis()
+
+        clashStartedAt = startedAt
+        clashStartedElapsed = SystemClock.elapsedRealtime()
+
+        return startedAt
+    }
+
+    /**
+     * Снять отметку сессии при остановке службы.
+     *
+     * Снимаем, только если в настройках лежит наше собственное значение.
+     * Главный случай — служба, которая остановила себя прямо в `onCreate`,
+     * увидев уже работающую (так проходит смена режима VPN ↔ только прокси):
+     * своей метки она не ставила, а `onDestroy` у неё вызовется, и обнуление
+     * вслепую погасило бы таймер живого туннеля.
+     */
+    fun clearSessionStarted(startedAt: Long) {
+        if (startedAt == 0L || clashStartedAt != startedAt)
+            return
+
+        clashStartedAt = 0L
+        clashStartedElapsed = 0L
+    }
 }
