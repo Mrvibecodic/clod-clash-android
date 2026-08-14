@@ -191,33 +191,36 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 		return
 	}
 
-	info.Title = firstNonEmpty(headerValue(header, "profile-title"), info.Title)
-	info.LogoURL = firstNonEmpty(httpsURL(headerValue(header, "profile-logo")), info.LogoURL)
-	info.Announce = firstNonEmpty(truncate(headerValue(header, "announce"), announceMaxChars), info.Announce)
-	info.AnnounceURL = firstNonEmpty(httpsURL(headerValue(header, "announce-url")), info.AnnounceURL)
-	// Ссылки провайдера — СОСТОЯНИЕ ПОСЛЕДНЕГО ОТВЕТА, а не накопленное
-	// знание: перестала панель слать заголовок — ссылки больше нет, и строка
-	// в настройках исчезает тем же обновлением. Так же на ПК.
+	// ВСЁ, что панель рассказывает о себе, — СОСТОЯНИЕ ПОСЛЕДНЕГО ОТВЕТА, а не
+	// накопленное знание: убрала заголовок — значение пропало тем же
+	// обновлением. Копить их нельзя. Сохранённая ссылка пережила бы и смену
+	// тарифа, и подмену ссылки подписки на ДРУГОГО провайдера, и человек
+	// уходил бы в чужой кабинет; снятое объявление висело бы вечно, а
+	// логотип прежнего провайдера — поверх нового. На ПК то же самое
+	// (`merge_panel_meta`: «replace, do not merge»).
 	//
-	// Именно поэтому они пишутся безусловно, а не через `firstNonEmpty`:
-	// сохранённая ссылка пережила бы и смену тарифа, и переезд к другому
-	// провайдеру на том же профиле, и человек уходил бы в чужой кабинет.
+	// Исключение ровно одно — название подписки ниже.
 	//
 	// Боту достаётся проверка поддержки (`tg:` и `mailto:` законны),
 	// мониторингу и инструкции — обычная: это страницы, и ничего, кроме
 	// https, за ними быть не должно.
+	info.LogoURL = httpsURL(headerValue(header, "profile-logo"))
+	info.Announce = truncate(headerValue(header, "announce"), announceMaxChars)
+	info.AnnounceURL = httpsURL(headerValue(header, "announce-url"))
 	info.SupportURL = contactURL(headerValue(header, "support-url"))
 	info.HomeURL = httpsURL(headerValue(header, "profile-web-page-url"))
 	info.PortalURL = httpsURL(headerValue(header, "clod-portal-url"))
 	info.BotURL = contactURL(headerValue(header, "clod-bot-url"))
 	info.MonitorURL = httpsURL(headerValue(header, "clod-monitor-url"))
 	info.GuideURL = httpsURL(headerValue(header, "clod-guide-url"))
-	info.Promo = firstNonEmpty(truncate(headerValue(header, "clod-promo"), announceMaxChars), info.Promo)
-	info.PromoURL = firstNonEmpty(httpsURL(headerValue(header, "clod-promo-url")), info.PromoURL)
-	info.HwidLimitMessage = firstNonEmpty(
-		truncate(headerValue(header, "clod-hwid-limit"), announceMaxChars),
-		info.HwidLimitMessage,
-	)
+	info.Promo = truncate(headerValue(header, "clod-promo"), announceMaxChars)
+	info.PromoURL = httpsURL(headerValue(header, "clod-promo-url"))
+	info.HwidLimitMessage = truncate(headerValue(header, "clod-hwid-limit"), announceMaxChars)
+
+	// А название держится до следующего непустого — и это не поблажка панели,
+	// а защита человека: под этим именем подписка лежит в списке, и остаться
+	// без имени из-за одного ответа без заголовка она не должна.
+	info.Title = firstNonEmpty(headerValue(header, "profile-title"), info.Title)
 
 	// Оба поля перезаписываются безусловно, а не «если пришло»: это состояние
 	// последнего ответа, а не накопленное знание. Панель перестала слать

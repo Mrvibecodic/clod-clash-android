@@ -492,10 +492,47 @@ func TestApplyHeadersResetsStateFields(t *testing.T) {
 		t.Fatalf("пороги должны сбрасываться: %#v %#v", info.NotifyExpireDays, info.NotifyTrafficPercent)
 	}
 
-	// А вот название держится до следующего непустого: пропадать между
-	// обновлениями баннеру нельзя.
+	// А вот название держится до следующего непустого: под ним подписка лежит
+	// в списке, и остаться без имени из-за одного ответа она не должна.
 	if info.Title != "Провайдер" {
 		t.Fatalf("название не должно теряться, получено %q", info.Title)
+	}
+}
+
+func TestApplyHeadersPanelTextsFollowPanel(t *testing.T) {
+	// Объявление, промо, логотип и текст для диалога устройства — тоже
+	// состояние последнего ответа. Снятое провайдером объявление висело бы
+	// вечно, а логотип прежнего провайдера — поверх нового.
+	info := Info{
+		Title:            "Провайдер",
+		LogoURL:          "https://old.example/logo.png",
+		Announce:         "Работы с 3 до 5",
+		AnnounceURL:      "https://old.example/news",
+		Promo:            "Скидка 30%",
+		PromoURL:         "https://old.example/sale",
+		HwidLimitMessage: "Отвяжите старое устройство в кабинете",
+	}
+
+	ApplyHeaders(&info, map[string][]string{"profile-title": {"Провайдер"}}, "https://panel.example.com/sub")
+
+	if info.Announce != "" || info.AnnounceURL != "" {
+		t.Fatalf("объявление осталось: %q %q", info.Announce, info.AnnounceURL)
+	}
+
+	if info.Promo != "" || info.PromoURL != "" {
+		t.Fatalf("промо осталось: %q %q", info.Promo, info.PromoURL)
+	}
+
+	if info.LogoURL != "" {
+		t.Fatalf("логотип остался: %q", info.LogoURL)
+	}
+
+	if info.HwidLimitMessage != "" {
+		t.Fatalf("текст для диалога устройства остался: %q", info.HwidLimitMessage)
+	}
+
+	if info.Title != "Провайдер" {
+		t.Fatalf("название = %q", info.Title)
 	}
 }
 
