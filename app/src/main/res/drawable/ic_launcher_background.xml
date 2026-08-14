@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Clod Clash. Робот-логотип, перенесён с десктопной версии
+<!-- Clod Clash. Робот-логотип v2 (14.08.2026), перенесён с десктопной версии
      (src-tauri/icons/icon.png, src/assets/image/logo-robot.svg). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -15,7 +15,8 @@
                 android:startY="0"
                 android:endX="108"
                 android:endY="108"
-                android:startColor="#4F46E5"
+                android:startColor="#6366F1"
+                android:centerColor="#5B48EE"
                 android:endColor="#7C3AED" />
         </aapt:attr>
     </path>
