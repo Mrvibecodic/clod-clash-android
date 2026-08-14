@@ -117,7 +117,10 @@ fun PowerButton(
             }
             .clip(CircleShape)
             .background(scheme.surfaceContainerLowest)
-            .border(width = 3.dp, color = animatedAccent, shape = CircleShape)
+            // Кольцо в 5 dp, а не в 3. В отключённом состоянии оно серое
+            // (`statusStopped`), и на трёх точках тонкая серая обводка читается
+            // как выключенный элемент — а это единственное действие экрана.
+            .border(width = 5.dp, color = animatedAccent, shape = CircleShape)
             // clip(CircleShape) стоит выше по цепочке, поэтому стандартная
             // рябь сама обрезается по кругу — своё indication не нужно.
             .clickable(enabled = enabled, role = Role.Button) {

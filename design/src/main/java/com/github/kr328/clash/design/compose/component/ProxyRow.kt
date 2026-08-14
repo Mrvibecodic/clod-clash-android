@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -18,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -27,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.theme.ClodRowCorner
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 
 /**
@@ -72,20 +77,31 @@ fun splitFlag(title: String): Pair<String?, String> {
 private const val DELAY_UNKNOWN = 0xffff
 
 /**
- * Бейдж задержки. Пороги те же, что в макете: до 100 мс зелёный, до 200 —
- * янтарный, дальше красный. Нет данных — прочерк: и «0 ms», и «65535 ms»
- * человек читает как измеренное значение.
+ * Цвет задержки. Пороги те же, что в макете: до 100 мс зелёный, до 200 —
+ * янтарный, дальше красный. Нет данных — серый.
+ */
+@Composable
+private fun delayColor(delay: Int): Color = when {
+    delay <= 0 || delay >= DELAY_UNKNOWN -> ClodTheme.extraColors.statusStopped
+    delay < 100 -> ClodTheme.extraColors.statusConnected
+    delay < 200 -> ClodTheme.extraColors.statusConnecting
+    else -> MaterialTheme.colorScheme.error
+}
+
+/**
+ * Бейдж задержки. Нет данных — прочерк: и «0 ms», и «65535 ms» человек читает
+ * как измеренное значение.
+ *
+ * Остаётся для строки сервера на главном экране, где задержка стоит одна
+ * в ряду и её надо выделить. В списке узлов вместо бейджа идёт колонка
+ * ([DelayColumn]): шесть разноцветных пилюль подряд спорят друг с другом
+ * и с отметкой выбранного узла.
  */
 @Composable
 fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
     val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
-    val extra = ClodTheme.extraColors
-    val color = when {
-        unknown -> extra.statusStopped
-        delay < 100 -> extra.statusConnected
-        delay < 200 -> extra.statusConnecting
-        else -> MaterialTheme.colorScheme.error
-    }
+    val color = delayColor(delay)
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(50))
@@ -102,9 +118,46 @@ fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
 }
 
 /**
- * Строка узла в списке серверов: флаг, название, тип второй строкой, задержка справа.
- * Выбранный узел выделен заливкой, а не галочкой — галочка в конце строки конфликтует
- * с бейджем задержки, который в макете стоит ровно там.
+ * Задержка в списке: число крупно, единица подписью под ним.
+ *
+ * Колонка фиксированной ширины, выровненная по правому краю: у бейджа ширина
+ * зависела от числа знаков, и правый край списка гулял на десяток точек от
+ * строки к строке — глазу приходилось искать значение заново в каждой.
+ */
+@Composable
+fun DelayColumn(delay: Int, modifier: Modifier = Modifier) {
+    val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
+    val color = delayColor(delay)
+
+    Column(
+        modifier = modifier.width(38.dp),
+        horizontalAlignment = Alignment.End,
+    ) {
+        Text(
+            text = if (unknown) "—" else "$delay",
+            color = color,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (!unknown) {
+            Text(
+                text = "ms",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
+    }
+}
+
+/**
+ * Строка узла в списке серверов: флаг, название, описание второй строкой,
+ * задержка справа.
+ *
+ * Выбранный узел отмечен полосой слева и заливкой. Одной заливки не хватало:
+ * `primary` при 12 % на светлой теме отличается от `surfaceContainerLow`
+ * на считанные единицы яркости, и на телефоне при свете выбранная строка
+ * от соседних не отличалась вовсе. Полоса читается при любой яркости и
+ * не мешает бейджу — галочка в конце строки мешала бы.
  */
 @Composable
 fun ProxyRow(
@@ -127,7 +180,8 @@ fun ProxyRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .height(IntrinsicSize.Min)
+            .clip(RoundedCornerShape(ClodRowCorner))
             .background(
                 if (selected) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
@@ -140,9 +194,26 @@ fun ProxyRow(
 
                 onClick()
             }
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(end = 12.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Отметка выбранного узла. Место под неё занято всегда: появись полоса
+        // по месту, весь текст строки прыгал бы вправо на каждое переключение.
+        Box(
+            modifier = Modifier
+                .padding(vertical = 2.dp)
+                .width(4.dp)
+                .fillMaxHeight()
+                .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
+                .background(
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Transparent
+                    },
+                ),
+        )
+        Spacer(Modifier.width(8.dp))
         if (flag != null) {
             Text(text = flag, fontSize = 20.sp)
             Spacer(Modifier.width(10.dp))
@@ -166,9 +237,10 @@ fun ProxyRow(
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
-        PingBadge(delay)
-        // Звезда — отдельная зона нажатия справа от бейджа, как на ПК.
+        Spacer(Modifier.width(10.dp))
+        DelayColumn(delay)
+        Spacer(Modifier.width(6.dp))
+        // Звезда — отдельная зона нажатия справа от задержки, как на ПК.
         // Долгое нажатие по строке для этого не годится: на строке уже висит
         // выбор узла, и человек, промахнувшись длительностью, переключил бы
         // сервер вместо отметки.

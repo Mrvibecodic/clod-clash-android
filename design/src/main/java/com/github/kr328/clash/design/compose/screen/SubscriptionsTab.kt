@@ -8,9 +8,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -250,134 +252,160 @@ private fun SubscriptionCard(
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .height(IntrinsicSize.Min)
             .clickable { onAction(MainAction.ActivateProfile(profile)) },
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    // Название от панели, а не «New Profile»: своё имя подписке
-                    // человек в нашем сценарии добавления не задаёт вовсе.
-                    text = item.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                )
-                StatusBadge(status.label(), status.color())
-                // Пока подписка обновляется, у её карточки крутится значок:
-                // на «Обновить» жмут из меню, и после закрытия меню человеку
-                // больше негде увидеть, что запрос вообще ушёл.
-                //
-                // Место под значок занято всегда: появись он по месту, метка
-                // состояния и кнопка меню дёргались бы влево-вправо на каждом
-                // старте и финише обновления.
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                        .size(18.dp),
-                ) {
-                    if (updating) {
-                        SyncIcon(
-                            spinning = true,
-                            contentDescription = stringResource(R.string.clod_sub_updating),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp),
-                        )
+        Row {
+            // Отметка активной подписки. Заливки в 10 % не хватало: на светлой
+            // теме она отличается от `surfaceContainerLow` на единицы яркости,
+            // и при трёх карточках подряд было не видно, какая из них
+            // применена. Место под полосу занято всегда — иначе текст карточек
+            // прыгал бы вправо при каждом переключении подписки.
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 14.dp)
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
+                    .background(
+                        if (profile.active) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            Color.Transparent
+                        },
+                    ),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 10.dp, top = 14.dp, end = 14.dp, bottom = 14.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        // Название от панели, а не «New Profile»: своё имя подписке
+                        // человек в нашем сценарии добавления не задаёт вовсе.
+                        text = item.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatusBadge(status.label(), status.color())
+                    // Пока подписка обновляется, у её карточки крутится значок:
+                    // на «Обновить» жмут из меню, и после закрытия меню человеку
+                    // больше негде увидеть, что запрос вообще ушёл.
+                    //
+                    // Место под значок занято всегда: появись он по месту, метка
+                    // состояния и кнопка меню дёргались бы влево-вправо на каждом
+                    // старте и финише обновления.
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .size(18.dp),
+                    ) {
+                        if (updating) {
+                            SyncIcon(
+                                spinning = true,
+                                contentDescription = stringResource(R.string.clod_sub_updating),
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
-                }
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_baseline_more_vert),
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        // Обновление есть только у подписок по ссылке: локальный
-                        // файл обновлять неоткуда.
-                        if (profile.type != Profile.Type.File) {
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_baseline_more_vert),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            // Обновление есть только у подписок по ссылке: локальный
+                            // файл обновлять неоткуда.
+                            if (profile.type != Profile.Type.File) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.update)) },
+                                    // Пока предыдущее обновление не закончилось,
+                                    // повторное нажатие только поставит в очередь
+                                    // ещё один поход в сеть за тем же файлом.
+                                    enabled = !updating,
+                                    onClick = {
+                                        menuOpen = false
+                                        onAction(MainAction.UpdateProfile(profile))
+                                    },
+                                )
+                            }
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.update)) },
-                                // Пока предыдущее обновление не закончилось,
-                                // повторное нажатие только поставит в очередь
-                                // ещё один поход в сеть за тем же файлом.
-                                enabled = !updating,
+                                text = { Text(stringResource(R.string.edit)) },
                                 onClick = {
                                     menuOpen = false
-                                    onAction(MainAction.UpdateProfile(profile))
+                                    onAction(MainAction.EditProfile(profile))
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.clod_group_move)) },
+                                onClick = {
+                                    menuOpen = false
+                                    picking = true
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete)) },
+                                onClick = {
+                                    menuOpen = false
+                                    onAction(MainAction.DeleteProfile(profile))
                                 },
                             )
                         }
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.edit)) },
-                            onClick = {
-                                menuOpen = false
-                                onAction(MainAction.EditProfile(profile))
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (profile.total > 0) {
+                            "${Formatter.formatShortFileSize(context, used)} / " +
+                                Formatter.formatShortFileSize(context, profile.total)
+                        } else {
+                            Formatter.formatShortFileSize(context, used) + " · " +
+                                stringResource(R.string.clod_sub_unlimited)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (profile.expire > 0) {
+                        val days = ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
+                        Text(
+                            text = if (days >= 0) {
+                                stringResource(R.string.clod_sub_days, days)
+                            } else {
+                                stringResource(
+                                    R.string.clod_sub_until,
+                                    DateFormat.getDateFormat(context).format(Date(profile.expire)),
+                                )
                             },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.clod_group_move)) },
-                            onClick = {
-                                menuOpen = false
-                                picking = true
-                            },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.delete)) },
-                            onClick = {
-                                menuOpen = false
-                                onAction(MainAction.DeleteProfile(profile))
-                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = status.color(),
+                            fontWeight = FontWeight.Medium,
                         )
                     }
                 }
-            }
 
-            Spacer(Modifier.height(6.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (profile.total > 0) {
-                        "${Formatter.formatShortFileSize(context, used)} / " +
-                            Formatter.formatShortFileSize(context, profile.total)
-                    } else {
-                        Formatter.formatShortFileSize(context, used) + " · " +
-                            stringResource(R.string.clod_sub_unlimited)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                if (profile.expire > 0) {
-                    val days = ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
-                    Text(
-                        text = if (days >= 0) {
-                            stringResource(R.string.clod_sub_days, days)
-                        } else {
-                            stringResource(
-                                R.string.clod_sub_until,
-                                DateFormat.getDateFormat(context).format(Date(profile.expire)),
-                            )
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
+                if (profile.total > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
                         color = status.color(),
-                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(50)),
                     )
                 }
-            }
-
-            if (profile.total > 0) {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
-                    color = status.color(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(50)),
-                )
             }
         }
     }

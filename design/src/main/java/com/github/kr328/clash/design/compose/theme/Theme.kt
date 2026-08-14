@@ -165,6 +165,7 @@ fun ClodClashTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = ClodTypography,
+            shapes = ClodShapes,
             content = content,
         )
     }
