@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -35,6 +36,8 @@ import (
 var secureChannel atomic.Bool
 
 var errChanFingerprint = errors.New("clod-chan: отпечаток chrome недоступен в ядре")
+
+var errChanAlpn = errors.New("clod-chan: прослойка выбрала не http/1.1")
 
 // SetSecureChannel — включить защищённый канал для следующей загрузки.
 func SetSecureChannel(enabled bool) {
@@ -82,6 +85,15 @@ var chanBrowserHeaders = [][2]string{
 // но говорить по нему мы пока не умеем, а предложить и не поддержать —
 // это разрыв соединения. В JA4 разница видна, в JA3 — нет; полноценный `h2`
 // с хромовскими SETTINGS — отдельная работа.
+//
+// ВАЖНО: одного `config.NextProtos` для этого НЕДОСТАТОЧНО. Отпечаток —
+// это готовый ClientHello, и его расширение ALPN не читает настройки, а
+// ЗАТИРАЕТ их: `ALPNExtension.writeToUConn` кладёт в `config.NextProtos`
+// свой список (`h2`, `http/1.1`). Пока правки не было, прослойка за CDN
+// выбирала `h2`, а клиент читал ответ как HTTP/1.1 и падал на
+// «malformed HTTP response "\x00\x00\x12\x04…"» — это кадр SETTINGS.
+// Расширение правится уже в собранном рукопожатии — тем же помощником
+// ядра, которым это делает websocket.
 func chanClient() *http.Client {
 	transport := &http.Transport{
 		DisableKeepAlives:   true,
@@ -120,10 +132,24 @@ func chanClient() *http.Client {
 			}
 
 			tlsConn := tlsC.UClient(conn, tlsC.UConfig(config), fingerprint)
+			if err := tlsC.BuildWebsocketHandshakeState(tlsConn); err != nil {
+				_ = conn.Close()
+
+				return nil, err
+			}
+
 			if err := tlsConn.HandshakeContext(ctx); err != nil {
 				_ = conn.Close()
 
 				return nil, err
+			}
+
+			// Страховка на будущее: если ALPN снова уедет, ошибка должна
+			// называть причину, а не показывать человеку кадр HTTP/2.
+			if proto := tlsConn.ConnectionState().NegotiatedProtocol; proto != "" && proto != "http/1.1" {
+				_ = tlsConn.Close()
+
+				return nil, fmt.Errorf("%w: %s", errChanAlpn, proto)
 			}
 
 			return tlsConn, nil
