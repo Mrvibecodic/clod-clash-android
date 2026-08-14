@@ -11,8 +11,12 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import java.net.InetAddress
@@ -73,6 +77,10 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     /** Экран был выключен в момент смены — пробу должны догнать при включении. */
     @Volatile
     private var probePending = false
+
+    /** Событие пришло внутри окна троттлинга — досылка уже запланирована. */
+    @Volatile
+    private var retriggerScheduled = false
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -161,6 +169,20 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
         return false
     }
 
+    /**
+     * Штраф сети, которая не подтвердила выход в интернет.
+     *
+     * Wi-Fi без интернета (портал, отвалившийся роутер) остаётся подключённым
+     * и по одному транспорту всё ещё «лучше» сотовой, хотя телефон уже давно
+     * ходит через LTE. На API 28+ такую сеть обычно уводит в фон сама система
+     * и мы получаем `onLost` по капабилити `FOREGROUND`, но ниже 28 её мы
+     * не запрашиваем — и без этого штрафа продолжали бы считать текущей
+     * мёртвую сеть: и сброс не сделали бы, и DNS взяли бы её.
+     */
+    private fun unvalidatedPenalty(capabilities: NetworkCapabilities): Int {
+        return if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) 0 else 10
+    }
+
     private fun networkToInt(entry: Map.Entry<Network, NetworkInfo>): Int {
         val capabilities = connectivity.getNetworkCapabilities(entry.key)
         // calculate priority based on transport type, available state
@@ -177,7 +199,8 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE) -> 5
             // TRANSPORT_LOWPAN / TRANSPORT_THREAD / TRANSPORT_WIFI_AWARE are not for general internet access, which will not set as default route.
             else -> 20
-        } + (if (entry.value.isAvailable()) 0 else 10)
+        } + (if (entry.value.isAvailable()) 0 else 10) +
+            (if (capabilities == null) 0 else unvalidatedPenalty(capabilities))
     }
 
     /**
@@ -217,10 +240,29 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
      * поэтому при выключенном экране откладывается до включения: разбудить
      * радиомодуль ради цифры, которую некому показать, незачем.
      */
-    private fun handleNetworkChanged() {
+    private fun handleNetworkChanged(scope: CoroutineScope) {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastResetAt < RESET_THROTTLE_MS) {
-            Log.d("NetworkObserve reset throttled")
+        val sinceReset = now - lastResetAt
+        if (sinceReset < RESET_THROTTLE_MS) {
+            // Событие, попавшее в окно троттлинга, раньше терялось насовсем.
+            // А переезд между сетями редко бывает одним шагом: система успевает
+            // объявить промежуточную сеть, настоящая приезжает через пару
+            // секунд — и сброса для той сети, на которой телефон в итоге
+            // остался, не случалось вовсе. Поэтому окно теперь с задним
+            // фронтом: досылаем сигнал, когда оно закроется.
+            if (!retriggerScheduled) {
+                retriggerScheduled = true
+
+                scope.launch {
+                    delay(RESET_THROTTLE_MS - sinceReset)
+
+                    retriggerScheduled = false
+
+                    networkChanges.trySend(Unit)
+                }
+            }
+
+            Log.d("NetworkObserve reset throttled, retry after window")
 
             return
         }
@@ -246,9 +288,32 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     private fun preferredNetwork(): Network? =
         networkInfos.asSequence().minByOrNull { networkToInt(it) }?.key
 
+    /**
+     * Системные резолверы для ядра.
+     *
+     * Берётся ПЕРВАЯ по приоритету сеть, у которой список непустой, а не просто
+     * самая приоритетная. Разница видна ровно в тот момент, когда она важнее
+     * всего: новая сеть уже поднялась, но `onLinkPropertiesChanged` для неё
+     * ещё не приехал (или оператор не отдал резолверы вовсе) — со старым кодом
+     * список получался пустым, обновление отбрасывалось гардом ниже, и в ядре
+     * до следующего колбэка оставались резолверы ушедшей сети. Домены,
+     * идущие по правилам в DIRECT, в этот момент не разрешаются вовсе.
+     *
+     * Гард `isNotEmpty` при этом снимать НЕЛЬЗЯ: пустой список обнуляет
+     * `systemResolver` в ядре, а там на этот случай зашиты 114.114.114.114
+     * и 8.8.8.8 (`dns/system.go`) — на нашей аудитории это гарантированный
+     * таймаут вместо резолва.
+     */
+    private fun preferredDnsList(): List<InetAddress> {
+        return networkInfos.asSequence()
+            .sortedBy { networkToInt(it) }
+            .map { it.value.dnsList }
+            .firstOrNull { it.isNotEmpty() }
+            ?: emptyList()
+    }
+
     private fun notifyDnsChange() {
-        val dnsList = (networkInfos.asSequence().minByOrNull { networkToInt(it) }?.value?.dnsList
-            ?: emptyList()).map { x -> x.asSocketAddressText(53) }
+        val dnsList = preferredDnsList().map { x -> x.asSocketAddressText(53) }
         val prevDnsList = curDnsList
         if (dnsList.isNotEmpty() && prevDnsList != dnsList) {
             Log.i("notifyDnsChange $prevDnsList -> $dnsList")
@@ -265,21 +330,25 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
         }
 
         try {
-            while (true) {
-                select<Unit> {
-                    networks.onReceive {
-                        enqueueEvent(it)
-                    }
-                    networkChanges.onReceive {
-                        handleNetworkChanged()
-                    }
-                    screenOn.onReceive {
-                        if (probePending) {
-                            probePending = false
+            coroutineScope {
+                val scope = this
 
-                            Log.i("NetworkObserve deferred probe after screen on")
+                while (true) {
+                    select<Unit> {
+                        networks.onReceive {
+                            enqueueEvent(it)
+                        }
+                        networkChanges.onReceive {
+                            handleNetworkChanged(scope)
+                        }
+                        screenOn.onReceive {
+                            if (probePending) {
+                                probePending = false
 
-                            Clash.probeCurrentNodes()
+                                Log.i("NetworkObserve deferred probe after screen on")
+
+                                Clash.probeCurrentNodes()
+                            }
                         }
                     }
                 }
@@ -297,8 +366,10 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     companion object {
         /**
          * Переезд из сети в сеть система показывает пачкой колбэков за доли
-         * секунды. Пять секунд по переднему фронту: первый сигнал срабатывает
-         * сразу, остальные из той же пачки пропускаются.
+         * секунды. Пять секунд: первый сигнал срабатывает сразу, остальные
+         * из той же пачки схлопываются в одну досылку по закрытии окна —
+         * так пачка не превращается в пять сбросов подряд, но и настоящая
+         * смена сети внутри окна не теряется.
          */
         private const val RESET_THROTTLE_MS = 5_000L
     }

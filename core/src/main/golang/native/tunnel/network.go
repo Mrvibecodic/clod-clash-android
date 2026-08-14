@@ -19,7 +19,7 @@ import (
 // минутами, UDP — до минуты. Человек это видит как «интернет появился,
 // а всё висит».
 //
-// ПОЧЕМУ ЭТО НЕ ПРАВКА ЯДРА. Все три вызова ниже — публичные функции mihomo,
+// ПОЧЕМУ ЭТО НЕ ПРАВКА ЯДРА. Все вызовы ниже — публичные функции mihomo,
 // и ровно их же зовёт само ядро в обработчике `DELETE /connections`
 // (`hub/route/connections.go`). Мы для ядра такой же внешний потребитель,
 // как его собственный HTTP-сервер; сабмодуль остаётся нетронутым пином.
@@ -38,8 +38,24 @@ func OnNetworkChanged(closeConnections bool) {
 	// раньше, чем что-либо ещё.
 	resolver.ResetConnection()
 
+	// Сброс транспортов и сброс КЭША — разные вещи. `ResetConnection` роняет
+	// соединения к DNS-серверам, но ответы, полученные в прошлой сети, лежат
+	// в кэше до конца своего TTL. Адрес CDN, прекрасно работавший по домашнему
+	// Wi-Fi, у оператора может не отвечать вовсе — человек видит «сайт не
+	// открылся», а через перезагрузку страницы (запись успела протухнуть)
+	// всё оживает. Особенно заметно на доменах, идущих по правилам в DIRECT:
+	// проксируемые имена резолвит выходной узел, и локальный кэш им не мешает.
+	//
+	// До этого кэш чистился только побочным эффектом смены системных
+	// резолверов (`NotifyDnsChanged`) — то есть НЕ чистился, когда список
+	// резолверов у обеих сетей совпал или у новой сети не приехал вовсе.
+	//
+	// Карту fake-ip это не трогает: `ClearCache` чистит только кэш ответов
+	// (`dns/resolver.go`), пул fake-ip живёт отдельно.
+	resolver.ClearCache()
+
 	if !closeConnections {
-		log.Infoln("Network changed: interface cache and DNS connections reset")
+		log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset")
 
 		return
 	}
@@ -54,5 +70,5 @@ func OnNetworkChanged(closeConnections bool) {
 		return true
 	})
 
-	log.Infoln("Network changed: interface cache and DNS connections reset, %d connection(s) closed", closed)
+	log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset, %d connection(s) closed", closed)
 }
