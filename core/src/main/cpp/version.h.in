@@ -1,12 +1,14 @@
 #ifndef VERSION_H_IN
 #define VERSION_H_IN
- 
+
 /**
- * 当前编译core版本号
+ * Версия ядра для экрана «О приложении».
+ *
+ * Строковый литерал, а не голый токен препроцессора: сюда попадает имя
+ * релизного тега вида `v1.19.29`, а точки в идентификаторе не живут —
+ * из-за этого версию раньше приходилось вычищать до подчёркиваний.
  */
- 
-#define GIT_VERSION @GIT_VERSION@
-#define make_Str(x) #x 
-#define make_String(x) make_Str(x)
+
+#define GIT_VERSION "@GIT_VERSION@"
 
 #endif

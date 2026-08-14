@@ -8,7 +8,7 @@
 #include "jni_helper.h"
 #include "trace.h"
 
-#include "version.h" // 添加当前编译core版本号变量
+#include "version.h" // версия ядра, её собирает CMake из version.h.in
 
 
 JNIEXPORT void JNICALL
@@ -19,9 +19,7 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeInit(JNIEnv *env, jobject t
 
     scoped_string _home = get_string(home);
     scoped_string _version_name = get_string(version_name);
-    char* _git_version = make_String(GIT_VERSION);
-
-    coreInit(_home, _version_name, _git_version, sdk_version);
+    coreInit(_home, _version_name, GIT_VERSION, sdk_version);
 }
 
 JNIEXPORT void JNICALL
@@ -658,7 +656,5 @@ JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeCoreVersion(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
     
-    char* Version = make_String(GIT_VERSION);
-
-    return new_string(Version);
+    return new_string(GIT_VERSION);
 }
