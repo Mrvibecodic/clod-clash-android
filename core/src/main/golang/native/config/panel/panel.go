@@ -33,6 +33,11 @@ type Info struct {
 
 	// Остальные ссылки провайдера — те же, что на ПК.
 	//
+	// Все ссылки (включая `SupportURL`, `HomeURL` и `PortalURL` выше) живут
+	// ровно один ответ панели: пришли — есть, не пришли — нет. Накапливать их
+	// нельзя, иначе кабинет прежнего провайдера остался бы на профиле, куда
+	// вставили чужую ссылку.
+	//
 	// `clod-bot-url` — бот. Отдельно от поддержки намеренно: бот выдаёт
 	// ссылку, продлевает и отвечает сам, а поддержка — живой человек, и
 	// отправлять к нему тех, кому хватило бы бота, незачем. Схемы у бота те
@@ -190,15 +195,23 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.LogoURL = firstNonEmpty(httpsURL(headerValue(header, "profile-logo")), info.LogoURL)
 	info.Announce = firstNonEmpty(truncate(headerValue(header, "announce"), announceMaxChars), info.Announce)
 	info.AnnounceURL = firstNonEmpty(httpsURL(headerValue(header, "announce-url")), info.AnnounceURL)
-	info.SupportURL = firstNonEmpty(contactURL(headerValue(header, "support-url")), info.SupportURL)
-	info.HomeURL = firstNonEmpty(httpsURL(headerValue(header, "profile-web-page-url")), info.HomeURL)
-	info.PortalURL = firstNonEmpty(httpsURL(headerValue(header, "clod-portal-url")), info.PortalURL)
+	// Ссылки провайдера — СОСТОЯНИЕ ПОСЛЕДНЕГО ОТВЕТА, а не накопленное
+	// знание: перестала панель слать заголовок — ссылки больше нет, и строка
+	// в настройках исчезает тем же обновлением. Так же на ПК.
+	//
+	// Именно поэтому они пишутся безусловно, а не через `firstNonEmpty`:
+	// сохранённая ссылка пережила бы и смену тарифа, и переезд к другому
+	// провайдеру на том же профиле, и человек уходил бы в чужой кабинет.
+	//
 	// Боту достаётся проверка поддержки (`tg:` и `mailto:` законны),
 	// мониторингу и инструкции — обычная: это страницы, и ничего, кроме
-	// https, за ними быть не должно. Ровно как на ПК.
-	info.BotURL = firstNonEmpty(contactURL(headerValue(header, "clod-bot-url")), info.BotURL)
-	info.MonitorURL = firstNonEmpty(httpsURL(headerValue(header, "clod-monitor-url")), info.MonitorURL)
-	info.GuideURL = firstNonEmpty(httpsURL(headerValue(header, "clod-guide-url")), info.GuideURL)
+	// https, за ними быть не должно.
+	info.SupportURL = contactURL(headerValue(header, "support-url"))
+	info.HomeURL = httpsURL(headerValue(header, "profile-web-page-url"))
+	info.PortalURL = httpsURL(headerValue(header, "clod-portal-url"))
+	info.BotURL = contactURL(headerValue(header, "clod-bot-url"))
+	info.MonitorURL = httpsURL(headerValue(header, "clod-monitor-url"))
+	info.GuideURL = httpsURL(headerValue(header, "clod-guide-url"))
 	info.Promo = firstNonEmpty(truncate(headerValue(header, "clod-promo"), announceMaxChars), info.Promo)
 	info.PromoURL = firstNonEmpty(httpsURL(headerValue(header, "clod-promo-url")), info.PromoURL)
 	info.HwidLimitMessage = firstNonEmpty(

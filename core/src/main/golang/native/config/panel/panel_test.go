@@ -772,3 +772,67 @@ func TestApplyHeadersProviderLinks(t *testing.T) {
 		t.Fatalf("мониторинг из base64 = %q", encoded.MonitorURL)
 	}
 }
+
+func TestApplyHeadersLinksVanishWhenPanelStops(t *testing.T) {
+	// Ссылки провайдера — состояние последнего ответа. Панель перестала слать
+	// заголовок — строки в настройках не должно быть тем же обновлением.
+	// Сохранённая ссылка пережила бы и смену тарифа, и подмену ссылки
+	// подписки на другого провайдера — и увела бы человека в чужой кабинет.
+	info := Info{
+		Title:      "Провайдер",
+		PortalURL:  "https://old.example/cabinet",
+		SupportURL: "https://t.me/old_support",
+		HomeURL:    "https://old.example/sub",
+		BotURL:     "tg://resolve?domain=old_bot",
+		MonitorURL: "https://status.old.example",
+		GuideURL:   "https://old.example/help",
+	}
+
+	// Ответ следующего провайдера: у него есть только кабинет и бот.
+	ApplyHeaders(&info, map[string][]string{
+		"clod-portal-url": {"https://new.example/cabinet"},
+		"clod-bot-url":    {"tg://resolve?domain=new_bot"},
+	}, "https://panel.example.com/sub/token")
+
+	if info.PortalURL != "https://new.example/cabinet" {
+		t.Fatalf("кабинет = %q", info.PortalURL)
+	}
+
+	if info.BotURL != "tg://resolve?domain=new_bot" {
+		t.Fatalf("бот = %q", info.BotURL)
+	}
+
+	if info.SupportURL != "" || info.HomeURL != "" || info.MonitorURL != "" || info.GuideURL != "" {
+		t.Fatalf(
+			"чужие ссылки остались: поддержка %q, страница %q, мониторинг %q, инструкция %q",
+			info.SupportURL, info.HomeURL, info.MonitorURL, info.GuideURL,
+		)
+	}
+
+	// Ответ вовсе без ссылок не оставляет ни одной.
+	ApplyHeaders(&info, map[string][]string{"profile-title": {"Провайдер"}}, "https://panel.example.com/sub/token")
+
+	if info.PortalURL != "" || info.BotURL != "" {
+		t.Fatalf("ссылки должны исчезать целиком: кабинет %q, бот %q", info.PortalURL, info.BotURL)
+	}
+
+	// А название держится: имя подписки между обновлениями пропадать не должно.
+	if info.Title != "Провайдер" {
+		t.Fatalf("название = %q", info.Title)
+	}
+}
+
+func TestApplyHeadersBadLinkDropsOldOne(t *testing.T) {
+	// Негодная ссылка (http, javascript:) — это НЕ «оставь прошлую»: панель
+	// заголовок прислала, просто он никуда не годится, и открывать по нему
+	// нечего. Иначе кривая настройка панели навсегда прибивала бы старый адрес.
+	info := Info{MonitorURL: "https://status.old.example"}
+
+	ApplyHeaders(&info, map[string][]string{
+		"clod-monitor-url": {"http://status.new.example"},
+	}, "https://panel.example.com/sub")
+
+	if info.MonitorURL != "" {
+		t.Fatalf("мониторинг = %q, ожидалась пустая строка", info.MonitorURL)
+	}
+}
