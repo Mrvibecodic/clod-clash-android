@@ -396,6 +396,9 @@
     <string name="clod_sub_notify_summary">Предупреждать, когда подписка заканчивается или трафик на исходе. Пороги задаёт ваш сервис.</string>
     <string name="clod_portal">Личный кабинет</string>
     <string name="clod_support">Поддержка</string>
+    <string name="clod_bot">Бот</string>
+    <string name="clod_monitor">Мониторинг</string>
+    <string name="clod_guide">Инструкция</string>
     <string name="clod_no_servers_device_title">Превышен лимит устройств</string>
     <string name="clod_no_servers_device">Подписку используют слишком много устройств. Отключите лишнее в личном кабинете или свяжитесь с поддержкой.</string>
     <string name="clod_no_servers_device_count">Подписка разрешает устройств: %1$d, а сейчас их больше. Отключите лишнее в личном кабинете или свяжитесь с поддержкой.</string>

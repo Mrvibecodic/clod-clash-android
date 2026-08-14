@@ -694,3 +694,81 @@ func TestDescription(t *testing.T) {
 		t.Fatalf("у обрезанного описания должно быть многоточие, получено %q", got)
 	}
 }
+
+func TestApplyHeadersProviderLinks(t *testing.T) {
+	// Пять ссылок провайдера, те же, что на ПК. Проверка у бота своя: адрес
+	// у него почти всегда `tg:`, а мониторинг и инструкция — обычные
+	// страницы, и ничего, кроме https, за ними быть не должно.
+	const current = "https://panel.example.com/sub/token"
+
+	var info Info
+
+	ApplyHeaders(&info, map[string][]string{
+		"clod-portal-url":  {"https://provider.example/cabinet"},
+		"support-url":      {"https://t.me/provider_support"},
+		"clod-bot-url":     {"tg://resolve?domain=provider_bot"},
+		"clod-monitor-url": {"https://status.provider.example"},
+		"clod-guide-url":   {"https://provider.example/help/setup"},
+	}, current)
+
+	if info.PortalURL != "https://provider.example/cabinet" {
+		t.Fatalf("кабинет = %q", info.PortalURL)
+	}
+
+	if info.SupportURL != "https://t.me/provider_support" {
+		t.Fatalf("поддержка = %q", info.SupportURL)
+	}
+
+	if info.BotURL != "tg://resolve?domain=provider_bot" {
+		t.Fatalf("бот = %q", info.BotURL)
+	}
+
+	if info.MonitorURL != "https://status.provider.example" {
+		t.Fatalf("мониторинг = %q", info.MonitorURL)
+	}
+
+	if info.GuideURL != "https://provider.example/help/setup" {
+		t.Fatalf("инструкция = %q", info.GuideURL)
+	}
+
+	// Бот принимает и обычную ссылку, и почту — как поддержка.
+	for _, raw := range []string{"https://t.me/provider_bot", "mailto:bot@provider.example"} {
+		var one Info
+
+		ApplyHeaders(&one, map[string][]string{"clod-bot-url": {raw}}, current)
+
+		if one.BotURL != raw {
+			t.Fatalf("бот по %q = %q", raw, one.BotURL)
+		}
+	}
+
+	// А мониторингу и инструкции ни `tg:`, ни голый http не годятся.
+	var strict Info
+
+	ApplyHeaders(&strict, map[string][]string{
+		"clod-monitor-url": {"tg://resolve?domain=status"},
+		"clod-guide-url":   {"http://provider.example/help"},
+		"clod-bot-url":     {"javascript:alert(1)"},
+	}, current)
+
+	if strict.MonitorURL != "" || strict.GuideURL != "" || strict.BotURL != "" {
+		t.Fatalf(
+			"негодные ссылки прошли: бот %q, мониторинг %q, инструкция %q",
+			strict.BotURL, strict.MonitorURL, strict.GuideURL,
+		)
+	}
+
+	// Кириллицу и длинные адреса панели шлют через base64, и ссылки тут
+	// ничем не отличаются от остальных заголовков.
+	var encoded Info
+
+	ApplyHeaders(&encoded, map[string][]string{
+		"x-amz-meta-clod-monitor-url": {
+			"base64:" + base64.StdEncoding.EncodeToString([]byte("https://status.provider.example/страница")),
+		},
+	}, current)
+
+	if !strings.HasPrefix(encoded.MonitorURL, "https://status.provider.example/") {
+		t.Fatalf("мониторинг из base64 = %q", encoded.MonitorURL)
+	}
+}

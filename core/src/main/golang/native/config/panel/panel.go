@@ -31,6 +31,19 @@ type Info struct {
 	Promo       string `json:"promo,omitempty"`
 	PromoURL    string `json:"promoUrl,omitempty"`
 
+	// Остальные ссылки провайдера — те же, что на ПК.
+	//
+	// `clod-bot-url` — бот. Отдельно от поддержки намеренно: бот выдаёт
+	// ссылку, продлевает и отвечает сам, а поддержка — живой человек, и
+	// отправлять к нему тех, кому хватило бы бота, незачем. Схемы у бота те
+	// же, что у поддержки: адрес почти всегда `tg:`.
+	//
+	// `clod-monitor-url` — страница состояния серверов, `clod-guide-url` —
+	// инструкция провайдера. Это обычные страницы, поэтому только `https`.
+	BotURL     string `json:"botUrl,omitempty"`
+	MonitorURL string `json:"monitorUrl,omitempty"`
+	GuideURL   string `json:"guideUrl,omitempty"`
+
 	// Имя файла с логотипом рядом с `config.yaml`, если его удалось скачать.
 	// Держим именно имя, а не путь: каталог профиля приложение и так знает,
 	// а путь пережил бы переезд каталога только на бумаге.
@@ -180,6 +193,12 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.SupportURL = firstNonEmpty(contactURL(headerValue(header, "support-url")), info.SupportURL)
 	info.HomeURL = firstNonEmpty(httpsURL(headerValue(header, "profile-web-page-url")), info.HomeURL)
 	info.PortalURL = firstNonEmpty(httpsURL(headerValue(header, "clod-portal-url")), info.PortalURL)
+	// Боту достаётся проверка поддержки (`tg:` и `mailto:` законны),
+	// мониторингу и инструкции — обычная: это страницы, и ничего, кроме
+	// https, за ними быть не должно. Ровно как на ПК.
+	info.BotURL = firstNonEmpty(contactURL(headerValue(header, "clod-bot-url")), info.BotURL)
+	info.MonitorURL = firstNonEmpty(httpsURL(headerValue(header, "clod-monitor-url")), info.MonitorURL)
+	info.GuideURL = firstNonEmpty(httpsURL(headerValue(header, "clod-guide-url")), info.GuideURL)
 	info.Promo = firstNonEmpty(truncate(headerValue(header, "clod-promo"), announceMaxChars), info.Promo)
 	info.PromoURL = firstNonEmpty(httpsURL(headerValue(header, "clod-promo-url")), info.PromoURL)
 	info.HwidLimitMessage = firstNonEmpty(

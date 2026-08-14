@@ -70,6 +70,37 @@ class PanelInfoTest {
         assertEquals(listOf("A", "B"), info.groups[0].proxies)
     }
 
+    @Test
+    fun `ссылки провайдера читаются теми же именами, что пишет ядро`() {
+        // Имена полей — договор с Go (`native/config/panel/panel.go`).
+        // Разъедутся — строки в настройках молча исчезнут, и виноватым будет
+        // выглядеть провайдер, а не опечатка в имени поля.
+        val info = decode(
+            """{"portalUrl":"https://provider.example/cabinet",""" +
+                """"supportUrl":"https://t.me/provider_support",""" +
+                """"botUrl":"tg://resolve?domain=provider_bot",""" +
+                """"monitorUrl":"https://status.provider.example",""" +
+                """"guideUrl":"https://provider.example/help"}""",
+        )
+
+        assertEquals("https://provider.example/cabinet", info.portalUrl)
+        assertEquals("https://t.me/provider_support", info.supportUrl)
+        assertEquals("tg://resolve?domain=provider_bot", info.botUrl)
+        assertEquals("https://status.provider.example", info.monitorUrl)
+        assertEquals("https://provider.example/help", info.guideUrl)
+    }
+
+    @Test
+    fun `подписка без ссылок отдаёт пустые строки, а не null`() {
+        // Экран настроек решает по `isNotBlank()`: пустая строка означает
+        // «заголовка не было», и блока ссылок тогда нет вовсе.
+        val info = decode("{}")
+
+        assertEquals("", info.botUrl)
+        assertEquals("", info.monitorUrl)
+        assertEquals("", info.guideUrl)
+    }
+
     // --- поправка часов ---
 
     /**

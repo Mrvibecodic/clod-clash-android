@@ -41,13 +41,17 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 `profile-logo`, `subscription-userinfo`, `subscription-refill-date`,
 `profile-update-interval`, `announce` + `announce-url`, `clod-promo` +
 `clod-promo-url`, `clod-portal-url`, `profile-web-page-url`, `support-url`,
+`clod-bot-url`, `clod-monitor-url`, `clod-guide-url`,
 `clod-hwid-limit`, всё семейство `x-hwid-*`, пороги напоминаний
 `notify-expire-days` / `notify-traffic-percent` (плюс голый
 `notification-subs-expire` и `global-mode` для совместимости), переезд подписки
 `new-url` / `new-domain`, запасные адреса `fallback-url` / `fallback-domain`,
 часы панели по стандартному `Date`, `clod-lock-mode` и `clod-show-0hosts`.
 
-**Расхождений с десктопом по заголовкам не осталось.**
+**Чего пока нет против десктопа:** `clod-connect-mode` (чем ловить трафик),
+`clod-device-remove` (кнопка «Освободить устройство» в диалоге лимита) и
+`clod-latency-style` с синонимом `pxa-latency-dots` (вид задержки). Панель
+может слать их — они просто игнорируются.
 
 **`clod-simple-mode` на Android не поддерживается намеренно.** На десктопе он
 прячет продвинутые настройки, потому что там есть чего прятать: два режима
@@ -64,6 +68,12 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
   интервалом; у уже добавленной интервал остаётся тот, что стоит в свойствах;
 * `subscription-refill-date` дополнительно понимает миллисекунды и `RFC3339`;
 * `profile-web-page-url` разбирается, но пока нигде не показывается;
+* ссылки провайдера (`clod-portal-url`, `support-url`, `clod-bot-url`,
+  `clod-monitor-url`, `clod-guide-url`) живут ОДНИМ блоком в настройках, а не
+  строкой на главной, как на десктопе: главный экран телефона — это кнопка
+  подключения и состояние подписки, и ряд чужих ссылок под ней спорил бы с
+  ними за внимание. Порядок и названия те же, что на ПК; блок назван именем
+  текущей подписки, а если ни одной ссылки не пришло — блока нет вовсе;
 * описание узла (`serverDescription` внутри узла конфигурации) показывается
   подписью в списке серверов вместо типа протокола. Панель Remnawave отдаёт
   это поле только «расширенным клиентам» — ей нужен
@@ -77,7 +87,7 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 (`x-amz-meta-announce` подойдёт), `base64:<payload>` декодируется четырьмя
 алфавитами, а значение, объявившее себя base64 и им не оказавшееся, считается
 отсутствующим. Все ссылки принимаются **только по `https`**; `support-url`
-дополнительно понимает `tg:` и `mailto:`.
+и `clod-bot-url` дополнительно понимают `tg:` и `mailto:`.
 
 ## Лицензия
 

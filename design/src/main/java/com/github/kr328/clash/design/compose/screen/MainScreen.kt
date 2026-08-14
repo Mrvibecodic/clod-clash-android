@@ -79,6 +79,7 @@ import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.StatusTextStyle
 import com.github.kr328.clash.design.compose.theme.TimerTextStyle
+import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
@@ -808,6 +809,40 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
     }
 }
 
+/**
+ * Ссылки провайдера первым блоком настроек.
+ *
+ * Все пять приходят заголовками подписки: кабинет (`clod-portal-url`),
+ * поддержка (`support-url`), бот (`clod-bot-url`), мониторинг
+ * (`clod-monitor-url`) и инструкция (`clod-guide-url`). Порядок тот же, что
+ * на ПК: человек, которому объяснили по одному клиенту, ищет их на том же
+ * месте и во втором.
+ *
+ * Блок принадлежит ТЕКУЩЕЙ подписке и назван её именем: у разных провайдеров
+ * свои кабинеты и свои боты, и перепутать их нельзя. Ни одной ссылки не
+ * прислали — блока нет вовсе: пустой заголовок сообщает только о поломке.
+ *
+ * Первым он стоит потому, что это единственные строки на экране, которые
+ * ведут не в приложение, а к тому, кто выдал подписку: настройки самого
+ * приложения человек листает, а к провайдеру идёт с вопросом.
+ */
+@Composable
+private fun ProviderLinksSection(active: SubscriptionItem?, onAction: (MainAction) -> Unit) {
+    val links = providerLinks(active?.panel)
+
+    if (links.isEmpty() || active == null) return
+
+    SectionHeader(active.title)
+
+    links.forEach { link ->
+        ActionRow(
+            title = stringResource(link.title),
+            icon = painterResource(link.icon),
+            onClick = { onAction(MainAction.OpenUrl(link.url)) },
+        )
+    }
+}
+
 @Composable
 private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
     Surface(color = MaterialTheme.colorScheme.background) {
@@ -822,6 +857,9 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 18.dp, top = 20.dp, bottom = 12.dp),
             )
+
+            ProviderLinksSection(state.active, onAction)
+
             SectionHeader(stringResource(R.string.clod_section_connection))
             ModeRow(
                 mode = state.mode,
@@ -879,28 +917,6 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             )
 
             SectionHeader(stringResource(R.string.clod_section_support))
-
-            // clod: кабинет и поддержка провайдера. На главном экране они живут
-            // в карточке подписки, то есть видны в сессии и когда с подпиской
-            // что-то не так; в спокойном состоянии карточки нет, и искать их
-            // человек будет здесь — рядом с помощью и логами.
-            state.active?.panel?.let { panel ->
-                if (panel.portalUrl.isNotBlank()) {
-                    ActionRow(
-                        title = stringResource(R.string.clod_portal),
-                        icon = painterResource(R.drawable.ic_baseline_account),
-                        onClick = { onAction(MainAction.OpenUrl(panel.portalUrl)) },
-                    )
-                }
-                if (panel.supportUrl.isNotBlank()) {
-                    ActionRow(
-                        title = stringResource(R.string.clod_support),
-                        icon = painterResource(R.drawable.ic_baseline_chat),
-                        onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) },
-                    )
-                }
-            }
-
             ActionRow(
                 title = stringResource(R.string.logs),
                 icon = painterResource(R.drawable.ic_baseline_assignment),

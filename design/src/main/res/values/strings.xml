@@ -411,6 +411,9 @@
     <string name="clod_sub_notify_summary">Notify when the subscription is about to end or the traffic runs low. Thresholds are set by your provider.</string>
     <string name="clod_portal">Customer portal</string>
     <string name="clod_support">Support</string>
+    <string name="clod_bot">Bot</string>
+    <string name="clod_monitor">Server status</string>
+    <string name="clod_guide">Setup guide</string>
     <string name="clod_no_servers_device_title">Device limit reached</string>
     <string name="clod_no_servers_device">Too many devices are using this subscription. Disconnect one in your account, or contact support.</string>
     <string name="clod_no_servers_device_count">This subscription allows %1$d device(s), and there are more. Disconnect one in your account, or contact support.</string>

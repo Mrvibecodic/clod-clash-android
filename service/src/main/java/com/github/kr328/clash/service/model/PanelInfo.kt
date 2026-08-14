@@ -33,6 +33,16 @@ data class PanelInfo(
     val homeUrl: String = "",
     /** `clod-portal-url` — кнопка «Личный кабинет»; пусто означает «кнопки нет». */
     val portalUrl: String = "",
+    /**
+     * Остальные ссылки провайдера: бот (`clod-bot-url`), состояние серверов
+     * (`clod-monitor-url`) и инструкция (`clod-guide-url`). Пусто — строки нет.
+     *
+     * Бот отдельно от поддержки намеренно: он выдаёт ссылку, продлевает и
+     * отвечает сам, а поддержка — живой человек.
+     */
+    val botUrl: String = "",
+    val monitorUrl: String = "",
+    val guideUrl: String = "",
     val promo: String = "",
     val promoUrl: String = "",
     /**
