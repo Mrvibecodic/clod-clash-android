@@ -162,8 +162,13 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.clod_secure_channel),
-                style = MaterialTheme.typography.bodyLarge,
+                // Заголовок строки, а не обычный текст: без явного цвета он
+                // брал LocalContentColor и на тёмной теме читался бледнее
+                // собственного пояснения — строка выглядела выключенной.
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = stringResource(R.string.clod_secure_channel_hint),
                 style = MaterialTheme.typography.bodySmall,

@@ -132,24 +132,27 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             // Кнопка не подменяется крутилкой, а крутится сама: подмена
             // прыгала вёрсткой и на глаз читалась как «кнопка пропала»,
             // а не как «идёт обновление».
+            // Пока подписок нет, добавление — единственное, что здесь можно
+            // сделать, и жить ему в углу незачем: угловой значок ищут глазами
+            // на пустом экране дольше, чем читают подсказку по центру.
             if (state.profiles.isNotEmpty()) {
                 SyncIconButton(
                     spinning = state.updating,
                     contentDescription = stringResource(R.string.clod_sub_update_all),
                     onClick = { onAction(MainAction.UpdateAllProfiles) },
                 )
-            }
-            IconButton(onClick = { onAction(MainAction.NewProfile) }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_baseline_add),
-                    contentDescription = stringResource(R.string.clod_sub_add),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+                IconButton(onClick = { onAction(MainAction.NewProfile) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_baseline_add),
+                        contentDescription = stringResource(R.string.clod_sub_add),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
 
         if (state.profiles.isEmpty()) {
-            EmptySubscriptions()
+            EmptySubscriptions(onAction)
             return@Column
         }
 
@@ -611,7 +614,7 @@ internal fun StatusBadge(text: String, color: Color) {
 }
 
 @Composable
-private fun EmptySubscriptions() {
+private fun EmptySubscriptions(onAction: (MainAction) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -632,6 +635,19 @@ private fun EmptySubscriptions() {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.height(24.dp))
+            // Кнопка живёт здесь только в пустом состоянии: как только
+            // появится первая подписка, добавление уезжает обратно в угол,
+            // чтобы не отнимать место у списка.
+            Button(onClick = { onAction(MainAction.NewProfile) }) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_baseline_add),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.clod_sub_add))
+            }
         }
     }
 }
