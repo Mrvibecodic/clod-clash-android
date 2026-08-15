@@ -1,15 +1,16 @@
 # Релиз Android-версии Clod Clash.
 #
 # Конвейер повторяет десктопный (release-clod.yml в основном репозитории):
-#   тег android-v* -> сверка версии -> черновик релиза -> сборка -> публикация как pre-release
+#   тег android-v* -> сверка версии -> черновик релиза -> сборка -> публикация релиза
 #   -> latest.json в сам релиз и в плавающий релиз updater.
 #
 # Почему черновик создаётся отдельным джобом: если релиз создавать из джоба сборки,
 # параллельные джобы дерутся за создание одного и того же релиза и проигравший получает 403.
 #
-# Почему всегда prerelease=true: продукт в альфе, и ровно так же ведёт себя десктоп.
-# Из-за этого GitHub не считает релиз "latest", поэтому манифест обновлений дублируется
-# в плавающий релиз с тегом updater — на него и смотрит приложение.
+# С 0.1.0 релиз публикуется обычным (не pre-release), как и на десктопе. Манифест
+# обновлений всё равно дублируется в плавающий релиз с тегом updater — на него и
+# смотрит приложение; сам служебный релиз остаётся pre-release, чтобы GitHub не
+# считал "latest" именно его.
 
 name: Release
 
@@ -90,7 +91,7 @@ jobs:
             -f tag_name="$TAG" \
             -f name="Clod Clash для Android $TAG" \
             -f body="Черновик — наполняется сборкой." \
-            -F draft=true -F prerelease=true --jq .id)
+            -F draft=true -F prerelease=false --jq .id)
           echo "release_id=$id" >> "$GITHUB_OUTPUT"
 
   build:
@@ -322,7 +323,7 @@ jobs:
           [[ -z "${NOTES// }" ]] && NOTES="Вышла версия $VERSION."
 
           gh api -X PATCH "repos/${{ github.repository }}/releases/$RELEASE_ID" \
-            -F draft=false -F prerelease=true -f body="$NOTES" --jq .html_url
+            -F draft=false -F prerelease=false -f body="$NOTES" --jq .html_url
 
       # Плавающий релиз updater: GitHub не отдаёт pre-release по /releases/latest,
       # поэтому приложение ходит за манифестом сюда — адрес не меняется от версии к версии.
