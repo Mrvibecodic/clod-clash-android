@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +34,9 @@ import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodRowCorner
 import com.github.kr328.clash.design.compose.theme.ClodTheme
+import com.github.kr328.clash.design.compose.theme.DelayPillFast
+import com.github.kr328.clash.design.compose.theme.DelayPillMedium
+import com.github.kr328.clash.design.compose.theme.DelayPillSlow
 
 /**
  * Отделяет ведущий флаг-эмодзи от названия узла.
@@ -93,9 +97,8 @@ private fun delayColor(delay: Int): Color = when {
  * как измеренное значение.
  *
  * Остаётся для строки сервера на главном экране, где задержка стоит одна
- * в ряду и её надо выделить. В списке узлов вместо бейджа идёт колонка
- * ([DelayColumn]): шесть разноцветных пилюль подряд спорят друг с другом
- * и с отметкой выбранного узла.
+ * в ряду и её надо выделить. В списке узлов идёт заливная пилюля
+ * ([DelayPill]) — у неё другой контраст, под белый текст.
  */
 @Composable
 fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
@@ -118,34 +121,61 @@ fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
 }
 
 /**
- * Задержка в списке: число крупно, единица подписью под ним.
+ * Задержка в списке: заливная пилюля, белый текст на статусном цвете.
  *
- * Колонка фиксированной ширины, выровненная по правому краю: у бейджа ширина
- * зависела от числа знаков, и правый край списка гулял на десяток точек от
- * строки к строке — глазу приходилось искать значение заново в каждой.
+ * Заливка вместо колонки цифр: цвет площадью читается с расстояния вытянутой
+ * руки, а цветное число 15 sp — нет. Цвета пилюль свои ([DelayPillFast] и
+ * соседи), а не роли темы: под белым текстом нужен насыщенный фон в обеих
+ * темах.
+ *
+ * Ширина не меньше 52 dp и текст по центру: у пилюли по месту ширина зависела
+ * бы от числа знаков, и правый край списка гулял бы от строки к строке —
+ * ровно та болезнь, ради которой раньше была колонка фиксированной ширины.
  */
 @Composable
-fun DelayColumn(delay: Int, modifier: Modifier = Modifier) {
+fun DelayPill(delay: Int, modifier: Modifier = Modifier) {
     val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
-    val color = delayColor(delay)
 
-    Column(
-        modifier = modifier.width(38.dp),
-        horizontalAlignment = Alignment.End,
-    ) {
-        Text(
-            text = if (unknown) "—" else "$delay",
-            color = color,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        if (!unknown) {
+    if (unknown) {
+        Box(
+            modifier = modifier
+                .widthIn(min = 52.dp)
+                .clip(RoundedCornerShape(50))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(
-                text = "ms",
+                text = "—",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
             )
         }
+
+        return
+    }
+
+    val color = when {
+        delay < 100 -> DelayPillFast
+        delay < 200 -> DelayPillMedium
+        else -> DelayPillSlow
+    }
+
+    Box(
+        modifier = modifier
+            .widthIn(min = 52.dp)
+            .clip(RoundedCornerShape(50))
+            .background(color)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "$delay ms",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
@@ -153,11 +183,12 @@ fun DelayColumn(delay: Int, modifier: Modifier = Modifier) {
  * Строка узла в списке серверов: флаг, название, описание второй строкой,
  * задержка справа.
  *
- * Выбранный узел отмечен полосой слева и заливкой. Одной заливки не хватало:
- * `primary` при 12 % на светлой теме отличается от `surfaceContainerLow`
- * на считанные единицы яркости, и на телефоне при свете выбранная строка
- * от соседних не отличалась вовсе. Полоса читается при любой яркости и
- * не мешает бейджу — галочка в конце строки мешала бы.
+ * Выбранный узел отмечен полосой слева и заливкой `secondaryContainer`.
+ * Роль вместо полупрозрачного primary: у контейнерной роли контраст с фоном
+ * посчитан самой схемой в обеих темах, а `primary` при 12 % на светлой теме
+ * отличался от `surfaceContainerLow` на считанные единицы яркости — на
+ * телефоне при свете выбранная строка не отличалась от соседних. Полоса
+ * остаётся: она читается при любой яркости и с расстояния.
  */
 @Composable
 fun ProxyRow(
@@ -184,7 +215,7 @@ fun ProxyRow(
             .clip(RoundedCornerShape(ClodRowCorner))
             .background(
                 if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    MaterialTheme.colorScheme.secondaryContainer
                 } else {
                     MaterialTheme.colorScheme.surfaceContainerLow
                 },
@@ -238,7 +269,7 @@ fun ProxyRow(
             }
         }
         Spacer(Modifier.width(10.dp))
-        DelayColumn(delay)
+        DelayPill(delay)
         Spacer(Modifier.width(6.dp))
         // Звезда — отдельная зона нажатия справа от задержки, как на ПК.
         // Долгое нажатие по строке для этого не годится: на строке уже висит

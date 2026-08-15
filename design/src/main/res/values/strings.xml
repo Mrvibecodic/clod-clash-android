@@ -336,6 +336,9 @@
     <string name="clod_sub_unlimited">Unlimited</string>
     <string name="clod_sub_days">%1$d d</string>
     <string name="clod_sub_until">until %1$s</string>
+    <string name="clod_quota_traffic">Traffic</string>
+    <string name="clod_quota_expiry">Expires in</string>
+    <string name="clod_quota_left">%1$s left</string>
     <string name="clod_sub_add">Add subscription</string>
     <string name="clod_sub_update_all">Update all</string>
     <string name="clod_sub_updating">Updating</string>

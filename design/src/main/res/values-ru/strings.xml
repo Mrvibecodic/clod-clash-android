@@ -290,6 +290,9 @@
     <string name="clod_sub_unlimited">безлимит</string>
     <string name="clod_sub_days">%1$d дн</string>
     <string name="clod_sub_until">до %1$s</string>
+    <string name="clod_quota_traffic">Трафик</string>
+    <string name="clod_quota_expiry">Срок действия</string>
+    <string name="clod_quota_left">осталось %1$s</string>
     <string name="clod_sub_add">Добавить подписку</string>
     <string name="clod_sub_update_all">Обновить все</string>
     <string name="clod_sub_updating">Обновляется</string>

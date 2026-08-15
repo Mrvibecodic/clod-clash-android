@@ -244,8 +244,11 @@ private fun SubscriptionCard(
 
     Card(
         colors = CardDefaults.cardColors(
+            // Контейнерная роль вместо полупрозрачного primary: у роли контраст
+            // с фоном посчитан схемой в обеих темах, а заливка 10 % на светлой
+            // теме почти не отличалась от соседних карточек.
             containerColor = if (profile.active) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                MaterialTheme.colorScheme.secondaryContainer
             } else {
                 MaterialTheme.colorScheme.surfaceContainerLow
             },
@@ -412,14 +415,18 @@ private fun SubscriptionCard(
 }
 
 /**
- * Карточка активной подписки на главном экране: срок, трафик и, если панель их
- * прислала, кнопки продления. Отдельная от карточки в списке — там нужны меню
- * и выбор, а здесь только сведения и действие.
+ * Карточка проблемной подписки на главном экране: срок, трафик и, если панель
+ * их прислала, кнопки продления. Отдельная от карточки в списке — там нужны
+ * меню и выбор, а здесь только сведения и действие.
+ *
+ * Показывается ТОЛЬКО когда с подпиской что-то не так. Здоровое состояние
+ * теперь целиком закрыто без неё: строка в шапке отвечает «жива ли подписка»,
+ * а в отключённом состоянии срок и трафик рисуют карточки квоты — и большая
+ * карточка при живой подписке лишь дублировала бы их.
  */
 @Composable
 fun ActiveSubscriptionCard(
     item: SubscriptionItem,
-    expanded: Boolean,
     showActions: Boolean,
     onAction: (MainAction) -> Unit,
 ) {
@@ -428,8 +435,8 @@ fun ActiveSubscriptionCard(
     val status = subscriptionState(profile, now)
     val critical = status != SubscriptionState.Active
 
-    // Ни сессии, ни проблемы — карточке на главном делать нечего.
-    if (!expanded && !critical) return
+    // Проблемы нет — карточке на главном делать нечего.
+    if (!critical) return
     if (profile.total <= 0L && profile.expire <= 0L) return
 
     val context = LocalContext.current

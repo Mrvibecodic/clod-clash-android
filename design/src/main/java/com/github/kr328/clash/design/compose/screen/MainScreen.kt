@@ -40,8 +40,10 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,12 +56,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,8 +79,8 @@ import com.github.kr328.clash.design.compose.component.PingBadge
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
-import com.github.kr328.clash.design.compose.component.TrafficCard
 import com.github.kr328.clash.design.compose.theme.ClodTheme
+import com.github.kr328.clash.design.compose.theme.SessionUploadTint
 import com.github.kr328.clash.design.compose.theme.StatusTextStyle
 import com.github.kr328.clash.design.compose.theme.TimerTextStyle
 import com.github.kr328.clash.design.model.providerLinks
@@ -319,6 +323,15 @@ fun MainScreen(
     }
 }
 
+/**
+ * Нижняя навигация. Активная вкладка — пилюля с фирменным градиентом (тем же,
+ * что у логотипа) и белой иконкой, подпись — цветом акцента.
+ *
+ * Штатный индикатор `NavigationBarItem` погашен (`indicatorColor` прозрачный),
+ * пилюля нарисована в слоте иконки: серая пилюля `secondaryContainer`
+ * по умолчанию делала единственную постоянно видимую панель приложения
+ * самой блёклой его частью.
+ */
 @Composable
 private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
@@ -331,17 +344,46 @@ private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
 
                 MainTab.More -> R.string.clod_tab_more to R.drawable.ic_baseline_settings
             }
+            val active = selected == tab
+
             NavigationBarItem(
-                selected = selected == tab,
+                selected = active,
                 onClick = { onAction(MainAction.SelectTab(tab)) },
                 icon = {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp),
+                    Box(
+                        modifier = Modifier
+                            .width(56.dp)
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .then(
+                                if (active) {
+                                    Modifier.background(ClodTheme.extraColors.brandGradient)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(iconRes),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                },
+                label = {
+                    Text(
+                        text = stringResource(labelRes),
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
                     )
                 },
-                label = { Text(stringResource(labelRes)) },
+                colors = NavigationBarItemDefaults.colors(
+                    indicatorColor = Color.Transparent,
+                    selectedIconColor = Color.White,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
             )
         }
     }
@@ -379,36 +421,11 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             // оставаться пустым вокруг кнопки, как в макете.
             ActiveSubscriptionCard(
                 item = active,
-                expanded = connected,
                 // Когда сверху висит карточка «серверов нет», кнопки уже есть
                 // у неё, и повторять их ниже незачем.
                 showActions = noServersReason(active.profile, active.panel) == null,
                 onAction = onAction,
             )
-        }
-
-        AnimatedVisibility(
-            visible = connected,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                TrafficCard(
-                    label = stringResource(R.string.clod_traffic_downloaded),
-                    value = state.downloaded,
-                    icon = painterResource(R.drawable.ic_traffic_down),
-                    modifier = Modifier.weight(1f),
-                )
-                TrafficCard(
-                    label = stringResource(R.string.clod_traffic_uploaded),
-                    value = state.uploaded,
-                    icon = painterResource(R.drawable.ic_traffic_up),
-                    modifier = Modifier.weight(1f),
-                )
-            }
         }
 
         Spacer(Modifier.height((40 - 16 * expansion).dp))
@@ -454,9 +471,35 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                     color = ClodTheme.extraColors.statusConnected,
                 )
             }
+            // Счётчики сессии — строкой под таймером, а не парой карточек во всю
+            // ширину: карточки на подключённом экране весили столько же, сколько
+            // кнопка, хотя отвечают на второстепенный вопрос.
+            if (connected && state.downloaded.isNotBlank() && state.uploaded.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                SessionTrafficRow(downloaded = state.downloaded, uploaded = state.uploaded)
+            }
         }
 
         Spacer(Modifier.height(28.dp))
+
+        // Срок и трафик подписки — карточками именно в отключённом состоянии:
+        // раньше между шапкой и кнопкой здесь было пусто, и единственные цифры
+        // подписки жили строкой 12 sp в шапке. В подключённом состоянии карточки
+        // спрятаны: на том экране уже есть таймер и счётчики сессии, а сами
+        // цифры не меняются от того, поднят ли туннель. Проблемную подписку
+        // рисует ActiveSubscriptionCard — тогда карточки не дублируются.
+        state.active?.let { active ->
+            AnimatedVisibility(
+                visible = !connected,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column {
+                    QuotaCards(active)
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
 
         // Подписью строки идёт НАСТОЯЩЕЕ имя группы, а не слово «Группа»: то, что
         // это строка выбора, и так видно по стрелке, а вот в какой группе выбран
@@ -627,6 +670,148 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+/**
+ * Счётчики сессии одной строкой: скачано и отправлено, со стрелками цветом
+ * направления. Зелёная — вниз (тот же зелёный, что у состояния «Подключено»),
+ * синяя — вверх; серые обе сливались бы в одно число.
+ */
+@Composable
+private fun SessionTrafficRow(downloaded: String, uploaded: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = painterResource(R.drawable.ic_traffic_down),
+            contentDescription = stringResource(R.string.clod_traffic_downloaded),
+            tint = ClodTheme.extraColors.statusConnected,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = downloaded,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(14.dp))
+        Icon(
+            painter = painterResource(R.drawable.ic_traffic_up),
+            contentDescription = stringResource(R.string.clod_traffic_uploaded),
+            tint = SessionUploadTint,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = uploaded,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * Пара карточек квоты подписки: трафик с прогрессом и срок с обратным отсчётом.
+ *
+ * Рисуются только при живой подписке — проблемную показывает
+ * `ActiveSubscriptionCard` со своими кнопками, и двум сразу на экране делать
+ * нечего. Чего панель не прислала, того нет: ноль в поле — «ограничения нет»,
+ * а карточка «безлимит без срока» не сообщает ничего.
+ */
+@Composable
+private fun QuotaCards(item: SubscriptionItem) {
+    val profile = item.profile
+    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
+
+    if (subscriptionState(profile, now) != SubscriptionState.Active) return
+    if (profile.total <= 0L && profile.expire <= 0L) return
+
+    val context = LocalContext.current
+    val used = profile.upload + profile.download
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (profile.total > 0) {
+            val left = (profile.total - used).coerceAtLeast(0)
+
+            QuotaCard(
+                label = stringResource(R.string.clod_quota_traffic),
+                value = Formatter.formatShortFileSize(context, used) + " / " +
+                    Formatter.formatShortFileSize(context, profile.total),
+                progress = (used.toFloat() / profile.total).coerceIn(0f, 1f),
+                note = stringResource(
+                    R.string.clod_quota_left,
+                    Formatter.formatShortFileSize(context, left),
+                ),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (profile.expire > 0) {
+            val leftMillis = (profile.expire - now).coerceAtLeast(0)
+            val days = (leftMillis / TimeUnit.DAYS.toMillis(1)).toInt()
+
+            QuotaCard(
+                label = stringResource(R.string.clod_quota_expiry),
+                value = stringResource(R.string.clod_sub_days, days),
+                // Шкала на месяц: типичный период продления. Дальше месяца
+                // полоса полная — точность там не нужна, важен обратный отсчёт
+                // последних недель.
+                progress = (leftMillis.toFloat() / TimeUnit.DAYS.toMillis(30)).coerceIn(0f, 1f),
+                note = stringResource(
+                    R.string.clod_sub_until,
+                    android.text.format.DateFormat.getDateFormat(context)
+                        .format(java.util.Date(profile.expire)),
+                ),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuotaCard(
+    label: String,
+    value: String,
+    progress: Float,
+    note: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                progress = { progress },
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(50)),
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = note,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

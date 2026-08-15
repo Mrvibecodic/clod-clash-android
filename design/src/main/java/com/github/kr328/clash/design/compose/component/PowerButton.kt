@@ -11,13 +11,11 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -27,6 +25,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -46,9 +45,10 @@ enum class ConnectionStatus {
 /**
  * Круглая кнопка подключения — единственное действие на выключенном экране.
  *
- * Устроена как кольцо, а не как залитый круг: залитый диск фирменного индиго
- * во включённом состоянии спорит по весу с карточками трафика и подписки,
- * которые в этот момент выезжают сверху.
+ * Залитый диск с радиальным градиентом статусного цвета: светлый блик в центре,
+ * плотный цвет к краю. Кольцо, которое было здесь раньше, на светлой теме
+ * читалось как выключенный элемент, а после переезда счётчиков трафика в строку
+ * под таймером кнопке больше не с чем спорить по весу — она главная на экране.
  *
  * Свечение нарисовано радиальным градиентом в [drawBehind], а не тенью: тень
  * (`shadow`) на API < 28 не умеет цвет и получилась бы серой.
@@ -66,7 +66,6 @@ fun PowerButton(
     diameter: androidx.compose.ui.unit.Dp = 148.dp,
 ) {
     val extra = ClodTheme.extraColors
-    val scheme = MaterialTheme.colorScheme
 
     // Отклик в палец на единственное действие выключенного экрана. Между
     // нажатием и видимым результатом здесь проходит секунда с лишним — пока
@@ -116,11 +115,17 @@ fun PowerButton(
                 )
             }
             .clip(CircleShape)
-            .background(scheme.surfaceContainerLowest)
-            // Кольцо в 5 dp, а не в 3. В отключённом состоянии оно серое
-            // (`statusStopped`), и на трёх точках тонкая серая обводка читается
-            // как выключенный элемент — а это единственное действие экрана.
-            .border(width = 5.dp, color = animatedAccent, shape = CircleShape)
+            // Блик задаётся долей от статусного цвета, а не отдельным цветом:
+            // так переходы «серый → янтарный → зелёный» анимируются одним
+            // animateColorAsState и градиент никогда не спорит сам с собой.
+            .background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        lerp(animatedAccent, Color.White, 0.45f),
+                        animatedAccent,
+                    ),
+                ),
+            )
             // clip(CircleShape) стоит выше по цепочке, поэтому стандартная
             // рябь сама обрезается по кругу — своё indication не нужно.
             .clickable(enabled = enabled, role = Role.Button) {
@@ -139,7 +144,7 @@ fun PowerButton(
                     R.string.clod_action_connect
                 },
             ),
-            tint = animatedAccent,
+            tint = Color.White,
             modifier = Modifier.size(animatedDiameter * 0.34f),
         )
     }
