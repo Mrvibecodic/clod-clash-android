@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
+import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
@@ -42,6 +43,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             ::onHideIconChange,
             { clashRunning },
             ::onReset,
+            Remote.broadcasts.diagnosticsState,
         )
 
         setContentDesign(design)
@@ -53,6 +55,8 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                         Event.ClashStart, Event.ClashStop, Event.ServiceRecreated ->
                             recreate()
                         Event.ActivityStart -> design.refreshNotifications()
+                        Event.DiagnosticsStatusChanged ->
+                            design.updateDiagnosticsStatus(Remote.broadcasts.diagnosticsState)
                         else -> Unit
                     }
                 }

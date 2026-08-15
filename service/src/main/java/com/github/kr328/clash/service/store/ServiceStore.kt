@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
+import com.github.kr328.clash.service.BuildConfig
 import com.github.kr328.clash.service.PreferenceProvider
 import com.github.kr328.clash.service.model.AccessControlMode
 import java.util.*
@@ -117,6 +118,11 @@ class ServiceStore(context: Context) {
         defaultValue = false
     )
 
+    var diagnosticsEndpoint by store.string(
+        key = "diagnostics_endpoint",
+        defaultValue = BuildConfig.DIAGNOSTICS_ENDPOINT,
+    )
+
     fun reset() {
         enableHwid = true
         resetConnectionsOnNetworkChange = true
@@ -133,6 +139,7 @@ class ServiceStore(context: Context) {
         tunStackMode = "auto"
         dynamicNotification = false
         keepAwake = false
+        diagnosticsEndpoint = BuildConfig.DIAGNOSTICS_ENDPOINT
     }
 
     fun markSessionStarted(): Long {

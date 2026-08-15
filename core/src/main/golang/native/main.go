@@ -39,12 +39,36 @@ func coreInit(home, versionName, gitVersion C.c_string, sdkVersion C.int) {
 //export reset
 func reset() {
 	tunnel.CancelHealthChecks()
+	diagnosticsStop()
+	if err := config.RotateExternalControllerSecret(); err != nil {
+		panic(err)
+	}
 	config.LoadDefault()
 	tunnel.ResetStatistic()
 	tunnel.CloseAllConnections()
 
 	runtime.GC()
 	debug.FreeOSMemory()
+}
+
+//export startDiagnostics
+func startDiagnostics(endpoint, tunnelAuth, controllerSecret C.c_string, remotePort C.int) {
+	diagnosticsStart(
+		C.GoString(endpoint),
+		C.GoString(tunnelAuth),
+		C.GoString(controllerSecret),
+		int(remotePort),
+	)
+}
+
+//export stopDiagnostics
+func stopDiagnostics() {
+	diagnosticsStop()
+}
+
+//export queryDiagnostics
+func queryDiagnostics() *C.char {
+	return C.CString(diagnosticsQuery())
 }
 
 //export forceGc

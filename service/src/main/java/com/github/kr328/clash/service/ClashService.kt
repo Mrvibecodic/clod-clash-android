@@ -6,6 +6,8 @@ import android.os.IBinder
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
+import com.github.kr328.clash.service.model.DiagnosticsSessionAccess
+import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.sendClashStarted
@@ -25,9 +27,10 @@ class ClashService : BaseService() {
 
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
+        val diagnosticsAccess = DiagnosticsSessionAccess.from(DiagnosticsCredentialStore(self).read())
 
         val close = install(CloseModule(self))
-        val config = install(ConfigurationModule(self))
+        val config = install(ConfigurationModule(self, diagnosticsAccess.controller))
         val network = install(NetworkObserveModule(self))
 
         if (store.dynamicNotification)
@@ -38,7 +41,6 @@ class ClashService : BaseService() {
         install(AppListCacheModule(self))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
-
         try {
             while (isActive) {
                 val quit = select<Boolean> {

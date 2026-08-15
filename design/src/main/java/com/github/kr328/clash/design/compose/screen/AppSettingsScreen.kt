@@ -6,30 +6,38 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.SwitchRow
+import com.github.kr328.clash.service.store.DiagnosticsCredential
+import com.github.kr328.clash.service.store.normalizeDiagnosticsEndpoint
 
 @Immutable
 data class AppSettingsState(
@@ -47,6 +55,12 @@ data class AppSettingsState(
     val profileUpdateNotifications: Boolean = true,
     val notificationsBlocked: Boolean = false,
     val resetEnabled: Boolean = true,
+    val diagnosticsEnabled: Boolean = false,
+    val diagnosticsAvailable: Boolean = false,
+    val diagnosticsConfigured: Boolean = false,
+    val diagnosticsEndpoint: String = "",
+    val vpnServiceRunning: Boolean = false,
+    val diagnosticsState: DiagnosticsState = DiagnosticsState.STOPPED,
 )
 
 sealed interface AppSettingsAction {
@@ -66,6 +80,15 @@ sealed interface AppSettingsAction {
     data object ExportProfiles : AppSettingsAction
     data object ImportProfiles : AppSettingsAction
     data object ResetSettings : AppSettingsAction
+    data class SetDiagnostics(val enabled: Boolean) : AppSettingsAction
+    data class SaveDiagnosticsCredential(
+        val endpoint: String,
+        val username: String,
+        val password: String,
+        val controllerSecret: String,
+        val remotePort: Int,
+    ) : AppSettingsAction
+    data object ClearDiagnosticsCredential : AppSettingsAction
 }
 
 @Composable
@@ -74,6 +97,22 @@ fun AppSettingsScreen(
     onAction: (AppSettingsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var credentialDialog by remember { mutableStateOf(false) }
+    var endpoint by remember(state.diagnosticsEndpoint) { mutableStateOf(state.diagnosticsEndpoint) }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var controllerSecret by remember { mutableStateOf("") }
+    var remotePort by remember { mutableStateOf("") }
+    var diagnosticsWarning by remember { mutableStateOf(false) }
+    fun closeCredentialDialog() {
+        username = ""
+        password = ""
+        controllerSecret = ""
+        remotePort = ""
+        endpoint = state.diagnosticsEndpoint
+        credentialDialog = false
+    }
+
     ActivityScaffold(
         title = stringResource(R.string.app),
         onBack = { onAction(AppSettingsAction.Back) },
@@ -154,6 +193,50 @@ fun AppSettingsScreen(
                 enabled = state.notificationEditable && !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetDynamicNotification(it)) },
             )
+            SwitchRow(
+                title = stringResource(R.string.diagnostics_tunnel_title),
+                subtitle = when {
+                    !state.diagnosticsAvailable -> stringResource(R.string.diagnostics_tunnel_unavailable)
+                    !state.diagnosticsConfigured || state.diagnosticsEndpoint.isBlank() ->
+                        stringResource(R.string.diagnostics_tunnel_needs_credential)
+                    !state.vpnServiceRunning -> stringResource(R.string.diagnostics_tunnel_service_stopped)
+                    state.diagnosticsEnabled && state.diagnosticsState == DiagnosticsState.ERROR ->
+                        stringResource(R.string.diagnostics_tunnel_error)
+                    state.diagnosticsEnabled && state.diagnosticsState == DiagnosticsState.RUNNING ->
+                        stringResource(R.string.diagnostics_tunnel_running)
+                    state.diagnosticsEnabled -> stringResource(R.string.diagnostics_tunnel_connecting)
+                    else -> stringResource(R.string.diagnostics_tunnel_ready)
+                },
+                icon = painterResource(R.drawable.ic_baseline_adb),
+                checked = state.diagnosticsEnabled,
+                enabled = state.diagnosticsEnabled || (
+                    state.diagnosticsAvailable &&
+                        state.diagnosticsConfigured &&
+                        state.diagnosticsEndpoint.isNotBlank() &&
+                        state.vpnServiceRunning
+                ),
+                onCheckedChange = { enabled ->
+                    if (enabled) diagnosticsWarning = true
+                    else onAction(AppSettingsAction.SetDiagnostics(false))
+                },
+            )
+            Button(
+                onClick = {
+                    endpoint = state.diagnosticsEndpoint
+                    credentialDialog = true
+                },
+                enabled = state.diagnosticsAvailable && !state.vpnServiceRunning,
+            ) {
+                Text(
+                    stringResource(
+                        if (state.diagnosticsConfigured) {
+                            R.string.diagnostics_credential_replace
+                        } else {
+                            R.string.diagnostics_credential_setup
+                        },
+                    ),
+                )
+            }
 
             SectionHeader(stringResource(R.string.clod_tab_subscriptions))
             SwitchRow(
@@ -208,6 +291,113 @@ fun AppSettingsScreen(
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (credentialDialog) {
+        AlertDialog(
+            onDismissRequest = ::closeCredentialDialog,
+            title = { Text(stringResource(R.string.diagnostics_credential_title)) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    OutlinedTextField(
+                        value = endpoint,
+                        onValueChange = { endpoint = it },
+                        label = { Text(stringResource(R.string.diagnostics_endpoint)) },
+                        singleLine = true,
+                    )
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text(stringResource(R.string.diagnostics_username)) },
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(stringResource(R.string.diagnostics_password)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                    )
+                    OutlinedTextField(
+                        value = controllerSecret,
+                        onValueChange = { controllerSecret = it },
+                        label = { Text(stringResource(R.string.diagnostics_controller_secret)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                    )
+                    OutlinedTextField(
+                        value = remotePort,
+                        onValueChange = { remotePort = it },
+                        label = { Text(stringResource(R.string.diagnostics_remote_port)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                    )
+                    if (state.diagnosticsConfigured) {
+                        TextButton(onClick = {
+                            onAction(AppSettingsAction.ClearDiagnosticsCredential)
+                            closeCredentialDialog()
+                        }) {
+                            Text(stringResource(R.string.delete))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    enabled = normalizeDiagnosticsEndpoint(endpoint) != null && run {
+                        val allCredentialFieldsBlank = username.isBlank() &&
+                            password.isBlank() &&
+                            controllerSecret.isBlank() &&
+                            remotePort.isBlank()
+                        (state.diagnosticsConfigured && allCredentialFieldsBlank) ||
+                            DiagnosticsCredential.create(
+                                username,
+                                password,
+                                controllerSecret,
+                                remotePort.toIntOrNull() ?: -1,
+                            ) != null
+                    },
+                    onClick = {
+                        val parsedRemotePort = remotePort.toIntOrNull() ?: -1
+                        onAction(
+                            AppSettingsAction.SaveDiagnosticsCredential(
+                                endpoint = endpoint,
+                                username = username,
+                                password = password,
+                                controllerSecret = controllerSecret,
+                                remotePort = parsedRemotePort,
+                            ),
+                        )
+                        closeCredentialDialog()
+                    },
+                ) {
+                    Text(stringResource(R.string.save))
+                }
+            },
+            dismissButton = {
+                Button(onClick = ::closeCredentialDialog) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (diagnosticsWarning) {
+        AlertDialog(
+            onDismissRequest = { diagnosticsWarning = false },
+            title = { Text(stringResource(R.string.diagnostics_access_warning_title)) },
+            text = { Text(stringResource(R.string.diagnostics_access_warning)) },
+            confirmButton = {
+                Button(onClick = {
+                    diagnosticsWarning = false
+                    onAction(AppSettingsAction.SetDiagnostics(true))
+                }) {
+                    Text(stringResource(R.string.diagnostics_access_enable))
+                }
+            },
+            dismissButton = {
+                Button(onClick = { diagnosticsWarning = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

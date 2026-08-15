@@ -12,6 +12,7 @@ import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
 import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
 import com.github.kr328.clash.common.compat.isSystemBarsTranslucentCompat
+import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.DarkMode
@@ -169,6 +170,10 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileLoaded)
     }
 
+    override fun onDiagnosticsStatusChanged(status: DiagnosticsState) {
+        events.trySend(Event.DiagnosticsStatusChanged)
+    }
+
     override fun onServiceRecreated() {
         events.trySend(Event.ServiceRecreated)
     }
@@ -229,5 +234,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         ProfileChanged,
         ProfileUpdateCompleted,
         ProfileUpdateFailed,
+        DiagnosticsStatusChanged,
     }
 }
