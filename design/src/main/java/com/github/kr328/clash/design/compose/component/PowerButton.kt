@@ -13,9 +13,13 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -34,6 +38,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
+import com.github.kr328.clash.design.compose.theme.TimerTextStyle
 
 /** Состояние туннеля в том виде, в каком его показывает главный экран. */
 enum class ConnectionStatus {
@@ -53,9 +58,15 @@ enum class ConnectionStatus {
  * Свечение нарисовано радиальным градиентом в [drawBehind], а не тенью: тень
  * (`shadow`) на API < 28 не умеет цвет и получилась бы серой.
  *
- * Размер кнопки задаётся снаружи и анимируется: подключённая кнопка уменьшается
- * и уходит вниз, освобождая место карточкам. Пружина мягкая (StiffnessLow) —
- * при жёсткой кнопка «щёлкает» и выглядит нервно.
+ * Размер кнопки задаётся снаружи и анимируется, но с одинаковым значением на
+ * оба состояния: раньше подключённая кнопка ужималась со 148 до 120 dp, и
+ * единственный на экране крупный элемент прыгал в момент, когда человек на него
+ * смотрит. Пружина мягкая (StiffnessLow) — при жёсткой кнопка «щёлкает» и
+ * выглядит нервно.
+ *
+ * @param caption подпись внутри круга под иконкой — таймер сессии. Раньше он
+ *   стоял отдельной строкой в 34 sp под кнопкой и весил больше неё самой; внутри
+ *   круга те же цифры читаются как часть кнопки и не спорят с ней за внимание.
  */
 @Composable
 fun PowerButton(
@@ -63,7 +74,8 @@ fun PowerButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    diameter: androidx.compose.ui.unit.Dp = 148.dp,
+    diameter: androidx.compose.ui.unit.Dp = 134.dp,
+    caption: String? = null,
 ) {
     val extra = ClodTheme.extraColors
 
@@ -135,17 +147,29 @@ fun PowerButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_power),
-            contentDescription = stringResource(
-                if (status == ConnectionStatus.Connected) {
-                    R.string.clod_action_disconnect
-                } else {
-                    R.string.clod_action_connect
-                },
-            ),
-            tint = Color.White,
-            modifier = Modifier.size(animatedDiameter * 0.34f),
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                painter = painterResource(R.drawable.ic_power),
+                contentDescription = stringResource(
+                    if (status == ConnectionStatus.Connected) {
+                        R.string.clod_action_disconnect
+                    } else {
+                        R.string.clod_action_connect
+                    },
+                ),
+                tint = Color.White,
+                modifier = Modifier.size(animatedDiameter * if (caption == null) 0.34f else 0.30f),
+            )
+            if (caption != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = caption,
+                    style = TimerTextStyle,
+                    // Белым, а не статусным цветом: подпись лежит на залитом
+                    // диске, и любой цвет темы на нём теряется.
+                    color = Color.White,
+                )
+            }
+        }
     }
 }

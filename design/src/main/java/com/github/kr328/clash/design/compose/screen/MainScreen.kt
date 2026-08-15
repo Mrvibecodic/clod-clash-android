@@ -81,8 +81,6 @@ import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
-import com.github.kr328.clash.design.compose.theme.StatusTextStyle
-import com.github.kr328.clash.design.compose.theme.TimerTextStyle
 import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
@@ -437,41 +435,31 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             PowerButton(
                 status = state.status,
                 onClick = { onAction(MainAction.ToggleStatus) },
-                diameter = (148 - 28 * expansion).dp,
-            )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = stringResource(
-                    when (state.status) {
-                        ConnectionStatus.Disconnected -> R.string.clod_status_disconnected
-                        ConnectionStatus.Connecting -> R.string.clod_status_connecting
-                        ConnectionStatus.Connected -> R.string.clod_status_connected
-                    },
-                ),
-                style = StatusTextStyle,
-                color = when (state.status) {
-                    ConnectionStatus.Disconnected -> MaterialTheme.colorScheme.onSurface
-                    ConnectionStatus.Connecting -> ClodTheme.extraColors.statusConnecting
-                    ConnectionStatus.Connected -> ClodTheme.extraColors.statusConnected
+                // Один и тот же размер в обоих состояниях: кнопка больше не
+                // прыгает в момент подключения. 134 dp — середина между прежними
+                // 148 (отключено) и 120 (подключено).
+                diameter = 134.dp,
+                // Таймер живёт внутри круга: снаружи он был 34 sp и весил
+                // больше самой кнопки.
+                caption = formatSession(state.sessionSeconds).takeIf {
+                    connected && state.sessionSeconds > 0
                 },
-                textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.height(16.dp))
+            // Состояние подписано пилюлей, а не заголовком в 32 sp: цвет кнопки
+            // и так говорит, подключены мы или нет, а слово рядом нужно только
+            // затем, чтобы этот цвет нельзя было прочесть неправильно.
+            StatusPill(state.status)
             if (!connected) {
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.clod_tap_to_connect),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else if (state.sessionSeconds > 0) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = formatSession(state.sessionSeconds),
-                    style = TimerTextStyle,
-                    color = ClodTheme.extraColors.statusConnected,
+                    textAlign = TextAlign.Center,
                 )
             }
-            // Счётчики сессии — строкой под таймером, а не парой карточек во всю
+            // Счётчики сессии — строкой под пилюлей, а не парой карточек во всю
             // ширину: карточки на подключённом экране весили столько же, сколько
             // кнопка, хотя отвечают на второстепенный вопрос.
             if (connected && state.downloaded.isNotBlank() && state.uploaded.isNotBlank()) {
@@ -682,6 +670,51 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
  * направления. Зелёная — вниз (тот же зелёный, что у состояния «Подключено»),
  * синяя — вверх; серые обе сливались бы в одно число.
  */
+@Composable
+private fun StatusPill(status: ConnectionStatus) {
+    val accent = when (status) {
+        ConnectionStatus.Disconnected -> MaterialTheme.colorScheme.onSurfaceVariant
+        ConnectionStatus.Connecting -> ClodTheme.extraColors.statusConnecting
+        ConnectionStatus.Connected -> ClodTheme.extraColors.statusConnected
+    }
+    // Заливка светлым оттенком того же цвета, а не сплошная, как у пилюль
+    // задержки: те стоят в плотном списке и им нужен вес, а здесь пилюля
+    // соседствует с кнопкой того же цвета — сплошная спорила бы с ней.
+    // Отключённое состояние берёт роль темы: серый оттенок серого не читается.
+    val container = if (status == ConnectionStatus.Disconnected) {
+        MaterialTheme.colorScheme.surfaceVariant
+    } else {
+        accent.copy(alpha = 0.14f)
+    }
+
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(container)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(accent),
+        )
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = stringResource(
+                when (status) {
+                    ConnectionStatus.Disconnected -> R.string.clod_status_disconnected
+                    ConnectionStatus.Connecting -> R.string.clod_status_connecting
+                    ConnectionStatus.Connected -> R.string.clod_status_connected
+                },
+            ),
+            style = MaterialTheme.typography.labelLarge,
+            color = accent,
+        )
+    }
+}
+
 @Composable
 private fun SessionTrafficRow(downloaded: String, uploaded: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
