@@ -16,7 +16,7 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 |---|---|---|
 | **Оболочка приложения**: `VpnService`, JNI-мост Go↔Kotlin, многопроцессный сервисный слой, хранилище профилей, сборка Go-ядра, CI | [MetaCubeX/ClashMetaForAndroid](https://github.com/MetaCubeX/ClashMetaForAndroid) — база этого репозитория, история сохранена целиком | GPL-3.0 |
 | **Ядро** | [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo), подключено submodule'ом, **не форкается и не патчится**; закреплено на стабильном теге `v1.19.29` (`e26714a1`) — в `.gitmodules` стоит `branch = Alpha`, но CI тянет submodule только по `--init`, без `--remote`, поэтому пин держится. Двигать пин осознанно и вместе с обоими `go.mod` | GPL-3.0 |
-| **Интерфейс на Jetpack Compose** | [fUS1ONd/Prizrak-Box-android](https://github.com/fUS1ONd/Prizrak-Box-android) — их миграция UI на Compose переносится к нам как основа (планируется) | GPL-3.0 |
+| **Интерфейс на Jetpack Compose** | [legiz-ru/Prizrak-Box-android](https://github.com/legiz-ru/Prizrak-Box-android) и его форк [fUS1ONd/Prizrak-Box-android](https://github.com/fUS1ONd/Prizrak-Box-android) — их миграция интерфейса на Compose была отправной точкой для нашей: экраны у нас написаны заново, но путь показали они | GPL-3.0 |
 | **Визуальный референс главного экрана** | [coolcoala/KoalaClash-Android](https://github.com/coolcoala/KoalaClash-Android) — идея раскрывающегося экрана вместо переключателя режимов | GPL-3.0 |
 | **Логика подписок и заголовков Remnawave** | наша, написана здесь: заголовки разбирает Go (`core/…/config/panel/`), решения по подписке — Kotlin (`service/…/SubscriptionAlerts.kt`). Правила те же, что в десктопном [Mrvibecodic/clod-clash](https://github.com/Mrvibecodic/clod-clash), но код отдельный — общего крейта через FFI у Android нет | GPL-3.0 |
 
@@ -24,6 +24,26 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 (Kr328) — с него начинался апстрим, и его код до сих пор составляет заметную часть оболочки.
 
 Список лицензий сторонних компонентов — в [NOTICE](NOTICE).
+
+## Благодарности
+
+Проектам, у которых мы подсмотрели продуктовые решения. Чужого кода в них мы не брали —
+только форматы, приёмы и подходы:
+
+* [Prizrak-Box](https://github.com/legiz-ru/Prizrak-Box) от legiz-ru и его
+  [Android-версия](https://github.com/legiz-ru/Prizrak-Box-android) — интерфейс на Compose как
+  ориентир, синтаксис цветовой разметки `#RRGGBB` в объявлениях и синоним `global-mode: false`,
+  которым замок режима ставят панели, настроенные под них;
+* [KoalaClash-Android](https://github.com/coolcoala/KoalaClash-Android) и десктопный
+  [koala-clash](https://github.com/coolcoala/koala-clash) от coolcoala — формат User-Agent
+  «имя/версия» (иначе панель считает клиента новым устройством) и идея раскрывающегося
+  главного экрана вместо переключателя режимов;
+* [FlClash](https://github.com/chen08209/FlClash) от chen08209 и его форк
+  [FlClashX](https://github.com/pluralplay/FlClashX) от pluralplay — приём с подменой хоста
+  подписки (`new-domain`, `fallback-domain`) и состав заголовков, по которому мы сверялись.
+
+Те же благодарности — в [README десктопной версии](https://github.com/Mrvibecodic/clod-clash#благодарности):
+клиенты общие, и подсмотренное работает на обеих платформах.
 
 ## Заголовки подписки
 
