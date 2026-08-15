@@ -30,6 +30,24 @@ internal fun CompletableDeferred<Unit>.completeFetchResult(error: String?) {
     }
 }
 
+@Serializable
+enum class DiagnosticsRuntimeState {
+    CONNECTING,
+    READY,
+    CONFIGURATION_ERROR,
+    ACCESS_DENIED,
+    UNREACHABLE,
+}
+
+@Serializable
+data class DiagnosticsStatus(
+    val state: DiagnosticsRuntimeState,
+)
+
+private const val CONTROLLER_CONFIGURATION_SUCCEEDED = 0
+private const val CONTROLLER_CONFIGURATION_ENTROPY_UNAVAILABLE = 1
+private const val CONTROLLER_CONFIGURATION_SECRET_INVALID = 2
+
 object Clash {
     enum class OverrideSlot {
         Persist, Session
@@ -48,6 +66,39 @@ object Clash {
 
     fun reset() {
         Bridge.nativeReset()
+    }
+
+    fun startDiagnostics(endpoint: String, access: DiagnosticsAccess) {
+        Bridge.nativeStartDiagnostics(
+            endpoint,
+            access.tunnelAuth,
+            access.controllerSecret,
+            access.remotePort,
+        )
+    }
+
+    fun stopDiagnostics() {
+        Bridge.nativeStopDiagnostics()
+    }
+
+    fun queryDiagnostics(): DiagnosticsStatus {
+        return CoreJson.decodeFromString(DiagnosticsStatus.serializer(), Bridge.nativeQueryDiagnostics())
+    }
+
+    fun configureExternalController(access: ExternalControllerAccess) {
+        val result = when (access) {
+            ExternalControllerAccess.LocalOnly -> Bridge.nativeUseLocalControllerAccess()
+            is ExternalControllerAccess.Diagnostics ->
+                Bridge.nativeUseDiagnosticsControllerAccess(access.secret)
+        }
+        when (result) {
+            CONTROLLER_CONFIGURATION_SUCCEEDED -> Unit
+            CONTROLLER_CONFIGURATION_ENTROPY_UNAVAILABLE ->
+                error("failed to generate external controller secret")
+            CONTROLLER_CONFIGURATION_SECRET_INVALID ->
+                error("external controller secret was rejected")
+            else -> error("unknown external controller configuration result: $result")
+        }
     }
 
     fun forceGc() {

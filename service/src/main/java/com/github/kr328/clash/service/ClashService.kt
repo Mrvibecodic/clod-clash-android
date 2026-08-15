@@ -9,6 +9,8 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
+import com.github.kr328.clash.service.model.DiagnosticsSessionAccess
+import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import kotlinx.coroutines.NonCancellable
@@ -24,9 +26,10 @@ class ClashService : BaseService() {
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
+        val diagnosticsAccess = DiagnosticsSessionAccess.from(DiagnosticsCredentialStore(self).read())
 
         val close = install(CloseModule(self))
-        val config = install(ConfigurationModule(self))
+        val config = install(ConfigurationModule(self, diagnosticsAccess.controller))
         val network = install(NetworkObserveModule(self))
 
         if (store.dynamicNotification)

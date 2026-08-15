@@ -4,6 +4,7 @@ go 1.26.0
 
 require (
 	github.com/dlclark/regexp2 v1.12.0
+	github.com/jpillora/chisel v1.11.8
 	github.com/metacubex/mihomo v1.7.0
 	golang.org/x/crypto v0.57.0
 	golang.org/x/sync v0.23.0
@@ -17,6 +18,7 @@ require (
 	github.com/ajg/form v1.7.1 // indirect
 	github.com/akutz/memconn v0.1.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
+	github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
@@ -42,9 +44,12 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20240727154555-813a5fbdbec8 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20250109001534-8abf58130905 // indirect
 	github.com/josharian/native v1.1.0 // indirect
+	github.com/jpillora/backoff v1.0.0 // indirect
+	github.com/jpillora/sizestr v1.0.0 // indirect
 	github.com/jsimonetti/rtnetlink v1.4.0 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.6 // indirect

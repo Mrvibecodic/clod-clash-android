@@ -22,8 +22,8 @@ import (
 )
 
 var processors = []processor{
-	patchExternalController,
 	patchOverride,
+	enforceExternalControllerAccess,
 	patchGeneral,
 	patchProfile,
 	patchDns,
@@ -86,15 +86,6 @@ func patchOverride(cfg *config.RawConfig, profileDir string) error {
 
 		cfg.DNS.NameServer = nameServers
 	}
-
-	return nil
-}
-
-func patchExternalController(cfg *config.RawConfig, _ string) error {
-	cfg.ExternalController = ""
-	cfg.ExternalControllerTLS = ""
-	cfg.ExternalControllerUnix = ""
-	cfg.ExternalControllerPipe = ""
 
 	return nil
 }

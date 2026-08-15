@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ExternalControllerAccess
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.R
@@ -38,7 +39,10 @@ import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 import java.util.*
 
-class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(service) {
+class ConfigurationModule(
+    service: Service,
+    private val controllerAccess: ExternalControllerAccess,
+) : Module<ConfigurationModule.Event>(service) {
     companion object {
         val coreLoad = Mutex()
 
@@ -86,6 +90,8 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override suspend fun run() {
+        Clash.configureExternalController(controllerAccess)
+
         val broadcasts = receiveBroadcast {
             addAction(Intents.ACTION_PROFILE_CHANGED)
             addAction(Intents.ACTION_OVERRIDE_CHANGED)
