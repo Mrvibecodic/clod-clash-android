@@ -43,6 +43,31 @@ func setSecureChannel(enabled C.int) {
 	config.SetSecureChannel(enabled != 0)
 }
 
+//export useLocalControllerAccess
+func useLocalControllerAccess() C.int {
+	if err := config.RotateExternalControllerSecret(); err != nil {
+		return controllerConfigurationEntropyUnavailable
+	}
+	return controllerConfigurationSucceeded
+}
+
+//export useDiagnosticsControllerAccess
+func useDiagnosticsControllerAccess(secret C.c_string) C.int {
+	if secret == nil {
+		return controllerConfigurationSecretInvalid
+	}
+	if err := config.SetExternalControllerSecret(C.GoString(secret)); err != nil {
+		return controllerConfigurationSecretInvalid
+	}
+	return controllerConfigurationSucceeded
+}
+
+const (
+	controllerConfigurationSucceeded C.int = iota
+	controllerConfigurationEntropyUnavailable
+	controllerConfigurationSecretInvalid
+)
+
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
 	go func(path string) {

@@ -5,6 +5,8 @@ import android.content.Intent
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.common.constants.Permissions
+import com.github.kr328.clash.common.model.DiagnosticsMode
+import com.github.kr328.clash.common.model.DiagnosticsState
 import java.util.*
 
 fun Context.sendBroadcastSelf(intent: Intent) {
@@ -51,6 +53,20 @@ fun Context.sendOverrideChanged() {
     val intent = Intent(Intents.ACTION_OVERRIDE_CHANGED)
 
     sendBroadcastSelf(intent)
+}
+
+fun Context.sendDiagnosticsChanged(mode: DiagnosticsMode) {
+    sendBroadcastSelf(
+        Intent(Intents.ACTION_DIAGNOSTICS_CHANGED)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_MODE, mode.name)
+    )
+}
+
+fun Context.sendDiagnosticsStatus(status: DiagnosticsState) {
+    sendBroadcastSelf(
+        Intent(Intents.ACTION_DIAGNOSTICS_STATUS)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_STATUS, status.name)
+    )
 }
 
 fun Context.sendServiceRecreated() {

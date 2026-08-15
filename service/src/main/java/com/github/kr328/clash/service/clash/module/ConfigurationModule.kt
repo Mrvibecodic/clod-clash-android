@@ -5,6 +5,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ExternalControllerAccess
 import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
@@ -17,7 +18,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
 import java.util.*
 
-class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadException>(service) {
+class ConfigurationModule(
+    service: Service,
+    private val controllerAccess: ExternalControllerAccess,
+) : Module<ConfigurationModule.LoadException>(service) {
     data class LoadException(val message: String)
 
     private val store = ServiceStore(service)
@@ -59,6 +63,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                     ?: throw NullPointerException("No profile selected")
 
                 Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
+                Clash.configureExternalController(controllerAccess)
 
                 GeoAssets.awaitReady(service)
 

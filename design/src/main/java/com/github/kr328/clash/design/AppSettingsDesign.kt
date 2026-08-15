@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.kr328.clash.common.compat.isTelevision
+import com.github.kr328.clash.common.model.DiagnosticsMode
 import com.github.kr328.clash.design.compose.screen.AppSettingsAction
 import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
 import com.github.kr328.clash.design.compose.screen.AppSettingsState
@@ -16,7 +17,9 @@ import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.sendDiagnosticsChanged
 import kotlinx.coroutines.launch
 
 class AppSettingsDesign(
@@ -39,6 +42,7 @@ class AppSettingsDesign(
     }
 
     private val darkModes = DarkMode.entries
+    private val credentials = DiagnosticsCredentialStore(context)
 
     private val languageTags = listOf("", "en", "ru")
 
@@ -88,6 +92,8 @@ class AppSettingsDesign(
 
         uiStore.reset()
         srvStore.reset()
+        credentials.clear()
+        context.sendDiagnosticsChanged(DiagnosticsMode.DISABLED)
         onReset()
 
         applyLanguage(0)

@@ -79,7 +79,17 @@ jobs:
         id: go-tests
         if: success()
         working-directory: core/src/main/golang
-        run: go test ./native/config/panel/... ./native/config/sentinel/... ./native/chanx/... ./native/redact/...
+        run: |
+          go test ./native/config/panel/... ./native/config/sentinel/... ./native/chanx/... ./native/redact/...
+          go test ./native/diagnostics.go ./native/diagnostics_test.go
+          go test \
+            ./native/config/controller_access.go \
+            ./native/config/process.go \
+            ./native/config/process_test.go \
+            ./native/config/override.go \
+            ./native/config/defaults.go \
+            ./native/config/provider.go \
+            ./native/config/panel.go
 
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная

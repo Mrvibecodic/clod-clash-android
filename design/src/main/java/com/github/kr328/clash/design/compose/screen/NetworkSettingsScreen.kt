@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -17,11 +19,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
@@ -41,6 +49,11 @@ data class NetworkSettingsState(
     val resetConnections: Boolean = true,
     val keepAwake: Boolean = false,
     val localProxyPort: Int = 0,
+    val diagnosticsEnabled: Boolean = false,
+    val diagnosticsConfigured: Boolean = false,
+    val diagnosticsEndpoint: String = "",
+    val vpnServiceRunning: Boolean = false,
+    val diagnosticsState: DiagnosticsState = DiagnosticsState.STOPPED,
 )
 
 sealed interface NetworkSettingsAction {
@@ -54,6 +67,9 @@ sealed interface NetworkSettingsAction {
     data class SetTunStack(val index: Int) : NetworkSettingsAction
     data class SetResetConnections(val enabled: Boolean) : NetworkSettingsAction
     data class SetKeepAwake(val enabled: Boolean) : NetworkSettingsAction
+    data object EnableDiagnostics : NetworkSettingsAction
+    data object DisableDiagnostics : NetworkSettingsAction
+    data object OpenDiagnostics : NetworkSettingsAction
 }
 
 @Composable
@@ -63,6 +79,7 @@ fun NetworkSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val vpnOptions = state.editable && state.enableVpn
+    var diagnosticsWarning by remember { mutableStateOf(false) }
 
     ActivityScaffold(
         title = stringResource(R.string.network),
@@ -164,8 +181,71 @@ fun NetworkSettingsScreen(
                 onCheckedChange = { onAction(NetworkSettingsAction.SetKeepAwake(it)) },
             )
 
+            SectionHeader(stringResource(R.string.diagnostics_credential_title))
+            SwitchRow(
+                title = stringResource(R.string.diagnostics_tunnel_title),
+                subtitle = when {
+                    !state.diagnosticsConfigured || state.diagnosticsEndpoint.isBlank() ->
+                        stringResource(R.string.diagnostics_tunnel_needs_credential)
+                    !state.vpnServiceRunning -> stringResource(R.string.diagnostics_tunnel_service_stopped)
+                    state.diagnosticsEnabled && state.diagnosticsState == DiagnosticsState.CONFIGURATION_ERROR ->
+                        stringResource(R.string.diagnostics_tunnel_configuration_error)
+                    state.diagnosticsEnabled && state.diagnosticsState == DiagnosticsState.ACCESS_DENIED ->
+                        stringResource(R.string.diagnostics_tunnel_access_denied)
+                    state.diagnosticsEnabled && state.diagnosticsState == DiagnosticsState.UNREACHABLE ->
+                        stringResource(R.string.diagnostics_tunnel_unreachable)
+                    state.diagnosticsEnabled && state.diagnosticsState == DiagnosticsState.RUNNING ->
+                        stringResource(R.string.diagnostics_tunnel_running)
+                    state.diagnosticsEnabled -> stringResource(R.string.diagnostics_tunnel_connecting)
+                    else -> stringResource(R.string.diagnostics_tunnel_ready)
+                },
+                icon = painterResource(R.drawable.ic_baseline_adb),
+                checked = state.diagnosticsEnabled,
+                enabled = state.diagnosticsEnabled || (
+                    state.diagnosticsConfigured &&
+                        state.diagnosticsEndpoint.isNotBlank() &&
+                        state.vpnServiceRunning
+                ),
+                onCheckedChange = { enabled ->
+                    if (enabled) diagnosticsWarning = true
+                    else onAction(NetworkSettingsAction.DisableDiagnostics)
+                },
+            )
+            ActionRow(
+                title = stringResource(
+                    if (state.diagnosticsConfigured) {
+                        R.string.diagnostics_credential_replace
+                    } else {
+                        R.string.diagnostics_credential_setup
+                    },
+                ),
+                icon = painterResource(R.drawable.ic_baseline_adb),
+                onClick = { onAction(NetworkSettingsAction.OpenDiagnostics) },
+            )
+
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (diagnosticsWarning) {
+        AlertDialog(
+            onDismissRequest = { diagnosticsWarning = false },
+            title = { Text(stringResource(R.string.diagnostics_access_warning_title)) },
+            text = { Text(stringResource(R.string.diagnostics_access_warning)) },
+            confirmButton = {
+                Button(onClick = {
+                    diagnosticsWarning = false
+                    onAction(NetworkSettingsAction.EnableDiagnostics)
+                }) {
+                    Text(stringResource(R.string.diagnostics_access_enable))
+                }
+            },
+            dismissButton = {
+                Button(onClick = { diagnosticsWarning = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 

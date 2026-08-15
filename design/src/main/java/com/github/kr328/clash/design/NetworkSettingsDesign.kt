@@ -6,11 +6,16 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.common.model.DiagnosticsMode
+import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsAction
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.normalizeDiagnosticsEndpoint
+import com.github.kr328.clash.service.util.sendDiagnosticsChanged
 
 class NetworkSettingsDesign(
     context: Context,
@@ -18,12 +23,15 @@ class NetworkSettingsDesign(
     private val srvStore: ServiceStore,
     running: Boolean,
     localProxyPort: Int,
+    diagnosticsState: DiagnosticsState,
 ) : Design<NetworkSettingsDesign.Request>(context) {
     sealed interface Request {
         data object Back : Request
+        data object OpenDiagnostics : Request
     }
 
     private val tunStacks = listOf("auto", "system", "gvisor", "mixed")
+    private val credentials = DiagnosticsCredentialStore(context)
 
     private var state by mutableStateOf(
         NetworkSettingsState(
@@ -39,6 +47,11 @@ class NetworkSettingsDesign(
             resetConnections = srvStore.resetConnectionsOnNetworkChange,
             keepAwake = srvStore.keepAwake,
             localProxyPort = localProxyPort,
+            diagnosticsEnabled = diagnosticsState != DiagnosticsState.STOPPED,
+            diagnosticsConfigured = credentials.read() != null,
+            diagnosticsEndpoint = normalizeDiagnosticsEndpoint(srvStore.diagnosticsEndpoint).orEmpty(),
+            vpnServiceRunning = running && uiStore.enableVpn,
+            diagnosticsState = diagnosticsState,
         ),
     )
 
@@ -49,6 +62,22 @@ class NetworkSettingsDesign(
     private fun onAction(action: NetworkSettingsAction) {
         when (action) {
             NetworkSettingsAction.Back -> requests.trySend(Request.Back)
+            NetworkSettingsAction.OpenDiagnostics -> requests.trySend(Request.OpenDiagnostics)
+            NetworkSettingsAction.EnableDiagnostics -> {
+                if (
+                    !state.diagnosticsConfigured ||
+                        state.diagnosticsEndpoint.isBlank() ||
+                        !state.vpnServiceRunning
+                ) return
+
+                if (credentials.read() == null) return
+                state = state.copy(diagnosticsEnabled = true)
+                context.sendDiagnosticsChanged(DiagnosticsMode.ENABLED)
+            }
+            NetworkSettingsAction.DisableDiagnostics -> {
+                state = state.copy(diagnosticsEnabled = false)
+                context.sendDiagnosticsChanged(DiagnosticsMode.DISABLED)
+            }
             is NetworkSettingsAction.SetEnableVpn -> {
                 uiStore.enableVpn = action.enabled
 
@@ -97,5 +126,19 @@ class NetworkSettingsDesign(
                 state = state.copy(tunStack = action.index)
             }
         }
+    }
+
+    fun updateDiagnosticsStatus(status: DiagnosticsState) {
+        state = state.copy(
+            diagnosticsEnabled = status != DiagnosticsState.STOPPED,
+            diagnosticsState = status,
+        )
+    }
+
+    fun refreshDiagnosticsAccess() {
+        state = state.copy(
+            diagnosticsConfigured = credentials.read() != null,
+            diagnosticsEndpoint = normalizeDiagnosticsEndpoint(srvStore.diagnosticsEndpoint).orEmpty(),
+        )
     }
 }
