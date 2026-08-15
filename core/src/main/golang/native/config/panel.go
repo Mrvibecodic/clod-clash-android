@@ -83,6 +83,16 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 			continue
 		}
 
+		// `hidden: true` — просьба конфига не показывать группу в интерфейсе.
+		// Ядро её уважает (см. `QueryProxyGroupNames`: там отсеиваются группы
+		// с `Hidden()`), а этот разбор — нет, и на вкладке «Серверы» до
+		// подключения вылезали служебные группы шаблона: балансировщик,
+		// спрятанный `PROXY`. После подключения они пропадали — то есть список
+		// групп менялся сам собой.
+		if panel.Hidden(raw["hidden"]) {
+			continue
+		}
+
 		kind, _ := raw["type"].(string)
 
 		var proxies []string

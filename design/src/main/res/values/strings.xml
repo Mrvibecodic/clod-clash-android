@@ -121,8 +121,6 @@
     <string name="system_proxy">System Proxy</string>
     <string name="system_proxy_summary">Attach http proxy to VpnService</string>
     <string name="access_control_mode">Access Control Mode</string>
-    <string name="access_control_packages">Access Control Packages</string>
-    <string name="access_control_packages_summary">Configure access permission for apps</string>
 
     <string name="options_unavailable">Options Unavailable until Clash Stopped</string>
 
@@ -214,7 +212,7 @@
     <string name="dark_mode">Dark Mode</string>
 
     <string name="show_traffic">Show Traffic</string>
-    <string name="show_traffic_summary">Auto refresh traffic in notification</string>
+    <string name="show_traffic_summary">Refresh the traffic counter in the notification every second — noticeably drains the battery</string>
 
     <string name="follow_system_android_10">Follow System (Android 10+)</string>
     <string name="always_dark">Always Dark</string>
@@ -358,6 +356,7 @@
     <string name="clod_settings_meta_subtitle">Sniffer, geodata sources, TLS</string>
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
+    <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode.</string>
     <string name="clod_servers_offline">Not connected: delays are measured directly, and the server you pick is applied once you connect.</string>
     <string name="clod_select_offline">Saved. It will be applied when you connect.</string>
     <string name="clod_select_not_selectable">The core picks the node in this group automatically.</string>

@@ -35,6 +35,7 @@ fun SelectorRow(
     modifier: Modifier = Modifier,
     leading: Painter? = null,
     trailing: @Composable (() -> Unit)? = null,
+    labelUppercase: Boolean = true,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -60,9 +61,16 @@ fun SelectorRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = label.uppercase(),
+                    // Капс — приём для служебной подписи («ГРУППА 2 ИЗ 5»).
+                    // Там, где подписью идёт имя, пришедшее от провайдера,
+                    // он отключается: имя группы превращалось в сплошные
+                    // прописные, и то же имя на соседнем экране выглядело
+                    // другим.
+                    text = if (labelUppercase) label.uppercase() else label,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = value,

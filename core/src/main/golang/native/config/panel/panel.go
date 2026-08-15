@@ -673,6 +673,39 @@ func Description(raw any) string {
 	return truncate(strings.TrimSpace(value), descriptionMaxChars)
 }
 
+// Hidden читает флаг `hidden` группы прокси.
+//
+// Ядро такие группы в интерфейс не отдаёт (`QueryProxyGroupNames` отсеивает
+// их по `Hidden()`), и разбор конфигурации должен вести себя так же: иначе
+// до подключения на вкладке «Серверы» видны служебные группы шаблона,
+// а после подключения они исчезают.
+//
+// Значение приходит разобранным из YAML как есть, поэтому булевым бывает
+// не всегда: пишут и `hidden: "true"`, и `hidden: 1`. Всё, что не похоже
+// на «да», считаем «нет» — спрятать группу по ошибке хуже, чем показать
+// лишнюю.
+func Hidden(raw any) bool {
+	switch value := raw.(type) {
+	case bool:
+		return value
+	case string:
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "true", "yes", "on", "1":
+			return true
+		}
+
+		return false
+	case int:
+		return value != 0
+	case int64:
+		return value != 0
+	case float64:
+		return value != 0
+	default:
+		return false
+	}
+}
+
 // SpareAddresses — куда идти, если основной адрес подписки не ответил.
 //
 // Порядок тот, которого ждёт панель: сначала целиком запасной адрес

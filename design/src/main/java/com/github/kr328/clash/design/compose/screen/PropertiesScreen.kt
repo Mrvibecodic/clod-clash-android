@@ -15,8 +15,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -130,10 +130,19 @@ fun PropertiesScreen(
                     strokeWidth = 2.dp,
                 )
             } else {
-                IconButton(onClick = { onAction(PropertiesAction.Commit) }) {
+                // Заливкой, а не голым значком в шапке: сохранение — главное
+                // (и единственное) действие этого экрана, а серый значок
+                // на сером фоне шапки читался как часть рамки. Роль
+                // `secondaryContainer` — светлая, фирменного оттенка,
+                // и контраст у неё посчитан, а не подобран на глаз.
+                FilledTonalIconButton(
+                    onClick = { onAction(PropertiesAction.Commit) },
+                    modifier = Modifier.padding(end = 4.dp),
+                ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_save),
                         contentDescription = stringResource(R.string.save),
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

@@ -115,8 +115,6 @@
     <string name="system_proxy">Системный прокси</string>
     <string name="system_proxy_summary">Дополнительно запустить HTTP прокси, помимо VPN</string>
     <string name="access_control_mode">Режим контроля доступа</string>
-    <string name="access_control_packages">Приложения с контролируемым доступом</string>
-    <string name="access_control_packages_summary">Настройте доступ для приложения</string>
 
     <string name="options_unavailable">Настройки недоступны, пока Clash не будет остановлен</string>
 
@@ -196,7 +194,7 @@
     <string name="dark_mode">Тёмный режим</string>
 
     <string name="show_traffic">Показывать трафик</string>
-    <string name="show_traffic_summary">Автоматически обновлять счётчик трафика в уведомлении</string>
+    <string name="show_traffic_summary">Обновлять счётчик трафика в уведомлении каждую секунду — заметно расходует батарею</string>
 
     <string name="follow_system_android_10">Как в системе (Android 10+)</string>
     <string name="always_dark">Всегда тёмная</string>
@@ -322,6 +320,7 @@
     <string name="clod_settings_meta_subtitle">Sniffer, источники geodata, TLS</string>
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
+    <string name="clod_access_control_all_hint">Через туннель идут все приложения — отметки ниже ни на что не влияют, пока не выбран другой режим.</string>
     <string name="clod_servers_offline">Без подключения: задержки меряются напрямую, а выбранный сервер применится, когда подключитесь.</string>
     <string name="clod_select_offline">Запомнили. Применится при подключении.</string>
     <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>

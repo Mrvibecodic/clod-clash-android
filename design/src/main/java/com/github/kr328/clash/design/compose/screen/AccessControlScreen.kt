@@ -53,6 +53,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.rememberDrawablePainter
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
@@ -67,6 +68,9 @@ import com.github.kr328.clash.design.model.AppInfoSort
  *   галочки не двигались бы вовсе.
  * @param query строка поиска. Пустая — показываем всё; отдельного экрана
  *   поиска, как было на XML, больше нет: список фильтруется на месте.
+ * @param mode индекс в `AccessControlMode.entries`: пускать все приложения,
+ *   только отмеченные или все, кроме отмеченных. Живёт здесь, а не в «Сети»:
+ *   отдельно от списка, к которому относится, этот выбор ничего не значит.
  */
 @Immutable
 data class AccessControlState(
@@ -78,6 +82,7 @@ data class AccessControlState(
     val sort: AppInfoSort = AppInfoSort.Label,
     val reverse: Boolean = false,
     val systemApps: Boolean = false,
+    val mode: Int = 0,
 )
 
 sealed interface AccessControlAction {
@@ -90,6 +95,7 @@ sealed interface AccessControlAction {
     data class Toggle(val packageName: String) : AccessControlAction
     data class Search(val enabled: Boolean) : AccessControlAction
     data class Query(val value: String) : AccessControlAction
+    data class Mode(val index: Int) : AccessControlAction
     data class Sort(val value: AppInfoSort) : AccessControlAction
     data class Reverse(val value: Boolean) : AccessControlAction
     data class SystemApps(val value: Boolean) : AccessControlAction
@@ -145,8 +151,13 @@ fun AccessControlScreen(
                             onQuery = { onAction(AccessControlAction.Query(it)) },
                         )
                     } else {
+                        // Название то же, что у строки, из которой сюда
+                        // приходят («Ещё → Приложения»). Прежнее «Приложения
+                        // с контролируемым доступом» в шапку не влезало:
+                        // на 360 dp оно обрывалось многоточием и поджимало
+                        // кнопки справа.
                         Text(
-                            text = stringResource(R.string.access_control_packages),
+                            text = stringResource(R.string.clod_apps),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -219,6 +230,50 @@ fun AccessControlScreen(
         }
 
         LazyColumn(contentPadding = padding) {
+            // Режим — первой строкой списка, а не отдельной настройкой
+            // в «Сети». Раньше он стоял там, рядом со второй кнопкой на этот
+            // же экран: человек выбирал приложения здесь, а включал правило
+            // для них в другом разделе — и список молча ни на что не влиял,
+            // пока режим оставался «Разрешить все приложения».
+            //
+            // В поиске строки нет: место занято полем ввода, и менять правило
+            // посреди фильтрации незачем.
+            if (!state.searching) {
+                item(key = "mode") {
+                    Column {
+                        SelectRow(
+                            title = stringResource(R.string.access_control_mode),
+                            options = listOf(
+                                stringResource(R.string.allow_all_apps),
+                                stringResource(R.string.allow_selected_apps),
+                                stringResource(R.string.deny_selected_apps),
+                            ),
+                            selectedIndex = state.mode,
+                            icon = painterResource(R.drawable.ic_baseline_vpn_lock),
+                            onSelect = { onAction(AccessControlAction.Mode(it)) },
+                        )
+
+                        // При «пускать все» отметки не значат ничего. Молчать
+                        // об этом нельзя: галочки стоят, а туннель их не
+                        // замечает — выглядит как поломка, а не как настройка.
+                        if (state.mode == MODE_ACCEPT_ALL) {
+                            Text(
+                                text = stringResource(R.string.clod_access_control_all_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    start = 18.dp,
+                                    end = 18.dp,
+                                    bottom = 8.dp,
+                                ),
+                            )
+                        }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+
             items(visible, key = { it.packageName }) { app ->
                 AppRow(
                     app = app,
@@ -229,6 +284,9 @@ fun AccessControlScreen(
         }
     }
 }
+
+/** «Разрешить все приложения» — первый вариант в `AccessControlMode.entries`. */
+private const val MODE_ACCEPT_ALL = 0
 
 @Composable
 private fun SearchField(

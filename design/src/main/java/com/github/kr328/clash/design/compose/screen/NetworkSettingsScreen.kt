@@ -22,7 +22,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
-import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
@@ -34,7 +33,6 @@ import com.github.kr328.clash.design.compose.component.SwitchRow
  * @param systemProxySupported системный прокси через VpnService умеет
  *   Android 10 и новее; ниже строку показывать нечестно.
  * @param tunStack индекс в `system` / `gvisor` / `mixed`.
- * @param accessControlMode индекс в `AccessControlMode.entries`.
  */
 @Immutable
 data class NetworkSettingsState(
@@ -46,7 +44,6 @@ data class NetworkSettingsState(
     val systemProxy: Boolean = true,
     val systemProxySupported: Boolean = true,
     val tunStack: Int = 0,
-    val accessControlMode: Int = 0,
     val editable: Boolean = true,
     /**
      * Рвать ли живые соединения при смене сети. В отличие от остальных
@@ -57,7 +54,6 @@ data class NetworkSettingsState(
 
 sealed interface NetworkSettingsAction {
     data object Back : NetworkSettingsAction
-    data object OpenAccessControlList : NetworkSettingsAction
     data class SetEnableVpn(val enabled: Boolean) : NetworkSettingsAction
     data class SetBypassPrivateNetwork(val enabled: Boolean) : NetworkSettingsAction
     data class SetDnsHijacking(val enabled: Boolean) : NetworkSettingsAction
@@ -65,7 +61,6 @@ sealed interface NetworkSettingsAction {
     data class SetAllowIpv6(val enabled: Boolean) : NetworkSettingsAction
     data class SetSystemProxy(val enabled: Boolean) : NetworkSettingsAction
     data class SetTunStack(val index: Int) : NetworkSettingsAction
-    data class SetAccessControlMode(val index: Int) : NetworkSettingsAction
     data class SetResetConnections(val enabled: Boolean) : NetworkSettingsAction
 }
 
@@ -160,23 +155,11 @@ fun NetworkSettingsScreen(
                 enabled = vpnOptions,
                 onSelect = { onAction(NetworkSettingsAction.SetTunStack(it)) },
             )
-            SelectRow(
-                title = stringResource(R.string.access_control_mode),
-                options = listOf(
-                    stringResource(R.string.allow_all_apps),
-                    stringResource(R.string.allow_selected_apps),
-                    stringResource(R.string.deny_selected_apps),
-                ),
-                selectedIndex = state.accessControlMode,
-                enabled = vpnOptions,
-                onSelect = { onAction(NetworkSettingsAction.SetAccessControlMode(it)) },
-            )
-            ActionRow(
-                title = stringResource(R.string.access_control_packages),
-                subtitle = stringResource(R.string.access_control_packages_summary),
-                icon = painterResource(R.drawable.ic_baseline_apps),
-                onClick = { onAction(NetworkSettingsAction.OpenAccessControlList) },
-            )
+            // Ни выбора приложений, ни режима доступа здесь больше нет: и то
+            // и другое живёт на экране «Ещё → Приложения». Две кнопки на один
+            // экран в разных разделах — это не два пути к нему, а вопрос
+            // «чем они отличаются»; а режим в отрыве от списка, к которому он
+            // применяется, вообще ничего не говорит.
 
             // Отдельной секцией и БЕЗ `vpnOptions`: остальное на этом экране
             // описывает, как поднимать туннель, и меняется только пока он

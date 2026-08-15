@@ -520,6 +520,10 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
             SelectorRow(
                 label = group.name,
+                // Имя группы задаёт провайдер, и капсом его писать нельзя:
+                // на вкладке «Серверы» та же группа подписана как есть,
+                // а здесь выходили сплошные прописные — на вид другое имя.
+                labelUppercase = false,
                 value = current?.title
                     ?: group.now.ifBlank { stringResource(R.string.proxy) },
                 leading = painterResource(R.drawable.ic_nav_servers),

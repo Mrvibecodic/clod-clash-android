@@ -146,9 +146,17 @@ class ServiceStore(context: Context) {
         defaultValue = "system"
     )
 
+    /**
+     * Счётчик трафика в уведомлении.
+     *
+     * По умолчанию ВЫКЛЮЧЕН, хотя у CMFA было наоборот: модуль тикает раз
+     * в секунду всё время, пока поднят туннель, и каждый тик — запрос
+     * статистики у ядра и перерисовка уведомления. Это заметно на батарее,
+     * а сама строка нужна не всем; кому нужна — включает её в «Приложении».
+     */
     var dynamicNotification by store.boolean(
         key = "dynamic_notification",
-        defaultValue = true
+        defaultValue = false
     )
 
     /**

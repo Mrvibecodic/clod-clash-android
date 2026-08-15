@@ -12,7 +12,6 @@ import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.store.UiStore
-import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 
 class NetworkSettingsDesign(
@@ -22,7 +21,6 @@ class NetworkSettingsDesign(
     running: Boolean,
 ) : Design<NetworkSettingsDesign.Request>(context) {
     sealed interface Request {
-        data object StartAccessControlList : Request
         data object Back : Request
     }
 
@@ -31,8 +29,6 @@ class NetworkSettingsDesign(
      * Значения те же, что понимает ядро.
      */
     private val tunStacks = listOf("system", "gvisor", "mixed")
-
-    private val accessControlModes = AccessControlMode.entries
 
     private var state by mutableStateOf(
         NetworkSettingsState(
@@ -45,9 +41,6 @@ class NetworkSettingsDesign(
             // Системный прокси через VpnService появился в Android 10.
             systemProxySupported = Build.VERSION.SDK_INT >= 29,
             tunStack = tunStacks.indexOf(srvStore.tunStackMode).coerceAtLeast(0),
-            accessControlMode = accessControlModes
-                .indexOf(srvStore.accessControlMode)
-                .coerceAtLeast(0),
             editable = !running,
             resetConnections = srvStore.resetConnectionsOnNetworkChange,
         ),
@@ -64,9 +57,6 @@ class NetworkSettingsDesign(
     private fun onAction(action: NetworkSettingsAction) {
         when (action) {
             NetworkSettingsAction.Back -> requests.trySend(Request.Back)
-            NetworkSettingsAction.OpenAccessControlList ->
-                requests.trySend(Request.StartAccessControlList)
-
             is NetworkSettingsAction.SetEnableVpn -> {
                 uiStore.enableVpn = action.enabled
 
@@ -108,13 +98,6 @@ class NetworkSettingsDesign(
                 srvStore.tunStackMode = stack
 
                 state = state.copy(tunStack = action.index)
-            }
-            is NetworkSettingsAction.SetAccessControlMode -> {
-                val mode = accessControlModes.getOrNull(action.index) ?: return
-
-                srvStore.accessControlMode = mode
-
-                state = state.copy(accessControlMode = action.index)
             }
         }
     }

@@ -732,6 +732,24 @@ func TestDescription(t *testing.T) {
 	}
 }
 
+func TestHidden(t *testing.T) {
+	// Флаг из шаблона mihomo: группу с ним прячет и ядро, и наш разбор
+	// конфигурации.
+	for _, raw := range []any{true, "true", "True", " yes ", "on", "1", 1, int64(1), 2.0} {
+		if !Hidden(raw) {
+			t.Fatalf("%#v должно означать спрятанную группу", raw)
+		}
+	}
+
+	// Всё остальное — «показывать»: спрятать группу по ошибке хуже, чем
+	// показать лишнюю.
+	for _, raw := range []any{nil, false, "false", "", "  ", "нет", 0, 0.0, map[string]any{}} {
+		if Hidden(raw) {
+			t.Fatalf("%#v не должно прятать группу", raw)
+		}
+	}
+}
+
 func TestApplyHeadersProviderLinks(t *testing.T) {
 	// Пять ссылок провайдера, те же, что на ПК. Проверка у бота своя: адрес
 	// у него почти всегда `tg:`, а мониторинг и инструкция — обычные

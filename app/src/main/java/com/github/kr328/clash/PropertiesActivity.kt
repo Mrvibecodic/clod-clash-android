@@ -144,6 +144,18 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                         }
                     }
 
+                    // Первая подписка сразу становится активной. Сюда приходят
+                    // по ссылке «Импортировать в клиент» с сайта провайдера
+                    // (`ExternalControlActivity`), и до этой правки импорт
+                    // заканчивался серой карточкой в «Подписках»: конфиг
+                    // скачан, срок и трафик показаны, а главный экран и
+                    // «Серверы» пусты, пока не догадаешься нажать на карточку.
+                    // Условие то же, что в `AddProfileActivity`: чужой выбор
+                    // не перебиваем.
+                    if (withProfile { queryActive() } == null) {
+                        withProfile { setActive(profile) }
+                    }
+
                     setResult(RESULT_OK)
 
                     finish()

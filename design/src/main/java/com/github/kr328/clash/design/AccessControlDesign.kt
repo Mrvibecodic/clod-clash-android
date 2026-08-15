@@ -12,6 +12,8 @@ import com.github.kr328.clash.design.compose.screen.AccessControlState
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.store.ServiceStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -26,8 +28,12 @@ import kotlinx.coroutines.withContext
 class AccessControlDesign(
     context: Context,
     private val uiStore: UiStore,
+    private val srvStore: ServiceStore,
     private val selected: MutableSet<String>,
 ) : Design<AccessControlDesign.Request>(context) {
+    /** Порядок важен: экран отдаёт индекс, в хранилище лежит значение. */
+    private val modes = AccessControlMode.entries
+
     enum class Request {
         Back,
         ReloadApps,
@@ -44,6 +50,7 @@ class AccessControlDesign(
             sort = uiStore.accessControlSort,
             reverse = uiStore.accessControlReverse,
             systemApps = uiStore.accessControlSystemApp,
+            mode = modes.indexOf(srvStore.accessControlMode).coerceAtLeast(0),
         ),
     )
 
@@ -83,6 +90,13 @@ class AccessControlDesign(
                 }
             }
             is AccessControlAction.Query -> state = state.copy(query = action.value)
+            is AccessControlAction.Mode -> {
+                val mode = modes.getOrNull(action.index) ?: return
+
+                srvStore.accessControlMode = mode
+
+                state = state.copy(mode = action.index)
+            }
             is AccessControlAction.Sort -> {
                 uiStore.accessControlSort = action.value
                 state = state.copy(sort = action.value, loaded = false)
