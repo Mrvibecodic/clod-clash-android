@@ -10,9 +10,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +38,6 @@ data class GeoFileState(
 @Immutable
 data class ProviderFileState(
     val name: String,
-    val type: String,
     val updatedAt: Long,
 )
 
@@ -59,6 +58,24 @@ fun RoutingDataScreen(
         title = stringResource(R.string.clod_data_title),
         onBack = { onAction(MainAction.CloseSubScreen) },
         modifier = modifier,
+        actions = {
+            if (state.updating) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier
+                        .padding(horizontal = 13.dp)
+                        .size(22.dp),
+                )
+            } else {
+                IconButton(onClick = { onAction(MainAction.UpdateRoutingData) }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_baseline_sync),
+                        contentDescription = stringResource(R.string.update_all),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        },
     ) {
         Text(
             text = stringResource(R.string.clod_geo_hint),
@@ -77,28 +94,12 @@ fun RoutingDataScreen(
             SectionHeader(stringResource(R.string.providers))
 
             state.providers.forEach { provider ->
-                ProviderFileRow(provider)
-            }
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = { onAction(MainAction.UpdateRoutingData) },
-            enabled = !state.updating,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp),
-        ) {
-            if (state.updating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                DataRow(
+                    icon = R.drawable.ic_baseline_swap_vertical_circle,
+                    title = provider.name,
+                    subtitle = relativeTime(provider.updatedAt),
                 )
-                Spacer(Modifier.width(10.dp))
             }
-            Text(stringResource(R.string.update_all))
         }
 
         Spacer(Modifier.height(24.dp))
@@ -127,23 +128,18 @@ private fun GeoFileRow(file: GeoFileState) {
 }
 
 @Composable
-private fun ProviderFileRow(provider: ProviderFileState) {
-    DataRow(
-        icon = R.drawable.ic_baseline_swap_vertical_circle,
-        title = provider.name,
-        subtitle = provider.type,
-        trailing = provider.updatedAt.takeIf { it > 0 }?.let { relativeTime(it) },
-    )
+private fun relativeTime(millis: Long): String {
+    if (millis <= 0) return stringResource(R.string.clod_never)
+
+    val now = System.currentTimeMillis()
+
+    if (now - millis < DateUtils.MINUTE_IN_MILLIS) return stringResource(R.string.clod_just_now)
+
+    return DateUtils.getRelativeTimeSpanString(millis, now, DateUtils.MINUTE_IN_MILLIS).toString()
 }
 
-private fun relativeTime(millis: Long): String = DateUtils.getRelativeTimeSpanString(
-    millis,
-    System.currentTimeMillis(),
-    DateUtils.MINUTE_IN_MILLIS,
-).toString()
-
 @Composable
-private fun DataRow(icon: Int, title: String, subtitle: String, trailing: String?) {
+private fun DataRow(icon: Int, title: String, subtitle: String, trailing: String? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

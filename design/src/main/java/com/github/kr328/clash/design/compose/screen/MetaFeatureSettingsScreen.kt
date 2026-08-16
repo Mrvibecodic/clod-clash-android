@@ -20,11 +20,14 @@ import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.LinesRow
 import com.github.kr328.clash.design.compose.component.SectionHeader
+import com.github.kr328.clash.design.compose.component.ResetConfirmDialog
 import com.github.kr328.clash.design.compose.component.SelectRow
 
 sealed interface MetaFeatureSettingsAction {
     data object Back : MetaFeatureSettingsAction
     data object Reset : MetaFeatureSettingsAction
+    data object ConfirmReset : MetaFeatureSettingsAction
+    data object CancelReset : MetaFeatureSettingsAction
 
     data object Changed : MetaFeatureSettingsAction
 
@@ -40,6 +43,7 @@ sealed interface MetaFeatureSettingsAction {
 data class MetaFeatureSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
+    val confirmingReset: Boolean = false,
 )
 
 @Composable
@@ -275,5 +279,12 @@ fun MetaFeatureSettingsScreen(
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (state.confirmingReset) {
+        ResetConfirmDialog(
+            onConfirm = { onAction(MetaFeatureSettingsAction.ConfirmReset) },
+            onDismiss = { onAction(MetaFeatureSettingsAction.CancelReset) },
+        )
     }
 }

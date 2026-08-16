@@ -5,15 +5,14 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsAction
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsScreen
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
+import kotlinx.coroutines.withContext
 
 class MetaFeatureSettingsDesign(
     context: Context,
@@ -25,18 +24,16 @@ class MetaFeatureSettingsDesign(
 
     private var state by mutableStateOf(MetaFeatureSettingsState(configuration))
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                MetaFeatureSettingsScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        MetaFeatureSettingsScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: MetaFeatureSettingsAction) {
         when (action) {
             MetaFeatureSettingsAction.Back -> requests.trySend(Request.Back)
             MetaFeatureSettingsAction.Reset -> requests.trySend(Request.ResetOverride)
+            MetaFeatureSettingsAction.ConfirmReset -> resumeReset(true)
+            MetaFeatureSettingsAction.CancelReset -> resumeReset(false)
             MetaFeatureSettingsAction.Changed -> state = state.copy(revision = state.revision + 1)
             MetaFeatureSettingsAction.OpenOverride -> requests.trySend(Request.OpenOverride)
             MetaFeatureSettingsAction.ImportGeoIp -> requests.trySend(Request.ImportGeoIp)
@@ -46,24 +43,33 @@ class MetaFeatureSettingsDesign(
         }
     }
 
-    suspend fun requestResetConfirm(): Boolean {
-        return suspendCancellableCoroutine { ctx ->
-            val dialog = MaterialAlertDialogBuilder(context)
-                .setTitle(R.string.reset_override_settings)
-                .setMessage(R.string.reset_override_settings_message)
-                .setPositiveButton(R.string.ok) { _, _ -> ctx.resume(true) }
-                .setNegativeButton(R.string.cancel) { _, _ -> }
-                .show()
+    private var resetConfirmation: CancellableContinuation<Boolean>? = null
 
-            dialog.setOnDismissListener {
-                if (!ctx.isCompleted) {
-                    ctx.resume(false)
+    suspend fun requestResetConfirm(): Boolean {
+        return withContext(Dispatchers.Main) {
+            suspendCancellableCoroutine { continuation ->
+                resetConfirmation = continuation
+
+                state = state.copy(confirmingReset = true)
+
+                continuation.invokeOnCancellation {
+                    resetConfirmation = null
+
+                    state = state.copy(confirmingReset = false)
                 }
             }
+        }
+    }
 
-            ctx.invokeOnCancellation {
-                dialog.dismiss()
-            }
+    private fun resumeReset(confirmed: Boolean) {
+        state = state.copy(confirmingReset = false)
+
+        val continuation = resetConfirmation ?: return
+
+        resetConfirmation = null
+
+        if (continuation.isActive) {
+            continuation.resumeWith(Result.success(confirmed))
         }
     }
 }

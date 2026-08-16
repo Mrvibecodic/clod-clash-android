@@ -5,11 +5,9 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.AccessControlAction
 import com.github.kr328.clash.design.compose.screen.AccessControlScreen
 import com.github.kr328.clash.design.compose.screen.AccessControlState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.model.AccessControlMode
@@ -48,12 +46,8 @@ class AccessControlDesign(
     val apps: List<AppInfo>
         get() = state.apps
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                AccessControlScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        AccessControlScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: AccessControlAction) {

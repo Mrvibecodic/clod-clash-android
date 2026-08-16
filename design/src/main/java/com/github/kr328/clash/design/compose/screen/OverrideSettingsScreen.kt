@@ -22,12 +22,15 @@ import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.LinesRow
 import com.github.kr328.clash.design.compose.component.PairsRow
 import com.github.kr328.clash.design.compose.component.SectionHeader
+import com.github.kr328.clash.design.compose.component.ResetConfirmDialog
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.TextRow
 
 sealed interface OverrideSettingsAction {
     data object Back : OverrideSettingsAction
     data object Reset : OverrideSettingsAction
+    data object ConfirmReset : OverrideSettingsAction
+    data object CancelReset : OverrideSettingsAction
 
     data object Changed : OverrideSettingsAction
 }
@@ -37,6 +40,7 @@ data class OverrideSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
     val modeLocked: Boolean = false,
+    val confirmingReset: Boolean = false,
 )
 
 @Composable
@@ -404,6 +408,13 @@ fun OverrideSettingsScreen(
 
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    if (state.confirmingReset) {
+        ResetConfirmDialog(
+            onConfirm = { onAction(OverrideSettingsAction.ConfirmReset) },
+            onDismiss = { onAction(OverrideSettingsAction.CancelReset) },
+        )
     }
 }
 

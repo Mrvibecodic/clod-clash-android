@@ -5,7 +5,6 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.Traffic
 import com.github.kr328.clash.core.model.TunnelState
@@ -14,6 +13,7 @@ import com.github.kr328.clash.core.util.trafficUpload
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
+import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.compose.screen.MainAction
 import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
@@ -22,8 +22,6 @@ import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
-import com.github.kr328.clash.design.compose.screen.Notice
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
@@ -71,12 +69,8 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
 
     private var state by mutableStateOf(MainScreenState())
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                MainScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot(noticeInset = 80.dp) {
+        MainScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: MainAction) {
@@ -108,7 +102,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 request(Request.SetPrerelease(action.enabled))
             }
             MainAction.UpdateRoutingData -> request(Request.UpdateRoutingData)
-            MainAction.NoticeShown -> state = state.copy(notice = null)
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.ToggleFavorite -> request(Request.ToggleFavorite(action.name))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
@@ -337,16 +330,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             state = state.copy(
                 routingData = state.routingData.copy(files = files, providers = providers),
             )
-        }
-    }
-
-    private var noticeId: Long = 0
-
-    suspend fun showNotice(text: String) {
-        withContext(Dispatchers.Main) {
-            noticeId += 1
-
-            state = state.copy(notice = Notice(noticeId, text))
         }
     }
 

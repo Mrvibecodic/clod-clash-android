@@ -5,11 +5,9 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.FilesAction
 import com.github.kr328.clash.design.compose.screen.FilesScreen
 import com.github.kr328.clash.design.compose.screen.FilesState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.dialog.requestModelTextInput
 import com.github.kr328.clash.design.model.File
 import com.github.kr328.clash.design.util.ValidatorFileName
@@ -30,12 +28,8 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
 
     private var state by mutableStateOf(FilesState(currentTime = System.currentTimeMillis()))
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                FilesScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        FilesScreen(state = state, onAction = ::onAction)
     }
 
     var configurationEditable: Boolean

@@ -29,7 +29,6 @@ import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
-import com.github.kr328.clash.design.util.type
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.patchSubscriptionGroup
@@ -270,16 +269,16 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 withProfile { setActive(profile) }
                             } else {
                                 design.showToast(
-                                    DesignR.string.active_unsaved_tips,
-                                    ToastDuration.Long,
-                                ) {
-                                    setAction(DesignR.string.edit) {
+                                    resId = DesignR.string.active_unsaved_tips,
+                                    duration = ToastDuration.Long,
+                                    actionLabel = DesignR.string.edit,
+                                    onAction = {
                                         startActivity(
                                             PropertiesActivity::class.intent
                                                 .setUUID(profile.uuid),
                                         )
-                                    }
-                                }
+                                    },
+                                )
                             }
                         }
                         is MainDesign.Request.UpdateProfile -> {
@@ -591,11 +590,12 @@ class MainActivity : BaseActivity<MainDesign>() {
         val active = withProfile { queryActive() }
 
         if (active == null || !active.imported) {
-            showToast(DesignR.string.no_profile_selected, ToastDuration.Long) {
-                setAction(DesignR.string.profiles) {
-                    launch { selectTab(MainTab.Subscriptions) }
-                }
-            }
+            showToast(
+                resId = DesignR.string.no_profile_selected,
+                duration = ToastDuration.Long,
+                actionLabel = DesignR.string.profiles,
+                onAction = { launch { selectTab(MainTab.Subscriptions) } },
+            )
 
             return
         }
@@ -640,7 +640,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             pendingUpdate = null
 
             if (manual) {
-                showNotice(getString(DesignR.string.clod_update_none))
+                showToast(DesignR.string.clod_update_none, ToastDuration.Short)
             }
 
             return
@@ -739,11 +739,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         setRoutingData(
             files = GeoData.query(this@MainActivity),
             providers = updatableProviders().map {
-                ProviderFileState(
-                    name = it.name,
-                    type = it.type(this@MainActivity),
-                    updatedAt = it.updatedAt,
-                )
+                ProviderFileState(name = it.name, updatedAt = it.updatedAt)
             },
         )
     }

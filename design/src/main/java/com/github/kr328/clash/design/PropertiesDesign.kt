@@ -5,7 +5,6 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.design.compose.screen.FetchProgress
 import com.github.kr328.clash.design.compose.screen.PropertiesAction
@@ -13,7 +12,6 @@ import com.github.kr328.clash.design.compose.screen.PropertiesScreen
 import com.github.kr328.clash.design.compose.screen.PropertiesState
 import com.github.kr328.clash.design.compose.screen.isHttpUrl
 import com.github.kr328.clash.design.compose.screen.isValidInterval
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -32,12 +30,8 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
 
     private var base: Profile? = null
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                PropertiesScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        PropertiesScreen(state = state, onAction = ::onAction)
     }
 
     var profile: Profile

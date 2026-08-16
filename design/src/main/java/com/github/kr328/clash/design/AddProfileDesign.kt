@@ -5,13 +5,11 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.design.compose.screen.AddProfileAction
 import com.github.kr328.clash.design.compose.screen.AddProfileScreen
 import com.github.kr328.clash.design.compose.screen.AddProfileState
 import com.github.kr328.clash.design.compose.screen.AddProfileStep
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,12 +24,8 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
 
     private var state by mutableStateOf(AddProfileState())
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                AddProfileScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        AddProfileScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: AddProfileAction) {

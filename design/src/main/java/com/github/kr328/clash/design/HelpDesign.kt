@@ -2,10 +2,8 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.HelpAction
 import com.github.kr328.clash.design.compose.screen.HelpScreen
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 
 class HelpDesign(context: Context) : Design<HelpDesign.Request>(context) {
     sealed interface Request {
@@ -13,12 +11,8 @@ class HelpDesign(context: Context) : Design<HelpDesign.Request>(context) {
         data class OpenUrl(val url: String) : Request
     }
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                HelpScreen(onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        HelpScreen(onAction = ::onAction)
     }
 
     private fun onAction(action: HelpAction) {

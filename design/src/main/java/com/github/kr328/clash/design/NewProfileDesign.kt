@@ -5,11 +5,9 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.NewProfileAction
 import com.github.kr328.clash.design.compose.screen.NewProfileScreen
 import com.github.kr328.clash.design.compose.screen.NewProfileState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.ProfileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,12 +22,8 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
 
     private var state by mutableStateOf(NewProfileState())
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                NewProfileScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        NewProfileScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: NewProfileAction) {

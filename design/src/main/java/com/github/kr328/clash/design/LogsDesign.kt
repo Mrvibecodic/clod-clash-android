@@ -5,11 +5,9 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.LogsAction
 import com.github.kr328.clash.design.compose.screen.LogsScreen
 import com.github.kr328.clash.design.compose.screen.LogsState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.LogFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -26,12 +24,8 @@ class LogsDesign(context: Context) : Design<LogsDesign.Request>(context) {
 
     private var state by mutableStateOf(LogsState())
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                LogsScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        LogsScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: LogsAction) {

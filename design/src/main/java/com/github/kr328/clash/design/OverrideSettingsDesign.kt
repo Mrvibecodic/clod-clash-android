@@ -5,15 +5,14 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsAction
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsScreen
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
+import kotlinx.coroutines.withContext
 
 class OverrideSettingsDesign(
     context: Context,
@@ -29,32 +28,37 @@ class OverrideSettingsDesign(
         OverrideSettingsState(configuration, modeLocked = modeLocked),
     )
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                OverrideSettingsScreen(state = state, onAction = ::onAction)
+    override val root: View = composeRoot {
+        OverrideSettingsScreen(state = state, onAction = ::onAction)
+    }
+
+    private var resetConfirmation: CancellableContinuation<Boolean>? = null
+
+    suspend fun requestResetConfirm(): Boolean {
+        return withContext(Dispatchers.Main) {
+            suspendCancellableCoroutine { continuation ->
+                resetConfirmation = continuation
+
+                state = state.copy(confirmingReset = true)
+
+                continuation.invokeOnCancellation {
+                    resetConfirmation = null
+
+                    state = state.copy(confirmingReset = false)
+                }
             }
         }
     }
 
-    suspend fun requestResetConfirm(): Boolean {
-        return suspendCancellableCoroutine { ctx ->
-            val dialog = MaterialAlertDialogBuilder(context)
-                .setTitle(R.string.reset_override_settings)
-                .setMessage(R.string.reset_override_settings_message)
-                .setPositiveButton(R.string.ok) { _, _ -> ctx.resume(true) }
-                .setNegativeButton(R.string.cancel) { _, _ -> }
-                .show()
+    private fun resumeReset(confirmed: Boolean) {
+        state = state.copy(confirmingReset = false)
 
-            dialog.setOnDismissListener {
-                if (!ctx.isCompleted) {
-                    ctx.resume(false)
-                }
-            }
+        val continuation = resetConfirmation ?: return
 
-            ctx.invokeOnCancellation {
-                dialog.dismiss()
-            }
+        resetConfirmation = null
+
+        if (continuation.isActive) {
+            continuation.resumeWith(Result.success(confirmed))
         }
     }
 
@@ -62,6 +66,8 @@ class OverrideSettingsDesign(
         when (action) {
             OverrideSettingsAction.Back -> requests.trySend(Request.Back)
             OverrideSettingsAction.Reset -> requests.trySend(Request.ResetOverride)
+            OverrideSettingsAction.ConfirmReset -> resumeReset(true)
+            OverrideSettingsAction.CancelReset -> resumeReset(false)
             OverrideSettingsAction.Changed -> state = state.copy(revision = state.revision + 1)
         }
     }

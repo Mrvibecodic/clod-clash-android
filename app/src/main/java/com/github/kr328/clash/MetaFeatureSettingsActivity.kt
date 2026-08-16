@@ -3,14 +3,13 @@ package com.github.kr328.clash
 import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
+import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.util.clashDir
 import com.github.kr328.clash.util.withClash
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -120,12 +119,15 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                 val ext = "." + displayName.substringAfterLast(".")
 
                 if (!validDatabaseExtensions.contains(ext)) {
-                    MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.geofile_unknown_db_format)
-                        .setMessage(getString(R.string.geofile_unknown_db_format_message,
-                            validDatabaseExtensions.joinToString("/")))
-                        .setPositiveButton("OK") { _, _ -> }
-                        .show()
+                    design?.showToast(
+                        message = getString(R.string.geofile_unknown_db_format),
+                        duration = ToastDuration.Long,
+                        detail = getString(
+                            R.string.geofile_unknown_db_format_message,
+                            validDatabaseExtensions.joinToString("/"),
+                        ),
+                    )
+
                     return
                 }
                 val outputFileName = when (importType) {
@@ -148,11 +150,14 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                         }
                     }
                 }
-                Toast.makeText(this, getString(R.string.geofile_imported, displayName),
-                    Toast.LENGTH_LONG).show()
+                design?.showToast(
+                    getString(R.string.geofile_imported, displayName),
+                    ToastDuration.Long,
+                )
+
                 return
             }
         }
-        Toast.makeText(this, R.string.geofile_import_failed, Toast.LENGTH_LONG).show()
+        design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
     }
 }

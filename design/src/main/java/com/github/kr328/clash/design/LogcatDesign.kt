@@ -7,13 +7,11 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.design.compose.screen.LogcatAction
 import com.github.kr328.clash.design.compose.screen.LogcatScreen
 import com.github.kr328.clash.design.compose.screen.LogcatState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.ui.ToastDuration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,12 +27,8 @@ class LogcatDesign(
 
     private var state by mutableStateOf(LogcatState(streaming = streaming))
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                LogcatScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        LogcatScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: LogcatAction) {

@@ -47,14 +47,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -161,11 +157,7 @@ data class MainScreenState(
     val about: AboutState = AboutState(),
     val routingData: RoutingDataState = RoutingDataState(),
     val update: UpdateState? = null,
-    val notice: Notice? = null,
 )
-
-@Immutable
-data class Notice(val id: Long, val text: String)
 
 sealed interface MainAction {
     data object ToggleStatus : MainAction
@@ -192,7 +184,6 @@ sealed interface MainAction {
     data class SetAutoCheckUpdate(val enabled: Boolean) : MainAction
     data class SetPrerelease(val enabled: Boolean) : MainAction
     data object UpdateRoutingData : MainAction
-    data object NoticeShown : MainAction
     data class SelectSubscriptionGroup(val group: String?) : MainAction
     data class SetSubscriptionGroup(val profile: Profile, val group: String?) : MainAction
     data object NewProfile : MainAction
@@ -211,30 +202,10 @@ fun MainScreen(
     onAction: (MainAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(state.notice) {
-        val notice = state.notice ?: return@LaunchedEffect
-
-        snackbarHostState.showSnackbar(notice.text)
-
-        onAction(MainAction.NoticeShown)
-    }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = { MainBottomBar(state.selectedTab, onAction) },
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) {
-                Snackbar(
-                    snackbarData = it,
-                    shape = RoundedCornerShape(14.dp),
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                )
-            }
-        },
     ) { padding ->
         state.update?.let { UpdateDialog(it, onAction) }
 

@@ -212,10 +212,8 @@
     <string name="more">Ещё</string>
     <string name="save">Сохранить</string>
 
-    <string name="format_provider_type">%1$s(%2$s)</string>
     <string name="rule">Правило</string>
     <string name="http">HTTP</string>
-    <string name="compatible">Совместимо</string>
     <string name="format_update_provider_failure">Обновление %1$s: %2$s</string>
     <string name="update_all">Обновить всё</string>
 
@@ -346,7 +344,6 @@
     <string name="clod_geo_title">Данные маршрутизации</string>
     <string name="clod_geo_subtitle">Списки стран, сайтов и сетей</string>
     <string name="clod_geo_hint">По этим спискам ядро решает, что пускать через туннель. Их можно обновить отдельно от приложения; новые списки применятся при следующем подключении.</string>
-    <string name="clod_geo_update">Обновить всё</string>
     <string name="clod_geo_updated">Данные маршрутизации обновлены</string>
     <string name="clod_geo_update_failed">Не удалось скачать данные маршрутизации</string>
     <string name="clod_geo_missing">Не скачан</string>
@@ -402,7 +399,6 @@
     <string name="clod_no_servers_provider_title">Серверы недоступны</string>
     <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
     <string name="clod_open_settings">Настройки</string>
-    <string name="inline">В конфигурации</string>
     <string name="shortcut_toggle_short">Переключить</string>
     <string name="shortcut_toggle_long">Включить или выключить VPN</string>
     <string name="shortcut_start_short">Подключиться</string>
@@ -418,4 +414,6 @@
     <string name="clod_home_selected_server">Выбран сервер</string>
     <string name="clod_section_configuration">Конфигурация</string>
     <string name="clod_data_title">Базы и провайдеры</string>
+    <string name="clod_just_now">только что</string>
+    <string name="clod_never">не обновлялось</string>
 </resources>

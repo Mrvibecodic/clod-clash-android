@@ -6,11 +6,9 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsAction
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.store.ServiceStore
 
@@ -41,12 +39,8 @@ class NetworkSettingsDesign(
         ),
     )
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                NetworkSettingsScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        NetworkSettingsScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: NetworkSettingsAction) {

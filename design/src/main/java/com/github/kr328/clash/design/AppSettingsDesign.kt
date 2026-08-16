@@ -5,11 +5,9 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.screen.AppSettingsAction
 import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
 import com.github.kr328.clash.design.compose.screen.AppSettingsState
-import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
@@ -43,12 +41,8 @@ class AppSettingsDesign(
         ),
     )
 
-    override val root: View = ComposeView(context).apply {
-        setContent {
-            ClodClashTheme {
-                AppSettingsScreen(state = state, onAction = ::onAction)
-            }
-        }
+    override val root: View = composeRoot {
+        AppSettingsScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: AppSettingsAction) {

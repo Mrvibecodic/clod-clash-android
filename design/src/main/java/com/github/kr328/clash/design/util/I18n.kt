@@ -2,7 +2,6 @@ package com.github.kr328.clash.design.util
 
 import android.content.Context
 import com.github.kr328.clash.common.compat.preferredLocale
-import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.service.model.Profile
 import java.text.SimpleDateFormat
@@ -18,22 +17,6 @@ fun Profile.Type.toString(context: Context): String {
         Profile.Type.Url -> context.getString(R.string.url)
         Profile.Type.External -> context.getString(R.string.external)
     }
-}
-
-fun Provider.type(context: Context): String {
-    val type = when (type) {
-        Provider.Type.Proxy -> context.getString(R.string.proxy)
-        Provider.Type.Rule -> context.getString(R.string.rule)
-    }
-
-    val vehicle = when (vehicleType) {
-        Provider.VehicleType.HTTP -> context.getString(R.string.http)
-        Provider.VehicleType.File -> context.getString(R.string.file)
-        Provider.VehicleType.Inline -> context.getString(R.string.inline)
-        Provider.VehicleType.Compatible -> context.getString(R.string.compatible)
-    }
-
-    return context.getString(R.string.format_provider_type, type, vehicle)
 }
 
 @JvmOverloads

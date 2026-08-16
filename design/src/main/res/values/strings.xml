@@ -233,11 +233,8 @@
     <string name="more">More</string>
     <string name="save">Save</string>
 
-    <string name="format_provider_type">%1$s(%2$s)</string>
     <string name="rule">Rule</string>
     <string name="http">HTTP</string>
-    <string name="inline">Inline</string>
-    <string name="compatible">Compatible</string>
     <string name="format_update_provider_failure">Update %1$s: %2$s</string>
     <string name="update_all">Update All</string>
 
@@ -380,7 +377,6 @@
     <string name="clod_geo_title">Routing data</string>
     <string name="clod_geo_subtitle">Country, site and network lists</string>
     <string name="clod_geo_hint">The core decides what goes through the tunnel by these lists. They can be updated separately from the app; the new lists take effect on the next connection.</string>
-    <string name="clod_geo_update">Update all</string>
     <string name="clod_geo_updated">Routing data updated</string>
     <string name="clod_geo_update_failed">Could not download routing data</string>
     <string name="clod_geo_missing">Not downloaded</string>
@@ -426,4 +422,6 @@
     <string name="clod_home_selected_server">Selected server</string>
     <string name="clod_section_configuration">Configuration</string>
     <string name="clod_data_title">Routing data and providers</string>
+    <string name="clod_just_now">Just now</string>
+    <string name="clod_never">Never</string>
 </resources>
