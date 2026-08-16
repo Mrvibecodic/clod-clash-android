@@ -17,15 +17,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Обновление приложения из GitHub Releases: ставим APK сами, через PackageInstaller.
-         С Android 8 разрешение выдаётся конкретному приложению, глобального тумблера
-         «неизвестные источники» больше нет. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- Workaround for Android 17+ cross profile loopback networking restrictions.
-         This permission allows CMFA to connect to loopback addresses and ports bound
-         by the same app running in different profiles.
-         It can only be granted via ADB. -->
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"
         tools:ignore="ProtectedPermissions" />
 
@@ -132,11 +125,6 @@
             android:configChanges="uiMode"
             android:exported="false"
             android:label="@string/profile" />
-        <activity
-            android:name=".ProvidersActivity"
-            android:configChanges="uiMode"
-            android:exported="false"
-            android:label="@string/providers" />
         <activity
             android:name=".LogsActivity"
             android:configChanges="uiMode"

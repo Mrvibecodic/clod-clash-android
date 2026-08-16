@@ -22,17 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SubScreenScaffold
 
-/**
- * Один файл маршрутизации на диске.
- *
- * @param sizeBytes 0 — файла нет: до первого запуска он ещё не распакован
- *   из assets, и показывать вместо размера «0 Б» было бы неправдой.
- * @param updatedAt время последней записи в миллисекундах; 0 — файла нет.
- */
 @Immutable
 data class GeoFileState(
     val name: String,
@@ -41,18 +36,19 @@ data class GeoFileState(
 )
 
 @Immutable
+data class ProviderFileState(
+    val name: String,
+    val type: String,
+    val updatedAt: Long,
+)
+
+@Immutable
 data class RoutingDataState(
     val files: List<GeoFileState> = emptyList(),
+    val providers: List<ProviderFileState> = emptyList(),
     val updating: Boolean = false,
 )
 
-/**
- * «Данные маршрутизации» — списки стран, сайтов и сетей, по которым ядро решает,
- * что пускать через туннель, а что мимо.
- *
- * Это данные, а не код: их можно обновить отдельно от приложения. Само ядро так
- * не умеет — оно вкомпилировано в APK и меняется только с новой версией.
- */
 @Composable
 fun RoutingDataScreen(
     state: RoutingDataState,
@@ -60,7 +56,7 @@ fun RoutingDataScreen(
     modifier: Modifier = Modifier,
 ) {
     SubScreenScaffold(
-        title = stringResource(R.string.clod_geo_title),
+        title = stringResource(R.string.clod_data_title),
         onBack = { onAction(MainAction.CloseSubScreen) },
         modifier = modifier,
     ) {
@@ -71,10 +67,18 @@ fun RoutingDataScreen(
             modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
         )
 
-        Spacer(Modifier.height(8.dp))
+        SectionHeader(stringResource(R.string.clod_geo_title))
 
         state.files.forEach { file ->
             GeoFileRow(file)
+        }
+
+        if (state.providers.isNotEmpty()) {
+            SectionHeader(stringResource(R.string.providers))
+
+            state.providers.forEach { provider ->
+                ProviderFileRow(provider)
+            }
         }
 
         Spacer(Modifier.height(16.dp))
@@ -94,7 +98,7 @@ fun RoutingDataScreen(
                 )
                 Spacer(Modifier.width(10.dp))
             }
-            Text(stringResource(R.string.clod_geo_update))
+            Text(stringResource(R.string.update_all))
         }
 
         Spacer(Modifier.height(24.dp))
@@ -106,6 +110,40 @@ private fun GeoFileRow(file: GeoFileState) {
     val context = LocalContext.current
     val exists = file.sizeBytes > 0
 
+    DataRow(
+        icon = R.drawable.ic_baseline_domain,
+        title = file.name,
+        subtitle = if (exists) {
+            relativeTime(file.updatedAt)
+        } else {
+            stringResource(R.string.clod_geo_missing)
+        },
+        trailing = if (exists) {
+            Formatter.formatShortFileSize(context, file.sizeBytes)
+        } else {
+            null
+        },
+    )
+}
+
+@Composable
+private fun ProviderFileRow(provider: ProviderFileState) {
+    DataRow(
+        icon = R.drawable.ic_baseline_swap_vertical_circle,
+        title = provider.name,
+        subtitle = provider.type,
+        trailing = provider.updatedAt.takeIf { it > 0 }?.let { relativeTime(it) },
+    )
+}
+
+private fun relativeTime(millis: Long): String = DateUtils.getRelativeTimeSpanString(
+    millis,
+    System.currentTimeMillis(),
+    DateUtils.MINUTE_IN_MILLIS,
+).toString()
+
+@Composable
+private fun DataRow(icon: Int, title: String, subtitle: String, trailing: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -113,7 +151,7 @@ private fun GeoFileRow(file: GeoFileState) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_baseline_domain),
+            painter = painterResource(icon),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(22.dp),
@@ -121,30 +159,22 @@ private fun GeoFileRow(file: GeoFileState) {
         Spacer(Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = file.name,
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = if (exists) {
-                    // Относительное время вместо даты: важно не «когда именно»,
-                    // а «давно ли» — файл считается устаревшим, а не просроченным.
-                    DateUtils.getRelativeTimeSpanString(
-                        file.updatedAt,
-                        System.currentTimeMillis(),
-                        DateUtils.MINUTE_IN_MILLIS,
-                    ).toString()
-                } else {
-                    stringResource(R.string.clod_geo_missing)
-                },
+                text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (exists) {
+        if (trailing != null) {
             Spacer(Modifier.width(12.dp))
             Text(
-                text = Formatter.formatShortFileSize(context, file.sizeBytes),
+                text = trailing,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.util.clashDir
@@ -18,14 +19,19 @@ import java.io.File
 import java.io.FileOutputStream
 import com.github.kr328.clash.design.R
 
-
 class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
+    private var reload = false
+
     override suspend fun main() {
         val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
+        var writeBack = true
+
         defer {
-            withClash {
-                patchOverride(Clash.OverrideSlot.Persist, configuration)
+            if (writeBack) {
+                withClash {
+                    patchOverride(Clash.OverrideSlot.Persist, configuration)
+                }
             }
         }
 
@@ -39,11 +45,25 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         while (isActive) {
             select<Unit> {
                 events.onReceive {
+                    if (it == Event.ActivityStart && reload) {
+                        reload = false
 
+                        recreate()
+                    }
                 }
                 design.requests.onReceive {
                     when (it) {
                         MetaFeatureSettingsDesign.Request.Back -> finish()
+                        MetaFeatureSettingsDesign.Request.OpenOverride -> {
+                            withClash {
+                                patchOverride(Clash.OverrideSlot.Persist, configuration)
+                            }
+
+                            writeBack = false
+                            reload = true
+
+                            startActivity(OverrideSettingsActivity::class.intent)
+                        }
                         MetaFeatureSettingsDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
                                 defer {

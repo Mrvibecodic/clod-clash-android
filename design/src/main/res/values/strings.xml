@@ -46,18 +46,6 @@
 
     <string name="accept_http_content">Accept only http(s)</string>
     <string name="at_least_15_minutes">At least 15 minutes or empty</string>
-    <string name="age_secret_key">Age Secret Key</string>
-    <string name="age_secret_key_hint">AGE-SECRET-KEY-… (optional)</string>
-    <string name="age_secret_key_error">Invalid format. Key should start with AGE-SECRET-KEY-</string>
-    <string name="age_key_category">Age Key</string>
-    <string name="age_key_generate_summary">Tap to generate</string>
-    <string name="age_key_type_x25519" translatable="false">X25519</string>
-    <string name="age_key_type_hybrid" translatable="false">MLKEM768-X25519</string>
-    <string name="age_public_key">Age Public Key</string>
-    <string name="age_public_key_error">Invalid age public key</string>
-    <string name="age_key_generate">Generate</string>
-    <string name="age_key_to_public">From Secret</string>
-    <string name="age_key_copy">Copy</string>
     <string name="should_not_be_blank">Should not be blank</string>
     <string name="detail">Detail</string>
     <string name="update">Update</string>
@@ -261,7 +249,7 @@
     <string name="clash_meta_wiki">Clash Meta Wiki</string>
     <string name="clash_meta_wiki_url" translatable="false">https://wiki.metacubex.one</string>
 
-    <string name="meta_features">Meta Features</string>
+    <string name="meta_features">Core Features</string>
     <string name="unified_delay">Unified Delay</string>
     <string name="geodata_mode">Geodata Mode</string>
     <string name="tcp_concurrent">TCP Concurrent</string>
@@ -309,7 +297,6 @@
     <string name="shortcut_start_long">Start Clash service</string>
     <string name="shortcut_stop_short">Stop Clash</string>
     <string name="shortcut_stop_long">Stop Clash service</string>
-    <!-- Clod Clash: главный экран на Compose -->
     <string name="clod_tab_home">Home</string>
     <string name="clod_tab_servers">Servers</string>
     <string name="clod_tab_subscriptions">Subscriptions</string>
@@ -435,4 +422,8 @@
     <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout.</string>
     <string name="clod_secure_channel">Secure connection</string>
     <string name="clod_secure_channel_hint">The provider must support it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
+    <string name="clod_home_connected_to">Connected to</string>
+    <string name="clod_home_selected_server">Selected server</string>
+    <string name="clod_section_configuration">Configuration</string>
+    <string name="clod_data_title">Routing data and providers</string>
 </resources>

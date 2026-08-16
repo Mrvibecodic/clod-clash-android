@@ -34,32 +34,16 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 
-/**
- * Ход загрузки подписки.
- *
- * @param progress доля от 0 до 1; отрицательное значение — размер работы
- *   неизвестен, полосу надо показывать бегущей.
- */
 @Immutable
 data class FetchProgress(
     val text: String,
     val progress: Float = -1f,
 )
 
-/**
- * @param urlEditable ссылку можно менять. Только у подписки по ссылке:
- *   у профиля из файла её нет, а у внешнего там адрес, который выдало
- *   приложение-источник, — перепишешь его, и обновления перестанут приходить.
- * @param intervalEditable можно задать автообновление. Файл на диске сам
- *   собой не меняется, поэтому обновлять его неоткуда.
- * @param processing идёт сохранение с перезагрузкой подписки; пока оно идёт,
- *   экран закрывать нельзя.
- */
 @Immutable
 data class PropertiesState(
     val name: String = "",
     val url: String = "",
-    val ageSecretKey: String = "",
     val intervalMinutes: String = "",
     val urlEditable: Boolean = true,
     val intervalEditable: Boolean = true,
@@ -67,26 +51,13 @@ data class PropertiesState(
     val confirmingExit: Boolean = false,
 )
 
-/**
- * Правила, по которым поля считаются заполненными.
- *
- * Одни и те же для подсветки на экране, для записи при уходе с него
- * и для кнопки сохранения: раньше проверки жили в валидаторах диалогов,
- * и как только диалоги ушли, а поля стали править напрямую, разъехаться
- * им было бы легче лёгкого.
- */
 fun isHttpUrl(value: String): Boolean =
     value.startsWith("http://", ignoreCase = true) ||
         value.startsWith("https://", ignoreCase = true)
 
-/** Пусто — автообновление выключено. Иначе не чаще, чем раз в 15 минут. */
 fun isValidInterval(minutes: String): Boolean =
     minutes.isBlank() || (minutes.toLongOrNull() ?: 0) >= MIN_INTERVAL_MINUTES
 
-/**
- * Реже нельзя: `ProfileReceiver` не ставит будильник на меньший срок, и «5»
- * в поле означало бы выключенное автообновление при включённом на вид.
- */
 const val MIN_INTERVAL_MINUTES = 15L
 
 sealed interface PropertiesAction {
@@ -95,20 +66,11 @@ sealed interface PropertiesAction {
     data object BrowseFiles : PropertiesAction
     data class NameChanged(val value: String) : PropertiesAction
     data class UrlChanged(val value: String) : PropertiesAction
-    data class AgeSecretKeyChanged(val value: String) : PropertiesAction
     data class IntervalChanged(val value: String) : PropertiesAction
     data object ConfirmExit : PropertiesAction
     data object CancelExit : PropertiesAction
 }
 
-/**
- * Свойства подписки.
- *
- * Поля правятся прямо на экране. У CMFA каждая строка открывала отдельное
- * модальное окно с одним полем ввода: чтобы поменять имя и интервал, нужно
- * было дважды открыть и дважды закрыть диалог, а увидеть оба значения рядом
- * во время правки было нельзя.
- */
 @Composable
 fun PropertiesScreen(
     state: PropertiesState,
@@ -130,11 +92,6 @@ fun PropertiesScreen(
                     strokeWidth = 2.dp,
                 )
             } else {
-                // Заливкой, а не голым значком в шапке: сохранение — главное
-                // (и единственное) действие этого экрана, а серый значок
-                // на сером фоне шапки читался как часть рамки. Роль
-                // `secondaryContainer` — светлая, фирменного оттенка,
-                // и контраст у неё посчитан, а не подобран на глаз.
                 FilledTonalIconButton(
                     onClick = { onAction(PropertiesAction.Commit) },
                     modifier = Modifier.padding(end = 4.dp),
@@ -153,8 +110,6 @@ fun PropertiesScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            // Поля отбиты от краёв, а строка «Файлы конфигурации» — нет:
-            // она нажимается целиком, во всю ширину, как строки в «Ещё».
             Column(modifier = Modifier.padding(horizontal = 18.dp)) {
                 Tip()
 
@@ -181,8 +136,6 @@ fun PropertiesScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Пустую ссылку не подсвечиваем ошибкой: у профиля из файла её
-                // и не должно быть, а поле там всё равно недоступно.
                 val urlBroken = state.urlEditable && state.url.isNotBlank() &&
                     !isHttpUrl(state.url)
 
@@ -208,8 +161,6 @@ fun PropertiesScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Интервал в минутах. Ядро хранит его в миллисекундах, но вводить
-                // и читать миллисекунды человеку незачем.
                 val intervalBroken = !isValidInterval(state.intervalMinutes)
 
                 OutlinedTextField(
@@ -233,19 +184,6 @@ fun PropertiesScreen(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done,
                     ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = state.ageSecretKey,
-                    onValueChange = { onAction(PropertiesAction.AgeSecretKeyChanged(it)) },
-                    label = { Text(stringResource(R.string.age_secret_key)) },
-                    placeholder = { Text(stringResource(R.string.age_secret_key_hint)) },
-                    singleLine = true,
-                    enabled = !processing,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
@@ -309,10 +247,6 @@ private fun Tip() {
     }
 }
 
-/**
- * Ход сохранения. Закрыть его нельзя: на середине загрузки подписки отменять
- * нечего — ядро уже пишет файлы, и брошенный на полпути профиль не поднимется.
- */
 @Composable
 private fun ProgressDialog(progress: FetchProgress) {
     AlertDialog(

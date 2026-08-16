@@ -45,16 +45,6 @@
     <string name="accept_http_content">Принимать только http(s)</string>
     <string name="at_least_15_minutes">Не менее 15 минут или пустой</string>
     <string name="should_not_be_blank">Не должно быть пустым</string>
-    <string name="age_secret_key">Секретный ключ Age</string>
-    <string name="age_secret_key_hint">AGE-SECRET-KEY-… (необязательно)</string>
-    <string name="age_secret_key_error">Недопустимый формат. Ключ должен начинаться с AGE-SECRET-KEY-</string>
-    <string name="age_key_category">Ключ Age</string>
-    <string name="age_key_generate_summary">Нажмите, чтобы сгенерировать</string>
-    <string name="age_public_key">Открытый ключ Age</string>
-    <string name="age_public_key_error">Недействительный открытый ключ Age</string>
-    <string name="age_key_generate">Сгенерировать</string>
-    <string name="age_key_to_public">Из секретного ключа</string>
-    <string name="age_key_copy">Копировать</string>
     <string name="detail">Детали</string>
     <string name="update">Обновить</string>
     <string name="edit">Изменить</string>
@@ -236,7 +226,7 @@
 
     <string name="clash_meta_wiki">Clash Meta Wiki</string>
 
-    <string name="meta_features">Функции Meta</string>
+    <string name="meta_features">Функции ядра</string>
     <string name="unified_delay">Унифицированная задержка</string>
     <string name="geodata_mode">Режим геоданных</string>
     <string name="tcp_concurrent">Многопоточный TCP</string>
@@ -263,7 +253,6 @@
     <string name="override_destination">Override Destination</string>
     <string name="import_from_qr_no_permission">Доступ к камере ограничен. Разрешите его в настройках.</string>
     <string name="import_from_qr_exception">Произошла не обрабатываемая системная ошибка.</string>
-    <!-- Clod Clash: главный экран на Compose -->
     <string name="clod_tab_home">Главная</string>
     <string name="clod_tab_servers">Серверы</string>
     <string name="clod_tab_subscriptions">Подписки</string>
@@ -381,8 +370,6 @@
     <string name="blacklist">Чёрный список</string>
     <string name="whitelist">Белый список</string>
     <string name="fakeip_filter_mode">Режим фильтра fake-ip</string>
-    <string name="age_key_type_x25519">Ключи age (x25519)</string>
-    <string name="age_key_type_hybrid">Ключи age (гибридные)</string>
     <string name="sniff_http_ports">Порты HTTP</string>
     <string name="sniff_http_override_destination">Подменять адрес назначения для HTTP</string>
     <string name="sniff_tls_ports">Порты TLS</string>
@@ -427,4 +414,8 @@
     <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута.</string>
     <string name="clod_secure_channel">Защищённое соединение</string>
     <string name="clod_secure_channel_hint">Провайдер должен его поддерживать. Включённую защиту нельзя снять — придётся добавить подписку заново.</string>
+    <string name="clod_home_connected_to">Подключено к</string>
+    <string name="clod_home_selected_server">Выбран сервер</string>
+    <string name="clod_section_configuration">Конфигурация</string>
+    <string name="clod_data_title">Базы и провайдеры</string>
 </resources>

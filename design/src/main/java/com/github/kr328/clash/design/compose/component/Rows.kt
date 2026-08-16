@@ -23,10 +23,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 
-/**
- * Строка-селектор под кнопкой подключения: подпись сверху мелким шрифтом,
- * значение снизу. Справа шеврон и, если задан, бейдж задержки.
- */
 @Composable
 fun SelectorRow(
     label: String,
@@ -35,7 +31,6 @@ fun SelectorRow(
     modifier: Modifier = Modifier,
     leading: Painter? = null,
     trailing: @Composable (() -> Unit)? = null,
-    labelUppercase: Boolean = true,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -61,12 +56,7 @@ fun SelectorRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    // Капс — приём для служебной подписи («ГРУППА 2 ИЗ 5»).
-                    // Там, где подписью идёт имя, пришедшее от провайдера,
-                    // он отключается: имя группы превращалось в сплошные
-                    // прописные, и то же имя на соседнем экране выглядело
-                    // другим.
-                    text = if (labelUppercase) label.uppercase() else label,
+                    text = label.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -95,7 +85,6 @@ fun SelectorRow(
     }
 }
 
-/** Заголовок группы строк. */
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
@@ -106,13 +95,6 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     )
 }
 
-/**
- * Строка-переход во вкладке «Ещё»: иконка, заголовок, необязательное пояснение.
- *
- * @param subtitleMaxLines пояснение по умолчанию в одну строку с многоточием:
- *   это подпись, а не текст. Больше просят там, где обрезать нельзя, — адрес
- *   ссылки в многоточии не даёт понять, куда уводит нажатие.
- */
 @Composable
 fun ActionRow(
     title: String,

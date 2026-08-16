@@ -26,11 +26,9 @@ sealed interface MetaFeatureSettingsAction {
     data object Back : MetaFeatureSettingsAction
     data object Reset : MetaFeatureSettingsAction
 
-    /** См. [OverrideSettingsAction.Changed] — здесь ровно та же механика. */
     data object Changed : MetaFeatureSettingsAction
 
-    /** Ключи age: генерация и проверка живут в ядре, окно поднимает активити. */
-    data class OpenAgeKeys(val hybrid: Boolean) : MetaFeatureSettingsAction
+    data object OpenOverride : MetaFeatureSettingsAction
 
     data object ImportGeoIp : MetaFeatureSettingsAction
     data object ImportGeoSite : MetaFeatureSettingsAction
@@ -38,20 +36,12 @@ sealed interface MetaFeatureSettingsAction {
     data object ImportAsn : MetaFeatureSettingsAction
 }
 
-/** @param revision см. [OverrideSettingsState]. */
 @Immutable
 data class MetaFeatureSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
 )
 
-/**
- * «Функции Meta»: то, что умеет само ядро сверх обычной конфигурации.
- *
- * Sniffer определяет протокол по первым байтам соединения и подменяет адрес
- * назначения именем узла — без него правила по доменам не работают там,
- * где приложение ходит сразу по IP.
- */
 @Composable
 fun MetaFeatureSettingsScreen(
     state: MetaFeatureSettingsState,
@@ -97,19 +87,13 @@ fun MetaFeatureSettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SectionHeader(stringResource(R.string.age_key_category))
+            SectionHeader(stringResource(R.string.clod_section_configuration))
 
             ActionRow(
-                title = stringResource(R.string.age_key_type_x25519),
-                icon = painterResource(R.drawable.ic_baseline_key),
-                subtitle = stringResource(R.string.age_key_generate_summary),
-                onClick = { onAction(MetaFeatureSettingsAction.OpenAgeKeys(hybrid = false)) },
-            )
-            ActionRow(
-                title = stringResource(R.string.age_key_type_hybrid),
-                icon = painterResource(R.drawable.ic_baseline_key),
-                subtitle = stringResource(R.string.age_key_generate_summary),
-                onClick = { onAction(MetaFeatureSettingsAction.OpenAgeKeys(hybrid = true)) },
+                title = stringResource(R.string.override),
+                subtitle = stringResource(R.string.clod_settings_override_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_extension),
+                onClick = { onAction(MetaFeatureSettingsAction.OpenOverride) },
             )
 
             SectionHeader(stringResource(R.string.settings))
@@ -166,8 +150,6 @@ fun MetaFeatureSettingsScreen(
                 onSelect = { configuration.sniffer.enable = booleanValue(it); changed() },
             )
 
-            // Всё ниже настраивает сам sniffer: выключили — настраивать нечего,
-            // но строки остаются видимыми, чтобы было понятно, что выключено.
             val sniffing = configuration.sniffer.enable != false
 
             LinesRow(

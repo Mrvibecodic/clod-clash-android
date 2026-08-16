@@ -15,6 +15,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +39,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
@@ -45,10 +47,14 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,7 +93,6 @@ import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-/** Вкладки нижней навигации. Порядок совпадает с утверждённым макетом. */
 enum class MainTab {
     Home,
     Servers,
@@ -95,22 +100,11 @@ enum class MainTab {
     More,
 }
 
-/**
- * Вложенные экраны вкладки «Ещё». Открываются поверх содержимого вкладки,
- * нижняя навигация остаётся на месте — уйти с экрана можно и по стрелке,
- * и переключением вкладки.
- */
 enum class SubScreen {
     About,
     RoutingData,
 }
 
-/**
- * Одна группа прокси в том виде, в каком её показывает вкладка «Серверы».
- *
- * @param selectable группа типа Selector — узел в ней можно выбрать руками.
- *   В url-test и fallback узел выбирает ядро, и патч селектора там не сработает.
- */
 @Immutable
 data class ProxyGroupState(
     val name: String,
@@ -119,120 +113,66 @@ data class ProxyGroupState(
     val proxies: List<Proxy>,
 )
 
-/**
- * Состояние вкладки «Серверы».
- *
- * @param offline список собран из файла подписки, а не из работающего ядра:
- *   задержек нет и выбрать узел нельзя, пока туннель не поднят.
- */
 @Immutable
 data class ServersState(
     val groups: List<ProxyGroupState> = emptyList(),
     val selected: Int = 0,
     val testing: Boolean = false,
     val offline: Boolean = false,
-    /**
-     * Список из файла, но ядро при этом работает: так бывает в режиме
-     * «Прямое соединение», где ядро групп не отдаёт вовсе. Мерить задержки
-     * своим разбором конфига поверх живого ядра нельзя, а запоминать выбор
-     * «на потом» бессмысленно — человек уже подключён.
-     */
     val readOnly: Boolean = false,
-    /**
-     * Имена узлов, отмеченных звездой. Хранятся отдельно от списка, а не полем
-     * в [Proxy]: список приходит от ядра, а отметки — наши, и мешать их значило
-     * бы перекладывать набор на каждую перерисовку.
-     */
     val favorites: Set<String> = emptySet(),
 )
 
-/**
- * Подписка в том виде, в каком её показывает список: сам профиль плюс то,
- * что панель прислала заголовками (название, ссылки, объявления).
- */
 @Immutable
 data class SubscriptionItem(
     val profile: Profile,
     val panel: PanelInfo? = null,
-    /** Пользовательская группа («Личные», «Работа»); null — без группы. */
     val group: String? = null,
-    /**
-     * Абсолютный путь к логотипу провайдера (`profile-logo`), уже скачанному
-     * ядром в каталог профиля; null — показывать значок приложения.
-     */
     val logoPath: String? = null,
 ) {
-    /** Название от панели, а если его нет — то, под которым профиль сохранён. */
     val title: String
         get() = panel?.title?.takeIf { it.isNotBlank() } ?: profile.name
 
-    /**
-     * Поправка к часам устройства по часам панели, в миллисекундах.
-     *
-     * Всё, что считает «сколько осталось», должно спрашивать её, а не системные
-     * часы напрямую: на телефоне со сбитым временем срок подписки показывался
-     * бы неверно, а напоминания приходили бы не в тот день.
-     */
     fun panelClockSkew(): Long = panel?.clockSkewMillis() ?: 0
 }
 
-/** Состояние вкладки «Подписки». */
 @Immutable
 data class SubscriptionsState(
     val profiles: List<SubscriptionItem> = emptyList(),
-    /**
-     * Подписки, которые прямо сейчас обновляются.
-     *
-     * Именно множество, а не общий флаг: обновление идёт в служебном процессе
-     * (`ProfileWorker`), запускается по одной подписке и заканчивается
-     * широковещательным сообщением с её uuid. Пока крутится одна карточка,
-     * остальные должны оставаться живыми.
-     */
     val updatingUuids: Set<UUID> = emptySet(),
-    /** Выбранный фильтр по группе; null — показывать все. */
     val selectedGroup: String? = null,
 ) {
-    /** Идёт ли обновление хоть чего-нибудь: для кнопки «обновить всё» в шапке. */
     val updating: Boolean
         get() = updatingUuids.isNotEmpty()
 }
 
-/**
- * Всё, что показывает главный экран. Отдельный неизменяемый снимок вместо
- * россыпи параметров: экран перерисовывается одним `setState`, и ни один
- * промежуточный кадр не может застать половину полей обновлёнными.
- */
 @Immutable
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
-    /** Активная подписка вместе с данными панели. Null — ни одной не выбрано. */
     val active: SubscriptionItem? = null,
     val mode: TunnelState.Mode = TunnelState.Mode.Rule,
     val downloaded: String = "",
     val uploaded: String = "",
-    /** Длительность текущей сессии в секундах; 0 — таймер не показывать. */
     val sessionSeconds: Long = 0,
-    val hasProviders: Boolean = false,
     val selectedTab: MainTab = MainTab.Home,
-    /** Открытый вложенный экран; null — показывать саму вкладку. */
     val subScreen: SubScreen? = null,
     val servers: ServersState = ServersState(),
     val subscriptions: SubscriptionsState = SubscriptionsState(),
     val about: AboutState = AboutState(),
     val routingData: RoutingDataState = RoutingDataState(),
-    /** Найденное обновление; null — окно не показывать. */
     val update: UpdateState? = null,
+    val notice: Notice? = null,
 )
 
-/** Действия пользователя. Экран сам ничего не делает — только сообщает наверх. */
+@Immutable
+data class Notice(val id: Long, val text: String)
+
 sealed interface MainAction {
     data object ToggleStatus : MainAction
-    data object OpenProviders : MainAction
     data object OpenAccessControl : MainAction
     data object OpenLogs : MainAction
     data object OpenAppSettings : MainAction
     data object OpenNetworkSettings : MainAction
-    data object OpenOverrideSettings : MainAction
     data object OpenMetaSettings : MainAction
     data object OpenHelp : MainAction
     data class OpenSubScreen(val screen: SubScreen) : MainAction
@@ -252,6 +192,7 @@ sealed interface MainAction {
     data class SetAutoCheckUpdate(val enabled: Boolean) : MainAction
     data class SetPrerelease(val enabled: Boolean) : MainAction
     data object UpdateRoutingData : MainAction
+    data object NoticeShown : MainAction
     data class SelectSubscriptionGroup(val group: String?) : MainAction
     data class SetSubscriptionGroup(val profile: Profile, val group: String?) : MainAction
     data object NewProfile : MainAction
@@ -262,11 +203,6 @@ sealed interface MainAction {
     data class DeleteProfile(val profile: Profile) : MainAction
 }
 
-/**
- * Длительность переезда вкладки. 200 мс — верх диапазона, который Material
- * отводит переходам внутри экрана: короче теряется само направление, длиннее
- * начинает мешать быстрым переключениям туда-обратно.
- */
 private const val TAB_TRANSITION_MILLIS = 200
 
 @Composable
@@ -275,10 +211,30 @@ fun MainScreen(
     onAction: (MainAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.notice) {
+        val notice = state.notice ?: return@LaunchedEffect
+
+        snackbarHostState.showSnackbar(notice.text)
+
+        onAction(MainAction.NoticeShown)
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = { MainBottomBar(state.selectedTab, onAction) },
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) {
+                Snackbar(
+                    snackbarData = it,
+                    shape = RoundedCornerShape(14.dp),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        },
     ) { padding ->
         state.update?.let { UpdateDialog(it, onAction) }
 
@@ -286,14 +242,6 @@ fun MainScreen(
             when (state.subScreen) {
                 SubScreen.About -> AboutScreen(state.about, onAction)
                 SubScreen.RoutingData -> RoutingDataScreen(state.routingData, onAction)
-                // Вкладка уезжает в ту сторону, в какую человек ткнул в нижней
-                // навигации: порядок кнопок в ней тот же, что в `MainTab`,
-                // поэтому направление считается сравнением порядковых номеров.
-                // Без этого переход между четырьмя разными по плотности
-                // экранами читается как мигание.
-                //
-                // Ключ анимации — сама вкладка: обновления внутри вкладки
-                // приходят своим состоянием и переход не запускают.
                 null -> AnimatedContent(
                     targetState = state.selectedTab,
                     transitionSpec = {
@@ -321,15 +269,6 @@ fun MainScreen(
     }
 }
 
-/**
- * Нижняя навигация. Активная вкладка — пилюля с фирменным градиентом (тем же,
- * что у логотипа) и белой иконкой, подпись — цветом акцента.
- *
- * Штатный индикатор `NavigationBarItem` погашен (`indicatorColor` прозрачный),
- * пилюля нарисована в слоте иконки: серая пилюля `secondaryContainer`
- * по умолчанию делала единственную постоянно видимую панель приложения
- * самой блёклой его частью.
- */
 @Composable
 private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
@@ -390,8 +329,6 @@ private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
 @Composable
 private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
     val connected = state.status == ConnectionStatus.Connected
-    // Одна анимируемая величина на всё раскрытие экрана: карточки, размер кнопки
-    // и отступы двигаются синхронно, потому что читают её же.
     val expansion by animateFloatAsState(
         targetValue = if (connected) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -413,14 +350,8 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
         state.active?.let { active ->
             PanelBanner(active, onAction)
 
-            // Карточка подписки на главном — только когда она к месту: во время
-            // сессии (человек ради этого и открыл приложение) или когда с ней
-            // что-то не так. В спокойном отключённом состоянии экран должен
-            // оставаться пустым вокруг кнопки, как в макете.
             ActiveSubscriptionCard(
                 item = active,
-                // Когда сверху висит карточка «серверов нет», кнопки уже есть
-                // у неё, и повторять их ниже незачем.
                 showActions = noServersReason(active.profile, active.panel) == null,
                 onAction = onAction,
             )
@@ -435,20 +366,12 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             PowerButton(
                 status = state.status,
                 onClick = { onAction(MainAction.ToggleStatus) },
-                // Один и тот же размер в обоих состояниях: кнопка больше не
-                // прыгает в момент подключения. 134 dp — середина между прежними
-                // 148 (отключено) и 120 (подключено).
                 diameter = 134.dp,
-                // Таймер живёт внутри круга: снаружи он был 34 sp и весил
-                // больше самой кнопки.
                 caption = formatSession(state.sessionSeconds).takeIf {
                     connected && state.sessionSeconds > 0
                 },
             )
             Spacer(Modifier.height(16.dp))
-            // Состояние подписано пилюлей, а не заголовком в 32 sp: цвет кнопки
-            // и так говорит, подключены мы или нет, а слово рядом нужно только
-            // затем, чтобы этот цвет нельзя было прочесть неправильно.
             StatusPill(state.status)
             if (!connected) {
                 Spacer(Modifier.height(8.dp))
@@ -459,9 +382,6 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                     textAlign = TextAlign.Center,
                 )
             }
-            // Счётчики сессии — строкой под пилюлей, а не парой карточек во всю
-            // ширину: карточки на подключённом экране весили столько же, сколько
-            // кнопка, хотя отвечают на второстепенный вопрос.
             if (connected && state.downloaded.isNotBlank() && state.uploaded.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 SessionTrafficRow(downloaded = state.downloaded, uploaded = state.uploaded)
@@ -470,12 +390,6 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
         Spacer(Modifier.height(28.dp))
 
-        // Срок и трафик подписки — карточками именно в отключённом состоянии:
-        // раньше между шапкой и кнопкой здесь было пусто, и единственные цифры
-        // подписки жили строкой 12 sp в шапке. В подключённом состоянии карточки
-        // спрятаны: на том экране уже есть таймер и счётчики сессии, а сами
-        // цифры не меняются от того, поднят ли туннель. Проблемную подписку
-        // рисует ActiveSubscriptionCard — тогда карточки не дублируются.
         state.active?.let { active ->
             AnimatedVisibility(
                 visible = !connected,
@@ -489,29 +403,17 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             }
         }
 
-        // Подписью строки идёт НАСТОЯЩЕЕ имя группы, а не слово «Группа»: то, что
-        // это строка выбора, и так видно по стрелке, а вот в какой группе выбран
-        // узел — больше нигде на главном не написано. Групп нет вовсе (ядро молчит,
-        // подписки нет) — строки тоже нет: пустая строка «Прокси / Прокси» ничего
-        // не даёт и занимает место.
-        //
-        // Строки «Подписки» здесь больше нет намеренно: она вела на вкладку, до
-        // которой два сантиметра вниз, а название активной подписки и так стоит
-        // в шапке экрана.
         state.servers.groups.getOrNull(state.servers.selected)?.let { group ->
-            // Показываем узел так же, как его показывает вкладка «Серверы»:
-            // `now` — это внутреннее имя, а у панели рядом с ним лежит title
-            // (то же имя, но с флагом) и измеренная задержка. Задержка уже
-            // посчитана и лежит в состоянии — до этой правки главный экран её
-            // просто не показывал, хотя место под неё в `SelectorRow` есть.
             val current = group.proxies.firstOrNull { it.name == group.now }
 
             SelectorRow(
-                label = group.name,
-                // Имя группы задаёт провайдер, и капсом его писать нельзя:
-                // на вкладке «Серверы» та же группа подписана как есть,
-                // а здесь выходили сплошные прописные — на вид другое имя.
-                labelUppercase = false,
+                label = stringResource(
+                    if (connected) {
+                        R.string.clod_home_connected_to
+                    } else {
+                        R.string.clod_home_selected_server
+                    },
+                ),
                 value = current?.title
                     ?: group.now.ifBlank { stringResource(R.string.proxy) },
                 leading = painterResource(R.drawable.ic_nav_servers),
@@ -528,18 +430,6 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
     }
 }
 
-/**
- * Шапка главного экрана: логотип провайдера, название подписки и — второй
- * строкой — её состояние.
- *
- * Строка состояния появилась не для красоты. Срок и остаток трафика до этого
- * было видно только в подключённом состоянии: карточка подписки на главном
- * рисуется через `ActiveSubscriptionCard`, а она выходит по
- * `if (!expanded && !critical) return`. То есть на спокойном отключённом
- * экране — том самом, который человек видит сразу после запуска, — ответа на
- * вопрос «а подписка ещё жива?» не было нигде. Строка отвечает на него, не
- * занимая места у кнопки подключения.
- */
 @Composable
 private fun MainHeader(
     active: SubscriptionItem?,
@@ -555,11 +445,6 @@ private fun MainHeader(
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // clod: логотип провайдера (`profile-logo`) вместо значка приложения —
-        // это его подписка, и в шапке уместнее его бренд. Читаем локальный
-        // файл, а не адрес из заголовка: с чужого хоста картинка мигала бы на
-        // холодном старте, не работала офлайн и отдавала бы ему адрес человека
-        // при каждой отрисовке. Нет файла — остаётся значок приложения.
         val logo = rememberProviderLogo(logoPath)
 
         if (logo != null) {
@@ -582,9 +467,6 @@ private fun MainHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = profileName ?: stringResource(R.string.application_name),
-                // titleMedium вместо titleLarge: заголовок съехал на строку
-                // вверх, под ним теперь состояние, и 22 sp в паре с ним
-                // выглядели заголовком экрана, а не именем подписки.
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
@@ -602,18 +484,6 @@ private fun MainHeader(
     }
 }
 
-/**
- * Состояние подписки одной строкой: точка цвета состояния, само состояние,
- * сколько осталось дней и сколько израсходовано трафика.
- *
- * Точка нужна отдельно от слова: цветное слово «Истекает» на янтарном читается
- * хуже, чем серое слово с янтарной точкой, а на светлой теме янтарный текст
- * 12 sp ещё и не проходит по контрасту.
- *
- * Ни срока, ни лимита трафика панель может не прислать вовсе (ноль в обоих
- * полях — «ограничения нет», а не «ноль осталось»). Тогда строки просто нет:
- * «Активна · · » ничего не сообщает.
- */
 @Composable
 private fun SubscriptionSummary(item: SubscriptionItem) {
     val context = LocalContext.current
@@ -622,10 +492,6 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
     val status = subscriptionState(profile, now)
     val used = profile.upload + profile.download
 
-    // Строки читаются заранее и по отдельности: собирать их внутри `buildList`
-    // значило бы звать `stringResource` из лямбды-строителя, а это чтение
-    // ресурса в композиции по условию — Compose такое разрешает не везде,
-    // и падать это будет на сборке, а не здесь.
     val label = status.label()
     val days = if (profile.expire > 0) {
         ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
@@ -643,8 +509,6 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
 
     val parts = listOfNotNull(label, daysText, trafficText)
 
-    // Одно только состояние без цифр — это то же самое, что уже написано
-    // цветом точки; ради него строку не заводим.
     if (parts.size < 2) return
 
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -665,11 +529,6 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
     }
 }
 
-/**
- * Счётчики сессии одной строкой: скачано и отправлено, со стрелками цветом
- * направления. Зелёная — вниз (тот же зелёный, что у состояния «Подключено»),
- * синяя — вверх; серые обе сливались бы в одно число.
- */
 @Composable
 private fun StatusPill(status: ConnectionStatus) {
     val accent = when (status) {
@@ -677,10 +536,6 @@ private fun StatusPill(status: ConnectionStatus) {
         ConnectionStatus.Connecting -> ClodTheme.extraColors.statusConnecting
         ConnectionStatus.Connected -> ClodTheme.extraColors.statusConnected
     }
-    // Заливка светлым оттенком того же цвета, а не сплошная, как у пилюль
-    // задержки: те стоят в плотном списке и им нужен вес, а здесь пилюля
-    // соседствует с кнопкой того же цвета — сплошная спорила бы с ней.
-    // Отключённое состояние берёт роль темы: серый оттенок серого не читается.
     val container = if (status == ConnectionStatus.Disconnected) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
@@ -746,14 +601,6 @@ private fun SessionTrafficRow(downloaded: String, uploaded: String) {
     }
 }
 
-/**
- * Пара карточек квоты подписки: трафик с прогрессом и срок с обратным отсчётом.
- *
- * Рисуются только при живой подписке — проблемную показывает
- * `ActiveSubscriptionCard` со своими кнопками, и двум сразу на экране делать
- * нечего. Чего панель не прислала, того нет: ноль в поле — «ограничения нет»,
- * а карточка «безлимит без срока» не сообщает ничего.
- */
 @Composable
 private fun QuotaCards(item: SubscriptionItem) {
     val profile = item.profile
@@ -788,9 +635,6 @@ private fun QuotaCards(item: SubscriptionItem) {
             QuotaCard(
                 label = stringResource(R.string.clod_quota_expiry),
                 value = stringResource(R.string.clod_sub_days, days),
-                // Шкала на месяц: типичный период продления. Дальше месяца
-                // полоса полная — точность там не нужна, важен обратный отсчёт
-                // последних недель.
                 progress = (leftMillis.toFloat() / TimeUnit.DAYS.toMillis(30)).coerceIn(0f, 1f),
                 note = stringResource(
                     R.string.clod_sub_until,
@@ -852,14 +696,6 @@ private fun QuotaCard(
     }
 }
 
-/**
- * Вкладка «Ещё». Собирает то, что на десктопе живёт в боковом меню, а у CMFA
- * лежало прямо на главном экране вперемешку с кнопкой подключения.
- */
-/**
- * Часы сессии. Часы показываются, только когда они есть: «00:14:02» без часов
- * читается хуже, чем «14:02».
- */
 private fun formatSession(seconds: Long): String {
     val hours = seconds / 3600
     val minutes = (seconds % 3600) / 60
@@ -872,14 +708,6 @@ private fun formatSession(seconds: Long): String {
     }
 }
 
-/**
- * Баннер объявления и ссылки провайдера — то, что панель прислала заголовками
- * вместе с подпиской.
- *
- * Показывается только если панель что-то прислала: пустой блок на главном
- * экране занимал бы место у кнопки подключения ни за чем. Объявление серое
- * и не мигает акцентом — это информация, а не действие.
- */
 @Composable
 private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit) {
     val panel = active.panel ?: return
@@ -887,11 +715,6 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
     val noticeUrl = if (panel.announce.isNotBlank()) panel.announceUrl else panel.promoUrl
     val reason = noServersReason(active.profile, panel)
 
-    // Кнопок здесь больше нет: та же пара «Личный кабинет» и «Поддержка»
-    // рисовалась и тут, и в карточке подписки, и сходились оба условия ровно
-    // тогда, когда человек смотрит на экран внимательнее всего. Теперь пара
-    // живёт в одном месте — рядом со сроком и трафиком, то есть там, где
-    // человек и понял, что подписка кончается.
     if (notice.isBlank() && reason == null) return
 
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
@@ -912,6 +735,7 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Row(
@@ -928,14 +752,14 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                     Icon(
                         painter = painterResource(R.drawable.ic_outline_info),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = notice,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
@@ -943,7 +767,6 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
     }
 }
 
-/** Подпись режима туннеля. Ключи строк те же, что у XML-слоя. */
 @Composable
 fun modeLabel(mode: TunnelState.Mode): String = stringResource(
     when (mode) {
@@ -953,21 +776,12 @@ fun modeLabel(mode: TunnelState.Mode): String = stringResource(
     },
 )
 
-/**
- * Выбор режима туннеля. У CMFA он прятался в меню с тремя точками на экране
- * прокси; в макете это отдельный пункт в «Ещё», где его и ищут.
- *
- * Script в списке нет намеренно: ядро его больше не поддерживает, а показывать
- * пункт, который не применится, — врать пользователю.
- */
 @Composable
 private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainAction) -> Unit) {
     var picking by remember { mutableStateOf(false) }
 
     ActionRow(
         title = stringResource(R.string.clod_mode),
-        // Замок виден строкой, а не только при нажатии: человек должен понимать,
-        // почему выбор не открывается, ДО того как ткнул.
         subtitle = if (locked) {
             stringResource(R.string.clod_mode_locked, modeLabel(mode))
         } else {
@@ -978,8 +792,6 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
     )
 
     if (picking && locked) {
-        // Не список с выключенными строками, а объяснение: выбор, который
-        // ничего не делает, читается как поломка приложения.
         AlertDialog(
             onDismissRequest = { picking = false },
             title = { Text(stringResource(R.string.clod_mode)) },
@@ -1031,23 +843,6 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
     }
 }
 
-/**
- * Ссылки провайдера первым блоком настроек.
- *
- * Все пять приходят заголовками подписки: кабинет (`clod-portal-url`),
- * поддержка (`support-url`), бот (`clod-bot-url`), мониторинг
- * (`clod-monitor-url`) и инструкция (`clod-guide-url`). Порядок тот же, что
- * на ПК: человек, которому объяснили по одному клиенту, ищет их на том же
- * месте и во втором.
- *
- * Блок принадлежит ТЕКУЩЕЙ подписке и назван её именем: у разных провайдеров
- * свои кабинеты и свои боты, и перепутать их нельзя. Ни одной ссылки не
- * прислали — блока нет вовсе: пустой заголовок сообщает только о поломке.
- *
- * Первым он стоит потому, что это единственные строки на экране, которые
- * ведут не в приложение, а к тому, кто выдал подписку: настройки самого
- * приложения человек листает, а к провайдеру идёт с вопросом.
- */
 @Composable
 private fun ProviderLinksSection(active: SubscriptionItem?, onAction: (MainAction) -> Unit) {
     val links = providerLinks(active?.panel)
@@ -1056,12 +851,29 @@ private fun ProviderLinksSection(active: SubscriptionItem?, onAction: (MainActio
 
     SectionHeader(active.title)
 
-    links.forEach { link ->
-        ActionRow(
-            title = stringResource(link.title),
-            icon = painterResource(link.icon),
-            onClick = { onAction(MainAction.OpenUrl(link.url)) },
-        )
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        links.forEachIndexed { index, link ->
+            if (index > 0) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    modifier = Modifier.padding(start = 52.dp),
+                )
+            }
+
+            ActionRow(
+                title = stringResource(link.title),
+                icon = painterResource(link.icon),
+                onClick = { onAction(MainAction.OpenUrl(link.url)) },
+            )
+        }
     }
 }
 
@@ -1085,7 +897,6 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             SectionHeader(stringResource(R.string.clod_section_connection))
             ModeRow(
                 mode = state.mode,
-                // Провайдер вправе запретить смену режима (`clod-lock-mode`).
                 locked = state.active?.panel?.lockMode == true,
                 onAction = onAction,
             )
@@ -1102,34 +913,18 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 onClick = { onAction(MainAction.OpenNetworkSettings) },
             )
             ActionRow(
-                title = stringResource(R.string.clod_geo_title),
+                title = stringResource(R.string.clod_data_title),
                 subtitle = stringResource(R.string.clod_geo_subtitle),
                 icon = painterResource(R.drawable.ic_baseline_domain),
                 onClick = { onAction(MainAction.OpenSubScreen(SubScreen.RoutingData)) },
             )
-            if (state.hasProviders) {
-                ActionRow(
-                    title = stringResource(R.string.providers),
-                    icon = painterResource(R.drawable.ic_baseline_swap_vertical_circle),
-                    onClick = { onAction(MainAction.OpenProviders) },
-                )
-            }
 
-            // Промежуточного экрана «Настройки» больше нет: он состоял из четырёх
-            // строк и ничего к ним не добавлял. Сеть уехала к соединению — там её
-            // и ищут, — остальные три лежат здесь.
             SectionHeader(stringResource(R.string.clod_section_settings))
             ActionRow(
                 title = stringResource(R.string.app),
                 subtitle = stringResource(R.string.clod_settings_app_subtitle),
                 icon = painterResource(R.drawable.ic_baseline_settings),
                 onClick = { onAction(MainAction.OpenAppSettings) },
-            )
-            ActionRow(
-                title = stringResource(R.string.override),
-                subtitle = stringResource(R.string.clod_settings_override_subtitle),
-                icon = painterResource(R.drawable.ic_baseline_extension),
-                onClick = { onAction(MainAction.OpenOverrideSettings) },
             )
             ActionRow(
                 title = stringResource(R.string.meta_features),
@@ -1165,14 +960,6 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
     }
 }
 
-/**
- * Логотип провайдера из локального файла.
- *
- * Декодируем один раз на путь: картинка меняется только вместе с обновлением
- * подписки, а перечитывать её на каждую перерисовку главного экрана — это
- * чтение с диска в композиции. Не прочиталась (файл удалили, формат не тот) —
- * возвращаем null, и шапка берёт значок приложения.
- */
 @Composable
 private fun rememberProviderLogo(path: String?): ImageBitmap? = remember(path) {
     if (path.isNullOrBlank()) return@remember null

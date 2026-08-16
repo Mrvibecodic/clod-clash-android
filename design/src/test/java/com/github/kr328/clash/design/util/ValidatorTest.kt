@@ -4,28 +4,18 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Проверки полей ввода: имя файла профиля, адрес подписки, интервал
- * автообновления. Всё это человек набирает руками, и ошибку надо ловить
- * до того, как она уедет в конфигурацию.
- *
- * `ValidatorAgeSecretKey` сюда не входит намеренно: он спрашивает ядро,
- * а ядра на JVM нет.
- */
 class ValidatorTest {
     @Test
     fun `имя файла без разделителей пути`() {
         assertTrue(ValidatorFileName("config.yaml"))
         assertTrue(ValidatorFileName("моя подписка.yaml"))
 
-        // Косая черта увела бы файл из каталога профиля.
         assertFalse(ValidatorFileName("sub/config.yaml"))
         assertFalse(ValidatorFileName("*.yaml"))
         assertFalse(ValidatorFileName("a%b"))
         assertFalse(ValidatorFileName("a&b"))
         assertFalse(ValidatorFileName("a\nb"))
 
-        // Одни пробелы — не имя.
         assertFalse(ValidatorFileName("   "))
         assertFalse(ValidatorFileName(""))
     }
@@ -35,7 +25,6 @@ class ValidatorTest {
         assertTrue(ValidatorHttpUrl("https://panel.example.com/sub"))
         assertTrue(ValidatorHttpUrl("http://panel.example.com/sub"))
 
-        // Регистр схемы человек не обязан соблюдать.
         assertTrue(ValidatorHttpUrl("HTTPS://panel.example.com/sub"))
 
         assertFalse(ValidatorHttpUrl("panel.example.com/sub"))
@@ -45,7 +34,6 @@ class ValidatorTest {
 
     @Test
     fun `интервал автообновления не меньше четверти часа`() {
-        // Пусто — «не обновлять», это законный ответ.
         assertTrue(ValidatorAutoUpdateInterval(""))
         assertTrue(ValidatorAutoUpdateInterval("15"))
         assertTrue(ValidatorAutoUpdateInterval("1440"))
@@ -54,7 +42,6 @@ class ValidatorTest {
         assertFalse(ValidatorAutoUpdateInterval("0"))
         assertFalse(ValidatorAutoUpdateInterval("-60"))
 
-        // Не число — тоже отказ, а не «ноль минут».
         assertFalse(ValidatorAutoUpdateInterval("часто"))
     }
 

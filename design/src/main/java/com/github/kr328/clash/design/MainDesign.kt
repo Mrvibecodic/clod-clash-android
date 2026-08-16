@@ -13,6 +13,7 @@ import com.github.kr328.clash.core.util.trafficDownload
 import com.github.kr328.clash.core.util.trafficUpload
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.screen.GeoFileState
+import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.compose.screen.MainAction
 import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
@@ -21,6 +22,7 @@ import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
+import com.github.kr328.clash.design.compose.screen.Notice
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
@@ -29,41 +31,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Главный экран. Первый экран, переехавший с XML+DataBinding на Compose.
- *
- * Публичный контракт намеренно оставлен прежним — набор suspend-сеттеров плюс
- * канал [requests]: `MainActivity` не должна знать, чем нарисован экран, и при
- * переезде остальных экранов её цикл событий не переписывается каждый раз.
- */
 class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     sealed interface Request {
         data object ToggleStatus : Request
-        data object OpenProviders : Request
         data object OpenAccessControl : Request
         data object OpenLogs : Request
 
-        /**
-         * Экраны настроек. Раньше за ними стоял общий экран-список из четырёх
-         * строк; теперь строки лежат прямо во вкладке «Ещё», и каждая ведёт
-         * в свой экран напрямую.
-         */
         data object OpenAppSettings : Request
         data object OpenNetworkSettings : Request
-        data object OpenOverrideSettings : Request
         data object OpenMetaSettings : Request
         data object OpenHelp : Request
 
-        /** Открыт экран «О приложении» — нужны версии и текущие настройки обновления. */
         data object LoadAbout : Request
         data class SetAutoCheckUpdate(val enabled: Boolean) : Request
         data class SetPrerelease(val enabled: Boolean) : Request
 
-        /** Открыт экран «Данные маршрутизации» — нужен список файлов с диска. */
         data object LoadRoutingData : Request
         data object UpdateRoutingData : Request
 
-        /** Перечитать имена групп: состав меняется при смене профиля. */
         data object ReloadProxies : Request
         data class ReloadGroup(val index: Int) : Request
         data class SelectProxy(val index: Int, val name: String) : Request
@@ -84,11 +69,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class SetSubscriptionGroup(val profile: Profile, val group: String?) : Request
     }
 
-    /**
-     * Состояние экрана одним снимком, а не отдельным состоянием на каждое поле:
-     * Compose получает ровно одно изменение на обновление, и рекомпозиция не идёт
-     * по нескольку раз на один тик трафика.
-     */
     private var state by mutableStateOf(MainScreenState())
 
     override val root: View = ComposeView(context).apply {
@@ -102,20 +82,15 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     private fun onAction(action: MainAction) {
         when (action) {
             MainAction.ToggleStatus -> request(Request.ToggleStatus)
-            MainAction.OpenProviders -> request(Request.OpenProviders)
             MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenAppSettings -> request(Request.OpenAppSettings)
             MainAction.OpenNetworkSettings -> request(Request.OpenNetworkSettings)
-            MainAction.OpenOverrideSettings -> request(Request.OpenOverrideSettings)
             MainAction.OpenMetaSettings -> request(Request.OpenMetaSettings)
             MainAction.OpenHelp -> request(Request.OpenHelp)
             is MainAction.OpenSubScreen -> {
                 state = state.copy(subScreen = action.screen)
 
-                // Данные подтягиваются на открытии, а не заранее: держать в
-                // памяти версию ядра и размеры файлов ради экрана, который
-                // открывают раз в месяц, незачем.
                 when (action.screen) {
                     SubScreen.About -> request(Request.LoadAbout)
                     SubScreen.RoutingData -> request(Request.LoadRoutingData)
@@ -123,8 +98,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             }
             MainAction.CloseSubScreen -> state = state.copy(subScreen = null)
             is MainAction.SetAutoCheckUpdate -> {
-                // Переключатель двигается сразу, не дожидаясь записи в хранилище:
-                // иначе он подвисает под пальцем на время межпроцессного вызова.
                 state = state.copy(about = state.about.copy(autoCheckUpdate = action.enabled))
 
                 request(Request.SetAutoCheckUpdate(action.enabled))
@@ -135,6 +108,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 request(Request.SetPrerelease(action.enabled))
             }
             MainAction.UpdateRoutingData -> request(Request.UpdateRoutingData)
+            MainAction.NoticeShown -> state = state.copy(notice = null)
             MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
             is MainAction.ToggleFavorite -> request(Request.ToggleFavorite(action.name))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
@@ -142,8 +116,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
             MainAction.UpdateNow -> request(Request.UpdateNow)
             MainAction.UpdateSkip -> request(Request.UpdateSkip)
-            // «Позже» — чисто экранное действие: окно закрывается, ничего
-            // никуда не сообщается, при следующей проверке предложим снова.
             MainAction.UpdateLater -> state = state.copy(update = null)
             is MainAction.SelectSubscriptionGroup ->
                 state = state.copy(
@@ -171,9 +143,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                     else -> {
                         request(Request.SelectProxy(state.servers.selected, action.name))
 
-                        // До подключения выбор ничего видимого не меняет: узел
-                        // просто ложится в базу. Без подсказки нажатие выглядит
-                        // как несработавшее.
                         if (state.servers.offline) {
                             toast(R.string.clod_select_offline)
                         }
@@ -181,13 +150,9 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 }
             }
 
-            // Переключение вкладки закрывает вложенный экран: он живёт внутри
-            // вкладки, и оставлять его поверх соседней было бы враньём.
             is MainAction.SelectTab -> when (action.tab) {
                 MainTab.Servers -> {
                     state = state.copy(selectedTab = MainTab.Servers, subScreen = null)
-                    // Состав групп меняется при смене профиля, а список задержек
-                    // протухает — перечитываем при каждом заходе на вкладку.
                     request(Request.ReloadProxies)
                 }
                 MainTab.Home, MainTab.More, MainTab.Subscriptions ->
@@ -196,7 +161,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /** Короткая подсказка вместо тишины, когда нажатие ничего не может сделать. */
     private fun toast(resId: Int) {
         launch { showToast(resId, ToastDuration.Long) }
     }
@@ -215,10 +179,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /**
-     * Промежуточное состояние: команда на запуск отдана, туннель ещё не поднялся.
-     * Сбрасывается следующим [setClashRunning] — его присылает событие службы.
-     */
     suspend fun setConnecting() {
         withContext(Dispatchers.Main) {
             if (state.status == ConnectionStatus.Disconnected) {
@@ -233,7 +193,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /** Прогресс загрузки обновления; отрицательный — размер неизвестен. */
     suspend fun setUpdateProgress(progress: Float) {
         withContext(Dispatchers.Main) {
             state = state.copy(
@@ -263,15 +222,9 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /** Индекс группы, открытой на вкладке «Серверы». */
     val selectedGroup: Int
         get() = state.servers.selected
 
-    /**
-     * Имена групп. Уже загруженные узлы переносятся по совпадению имени: без
-     * этого возврат на вкладку каждый раз мигал бы пустым списком, хотя данные
-     * не изменились.
-     */
     suspend fun setProxyGroupNames(
         names: List<String>,
         offline: Boolean = false,
@@ -328,7 +281,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /** Переключить вкладку снаружи: например, из подсказки «подписка не выбрана». */
     suspend fun selectTab(tab: MainTab) {
         withContext(Dispatchers.Main) {
             state = state.copy(selectedTab = tab)
@@ -341,39 +293,15 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /**
-     * Есть ли хоть одна подписка.
-     *
-     * Спрашивается сразу после первой загрузки, чтобы не ходить в базу второй
-     * раз: список уже прочитан и разложен по состоянию.
-     */
     val hasProfiles: Boolean
         get() = state.subscriptions.profiles.isNotEmpty()
 
-    /**
-     * Какие подписки сейчас обновляются.
-     *
-     * Набор целиком, а не «добавь/убери»: он живёт в активити, где его сводят
-     * запрос на обновление и широковещательное сообщение о завершении из
-     * служебного процесса. Экрану остаётся показать то, что уже сведено.
-     */
     suspend fun setUpdatingProfiles(uuids: Set<UUID>) {
         withContext(Dispatchers.Main) {
             state = state.copy(subscriptions = state.subscriptions.copy(updatingUuids = uuids))
         }
     }
 
-    suspend fun setHasProviders(has: Boolean) {
-        withContext(Dispatchers.Main) {
-            state = state.copy(hasProviders = has)
-        }
-    }
-
-    /**
-     * Только номер версии. Отдельно от [setAbout], потому что нужен раньше:
-     * он стоит подписью к пункту «О приложении», а версию ядра до открытия
-     * самого экрана спрашивать дорого.
-     */
     suspend fun setAppVersion(versionName: String) {
         withContext(Dispatchers.Main) {
             state = state.copy(about = state.about.copy(versionName = versionName))
@@ -398,16 +326,27 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
-    /** Идёт проверка обновления: кнопка на экране «О приложении» занята. */
     suspend fun setUpdateChecking(checking: Boolean) {
         withContext(Dispatchers.Main) {
             state = state.copy(about = state.about.copy(checking = checking))
         }
     }
 
-    suspend fun setRoutingData(files: List<GeoFileState>) {
+    suspend fun setRoutingData(files: List<GeoFileState>, providers: List<ProviderFileState>) {
         withContext(Dispatchers.Main) {
-            state = state.copy(routingData = state.routingData.copy(files = files))
+            state = state.copy(
+                routingData = state.routingData.copy(files = files, providers = providers),
+            )
+        }
+    }
+
+    private var noticeId: Long = 0
+
+    suspend fun showNotice(text: String) {
+        withContext(Dispatchers.Main) {
+            noticeId += 1
+
+            state = state.copy(notice = Notice(noticeId, text))
         }
     }
 
