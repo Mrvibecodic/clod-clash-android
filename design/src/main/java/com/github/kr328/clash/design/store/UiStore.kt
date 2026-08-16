@@ -42,13 +42,6 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
-    /**
-     * Избранные узлы — свои у каждой подписки.
-     *
-     * Ключ динамический, поэтому не делегатом: у разных подписок узлы
-     * называются одинаково («Нидерланды 1»), и общий набор отмечал бы
-     * звездой чужие серверы.
-     */
     fun favorites(profile: UUID): Set<String> {
         return store.provider.getStringSet(favoritesKey(profile), emptySet())
     }

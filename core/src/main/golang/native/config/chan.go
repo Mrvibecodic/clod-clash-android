@@ -24,42 +24,20 @@ import (
 	"github.com/metacubex/mihomo/log"
 )
 
-// Защищённый канал до прослойки (протокол c1).
-//
-// Признак ставится из Kotlin перед загрузкой — тем же способом, каким ядру
-// отдаётся секретный ключ age: менять подпись `fetchAndValid` через Go export →
-// C → JNI ради одного флага дороже, чем поставить его отдельным вызовом.
-//
-// Ключ прослойки, закреплённый при первом успехе, живёт файлом рядом
-// с конфигурацией. В Room его класть незачем: он относится к подписке,
-// переезжает вместе с её каталогом и не нужен ни одному экрану.
 var secureChannel atomic.Bool
 
 var errChanFingerprint = errors.New("clod-chan: отпечаток chrome недоступен в ядре")
 
 var errChanAlpn = errors.New("clod-chan: прослойка выбрала не http/1.1")
 
-// SetSecureChannel — включить защищённый канал для следующей загрузки.
 func SetSecureChannel(enabled bool) {
 	secureChannel.Store(enabled)
 }
 
-// SecureChannel — текущий признак; нужен разборщику ответа.
 func SecureChannel() bool {
 	return secureChannel.Load()
 }
 
-// Как защищённый запрос выглядит снаружи.
-//
-// Настоящий User-Agent, `x-hwid` и карточка устройства едут внутрь шифра,
-// а наружу уходит набор обычного браузера. Пустой UA хуже отсутствия
-// маскировки: часть WAF режет запросы без него.
-//
-// Набор заголовков — от того же Chrome, чьим рукопожатием мы представляемся
-// ниже: хромовский ClientHello при заголовках curl — это несоответствие,
-// которое антибот-системы CDN ловят лучше, чем честного неизвестного клиента.
-// Порядок здесь ни на что не влияет: net/http всё равно пишет заголовки
-// отсортированными, и повторить порядок Chrome можно только своим клиентом.
 var chanBrowserHeaders = [][2]string{
 	{"sec-ch-ua", `"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"`},
 	{"sec-ch-ua-mobile", "?0"},
@@ -74,33 +52,11 @@ var chanBrowserHeaders = [][2]string{
 	{"accept-language", "en-US,en;q=0.9"},
 }
 
-// chanClient — HTTP-клиент защищённого запроса.
-//
-// Рукопожатие TLS подменяется на хромовское через uTLS, который уже лежит
-// в дереве ядра ради Reality. Без этого клиент опознаётся по отпечатку
-// (JA3/JA4) как приложение на Go, а списками отпечатков блокировки как раз
-// и работают.
-//
-// ALPN сознательно только `http/1.1`: настоящий Chrome предлагает и `h2`,
-// но говорить по нему мы пока не умеем, а предложить и не поддержать —
-// это разрыв соединения. В JA4 разница видна, в JA3 — нет; полноценный `h2`
-// с хромовскими SETTINGS — отдельная работа.
-//
-// ВАЖНО: одного `config.NextProtos` для этого НЕДОСТАТОЧНО. Отпечаток —
-// это готовый ClientHello, и его расширение ALPN не читает настройки, а
-// ЗАТИРАЕТ их: `ALPNExtension.writeToUConn` кладёт в `config.NextProtos`
-// свой список (`h2`, `http/1.1`). Пока правки не было, прослойка за CDN
-// выбирала `h2`, а клиент читал ответ как HTTP/1.1 и падал на
-// «malformed HTTP response "\x00\x00\x12\x04…"» — это кадр SETTINGS.
-// Расширение правится уже в собранном рукопожатии — тем же помощником
-// ядра, которым это делает websocket.
 func chanClient() *http.Client {
 	transport := &http.Transport{
 		DisableKeepAlives:   true,
 		TLSHandshakeTimeout: 10 * time.Second,
 		DialTLSContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			// Дозваниваемся ровно так же, как остальные запросы ядра:
-			// через туннель, если он поднят, иначе напрямую.
 			conn, err := inner.HandleTcp(inner.GetTunnel(), address, "")
 			if err != nil {
 				conn, err = dialer.DialContext(ctx, network, address)
@@ -144,8 +100,6 @@ func chanClient() *http.Client {
 				return nil, err
 			}
 
-			// Страховка на будущее: если ALPN снова уедет, ошибка должна
-			// называть причину, а не показывать человеку кадр HTTP/2.
 			if proto := tlsConn.ConnectionState().NegotiatedProtocol; proto != "" && proto != "http/1.1" {
 				_ = tlsConn.Close()
 
@@ -186,25 +140,11 @@ func writeChanPin(dir string, pin []byte) {
 	_ = os.WriteFile(chanPinFile(dir), []byte(base64.RawURLEncoding.EncodeToString(pin)), 0600)
 }
 
-// openUrlSecure — загрузка подписки по защищённому каналу.
-//
-// Наружу не уходит ничего, кроме пути `/c1/…`: ни адреса подписки, ни `x-hwid`,
-// ни карточки устройства. Ответ приходит сплошным шифротекстом, из которого
-// восстанавливаются и тело, и все заголовки панели — дальше по коду они
-// разбираются ровно теми же функциями, что и в открытом режиме.
 func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, fetchHeader, error) {
 	pin := readChanPin(dir)
 
 	answer, err := chanRound(ctx, url, pin)
 	if err != nil && pin != nil {
-		// Закреплённый ключ мог перестать существовать: прослойку переставили,
-		// базу потеряли, ключ сменили дважды подряд. Тогда закрепление — это
-		// кирпич навсегда: прослойка отвечает как на мусорный путь, а клиент
-		// упрямо шлёт тот же отпечаток. Один повтор без закрепления лечит это
-		// сам, и заново закрепляет уже настоящий ключ.
-		//
-		// На открытый HTTP при этом не откатываемся НИКОГДА: повтор идёт по
-		// тому же защищённому каналу, только без DH с долгоживущим ключом.
 		log.Warnln("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
 
 		answer, err = chanRound(ctx, url, nil)
@@ -238,8 +178,6 @@ func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, 
 	}, nil
 }
 
-// chanRound — один защищённый запрос с заданным закреплённым ключом
-// (или без него, если pin == nil).
 func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, error) {
 	device := app.DeviceHeaders()
 

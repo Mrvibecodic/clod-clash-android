@@ -19,14 +19,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import com.github.kr328.clash.design.R
 
-/**
- * Угол поворота для иконки обновления.
- *
- * Бесконечная анимация создаётся ТОЛЬКО пока [spinning] истинно: иначе кадр
- * перерисовывался бы шестьдесят раз в секунду всё время, что открыт экран,
- * ради неподвижной картинки. Когда ветка меняется, состояние анимации
- * выбрасывается вместе с ней, и следующий запуск начинается с нуля градусов.
- */
 @Composable
 private fun syncRotation(spinning: Boolean): State<Float> {
     if (!spinning) return remember { mutableFloatStateOf(0f) }
@@ -37,9 +29,6 @@ private fun syncRotation(spinning: Boolean): State<Float> {
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            // Линейно и без пауз: любое замедление на краю оборота читается как
-            // подвисание, а именно от подозрения «оно вообще живое?» иконка
-            // и крутится.
             animation = tween(durationMillis = 900, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
@@ -47,7 +36,6 @@ private fun syncRotation(spinning: Boolean): State<Float> {
     )
 }
 
-/** Иконка обновления, которая крутится, пока [spinning]. */
 @Composable
 fun SyncIcon(
     spinning: Boolean,
@@ -55,10 +43,6 @@ fun SyncIcon(
     tint: Color,
     modifier: Modifier = Modifier,
 ) {
-    // Значение читается ВНУТРИ лямбды graphicsLayer: так кадр анимации
-    // пересобирает только слой отрисовки. Прочитай мы `angle.value` здесь,
-    // в теле, — иконка рекомпозировалась бы шестьдесят раз в секунду вместе
-    // с загрузкой painter'а.
     val angle = syncRotation(spinning)
 
     Icon(
@@ -69,15 +53,6 @@ fun SyncIcon(
     )
 }
 
-/**
- * Кнопка обновления в шапке.
- *
- * Пока идёт обновление, кнопка выключена — иначе каждое повторное нажатие
- * ставило бы в очередь ещё один поход в сеть за тем же файлом, а человек
- * жмёт повторно именно тогда, когда не понял, идёт ли что-нибудь вообще.
- * Цвет на время работы — фирменный: выключенная кнопка не должна выглядеть
- * недоступной, она выглядит занятой.
- */
 @Composable
 fun SyncIconButton(
     spinning: Boolean,

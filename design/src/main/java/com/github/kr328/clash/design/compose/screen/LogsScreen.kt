@@ -27,15 +27,6 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.design.util.format
 
-/**
- * @param loaded каталог уже прочитан. Отдельно от пустого списка: до чтения
- *   с диска список тоже пуст, и без этого флага экран на первом кадре успевал
- *   мигнуть надписью «логов нет».
- * @param confirmingDelete показан вопрос об удалении всей истории. Часть
- *   состояния экрана, а не отдельный системный диалог: экран сам решает,
- *   что показывает, и снаружи это выглядит как одно состояние, а не как
- *   окно, живущее своей жизнью.
- */
 @Immutable
 data class LogsState(
     val files: List<LogFile> = emptyList(),
@@ -52,12 +43,6 @@ sealed interface LogsAction {
     data class OpenFile(val file: LogFile) : LogsAction
 }
 
-/**
- * Экран логов: запуск живой записи сверху, сохранённые файлы ниже.
- *
- * Список на `LazyColumn` вместо `RecyclerView` с адаптером — отдельного
- * класса-адаптера и разметки строки больше не нужно.
- */
 @Composable
 fun LogsScreen(
     state: LogsState,
@@ -71,7 +56,6 @@ fun LogsScreen(
         onBack = { onAction(LogsAction.Back) },
         modifier = modifier,
         actions = {
-            // Кнопка нужна, только когда есть что удалять.
             if (state.files.isNotEmpty()) {
                 IconButton(onClick = { onAction(LogsAction.RequestDeleteAll) }) {
                     Icon(

@@ -23,14 +23,6 @@ interface ModelProgressBarScope {
     suspend fun configure(block: suspend ModelProgressBarConfigure.() -> Unit)
 }
 
-/**
- * Диалог выполнения на время долгой работы: показывается на входе в [block]
- * и закрывается на выходе из него, в том числе по ошибке.
- *
- * Содержимое — Compose поверх материаловской рамки. Значения хранятся
- * состоянием Compose, поэтому `configure` просто присваивает поля, а
- * перерисовку делает сам Compose; правки идут с главного потока, как и раньше.
- */
 suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.() -> Unit) {
     var indeterminate by mutableStateOf(true)
     var message by mutableStateOf<String?>(null)

@@ -9,7 +9,6 @@ import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 
 class ApkBrokenDesign(context: Context) : Design<ApkBrokenDesign.Request>(context) {
     sealed interface Request {
-        /** У экрана раньше не было своего выхода вовсе — только системная кнопка. */
         data object Back : Request
 
         data class OpenUrl(val url: String) : Request

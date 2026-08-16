@@ -27,7 +27,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
 
     init {
         launch {
-            Database.database //.init
+            Database.database
 
             ProfileReceiver.rescheduleAll(context)
         }
@@ -86,8 +86,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
             download = imported.download,
             expire = imported.expire,
             ageSecretKey = imported.ageSecretKey,
-            // clod:chan — копия подписки наследует защиту: иначе её
-            // можно было бы снять клонированием профиля.
             secure = imported.secure,
         )
 
@@ -132,7 +130,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 download = 0,
                 expire = 0,
                 ageSecretKey = ageSecretKey,
-                // Правка свойств защиту не трогает: `pending.copy` сохраняет её.
             )
 
             PendingDao().update(newPending)

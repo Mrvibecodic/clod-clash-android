@@ -38,14 +38,6 @@ sealed interface NewProfileAction {
     data class Detail(val provider: ProfileProvider) : NewProfileAction
 }
 
-/**
- * Экран «Новый профиль»: откуда взять подписку.
- *
- * Первые три строки свои (файл, ссылка, QR), дальше — приложения, умеющие
- * отдать ссылку по намерению `ACTION_PROVIDE_URL`. У них долгое нажатие
- * открывает системные сведения о приложении — так можно понять, что это
- * за строка взялась в списке, и отключить её источник.
- */
 @Composable
 fun NewProfileScreen(
     state: NewProfileState,
@@ -58,10 +50,6 @@ fun NewProfileScreen(
         modifier = modifier,
     ) { padding ->
         LazyColumn(contentPadding = padding) {
-            // Ключ по номеру: у внешних поставщиков нет ничего заведомо
-            // уникального — два приложения одного разработчика легко дают
-            // одинаковые название и пояснение. Список за время жизни экрана
-            // не меняется, так что номер здесь честнее любого поля.
             itemsIndexed(state.providers, key = { index, _ -> index }) { _, provider ->
                 ProviderRow(
                     provider = provider,

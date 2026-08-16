@@ -32,51 +32,24 @@ import java.text.DateFormat
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-/**
- * Почему подключаться не к чему.
- *
- * Сервис подписки, когда выдавать нечего, не отвечает ошибкой: он отвечает
- * успехом и кладёт вместо серверов узлы-обманки, которые ядро уже выбросило
- * фильтром. Пустой список без объяснения читается как поломка приложения,
- * поэтому причину нужно назвать — и назвать ту, которая есть на самом деле.
- *
- * Порядок проверок не случаен: отказ по устройству перекрывает всё остальное,
- * потому что в этом случае срок и трафик могут быть в полном порядке.
- */
 enum class NoServersReason {
-    /** Устройств больше, чем разрешено подпиской. */
     DeviceLimit,
 
-    /** Подписка требует опознания устройства, а оно выключено. */
     DeviceNotIdentified,
 
-    /** Срок подписки закончился. */
     Expired,
 
-    /** Трафик израсходован полностью. */
     Traffic,
 
-    /**
-     * Срок и трафик в порядке, а серверов нет. Отключённую подписку
-     * и ненастроенные серверы по её данным не различить, и врать про причину
-     * нельзя — говорим ровно то, что знаем.
-     */
     Provider,
 }
 
-/** Причина про устройство, а не про подписку: только к ним относится `clod-hwid-limit`. */
 private val NoServersReason.isDeviceRelated: Boolean
     get() = this == NoServersReason.DeviceLimit || this == NoServersReason.DeviceNotIdentified
 
 private const val HWID_LIMIT_REACHED = "limit"
 private const val HWID_NOT_SUPPORTED = "not-supported"
 
-/**
- * Причина или `null`, если серверы выданы и всё в порядке.
- *
- * @param now системное время; передаётся снаружи, чтобы карточка и таймеры
- *   на одном экране отвечали на один вопрос одинаково.
- */
 fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.currentTimeMillis()): NoServersReason? {
     when (panel?.hwidState) {
         HWID_LIMIT_REACHED -> return NoServersReason.DeviceLimit
@@ -96,13 +69,6 @@ fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.cur
     return NoServersReason.Provider
 }
 
-/**
- * Карточка «подключаться не к чему»: что случилось и что с этим делать.
- *
- * Платёжных кнопок здесь нет — их нет во всём приложении. Остаются «Поддержка»
- * (`support-url`) и, для неопознанного устройства, переход в настройки. Нет
- * адреса — нет кнопки: кнопка, ведущая в никуда, хуже её отсутствия.
- */
 @Composable
 fun NoServersCard(
     reason: NoServersReason,
@@ -146,10 +112,6 @@ fun NoServersCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            // clod: слово провайдера про заблокированное устройство —
-            // из `clod-hwid-limit`. Отдельный заголовок, а не `announce`:
-            // объявление на главной видят все, а здесь нужно объяснение
-            // одному человеку, у которого не обновляется подписка.
             val providerNote = panel?.hwidLimitMessage.orEmpty()
 
             if (providerNote.isNotBlank() && reason.isDeviceRelated) {
@@ -182,12 +144,6 @@ private fun Actions(
     val support = panel?.supportUrl.orEmpty()
     val portal = panel?.portalUrl.orEmpty()
 
-    // Единственное действие, которое приложение может предложить само, —
-    // включить опознание устройства; там дело в настройке клиента, и посылать
-    // человека в личный кабинет незачем. Во всех остальных случаях — срок,
-    // трафик, лимит устройств — решение на стороне провайдера, и главной
-    // кнопкой идёт личный кабинет: платёжных кнопок в клиенте нет, и это
-    // единственная ссылка, ведущая к оплате. Нет кабинета — остаётся поддержка.
     val primary: Pair<Int, () -> Unit>? = when {
         reason == NoServersReason.DeviceNotIdentified -> R.string.clod_open_settings to onOpenSettings
         portal.isNotBlank() -> R.string.clod_portal to { onOpenUrl(portal) }
@@ -195,10 +151,6 @@ private fun Actions(
         else -> null
     }
 
-    // Второй кнопкой обычно поддержка. Но если её адреса нет, а первой кнопкой
-    // ушли «Настройки» (устройство не опознано), вторым идёт кабинет: подписка
-    // у неопознанного устройства может быть заодно и просроченной, и остаться
-    // вовсе без выхода к провайдеру человек не должен.
     val secondary: Pair<Int, () -> Unit>? = when {
         support.isNotBlank() && primary?.first != R.string.clod_support ->
             R.string.clod_support to { onOpenUrl(support) }
@@ -220,9 +172,6 @@ private fun Actions(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                 ),
-                // Долю ширины забирает только первая кнопка: «Личный кабинет»
-                // при делении поровну не влезал и переносился на две строки,
-                // делая соседнюю кнопку ниже себя.
                 modifier = Modifier.weight(1f),
             ) {
                 Text(
@@ -265,7 +214,6 @@ private fun messageOf(reason: NoServersReason, panel: PanelInfo?, profile: Profi
     NoServersReason.DeviceLimit -> if ((panel?.hwidMaxDevices ?: 0) > 0) {
         stringResource(R.string.clod_no_servers_device_count, panel!!.hwidMaxDevices)
     } else {
-        // Сколько устройств разрешено — не сказали; выдумывать число нельзя.
         stringResource(R.string.clod_no_servers_device)
     }
 
@@ -294,7 +242,6 @@ private fun messageOf(reason: NoServersReason, panel: PanelInfo?, profile: Profi
     NoServersReason.Provider -> stringResource(R.string.clod_no_servers_provider)
 }
 
-/** Дата обновления трафика приходит в секундах — экран считает в миллисекундах. */
 private fun refillMillis(panel: PanelInfo?): Long {
     val seconds = panel?.refillDate ?: 0
 

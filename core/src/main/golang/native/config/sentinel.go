@@ -7,28 +7,12 @@ import (
 	"github.com/metacubex/mihomo/config"
 )
 
-// Узел-обманка, каким его отдают вместо серверов.
-//
-// Сервис подписки, когда выдавать нечего — срок вышел, трафик кончился,
-// подписка отключена, серверы не настроены, устройств больше лимита, — НЕ
-// отвечает ошибкой. Он отвечает HTTP 200 и валидной конфигурацией, в которой
-// вместо серверов лежат узлы `server: 0.0.0.0`, `port: 1`,
-// `uuid: 00000000-…`. Названия у них произвольные: они лежат в базе сервиса,
-// владелец переписывает их под себя и на своём языке, — поэтому проверка
-// только структурная, по названиям опознавать НЕЛЬЗЯ.
-//
-// Показать такое как список серверов означает предложить человеку подключиться
-// к тому, к чему подключиться нельзя, и ни словом не объяснить, что случилось.
 const nilUUID = "00000000-0000-0000-0000-000000000000"
 
-// Локальные типы mihomo живут без адреса и порта — это не заглушки.
 var serverlessTypes = map[string]bool{
 	"direct": true, "reject": true, "reject-drop": true, "pass": true, "dns": true,
 }
 
-// Секреты настоящего узла. Ключевые протоколы (wireguard, ssh) авторизуются
-// не паролем, а ключом — без этой оговорки живой узел на первом порту
-// (порт легальный) уехал бы в заглушки.
 var credentialKeys = []string{"uuid", "password", "psk", "private-key", "auth", "auth-str", "token"}
 
 func isSentinelProxy(proxy map[string]any) bool {
@@ -55,10 +39,6 @@ func isSentinelProxy(proxy map[string]any) bool {
 		nilID = strings.EqualFold(strings.TrimSpace(id), nilUUID)
 	}
 
-	// Неуказанный адрес и нулевой идентификатор — приговор сами по себе: такой
-	// узел не может ни соединиться, ни авторизоваться. А «мёртвый порт» —
-	// признак слишком слабый, чтобы выкидывать по нему живой узел, поэтому
-	// он считается только вместе с отсутствием любых секретов.
 	return unspecifiedHost || nilID || (deadPort(proxy) && missingCredentials(proxy))
 }
 
@@ -94,18 +74,11 @@ func missingCredentials(proxy map[string]any) bool {
 	return true
 }
 
-// SentinelReport — что фильтр увидел в конфигурации.
 type SentinelReport struct {
-	// Названия выброшенных узлов — как их назвал владелец сервиса.
-	// Показывать их человеку не обязательно, но в логи они попадают:
-	// по ним видно, что именно сервис пытался сказать.
-	Remarks []string
-	// После чистки не осталось ни одного настоящего узла.
+	Remarks       []string
 	OnlySentinels bool
 }
 
-// Сколько названий имеет смысл запомнить: сервис шлёт их по одному
-// на строку своего сообщения.
 const maxReportedRemarks = 4
 
 func inspectSentinels(cfg *config.RawConfig) SentinelReport {
@@ -134,17 +107,6 @@ func inspectSentinels(cfg *config.RawConfig) SentinelReport {
 	return report
 }
 
-// filterSentinels выбрасывает узлы-обманки из конфигурации до того, как она
-// уедет в ядро.
-//
-// Оставить их означало бы показать человеку список серверов, к которым нельзя
-// подключиться, и дать ядру возможность на них переключиться. Из групп имена
-// тоже убираются: иначе группа осталась бы ссылаться на несуществующий узел.
-//
-// Исключение — заголовок `clod-show-0hosts`: провайдер прямо просит показать
-// узлы как есть. Файл `panel.json` к этому месту уже записан (заголовки
-// сохраняются сразу после загрузки, до разбора конфига), поэтому читаем его
-// из каталога профиля.
 func filterSentinels(cfg *config.RawConfig, profileDir string) error {
 	if len(cfg.Proxy) == 0 {
 		return nil
@@ -191,10 +153,6 @@ func filterSentinels(cfg *config.RawConfig, profileDir string) error {
 			filtered = append(filtered, raw)
 		}
 
-		// Группа без единого узла ядро не примет. Оставляем ей `DIRECT`:
-		// подключение через него не пойдёт мимо туннеля, потому что туннеля
-		// в этом состоянии и нет, — зато конфигурация остаётся разбираемой,
-		// и экран успевает объяснить, что произошло.
 		if len(filtered) == 0 {
 			filtered = append(filtered, "DIRECT")
 		}
@@ -205,9 +163,6 @@ func filterSentinels(cfg *config.RawConfig, profileDir string) error {
 	return nil
 }
 
-// profileShowsZeroHosts — просил ли провайдер этого профиля показывать
-// узлы-обманки. Каталога нет (проверка конфига не из профиля) — значит
-// и панели нет, работает поведение по умолчанию.
 func profileShowsZeroHosts(profileDir string) bool {
 	if profileDir == "" {
 		return false

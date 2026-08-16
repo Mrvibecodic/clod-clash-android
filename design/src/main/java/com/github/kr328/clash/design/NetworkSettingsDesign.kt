@@ -24,10 +24,6 @@ class NetworkSettingsDesign(
         data object Back : Request
     }
 
-    /**
-     * Порядок важен: экран отдаёт индекс, а в хранилище лежит строка.
-     * Значения те же, что понимает ядро.
-     */
     private val tunStacks = listOf("system", "gvisor", "mixed")
 
     private var state by mutableStateOf(
@@ -38,7 +34,6 @@ class NetworkSettingsDesign(
             allowBypass = srvStore.allowBypass,
             allowIpv6 = srvStore.allowIpv6,
             systemProxy = srvStore.systemProxy,
-            // Системный прокси через VpnService появился в Android 10.
             systemProxySupported = Build.VERSION.SDK_INT >= 29,
             tunStack = tunStacks.indexOf(srvStore.tunStackMode).coerceAtLeast(0),
             editable = !running,

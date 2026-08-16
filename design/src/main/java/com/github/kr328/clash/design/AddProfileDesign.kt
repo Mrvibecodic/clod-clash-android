@@ -16,13 +16,6 @@ import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Добавление подписки: одно поле, потом — что нашлось по ссылке.
- *
- * Старый экран CMFA сначала спрашивал тип источника, потом вёл в редактор свойств,
- * где имя и интервал обновления надо было заполнить руками. Всё это приходит
- * в ответе панели, поэтому шагов остаётся два.
- */
 class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
         data class Submit(val url: String, val secure: Boolean) : Request
@@ -43,8 +36,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
 
     private fun onAction(action: AddProfileAction) {
         when (action) {
-            // Ошибка снимается при первой же правке: держать её на экране, пока
-            // человек уже исправляет ссылку, — раздражать без пользы.
             is AddProfileAction.UrlChanged -> state = state.copy(url = action.url, error = null)
             is AddProfileAction.SecureChanged -> state = state.copy(secure = action.secure)
             AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url, state.secure))
@@ -54,7 +45,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
         }
     }
 
-    /** Подставить ссылку снаружи — например, после сканирования QR-кода. */
     suspend fun setUrl(url: String) {
         withContext(Dispatchers.Main) {
             state = state.copy(url = url, error = null)
@@ -67,10 +57,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
         }
     }
 
-    /**
-     * Прогресс загрузки в терминах ядра. Строки взяты те же, что показывал старый
-     * экран свойств, чтобы человек видел знакомые формулировки.
-     */
     suspend fun setProgress(status: FetchStatus) {
         val text = when (status.action) {
             FetchStatus.Action.FetchConfiguration ->
@@ -80,8 +66,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
                 context.getString(R.string.format_fetching_provider, status.args.firstOrNull().orEmpty())
 
             FetchStatus.Action.Verifying -> context.getString(R.string.verifying)
-            // SubscriptionInfo — это не шаг загрузки, а разбор заголовка панели:
-            // показывать его отдельной строкой не о чем.
             FetchStatus.Action.SubscriptionInfo -> null
         } ?: return
 

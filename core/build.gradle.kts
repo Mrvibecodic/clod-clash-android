@@ -13,7 +13,6 @@ val golangSource = file("src/main/golang/native")
 
 golang {
     sourceSets {
-        // clod: единственный flavor — standard (апстримные alpha/meta схлопнуты в один)
         create("standard") {
             tags.set(listOf("foss","with_gvisor","cmfa"))
             srcDir.set(file("src/foss/golang"))
@@ -52,8 +51,6 @@ dependencies {
     implementation(libs.kotlin.coroutine)
     implementation(libs.kotlin.serialization.json)
 
-    // Тесты на разбор упакованного счётчика трафика. Native-часть им не нужна:
-    // проверяется договор между `bridge_helper.c` и Kotlin, а не само ядро.
     testImplementation(libs.junit)
 }
 
@@ -63,8 +60,6 @@ afterEvaluate {
     }
 }
 
-// Карта имён для связывания задач CMake и Go. Лишние записи безвредны:
-// задача просто не найдётся, если ABI не собирается.
 val abis = listOf("arm64-v8a" to "Arm64V8a", "armeabi-v7a" to "ArmeabiV7a", "x86" to "X86", "x86_64" to "X8664")
 
 androidComponents.onVariants { variant ->

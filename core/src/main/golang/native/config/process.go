@@ -17,7 +17,7 @@ import (
 )
 
 var processors = []processor{
-	patchExternalController, // must before patchOverride, so we only apply ExternalController in Override settings
+	patchExternalController,
 	patchOverride,
 	patchGeneral,
 	patchProfile,
@@ -49,19 +49,12 @@ func patchExternalController(cfg *config.RawConfig, _ string) error {
 	return nil
 }
 
-// Порт локального прокси. Фиксируем свой, а не берём из подписки: панель может
-// прислать любой или не прислать вовсе, а человеку нужен предсказуемый адрес,
-// который можно прописать в другой программе. 7890 — общепринятый для клиентов
-// этого семейства.
 const localProxyPort = 7890
 
 func patchGeneral(cfg *config.RawConfig, profileDir string) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
 
-	// mixed-port один на HTTP и SOCKS. Отдельные port/socks-port обнуляем,
-	// иначе с конфигом из подписки поднялись бы ещё два слушателя на портах,
-	// о которых никто не просил.
 	cfg.MixedPort = localProxyPort
 	cfg.Port = 0
 	cfg.SocksPort = 0
@@ -111,7 +104,7 @@ func patchListeners(cfg *config.RawConfig, _ string) error {
 		if proxyType, existType := mapping["type"].(string); existType {
 			switch proxyType {
 			case "tproxy", "redir", "tun":
-				continue // remove those listeners which is not supported
+				continue
 			}
 		}
 		newListeners = append(newListeners, mapping)
@@ -126,9 +119,9 @@ func patchProviders(cfg *config.RawConfig, profileDir string) error {
 		if len(path) > 0 {
 			path = common.ResolveAsRoot(path)
 		} else if url, ok := provider["url"].(string); ok {
-			path = prefix + "/" + utils.MakeHash([]byte(url)).String() // same as C.GetPathByHash
+			path = prefix + "/" + utils.MakeHash([]byte(url)).String()
 		} else {
-			return // both path and url are empty, maybe inline provider
+			return
 		}
 		provider["path"] = profileDir + "/providers/" + path
 	})

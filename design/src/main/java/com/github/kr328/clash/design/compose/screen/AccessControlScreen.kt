@@ -58,20 +58,6 @@ import com.github.kr328.clash.design.compose.component.rememberDrawablePainter
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
 
-/**
- * @param loaded список приложений уже прочитан у системы. Отдельно от пустого
- *   списка: до чтения он тоже пуст, и без флага экран мигал бы пустотой
- *   вместо ожидания — а читается он у системы секунду и дольше.
- * @param selected снимок выбранного, а не сам изменяемый набор. Настоящий
- *   набор живёт в активити (она сохраняет его при уходе с экрана), но Compose
- *   перерисовывается по неравенству значений, и на изменяемом множестве
- *   галочки не двигались бы вовсе.
- * @param query строка поиска. Пустая — показываем всё; отдельного экрана
- *   поиска, как было на XML, больше нет: список фильтруется на месте.
- * @param mode индекс в `AccessControlMode.entries`: пускать все приложения,
- *   только отмеченные или все, кроме отмеченных. Живёт здесь, а не в «Сети»:
- *   отдельно от списка, к которому относится, этот выбор ничего не значит.
- */
 @Immutable
 data class AccessControlState(
     val apps: List<AppInfo> = emptyList(),
@@ -101,14 +87,6 @@ sealed interface AccessControlAction {
     data class SystemApps(val value: Boolean) : AccessControlAction
 }
 
-/**
- * Экран «Приложения»: какие приложения пускать в туннель.
- *
- * Поиск встроен в шапку, а не вынесен в полноэкранный диалог со своим вторым
- * списком и своим вторым адаптером, как было на XML. Тот диалог показывал
- * пустоту, пока не начнёшь печатать, и держал отдельную копию выбранного,
- * которую после закрытия приходилось сводить обратно вызовом `rebindAll`.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccessControlScreen(
@@ -118,10 +96,6 @@ fun AccessControlScreen(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
 
-    // Системный «назад» из поиска возвращает к списку, а не с экрана. Раньше
-    // поиск был отдельным полноэкранным диалогом, и назад закрывал его сам;
-    // без этого набранное слово и экран уходили бы одним движением, а уход
-    // с экрана ещё и сохраняет список и перезапускает ядро.
     BackHandler(enabled = state.searching) {
         onAction(AccessControlAction.Search(false))
     }
@@ -151,11 +125,6 @@ fun AccessControlScreen(
                             onQuery = { onAction(AccessControlAction.Query(it)) },
                         )
                     } else {
-                        // Название то же, что у строки, из которой сюда
-                        // приходят («Ещё → Приложения»). Прежнее «Приложения
-                        // с контролируемым доступом» в шапку не влезало:
-                        // на 360 dp оно обрывалось многоточием и поджимало
-                        // кнопки справа.
                         Text(
                             text = stringResource(R.string.clod_apps),
                             maxLines = 1,
@@ -166,8 +135,6 @@ fun AccessControlScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            // Из поиска стрелка возвращает к списку, а не с экрана:
-                            // иначе набранное слово и экран уходили бы одним нажатием.
                             if (state.searching) {
                                 onAction(AccessControlAction.Search(false))
                             } else {
@@ -182,9 +149,6 @@ fun AccessControlScreen(
                     }
                 },
                 actions = {
-                    // В поиске обе кнопки убраны: место занимает поле ввода,
-                    // а сортировать и выделять всё поверх фильтра — не то,
-                    // за чем сюда приходят.
                     if (!state.searching) {
                         IconButton(onClick = { onAction(AccessControlAction.Search(true)) }) {
                             Icon(
@@ -230,14 +194,6 @@ fun AccessControlScreen(
         }
 
         LazyColumn(contentPadding = padding) {
-            // Режим — первой строкой списка, а не отдельной настройкой
-            // в «Сети». Раньше он стоял там, рядом со второй кнопкой на этот
-            // же экран: человек выбирал приложения здесь, а включал правило
-            // для них в другом разделе — и список молча ни на что не влиял,
-            // пока режим оставался «Разрешить все приложения».
-            //
-            // В поиске строки нет: место занято полем ввода, и менять правило
-            // посреди фильтрации незачем.
             if (!state.searching) {
                 item(key = "mode") {
                     Column {
@@ -253,9 +209,6 @@ fun AccessControlScreen(
                             onSelect = { onAction(AccessControlAction.Mode(it)) },
                         )
 
-                        // При «пускать все» отметки не значат ничего. Молчать
-                        // об этом нельзя: галочки стоят, а туннель их не
-                        // замечает — выглядит как поломка, а не как настройка.
                         if (state.mode == MODE_ACCEPT_ALL) {
                             Text(
                                 text = stringResource(R.string.clod_access_control_all_hint),
@@ -285,7 +238,6 @@ fun AccessControlScreen(
     }
 }
 
-/** «Разрешить все приложения» — первый вариант в `AccessControlMode.entries`. */
 private const val MODE_ACCEPT_ALL = 0
 
 @Composable
@@ -296,7 +248,6 @@ private fun SearchField(
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
-    // Поле появилось — значит человек нажал «Поиск» и собирается печатать.
     LaunchedEffect(Unit) {
         focus.requestFocus()
     }
@@ -327,9 +278,6 @@ private fun AccessControlMenu(
     onDismiss: () -> Unit,
     onAction: (AccessControlAction) -> Unit,
 ) {
-    // Плоское меню вместо трёх вложенных подменю с XML: у Compose вложенных
-    // выпадающих меню нет, а прятать «Сортировку» за вторым нажатием при
-    // семи пунктах всего — дороже, чем показать их сразу.
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         val pick = { action: AccessControlAction ->
             onDismiss()
@@ -433,9 +381,6 @@ private fun AppRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            // Именно `toggleable`, а не `clickable`: голосовой доступ должен
-            // объявить строку галочкой и назвать её состояние, а не сказать
-            // «кнопка» на список из трёхсот приложений.
             .toggleable(
                 value = selected,
                 role = Role.Checkbox,
@@ -465,14 +410,11 @@ private fun AppRow(
         }
         Checkbox(
             checked = selected,
-            // Нажатие ловит вся строка: попасть в квадратик 20×20 пальцем
-            // на списке из трёхсот приложений — не задача пользователя.
             onCheckedChange = null,
         )
     }
 }
 
-/** Иконка приложения — как есть, без растеризации (см. [DrawablePainter]). */
 @Composable
 private fun AppIcon(drawable: Drawable) {
     Image(

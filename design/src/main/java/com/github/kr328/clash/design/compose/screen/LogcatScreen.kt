@@ -26,15 +26,6 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.util.format
 
-/**
- * @param streaming живая запись, а не открытый файл. У живой сверху кнопка
- *   «остановить», у файла — «удалить» и «выгрузить»; список сам едет за новыми
- *   строками, пока человек не отлистал назад.
- * @param firstLine сквозной номер первой строки в [messages]. Буфер живой
- *   записи хранит последние 128 сообщений и выбрасывает старые с начала,
- *   поэтому номер строки в списке — не её опознание: без сквозного счёта
- *   текст съезжал бы под пальцем у того, кто отлистал назад читать.
- */
 @Immutable
 data class LogcatState(
     val messages: List<LogMessage> = emptyList(),
@@ -50,7 +41,6 @@ sealed interface LogcatAction {
     data class Copy(val message: LogMessage) : LogcatAction
 }
 
-/** Экран логов ядра. */
 @Composable
 fun LogcatScreen(
     state: LogcatState,
@@ -59,12 +49,6 @@ fun LogcatScreen(
 ) {
     val listState = rememberLazyListState()
 
-    // Свежие строки внизу, и список едет за ними — но только если человек
-    // и так смотрел на конец: отлистал назад читать — не увозим.
-    //
-    // ВНИМАНИЕ, отличие от старого экрана: живая запись показывала свежее
-    // СВЕРХУ (перевёрнутая раскладка RecyclerView), а открытый файл —
-    // сверху вниз по времени. Теперь оба одинаковы и по времени сверху вниз.
     val atBottom = {
         val info = listState.layoutInfo
         val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
@@ -72,9 +56,6 @@ fun LogcatScreen(
         last < 0 || last >= info.totalItemsCount - 2
     }
 
-    // Ключ по СОДЕРЖИМОМУ, а не по размеру: буфер живой записи упирается
-    // в свои 128 строк и дальше держит размер неизменным — на размере
-    // прокрутка отключилась бы навсегда ровно тогда, когда она нужна.
     LaunchedEffect(state.messages) {
         if (state.streaming && state.messages.isNotEmpty() && atBottom()) {
             listState.scrollToItem(state.messages.size - 1)
@@ -82,8 +63,6 @@ fun LogcatScreen(
     }
 
     ActivityScaffold(
-        // Именно `logcat`: этой же строкой экран подписан в манифесте,
-        // и в списке недавних задач заголовок должен совпадать.
         title = stringResource(R.string.logcat),
         onBack = { onAction(LogcatAction.Back) },
         modifier = modifier,
@@ -130,8 +109,6 @@ private fun LogRow(message: LogMessage, onCopy: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            // Копирование по долгому нажатию — как было; короткое нажатие
-            // на строку лога не делает ничего и раньше.
             .combinedClickable(onClick = {}, onLongClick = onCopy)
             .padding(horizontal = 18.dp, vertical = 8.dp),
     ) {

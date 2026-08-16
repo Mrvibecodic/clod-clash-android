@@ -25,34 +25,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 
-/**
- * Строки для настроек, которые правятся текстом.
- *
- * Раньше это был DSL `preferenceScreen` с отдельным диалогом на каждый пункт
- * и, для списков и карт, ещё и со своим редактором с добавлением по одному
- * элементу. Здесь и то и другое — один диалог с текстовым полем: список
- * это строки, карта — строки вида `ключ = значение`. Так короче и понятнее:
- * список DNS-серверов человек вставляет из буфера целиком, а не по одному.
- */
-
-/** Одно значение: порт, адрес, ключ. */
 @Composable
 fun TextRow(
     title: String,
     value: String?,
     onValue: (String?) -> Unit,
     modifier: Modifier = Modifier,
-    /** Что показать, когда значение не задано, — «не менять». */
     placeholder: String = stringResource(R.string.dont_modify),
-    /** Что показать, когда значение задано пустым, — «выключено», «по умолчанию». */
     empty: String? = null,
-    /** Клавиатура только с цифрами: для портов. */
     numeric: Boolean = false,
-    /**
-     * Годится ли введённое. Пока не годится, кнопка «ОК» не нажимается —
-     * молча превращать «абв» в «не менять» нельзя: человек уверен,
-     * что значение задал.
-     */
     valid: (String) -> Boolean = { true },
     enabled: Boolean = true,
 ) {
@@ -77,10 +58,6 @@ fun TextRow(
 
         EditDialog(
             title = title,
-            // Пустое поле — это «пустое значение» (порт выключен, адрес
-            // по умолчанию), а не «не менять»: под «не менять» отдельная
-            // кнопка. Эти три состояния в конфигурации разные, и схлопывать
-            // их в одно поле нельзя.
             hint = empty ?: "",
             text = text,
             singleLine = true,
@@ -102,7 +79,6 @@ fun TextRow(
     }
 }
 
-/** Список значений: серверы имён, порты сниффера, домены. */
 @Composable
 fun LinesRow(
     title: String,
@@ -145,16 +121,12 @@ fun LinesRow(
             onConfirm = {
                 editing = false
 
-                // Пустой текст — это пустой список, а не «не менять»:
-                // в конфигурации `fallback: []` и отсутствие ключа значат
-                // разное. «Не менять» — отдельной кнопкой.
                 onValues(text.lines().map { it.trim() }.filter { it.isNotEmpty() })
             },
         )
     }
 }
 
-/** Пары «ключ — значение»: hosts, nameserver-policy. */
 @Composable
 fun PairsRow(
     title: String,
@@ -199,8 +171,6 @@ fun PairsRow(
             onConfirm = {
                 editing = false
 
-                // Строка без разделителя просто отбрасывается: писать половину
-                // пары некуда, а ронять весь список из-за опечатки незачем.
                 val pairs = text.lines()
                     .mapNotNull { line ->
                         val index = line.indexOf('=')
@@ -290,9 +260,6 @@ private fun EditDialog(
                 placeholder = { Text(hint) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    // Верхняя граница обязательна: у `hosts` и фильтров
-                    // бывает по нескольку десятков строк, и поле без неё
-                    // выталкивает кнопки за край экрана.
                     .heightIn(min = if (singleLine) 0.dp else 140.dp, max = 240.dp),
             )
         },
@@ -303,8 +270,6 @@ private fun EditDialog(
         },
         dismissButton = {
             Row {
-                // «Не менять» — это третье состояние, отличное и от пустого
-                // значения, и от заданного: настройка просто не участвует.
                 TextButton(onClick = onReset) { Text(stringResource(R.string.dont_modify)) }
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
             }

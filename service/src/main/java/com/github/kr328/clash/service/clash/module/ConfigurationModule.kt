@@ -66,10 +66,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
 
                 SelectionDao().removeSelections(active.uuid, remove)
 
-                // Это значение уезжает в шторку и в тайл быстрых настроек.
-                // Берём название от панели: в базе у подписки, добавленной
-                // по ссылке, лежит «Новый профиль» — название приходит
-                // заголовком уже потом и в базу не переносится.
                 StatusProvider.currentProfile =
                     service.displayProfileName(active.uuid, active.name)
 

@@ -14,17 +14,12 @@ import (
 	clashHttp "github.com/metacubex/mihomo/component/http"
 )
 
-// Логотип — украшение, и оно не должно ни задерживать обновление подписки,
-// ни раздувать память ответом на гигабайт.
 const (
 	logoTimeout  = 10 * time.Second
-	logoMaxBytes = 2 << 20 // 2 МиБ
+	logoMaxBytes = 2 << 20
 	logoBaseName = "logo"
 )
 
-// Типы, которые панели реально присылают. Всё остальное не сохраняем:
-// заголовок `profile-logo` не должен уметь положить в каталог профиля
-// произвольный файл.
 var logoExtensions = map[string]string{
 	"image/png":                ".png",
 	"image/jpeg":               ".jpg",
@@ -37,12 +32,6 @@ var logoExtensions = map[string]string{
 	"image/vnd.microsoft.icon": ".ico",
 }
 
-// fetchLogo скачивает логотип провайдера в каталог профиля и возвращает имя
-// файла для `panel.json`. Пустая строка означает «показывать нечего» — и это
-// нормальный исход: провайдер мог не прислать заголовок, хост мог не ответить.
-//
-// Старые файлы удаляются в любом случае: логотип, который панель убрала,
-// не должен пережить обновление подписки.
 func fetchLogo(dir string, rawURL string) string {
 	removeLogos(dir)
 
@@ -72,8 +61,6 @@ func fetchLogo(dir string, rawURL string) string {
 		return ""
 	}
 
-	// Ограничение и по заявленному размеру, и по вычитанному: заголовку
-	// `Content-Length` чужого хоста верить не обязательно.
 	body, err := io.ReadAll(io.LimitReader(response.Body, logoMaxBytes+1))
 	if err != nil || len(body) > logoMaxBytes || len(body) == 0 {
 		return ""

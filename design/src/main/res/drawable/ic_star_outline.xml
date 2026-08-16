@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Та же звезда контуром — «не в избранном». Один и тот же контур в двух
-     состояниях: при переключении форма не прыгает. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

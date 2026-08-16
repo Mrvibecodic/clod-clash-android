@@ -6,15 +6,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
-/**
- * Проверки счётчика напоминаний о сроке и трафике подписки.
- *
- * Считалка чистая — часы и состояние приходят аргументами, — поэтому здесь
- * проверяется ровно то поведение, которое иначе видно только на телефоне
- * с настоящей подпиской и настоящим будильником: что на семью приходит одно
- * уведомление, что пороги взводятся обратно при продлении и пополнении
- * и что панель может напоминания выключить совсем.
- */
 class SubscriptionAlertsTest {
     private val day = TimeUnit.DAYS.toMillis(1)
     private val now = 1_700_000_000_000L
@@ -35,8 +26,6 @@ class SubscriptionAlertsTest {
         notified = notified,
     )
 
-    // --- ничего не происходит ---
-
     @Test
     fun `бессрочная подписка без лимита трафика молчит`() {
         val outcome = SubscriptionAlerts.evaluate(snapshot(), now)
@@ -53,7 +42,6 @@ class SubscriptionAlertsTest {
         )
 
         assertEquals(emptyList<SubscriptionAlert>(), outcome.alerts)
-        // Единственная отметка — к какому сроку относится семья.
         assertEquals(setOf("expire_base"), outcome.notified.keys)
     }
 
@@ -72,8 +60,6 @@ class SubscriptionAlertsTest {
 
         assertEquals(emptyList<SubscriptionAlert>(), outcome.alerts)
     }
-
-    // --- срок ---
 
     @Test
     fun `первым срабатывает самый мягкий из пройденных порогов`() {
@@ -115,8 +101,6 @@ class SubscriptionAlertsTest {
         )
 
         assertEquals(listOf(SubscriptionAlert.Expired), outcome.alerts)
-        // Пороги «осталось N дней» помечены сказанными молча — иначе следующий
-        // проход выдал бы их подряд поверх «подписка кончилась».
         assertTrue(outcome.notified.containsKey("expire_7d"))
         assertTrue(outcome.notified.containsKey("expire_3d"))
         assertTrue(outcome.notified.containsKey("expire_1d"))
@@ -145,7 +129,6 @@ class SubscriptionAlertsTest {
         assertEquals(emptyList<SubscriptionAlert>(), renewed.alerts)
         assertEquals(setOf("expire_base"), renewed.notified.keys)
 
-        // И о новом сроке напомнят как о новом.
         val again = SubscriptionAlerts.evaluate(
             snapshot(expireAt = now + 30 * day, notified = renewed.notified),
             now + 24 * day,
@@ -159,7 +142,6 @@ class SubscriptionAlertsTest {
         val first = SubscriptionAlerts.evaluate(snapshot(expireAt = now + 5 * day), now)
         assertEquals(listOf(SubscriptionAlert.ExpiresIn(7)), first.alerts)
 
-        // Человек поправил часы: до конца снова далеко.
         val back = SubscriptionAlerts.evaluate(
             snapshot(expireAt = now + 5 * day, notified = first.notified),
             now - 20 * day,
@@ -167,7 +149,6 @@ class SubscriptionAlertsTest {
         assertEquals(emptyList<SubscriptionAlert>(), back.alerts)
         assertFalse(back.notified.containsKey("expire_7d"))
 
-        // И когда срок подойдёт по-настоящему, напомнят снова.
         val later = SubscriptionAlerts.evaluate(
             snapshot(expireAt = now + 5 * day, notified = back.notified),
             now,
@@ -188,8 +169,6 @@ class SubscriptionAlertsTest {
         assertTrue(endless.notified.isEmpty())
     }
 
-    // --- трафик ---
-
     @Test
     fun `порог трафика срабатывает один раз`() {
         val first = SubscriptionAlerts.evaluate(snapshot(total = 100, used = 85), now)
@@ -207,7 +186,6 @@ class SubscriptionAlertsTest {
         val outcome = SubscriptionAlerts.evaluate(snapshot(total = 100, used = 95), now)
 
         assertEquals(listOf(SubscriptionAlert.TrafficUsed(90)), outcome.alerts)
-        // Мягкий порог помечен сказанным, чтобы не прилететь следом.
         assertTrue(outcome.notified.containsKey("traffic_80"))
     }
 
@@ -262,8 +240,6 @@ class SubscriptionAlertsTest {
         assertEquals(listOf(SubscriptionAlert.TrafficUsed(100)), outcome.alerts)
     }
 
-    // --- обе семьи разом ---
-
     @Test
     fun `срок и трафик — по одному уведомлению на каждую семью`() {
         val outcome = SubscriptionAlerts.evaluate(
@@ -276,8 +252,6 @@ class SubscriptionAlertsTest {
             outcome.alerts,
         )
     }
-
-    // --- состояние ---
 
     @Test
     fun `панель сменила пороги — чужие отметки выброшены`() {
@@ -309,8 +283,6 @@ class SubscriptionAlertsTest {
         val expired = SubscriptionAlerts.evaluate(snapshot(expireAt = now - day), now)
         assertTrue(expired.notified.containsKey("expired"))
 
-        // Панель перестала слать `notify-expire-days`: держать отметку не к чему,
-        // иначе она пережила бы и возврат порогов, и о конце не сказали бы.
         val off = SubscriptionAlerts.evaluate(
             snapshot(expireAt = now - day, expireDays = emptyList(), notified = expired.notified),
             now,
@@ -319,20 +291,11 @@ class SubscriptionAlertsTest {
         assertEquals(emptyList<SubscriptionAlert>(), off.alerts)
         assertFalse(off.notified.containsKey("expired"))
         assertFalse(off.notified.containsKey("expire_1d"))
-        // Привязка к сроку переживает выключение: вернутся пороги — вернётся
-        // и знание о том, к какому именно сроку относились отметки.
         assertEquals(setOf("expire_base"), off.notified.keys)
     }
 
     @Test
     fun `умолчания срока — те же, что подставляет ядро`() {
-        // `defaultNotifyExpireDays` в `native/config/panel.go`: панель прислала
-        // голый тумблер `notification-subs-expire` — ядро подставляет этот набор,
-        // и клиентские умолчания обязаны совпасть, иначе одна и та же панель
-        // напоминала бы по-разному в зависимости от того, кто подставил список.
-        //
-        // Умолчаний ПО ТРАФИКУ у ядра нет вовсе: там `notify-traffic-percent`
-        // разбирается без запасного варианта, и 80/90/100 — решение клиента.
         assertEquals(listOf(1, 3, 7), SubscriptionAlerts.DEFAULT_EXPIRE_DAYS)
         assertEquals(listOf(80, 90, 100), SubscriptionAlerts.DEFAULT_TRAFFIC_PERCENT)
     }

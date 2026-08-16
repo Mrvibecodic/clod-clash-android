@@ -27,9 +27,6 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             service.accessControlPackages.toMutableSet()
         }
 
-        // Режим переехал сюда из «Сети» — значит и перезапускать ядро после
-        // его смены теперь этому экрану. Раньше в «Сети» строка была доступна
-        // только при опущенном туннеле, поэтому перезапускать было нечего.
         val mode = withContext(Dispatchers.IO) { service.accessControlMode }
 
         defer {

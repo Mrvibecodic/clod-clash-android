@@ -32,7 +32,7 @@ class LogcatReader(context: Context, file: LogFile) : AutoCloseable {
                 } else {
                     LogMessage(
                         time = time,
-                        level = LogMessage.Level.Warning, // or any default level
+                        level = LogMessage.Level.Warning,
                         message = it.joinToString(":")
                     )
                 }

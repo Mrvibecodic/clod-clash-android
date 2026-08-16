@@ -28,12 +28,6 @@ class ProfileReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED,
             Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_TIME_CHANGED -> {
-                // Без goAsync() система считает приёмник отработавшим сразу
-                // после выхода из onReceive и вправе убить процесс — вместе
-                // с только что запущенной корутиной. На загрузке устройства
-                // процессов много и пресс со стороны системы как раз тогда
-                // максимальный, то есть теряется именно то расписание
-                // обновлений, ради которого приёмник и заведён.
                 val pending = goAsync()
 
                 Global.launch {
@@ -45,13 +39,10 @@ class ProfileReceiver : BroadcastReceiver() {
 
                         context.startForegroundServiceCompat(service)
                     } catch (e: CancellationException) {
-                        // Отмена — не сбой приёмника, наверх её отдаём как есть.
                         throw e
                     } catch (e: Exception) {
                         Log.w("Reschedule updates on ${intent.action}: $e", e)
                     } finally {
-                        // finish() обязателен на любом исходе: незакрытый
-                        // pendingResult держит процесс до таймаута системы.
                         pending.finish()
                     }
                 }
@@ -110,7 +101,6 @@ class ProfileReceiver : BroadcastReceiver() {
                 .resolve("config.yaml")
                 .lastModified()
 
-            // file not existed
             if (last < 0)
                 return
 

@@ -29,47 +29,16 @@ sealed interface OverrideSettingsAction {
     data object Back : OverrideSettingsAction
     data object Reset : OverrideSettingsAction
 
-    /**
-     * Что-то поменялось.
-     *
-     * Экран правит объект настроек на месте, а не собирает новый: этот объект
-     * пришёл от ядра, и активити целиком отдаёт его обратно при выходе. Копия
-     * на сорок с лишним полей ради каждого нажатия ничего бы не дала, кроме
-     * сорока полей кода. Действие нужно, чтобы владелец экрана пересобрал
-     * состояние и Compose перерисовал строку.
-     */
     data object Changed : OverrideSettingsAction
 }
 
-/**
- * @param revision счётчик правок.
- *
- * Объект настроек изменяемый, и сравнивать Compose по нему нечего: два
- * состояния с одним и тем же объектом равны, и перерисовки не будет.
- * Номер правки делает их различными — на этом вся перерисовка и держится.
- */
 @Immutable
 data class OverrideSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
-    /**
-     * Провайдер запретил менять режим (`clod-lock-mode`).
-     *
-     * Замок обязан доезжать и сюда: строка «Режим» на этом экране пишет
-     * не сессионный слот, а постоянный — то есть переживает перезапуск
-     * и применяется к любой подписке. Без проверки замок с главного экрана
-     * обходился бы в два нажатия и навсегда.
-     */
     val modeLocked: Boolean = false,
 )
 
-/**
- * «Переопределение»: то, что накладывается поверх конфигурации подписки.
- *
- * Каждое значение трёхпозиционное: «не менять» — оставить как в подписке,
- * иначе взять наше. Раньше это был DSL `preferenceScreen` на XML с диалогом
- * на каждый пункт; списки и карты правятся текстом (см. `EditRows`).
- */
 @Composable
 fun OverrideSettingsScreen(
     state: OverrideSettingsState,
@@ -289,9 +258,6 @@ fun OverrideSettingsScreen(
                 onSelect = { configuration.dns.enable = booleanValue(it); changed() },
             )
 
-            // Всё, что ниже, описывает СВОЙ DNS. Если его отключили в пользу
-            // встроенного, настраивать нечего — но строки остаются видимыми,
-            // чтобы человек понимал, что именно он выключил.
             val dnsEditable = configuration.dns.enable != false
 
             SelectRow(
@@ -441,10 +407,4 @@ fun OverrideSettingsScreen(
     }
 }
 
-/**
- * Годный порт: число от 1 до 65535.
- *
- * Ноль сюда не входит намеренно — «выключено» задаётся пустым полем,
- * и показывать человеку два способа написать одно и то же незачем.
- */
 private fun isPort(text: String): Boolean = text.toIntOrNull()?.let { it in 1..65535 } == true

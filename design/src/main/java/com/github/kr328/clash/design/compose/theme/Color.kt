@@ -2,22 +2,6 @@ package com.github.kr328.clash.design.compose.theme
 
 import androidx.compose.ui.graphics.Color
 
-/**
- * Палитра Clod Clash.
- *
- * Источник — фирменный индиго #4F46E5 из иконки приложения (тот же, что в начале
- * градиента логотипа). Схемы посчитаны алгоритмом Material 3:
- *  * акцентные роли (primary/secondary/tertiary) — по схеме Vibrant, она сохраняет
- *    насыщенность источника, а TonalSpot увела бы индиго в серо-сиреневый;
- *  * нейтральные роли (фоны, поверхности, контуры) — по схеме TonalSpot, чтобы фон
- *    оставался почти нейтральным, как в утверждённом макете, а не лиловым;
- *  * роли ошибки — базовые токены Material 3, они откалиброваны и от бренда не зависят.
- *
- * Правка руками ровно одна: LightPrimary принудительно равен #4F46E5, чтобы кнопка
- * подключения и иконка приложения были одного цвета пиксель в пиксель.
- */
-
-// Светлая схема
 internal val LightPrimary = Color(0xFF4F46E5)
 internal val LightOnPrimary = Color(0xFFFFFFFF)
 internal val LightPrimaryContainer = Color(0xFF9795FF)
@@ -54,7 +38,6 @@ internal val LightOnError = Color(0xFFFFFFFF)
 internal val LightErrorContainer = Color(0xFFF9DEDC)
 internal val LightOnErrorContainer = Color(0xFF410E0B)
 
-// Тёмная схема
 internal val DarkPrimary = Color(0xFFA7A5FF)
 internal val DarkOnPrimary = Color(0xFF1C00A0)
 internal val DarkPrimaryContainer = Color(0xFF9795FF)
@@ -91,8 +74,6 @@ internal val DarkOnError = Color(0xFF601410)
 internal val DarkErrorContainer = Color(0xFF8C1D18)
 internal val DarkOnErrorContainer = Color(0xFFF9DEDC)
 
-// Токены вне ColorScheme: состояния подключения и фирменный градиент.
-// Значения зелёного/янтарного/красного взяты из утверждённого макета.
 internal val LightStatusConnected = Color(0xFF16A34A)
 internal val DarkStatusConnected = Color(0xFF4ADE80)
 internal val LightStatusConnecting = Color(0xFFD97706)
@@ -100,16 +81,11 @@ internal val DarkStatusConnecting = Color(0xFFFBBF24)
 internal val LightStatusStopped = Color(0xFF6B7280)
 internal val DarkStatusStopped = Color(0xFF9CA3AF)
 
-/** Начало и конец градиента логотипа: индиго → фиолетовый. */
 internal val BrandGradientStart = Color(0xFF4F46E5)
 internal val BrandGradientEnd = Color(0xFF7C3AED)
 
-// Заливные пилюли задержки в списке узлов. Одни значения на обе темы: текст
-// в пилюле белый, и фону нужна насыщенность, а не тон схемы — светло-зелёный
-// DarkStatusConnected под белым текстом не прошёл бы по контрасту.
 internal val DelayPillFast = Color(0xFF16A34A)
 internal val DelayPillMedium = Color(0xFFD97706)
 internal val DelayPillSlow = Color(0xFFDC2626)
 
-/** Стрелка «отправлено» в строке трафика сессии; синий из утверждённого макета. */
 internal val SessionUploadTint = Color(0xFF42A5F5)

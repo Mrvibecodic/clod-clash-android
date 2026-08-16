@@ -19,19 +19,6 @@ object Clash {
         Persist, Session
     }
 
-    /**
-     * Один разбиратель JSON на все ответы ядра.
-     *
-     * `ignoreUnknownKeys` здесь не украшение: по эту сторону моста живёт Go,
-     * и любое новое поле в его ответе — а оно появляется с каждым подъёмом
-     * mihomo — роняло бы разбор с `JsonDecodingException`, то есть падало бы
-     * приложение на ровном месте. Раньше флаг стоял только у переопределений
-     * конфигурации, а состояние туннеля и строки лога разбирались дефолтным
-     * `Json`, самым строгим из возможных.
-     *
-     * `encodeDefaults = false` — для обратной стороны: в переопределениях
-     * пустое поле значит «не трогать», и записывать умолчания нельзя.
-     */
     private val CoreJson = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
@@ -142,48 +129,18 @@ object Clash {
         Bridge.nativeHealthCheckAll()
     }
 
-    /**
-     * Телефон переехал в другую сеть.
-     *
-     * Ядро об этом само не узнаёт и живые соединения не рвёт — см. подробности
-     * в `native/tunnel/network.go`. Вызов дешёвый и без сети: сбрасывает кэш
-     * интерфейсов, роняет соединения DNS-транспортов и, если разрешено,
-     * закрывает живые соединения.
-     */
     fun notifyNetworkChanged(closeConnections: Boolean) {
         Bridge.nativeNotifyNetworkChanged(closeConnections)
     }
 
-    /**
-     * Проба текущего узла каждой группы после смены сети.
-     *
-     * Отдельно от [notifyNetworkChanged] затем, что сброс соединений дешёвый
-     * и делается всегда, а проба — это запрос в сеть, и при выключенном экране
-     * она откладывается до включения.
-     */
     fun probeCurrentNodes() {
         Bridge.nativeProbeCurrentNodes()
     }
 
-    /**
-     * Сведения об устройстве, которые уйдут в заголовках запроса подписки.
-     *
-     * Пустой `hwid` означает «опознание выключено» — тогда не уходит ни один
-     * из заголовков семейства.
-     */
     fun setDeviceInfo(hwid: String, os: String, osVersion: String, model: String) {
         Bridge.nativeSetDeviceInfo(hwid, os, osVersion, model)
     }
 
-    /**
-     * Задержки узлов профиля, измеренные БЕЗ подъёма ядра.
-     *
-     * Отдаётся сырым JSON'ом «имя узла -> задержка»: разбор оставлен вызывающей
-     * стороне, потому что дальше это едет через IPC, а гонять карту через
-     * биндер дороже и капризнее, чем строку.
-     *
-     * Вызов блокирующий и длится секунды — звать только с фонового диспетчера.
-     */
     fun testProfileDelays(path: File): String {
         return Bridge.nativeTestProfileDelays(path.absolutePath) ?: "{}"
     }
@@ -192,14 +149,6 @@ object Clash {
         return Bridge.nativePatchSelector(selector, name)
     }
 
-    /**
-     * clod:chan — включить защищённый канал до прослойки для следующей загрузки.
-     *
-     * Признак ставится отдельным вызовом, а не параметром `fetchAndValid`:
-     * менять её подпись пришлось бы через Go export → C → JNI → Kotlin, где
-     * ошибка ловится только `UnsatisfiedLinkError` в рантайме. Тем же способом
-     * ядру отдаётся секретный ключ age.
-     */
     fun setSecureChannel(enabled: Boolean) {
         Bridge.nativeSetSecureChannel(enabled)
     }

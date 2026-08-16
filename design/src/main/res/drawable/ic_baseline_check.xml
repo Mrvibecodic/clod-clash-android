@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Галочка для отметки выбранного пункта в выпадающем меню.
-     Без `android:tint`: цвет задаёт вызывающая сторона (в Compose — `Icon(tint = …)`),
-     а зашитый сюда `?attr/colorControlNormal` перекрасил бы её в серый. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

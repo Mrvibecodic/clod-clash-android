@@ -40,34 +40,12 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.TimerTextStyle
 
-/** Состояние туннеля в том виде, в каком его показывает главный экран. */
 enum class ConnectionStatus {
     Disconnected,
     Connecting,
     Connected,
 }
 
-/**
- * Круглая кнопка подключения — единственное действие на выключенном экране.
- *
- * Залитый диск с радиальным градиентом статусного цвета: светлый блик в центре,
- * плотный цвет к краю. Кольцо, которое было здесь раньше, на светлой теме
- * читалось как выключенный элемент, а после переезда счётчиков трафика в строку
- * под таймером кнопке больше не с чем спорить по весу — она главная на экране.
- *
- * Свечение нарисовано радиальным градиентом в [drawBehind], а не тенью: тень
- * (`shadow`) на API < 28 не умеет цвет и получилась бы серой.
- *
- * Размер кнопки задаётся снаружи и анимируется, но с одинаковым значением на
- * оба состояния: раньше подключённая кнопка ужималась со 148 до 120 dp, и
- * единственный на экране крупный элемент прыгал в момент, когда человек на него
- * смотрит. Пружина мягкая (StiffnessLow) — при жёсткой кнопка «щёлкает» и
- * выглядит нервно.
- *
- * @param caption подпись внутри круга под иконкой — таймер сессии. Раньше он
- *   стоял отдельной строкой в 34 sp под кнопкой и весил больше неё самой; внутри
- *   круга те же цифры читаются как часть кнопки и не спорят с ней за внимание.
- */
 @Composable
 fun PowerButton(
     status: ConnectionStatus,
@@ -79,10 +57,6 @@ fun PowerButton(
 ) {
     val extra = ClodTheme.extraColors
 
-    // Отклик в палец на единственное действие выключенного экрана. Между
-    // нажатием и видимым результатом здесь проходит секунда с лишним — пока
-    // поднимется служба и ядро, — и без вибрации нажатие всё это время
-    // выглядит непринятым, а человек жмёт второй раз.
     val haptic = LocalHapticFeedback.current
 
     val accent = when (status) {
@@ -97,8 +71,6 @@ fun PowerButton(
         label = "powerDiameter",
     )
 
-    // «Дыхание» свечения. Идёт только когда есть что показывать: бесконечная
-    // анимация в покое держит кадры перерисовки и жрёт батарею впустую.
     val animated = status != ConnectionStatus.Disconnected
     val infinite = rememberInfiniteTransition(label = "powerGlow")
     val glow by infinite.animateFloat(
@@ -127,9 +99,6 @@ fun PowerButton(
                 )
             }
             .clip(CircleShape)
-            // Блик задаётся долей от статусного цвета, а не отдельным цветом:
-            // так переходы «серый → янтарный → зелёный» анимируются одним
-            // animateColorAsState и градиент никогда не спорит сам с собой.
             .background(
                 Brush.radialGradient(
                     colors = listOf(
@@ -138,8 +107,6 @@ fun PowerButton(
                     ),
                 ),
             )
-            // clip(CircleShape) стоит выше по цепочке, поэтому стандартная
-            // рябь сама обрезается по кругу — своё indication не нужно.
             .clickable(enabled = enabled, role = Role.Button) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 
@@ -165,8 +132,6 @@ fun PowerButton(
                 Text(
                     text = caption,
                     style = TimerTextStyle,
-                    // Белым, а не статусным цветом: подпись лежит на залитом
-                    // диске, и любой цвет темы на нём теряется.
                     color = Color.White,
                 )
             }

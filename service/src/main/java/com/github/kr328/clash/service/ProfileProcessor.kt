@@ -31,17 +31,10 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 object ProfileProcessor {
-    /**
-     * Сколько раз подряд провайдеру позволено переселять подписку.
-     * Две панели могут указывать друг на друга — без предела клиент ходил бы
-     * между ними по кругу.
-     */
     private const val MAX_MIGRATION_HOPS = 3
 
-    /** Сколько прежних адресов помним на случай, если переезд увёл не туда. */
     private const val MAX_MIGRATION_HISTORY = 10
 
-    /** Состояние переездов, файлом в каталоге профиля. */
     private const val MIGRATION_FILE = "migration.json"
 
     private val migrationJson = Json { ignoreUnknownKeys = true }
@@ -61,9 +54,6 @@ object ProfileProcessor {
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
 
-                    // Каталог пробной загрузки могло оставить убитым процессом:
-                    // это полная копия чужой подписки, и лежать вечно она
-                    // не должна.
                     context.migrationDir.deleteRecursively()
 
                     context.pendingDir.resolve(pending.uuid.toString())
@@ -73,9 +63,6 @@ object ProfileProcessor {
                 }
 
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
-                // clod:chan — признак канала отдаётся ядру ДО запроса, как и
-                // ключ age: у защищённой подписки отката на открытый запрос
-                // нет ни при каких условиях, включая самый первый.
                 Clash.setSecureChannel(snapshot.secure)
 
                 val force = snapshot.type != Profile.Type.File
@@ -131,9 +118,6 @@ object ProfileProcessor {
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
 
-                    // Каталог пробной загрузки могло оставить убитым процессом:
-                    // это полная копия чужой подписки, и лежать вечно она
-                    // не должна.
                     context.migrationDir.deleteRecursively()
 
                     context.importedDir.resolve(imported.uuid.toString())
@@ -143,9 +127,6 @@ object ProfileProcessor {
                 }
 
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
-                // clod:chan — признак канала отдаётся ядру ДО запроса, как и
-                // ключ age: у защищённой подписки отката на открытый запрос
-                // нет ни при каких условиях, включая самый первый.
                 Clash.setSecureChannel(snapshot.secure)
 
                 val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, true, callback)
@@ -177,18 +158,6 @@ object ProfileProcessor {
         }
     }
 
-    /**
-     * Переезд подписки на новый адрес по заголовкам `new-url` / `new-domain`.
-     *
-     * Адрес меняется ТОЛЬКО после пробной загрузки: опечатка в панели иначе
-     * оставила бы человека на мёртвом адресе без единого рабочего сервера,
-     * и вернуть его было бы нечем — старого адреса он не помнит.
-     *
-     * Прыжки считаются: две панели могут указывать друг на друга, и без
-     * ограничения клиент ходил бы между ними по кругу вечно. Ответ без просьбы
-     * о переезде счётчик обнуляет — значит цепочка кончилась, и следующий
-     * законный переезд снова получит все попытки.
-     */
     private suspend fun followMigration(
         context: Context,
         uuid: UUID,
@@ -200,8 +169,6 @@ object ProfileProcessor {
 
         val candidate = context.readPanelInfo(uuid)?.migrateUrl.orEmpty()
         if (candidate.isBlank() || candidate == current) {
-            // Переезда не просят — цепочка кончилась, и следующий законный
-            // переезд снова получит все попытки.
             stateFile.delete()
 
             return
@@ -220,8 +187,6 @@ object ProfileProcessor {
             probe.deleteRecursively()
             probe.mkdirs()
 
-            // Пробная загрузка идёт в отдельный каталог: рабочая конфигурация
-            // не должна пострадать от проверки чужого адреса.
             fetchProfile(context, probe, candidate, true, callback)
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
@@ -234,10 +199,6 @@ object ProfileProcessor {
         profileLock.withLock {
             val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock
 
-            // Скачанное по новому адресу и становится рабочей конфигурацией:
-            // выбросить его значило бы жить до следующего обновления
-            // с названием, логотипом и порогами СТАРОГО провайдера при новом
-            // адресе.
             profileDir.deleteRecursively()
             probe.copyRecursively(profileDir, overwrite = true)
 
@@ -251,10 +212,6 @@ object ProfileProcessor {
                 ),
             )
 
-            // Прежний адрес храним рядом со счётчиком: пробная загрузка спасает
-            // от мёртвого адреса, но не от адреса, который увёл подписку
-            // на чужую панель. Без записи вернуться было бы некуда — человек
-            // своего адреса не помнит.
             writeMigration(
                 stateFile,
                 MigrationState(
@@ -271,7 +228,6 @@ object ProfileProcessor {
         context.sendProfileChanged(uuid)
     }
 
-    /** Состояние переезда: сколько прыжков подряд и по каким адресам ходили. */
     @Serializable
     private data class MigrationState(
         val hops: Int = 0,
@@ -308,9 +264,6 @@ object ProfileProcessor {
         var subscriptionInfo: FetchStatus? = null
         var cb = callback
 
-        // Панель считает устройства по заголовкам запроса, поэтому отдать их
-        // ядру надо ДО запроса. Обновляем каждый раз: тумблер «опознавать
-        // устройство» иначе доезжал бы до ядра только после перезапуска службы.
         context.applyDeviceInfo()
 
         Clash.fetchAndValid(dir, source, force) {
@@ -331,21 +284,11 @@ object ProfileProcessor {
         return subscriptionInfo
     }
 
-    /**
-     * Ждём загрузку и переводим отказы панели по устройству в человеческий текст.
-     *
-     * Ядро отдаёт метку, а не сообщение: переводов в нём нет и быть не должно.
-     * Место одно на все пути обновления — и первый импорт, и обновление
-     * по кнопке, и обновление по расписанию идут через `fetchProfile`.
-     */
     private suspend fun CompletableDeferred<Unit>.await(context: Context) {
         try {
             await()
         } catch (e: Exception) {
             val message = when (e.message) {
-                // Маркеры ошибок ядра, а не имена заголовков: имя
-                // `clod-hwid-limit` теперь занято настоящим заголовком
-                // с текстом провайдера, и путать их нельзя.
                 "clod-device-limit" -> context.getString(R.string.clod_fetch_hwid_limit)
                 "clod-device-not-identified" -> context.getString(R.string.clod_fetch_hwid_not_supported)
                 else -> throw e

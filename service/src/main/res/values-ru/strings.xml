@@ -1,5 +1,4 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
-    <!-- from https://github.com/shadowsocks/shadowsocks-android/blob/master/core/src/main/res/values/strings.xml -->
     <string name="clash_notification_content" translatable="false">"%1$s↑\t%2$s↓"</string>
 
     <string name="clash_service_status_channel">Статус Clash</string>
@@ -21,7 +20,6 @@
     <string name="clod_fetch_hwid_limit">Лимит устройств исчерпан: панель отказалась выдать конфигурацию. Прежняя оставлена как есть.</string>
     <string name="clod_fetch_hwid_not_supported">Панель ждёт идентификатор устройства. Включите «Опознавать это устройство» в настройках приложения.</string>
 
-    <!-- clod: напоминания о сроке и трафике подписки -->
     <string name="clod_alert_channel">Напоминания о подписке</string>
     <string name="clod_alert_expired">Подписка кончилась</string>
     <string name="clod_alert_traffic">Израсходовано %d%% трафика</string>

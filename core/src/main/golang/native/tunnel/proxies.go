@@ -59,10 +59,6 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 		return []string{}
 	}
 
-	// Без ядра, поднявшего конфигурацию, группы `GLOBAL` не существует.
-	// Экран спрашивает список групп на каждую перерисовку, в том числе
-	// пока туннель не поднят, — без этой проверки был бы отказ в горутине
-	// JNI, то есть падение всего приложения.
 	root := tunnel.Proxies()["GLOBAL"]
 	if root == nil {
 		return []string{}
@@ -100,27 +96,11 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 
 		result = append(result, p.Name())
 
-		// «Невыбираемая» группа — та, в которой узел нельзя закрепить руками,
-		// то есть не реализующая `SelectAble` в mihomo
-		// (`adapter/outboundgroup/util.go`). В этой версии ядра такая ровно
-		// одна — балансировщик `load-balance` (тип `relay` из групп убран
-		// вовсе). В списке групп он не нужен: открыть можно, а сделать
-		// внутри нечего.
-		//
-		// Раньше здесь стояло `p.Type() == C.Selector`, и фильтр был
-		// бесполезен: у подписок Remnawave основная группа почти всегда
-		// `url-test`, и под таким условием она пропадала вместе
-		// с балансировщиком. Поэтому флаг и держали выключенным.
 		if _, ok := g.(outboundgroup.SelectAble); ok {
 			selectable = append(selectable, p.Name())
 		}
 	}
 
-	// Если выбирать не из чего вовсе (конфиг из одних балансировщиков),
-	// отдаём что есть: показать группу, в которой нельзя выбрать узел,
-	// лучше, чем пустой список — на пустой экран отвечает так же,
-	// как на «ядро о группах ещё не знает», и человек видит «список
-	// из файла подписки» при поднятом туннеле.
 	if excludeNotSelectable && len(selectable) > 0 {
 		return selectable
 	}
@@ -210,15 +190,6 @@ func PatchSelector(selector, name string) bool {
 	return true
 }
 
-// convertProxies переводит узлы ядра в модель для интерфейса.
-//
-// `groupTestURL` — адрес, по которому эту группу проверяют. Задержка у узла
-// хранится по адресу пробы (`Proxy.extra` в mihomo), и узел, входящий сразу
-// в две группы с разными адресами, держит две записи. Раньше здесь бралась
-// первая попавшаяся запись перебором map — а порядок обхода map в Go случайный,
-// то есть на одном и том же экране задержка бралась то от одной группы,
-// то от другой. Берём адрес своей группы, и только если по нему пробы
-// ещё не было, соглашаемся на любую известную.
 func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
@@ -245,10 +216,6 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 
 		histories := p.ExtraDelayHistories()
 		if _, ok := histories[testURL]; !ok {
-			// Порядок обхода map в Go случайный, поэтому берём не первый
-			// попавшийся адрес, а наименьший: иначе на соседних перерисовках
-			// у одного узла показывалась бы задержка то от одной группы,
-			// то от другой.
 			fallback := ""
 
 			for k := range histories {

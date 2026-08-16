@@ -15,7 +15,6 @@ sealed class ProfileProvider {
         override val icon: Drawable?
             get() = context.getDrawableCompat(R.drawable.ic_baseline_attach_file)
 
-
     }
 
     class Url(private val context: Context) : ProfileProvider() {

@@ -23,12 +23,6 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ReleaseNotes
 
-/**
- * Найденное обновление.
- *
- * @param progress доля скачанного от 0 до 1; отрицательное значение означает,
- *   что размер файла неизвестен и полосу надо показывать бегущей.
- */
 @Immutable
 data class UpdateState(
     val version: String,
@@ -38,13 +32,6 @@ data class UpdateState(
     val progress: Float = 0f,
 )
 
-/**
- * Окно обновления.
- *
- * Список изменений разбирается и верстается, а не показывается сырым текстом:
- * в манифесте он приходит в том же виде, в каком написан в UPDATELOG.md —
- * с решётками заголовков и дефисами пунктов.
- */
 @Composable
 fun UpdateDialog(
     state: UpdateState,
@@ -53,8 +40,6 @@ fun UpdateDialog(
     val context = LocalContext.current
 
     AlertDialog(
-        // Во время загрузки закрывать нечего: отменять на полпути нельзя,
-        // а случайный тап мимо окна выглядел бы как отмена.
         onDismissRequest = { if (!state.downloading) onAction(MainAction.UpdateLater) },
         title = {
             Text(stringResource(R.string.clod_update_available, state.version))

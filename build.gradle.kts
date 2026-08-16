@@ -30,13 +30,8 @@ subprojects {
 
     val isApp = name == "app"
 
-    // -Pclod.abi=arm64-v8a — собрать только под одну архитектуру.
-    // ABI перечислены в четырёх независимых местах (ndk, cmake, splits, golang),
-    // поэтому сужение вынесено сюда, чтобы они не разъехались.
     val abiList: List<String> = (project.findProperty("clod.abi") as String?)
         ?.split(",")?.map(String::trim)?.filter(String::isNotEmpty)
-        // x86 (32-битный) выброшен: живых устройств нет, нужен только древним
-        // эмуляторам, а стоит ~25 с сборки Go на каждый прогон.
         ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
 
     apply(plugin = if (isApp) "com.android.application" else "com.android.library")
@@ -60,22 +55,14 @@ subprojects {
                 applicationId = customApplicationId.takeIf { it?.isNotBlank() == true } ?: "io.clodclash.app"
             }
 
-            // clod: пакет исходников намеренно оставлен апстримным (com.github.kr328.clash).
-            // Смена пакета тянет переименование всех JNI-символов Java_com_github_kr328_clash_*
-            // в core/src/main/cpp/main.c и ничего не даёт: пользователю виден applicationId, не пакет.
             project.name.let { name ->
                 namespace = if (name == "app") "com.github.kr328.clash"
                 else "com.github.kr328.clash.$name"
             }
 
-            // clod: minSdk 23 — при 21 AGP включает legacy packaging (extractNativeLibs=true),
-            // что несовместимо с требованием 16 KB page size для Google Play.
             minSdk = 23
             targetSdk = 35
 
-            // clod: нумерация как на десктопе — начинаем с 0.0.1-alpha.
-            // versionCode = major * 1_000_000 + minor * 10_000 + patch,
-            // суффикс -alpha на versionCode не влияет (система сравнивает только число).
             versionName = "0.1.3"
             versionCode = 10003
 
@@ -111,10 +98,6 @@ subprojects {
             }
         }
 
-        // clod: у апстрима два flavor'а (alpha/meta) с одинаковым PREMIUM=false — они различались
-        // только суффиксом имени и applicationId. Нам нужна одна сборка, поэтому meta удалён,
-        // а суффиксы сняты: applicationId должен совпадать с установленным, иначе самообновление
-        // из GitHub система посчитает установкой другого приложения.
         productFlavors {
             flavorDimensions("feature")
 
@@ -124,10 +107,6 @@ subprojects {
 
                 buildConfigField("boolean", "PREMIUM", "Boolean.parseBoolean(\"false\")")
 
-                // resValue, а не строка в strings.xml: блок subprojects применяется ко ВСЕМ
-                // модулям, поэтому launch_name/application_name попадают в R каждого из них.
-                // Объявление в одном модуле не видно остальным: TileService берёт R из service,
-                // а вёрстка design — из design.
                 resValue("string", "launch_name", "Clod Clash")
                 resValue("string", "application_name", "Clod Clash")
             }
@@ -147,8 +126,6 @@ subprojects {
                         keystore.inputStream().use(this::load)
                     }
 
-                    // clod: апстрим держал release.keystore прямо в репозитории.
-                    // Теперь путь задаётся в signing.properties (CI пишет его из секрета).
                     storeFile = rootProject.file(prop.getProperty("keystore.path") ?: "release.keystore")
                     storePassword = prop.getProperty("keystore.password")!!
                     keyAlias = prop.getProperty("key.alias")!!

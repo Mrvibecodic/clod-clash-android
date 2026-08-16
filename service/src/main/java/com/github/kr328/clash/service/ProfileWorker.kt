@@ -86,8 +86,6 @@ class ProfileWorker : BaseService() {
     private suspend fun run(uuid: UUID) {
         val imported = ImportedDao().queryByUUID(uuid) ?: return
 
-        // В уведомлениях — то же название, что человек видит в списке подписок:
-        // название от панели, а если его нет — имя из базы.
         val name = displayProfileName(imported.uuid, imported.name)
 
         try {
@@ -95,7 +93,6 @@ class ProfileWorker : BaseService() {
                 ProfileProcessor.update(this, imported.uuid, null)
             }
 
-            // Название читаем заново: обновление могло принести новое.
             completed(imported.uuid, displayProfileName(imported.uuid, imported.name))
 
             ProfileReceiver.scheduleNext(this, imported)
@@ -103,13 +100,9 @@ class ProfileWorker : BaseService() {
             failed(imported.uuid, name, e.message ?: "Unknown")
         }
 
-        // Напоминания о сроке и трафике — и после неудачи тоже: срок считается
-        // по системным часам и не зависит от того, дошло ли обновление.
-        // Своей ошибкой напоминание обновление не роняет: оно тут не главное.
         try {
             reportSubscriptionAlerts(uuid)
         } catch (e: CancellationException) {
-            // Службу останавливают — это не ошибка напоминаний.
             throw e
         } catch (e: Exception) {
             Log.w("Subscription alerts of $uuid: $e", e)

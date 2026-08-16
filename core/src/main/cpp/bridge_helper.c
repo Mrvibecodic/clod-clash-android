@@ -9,4 +9,3 @@ uint64_t down_scale_traffic(uint64_t value) {
         return ((value * 100u / 1024u) & 0x3FFFFFFFu) | (1u << 30u);
     return value & 0x3FFFFFFFu;
 }
-

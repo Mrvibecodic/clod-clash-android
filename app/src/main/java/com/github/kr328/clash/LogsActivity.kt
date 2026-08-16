@@ -38,8 +38,6 @@ class LogsActivity : BaseActivity<LogsDesign>() {
                             startActivity(LogcatActivity::class.intent)
                             finish()
                         }
-                        // Вопрос «точно удалить?» задаёт экран, сюда запрос
-                        // приходит уже подтверждённым.
                         LogsDesign.Request.DeleteAll -> {
                             withContext(Dispatchers.IO) {
                                 deleteAllLogs()

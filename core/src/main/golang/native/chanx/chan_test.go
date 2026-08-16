@@ -130,8 +130,6 @@ func TestResponse(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Время ответа в векторе фиксировано генератором, поэтому проверку окна
-	// подменяем: она проверяется отдельным тестом ниже.
 	answer, err := sess.Open(body, 0)
 	if err != ErrStale {
 		t.Fatalf("ожидали отказ по метке времени, получили %v", err)
@@ -140,7 +138,6 @@ func TestResponse(t *testing.T) {
 	var probe struct {
 		T int64 `json:"t"`
 	}
-	// Достаём метку времени, чтобы прогнать разбор в её окне.
 	if answer == nil {
 		sEph := raw[:32]
 		shared, _ := curve25519.X25519(sess.priv, sEph)
@@ -211,8 +208,6 @@ func TestSplit(t *testing.T) {
 	}
 }
 
-// Тело подписки бывает не в UTF-8, и тогда прослойка кладёт его в body_b64.
-// Раньше этот случай был для неё фатальной ошибкой, а не ответом.
 func TestBinaryBody(t *testing.T) {
 	v := load(t)
 
@@ -239,8 +234,6 @@ func TestBinaryBody(t *testing.T) {
 	}
 }
 
-// Длина адреса не должна зависеть от того, что в карточке устройства: иначе
-// посредник различает по ней модель телефона и момент смены прошивки.
 func TestRequestIsPadded(t *testing.T) {
 	v := load(t)
 
@@ -267,7 +260,6 @@ func TestRequestIsPadded(t *testing.T) {
 	}
 }
 
-// Метка запроса — ровно 16 байт: прослойка короче не принимает.
 func TestNonceLength(t *testing.T) {
 	v := load(t)
 

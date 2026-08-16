@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Фирменный индиго Clod Clash (совпадает с началом градиента иконки). -->
     <color name="color_clash">#4F46E5</color>
 </resources>

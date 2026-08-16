@@ -8,8 +8,7 @@
 #include "jni_helper.h"
 #include "trace.h"
 
-#include "version.h" // версия ядра, её собирает CMake из version.h.in
-
+#include "version.h"
 
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeInit(JNIEnv *env, jobject thiz,
@@ -43,7 +42,6 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeSuspend(JNIEnv *env, jobjec
 
     suspend((int) suspended);
 }
-
 
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryTunnelState(JNIEnv *env, jobject thiz) {
@@ -442,7 +440,6 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeSubscribeLogcat(JNIEnv *env
     subscribeLogcat(_callback);
 }
 
-
 static jmethodID m_tun_interface_mark_socket;
 static jmethodID m_tun_interface_query_socket_uid;
 static jmethodID m_completable_complete;
@@ -655,6 +652,6 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeCoreVersion(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
-    
+
     return new_string(GIT_VERSION);
 }

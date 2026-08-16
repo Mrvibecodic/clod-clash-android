@@ -26,7 +26,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private var reason: String? = null
 
-    /** Отметка подъёма туннеля, поставленная этим запуском службы. */
     private var sessionStartedAt: Long = 0
 
     private val runtime = clashRuntime {
@@ -91,9 +90,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         StatusProvider.serviceRunning = true
 
-        // Отметка нужна экрану для таймера сессии. Ставим здесь, а не в приложении:
-        // служба переживает закрытие приложения, и только она знает, когда туннель
-        // подняли на самом деле.
         sessionStartedAt = ServiceStore(this).markSessionStarted()
 
         StaticNotificationModule.createNotificationChannel(this)
@@ -113,8 +109,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         StatusProvider.serviceRunning = false
 
-        // Туннеля больше нет — метка сессии не должна пережить остановку,
-        // иначе следующий, кто её прочитает, покажет часы «в подключении».
         ServiceStore(this).clearSessionStarted(sessionStartedAt)
 
         sendClashStopped(reason)
@@ -136,13 +130,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         val store = ServiceStore(self)
 
         val device = with(Builder()) {
-            // Interface address
             addAddress(TUN_GATEWAY, TUN_SUBNET_PREFIX)
             if (store.allowIpv6) {
                 addAddress(TUN_GATEWAY6, TUN_SUBNET_PREFIX6)
             }
 
-            // Route
             if (store.bypassPrivateNetwork) {
                 resources.getStringArray(R.array.bypass_private_route).map(::parseCIDR).forEach {
                     addRoute(it.ip, it.prefix)
@@ -153,7 +145,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     }
                 }
 
-                // Route of virtual DNS
                 addRoute(TUN_DNS, 32)
                 if (store.allowIpv6) {
                     addRoute(TUN_DNS6, 128)
@@ -165,7 +156,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 }
             }
 
-            // Access Control
             when (store.accessControlMode) {
                 AccessControlMode.AcceptAll -> Unit
                 AccessControlMode.AcceptSelected -> {
@@ -180,22 +170,17 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 }
             }
 
-            // Blocking
             setBlocking(false)
 
-            // Mtu
             setMtu(TUN_MTU)
 
-            // Session Name
             setSession("Clash")
 
-            // Virtual Dns Server
             addDnsServer(TUN_DNS)
             if (store.allowIpv6) {
                 addDnsServer(TUN_DNS6)
             }
 
-            // Open MainActivity
             setConfigureIntent(
                 PendingIntent.getActivity(
                     self,
@@ -205,12 +190,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 )
             )
 
-            // Metered
             if (Build.VERSION.SDK_INT >= 29) {
                 setMetered(false)
             }
 
-            // System Proxy
             if (Build.VERSION.SDK_INT >= 29 && store.systemProxy) {
                 listenHttp()?.let {
                     setHttpProxy(
@@ -267,8 +250,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             "172.31.*",
             "192.168.*"
         )
-        // clod: апстримный список — китайские сайты, ломавшиеся на системном прокси.
-        // Нам он не нужен; список оставлен пустым, механизм сохранён.
         private val HTTP_PROXY_BLACK_LIST: List<String> = emptyList()
     }
 }

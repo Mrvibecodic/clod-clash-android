@@ -30,12 +30,6 @@ sealed interface HelpAction {
     data class OpenUrl(val url: String) : HelpAction
 }
 
-/**
- * Помощь: куда идти за документацией и где лежит исходный код.
- *
- * Поддержки по самой подписке здесь нет и быть не может — её оказывает тот,
- * кто выдал ссылку. Об этом и говорит подсказка сверху.
- */
 @Composable
 fun HelpScreen(
     onAction: (HelpAction) -> Unit,
@@ -77,13 +71,11 @@ fun HelpScreen(
     }
 }
 
-/** Ссылка наружу. Адрес показан целиком: видно, куда уводит нажатие. */
 @Composable
 private fun LinkRow(title: String, url: String, onAction: (HelpAction) -> Unit) {
     ActionRow(
         title = title,
         subtitle = url,
-        // Адрес не обрезаем: в многоточии не видно, куда уводит нажатие.
         subtitleMaxLines = 2,
         icon = painterResource(R.drawable.ic_outline_article),
         onClick = { onAction(HelpAction.OpenUrl(url)) },

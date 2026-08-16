@@ -19,7 +19,6 @@ class LogsDesign(context: Context) : Design<LogsDesign.Request>(context) {
         data object Back : Request
         data object StartLogcat : Request
 
-        /** Приходит уже после подтверждения: спрашивает сам экран. */
         data object DeleteAll : Request
 
         data class OpenFile(val file: LogFile) : Request
@@ -52,8 +51,6 @@ class LogsDesign(context: Context) : Design<LogsDesign.Request>(context) {
 
     suspend fun patchLogs(logs: List<LogFile>) {
         withContext(Dispatchers.Main) {
-            // Свежие сверху. Раньше порядок задавала файловая система, то есть
-            // был произвольным, и нужный лог приходилось искать глазами.
             state = state.copy(files = logs.sortedByDescending { it.date }, loaded = true)
         }
     }

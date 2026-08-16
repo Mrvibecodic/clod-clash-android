@@ -1,12 +1,3 @@
-// Защищённый канал клиент ↔ прослойка (протокол c1), клиентская половина.
-//
-// Секрет — сам токен подписки: в сеть он не уходит никогда, из него выводятся
-// ключи. Посредник, терминирующий TLS, видит только путь вида
-// /c1/<kid>/<spid>/<blob>, где kid меняется каждые сутки.
-//
-// Набор примитивов один и не согласуется: X25519 + HKDF-SHA256 +
-// ChaCha20-Poly1305. Всё из golang.org/x/crypto, который уже есть в дереве
-// ядра, — новых модулей ноль.
 package chanx
 
 import (
@@ -31,12 +22,7 @@ const (
 	salt      = "clod-chan-v1"
 	skew      = 300
 	maxAnswer = 32 << 20
-	// Запрос дополняется до кратного этому размеру. Без выравнивания длина
-	// адреса выдаёт длину карточки устройства: модель телефона, версию системы
-	// и сам момент, когда они поменялись, — то есть ровно то, что канал прячет.
-	padBlock = 512
-	// `,"pad":""` — столько занимает сам ключ в JSON. Дополнить короче нечем,
-	// поэтому если до кратности осталось меньше, добирается целый блок.
+	padBlock  = 512
 	padKeyLen = 9
 )
 
@@ -52,32 +38,28 @@ func hkdf32(ikm []byte, salt, info string) []byte {
 	out := make([]byte, 32)
 	r := hkdf.New(sha256.New, ikm, []byte(salt), []byte(info))
 	if _, err := r.Read(out); err != nil {
-		panic(err) // HKDF на 32 байтах не может не прочитаться
+		panic(err)
 	}
 	return out
 }
 
-// Psk — ключ подписки, выведенный из её адреса.
 func Psk(token string) []byte {
 	return hkdf32([]byte(token), salt, "psk")
 }
 
 func Epoch(now int64) int64 { return now / 86400 }
 
-// Kid — метка подписки на сутки.
 func Kid(psk []byte, epoch int64) string {
 	mac := hmac.New(sha256.New, psk)
 	mac.Write([]byte("kid|" + strconv.FormatInt(epoch, 10)))
 	return b64.EncodeToString(mac.Sum(nil)[:9])
 }
 
-// Spid — короткий отпечаток ключа прослойки.
 func Spid(publicKey []byte) string {
 	sum := sha256.Sum256(publicKey)
 	return b64.EncodeToString(sum[:])[:6]
 }
 
-// Fields — то, что раньше ехало заголовками запроса открытым текстом.
 type Fields struct {
 	Hwid   string `json:"hwid,omitempty"`
 	OS     string `json:"os,omitempty"`
@@ -95,7 +77,6 @@ type request struct {
 	Fields
 }
 
-// Session — состояние одного обмена. Живёт от сборки запроса до разбора ответа.
 type Session struct {
 	psk    []byte
 	kid    string
@@ -105,25 +86,13 @@ type Session struct {
 	nonce  string
 }
 
-// Answer — то, что приехало внутри шифра.
 type Answer struct {
-	Meta map[string][]string
-	Body string
-	// Status — код ответа, который в открытом режиме приехал бы снаружи.
-	// Снаружи на защищённом пути всегда 200: иначе посредник читал бы по коду,
-	// чем кончилось дело, — 404 у неизвестной подписки, 502 при обрыве.
+	Meta   map[string][]string
+	Body   string
 	Status int
-	// SP — текущий ключ прослойки. Клиент закрепляет его при первом успехе
-	// и дальше считает с ним DH: это даёт совершенную прямую секретность
-	// и страхует от короткого токена.
-	SP []byte
+	SP     []byte
 }
 
-// Build собирает адрес защищённого запроса.
-//
-// base — адрес подписки как его ввёл человек; из него берётся всё, кроме
-// последнего сегмента пути: последний сегмент и есть токен, и он остаётся
-// на устройстве.
 func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session, error) {
 	prefix, token, query, err := split(base)
 	if err != nil {
@@ -177,10 +146,6 @@ func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session,
 	return url, &Session{psk: psk, kid: kid, dh: dh, ephPub: ephPub, priv: priv, nonce: nonce}, nil
 }
 
-// Open разбирает ответ прослойки.
-//
-// wire — тело ответа как оно пришло: base64url без выравнивания. Двоичного
-// тела на проводе нет сознательно, см. комментарий в chan.php.
 func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	if len(wire) > maxAnswer {
 		return nil, ErrBadAnswer
@@ -209,17 +174,14 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	}
 
 	var answer struct {
-		V    int                 `json:"v"`
-		T    int64               `json:"t"`
-		N    string              `json:"n"`
-		St   int                 `json:"st"`
-		SP   string              `json:"sp"`
-		Meta map[string][]string `json:"meta"`
-		Body string              `json:"body"`
-		// Тело подписки прослойка отдаёт байт в байт, а JSON так не умеет:
-		// одного байта не в UTF-8 хватает, чтобы кодирование не состоялось.
-		// В этом случае тело приезжает сюда.
-		BodyB64 string `json:"body_b64"`
+		V       int                 `json:"v"`
+		T       int64               `json:"t"`
+		N       string              `json:"n"`
+		St      int                 `json:"st"`
+		SP      string              `json:"sp"`
+		Meta    map[string][]string `json:"meta"`
+		Body    string              `json:"body"`
+		BodyB64 string              `json:"body_b64"`
 	}
 	if err := json.Unmarshal(plain, &answer); err != nil {
 		return nil, ErrBadAnswer
@@ -228,8 +190,6 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	if answer.V != Version {
 		return nil, ErrBadAnswer
 	}
-	// Эхо метки запроса: ответ обязан быть ответом именно на наш запрос,
-	// а не записанным когда-то раньше.
 	if !hmac.Equal([]byte(answer.N), []byte(s.nonce)) {
 		return nil, ErrMismatch
 	}
@@ -259,7 +219,6 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	return &Answer{Meta: answer.Meta, Body: config, Status: status, SP: sp}, nil
 }
 
-// split делит адрес подписки на префикс и токен.
 func split(base string) (prefix, token, query string, err error) {
 	rest := base
 	if i := strings.IndexByte(rest, '#'); i >= 0 {
@@ -283,11 +242,6 @@ func split(base string) (prefix, token, query string, err error) {
 	return prefix, token, query, nil
 }
 
-// pad дополняет открытый текст запроса до кратного padBlock.
-//
-// Поле дописывается в уже собранный JSON, а не в структуру: так порядок полей
-// остаётся тем же, что в тестовых векторах, и не зависит от сериализатора.
-// Прослойка это поле не читает вовсе — выравнивание нужно только на проводе.
 func pad(plain []byte) []byte {
 	size := len(plain)
 	if size < 2 || size%padBlock == 0 {
@@ -321,5 +275,4 @@ func abs(v int64) int64 {
 	return v
 }
 
-// Now — время в секундах; вынесено ради тестов.
 func Now() int64 { return time.Now().Unix() }

@@ -42,29 +42,14 @@ import com.github.kr328.clash.design.compose.component.ProxyRow
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.SelectorRow
 
-/**
- * Вкладка «Серверы»: выбор группы сверху, узлы выбранной группы списком.
- *
- * Выбор группы выглядит по-разному в зависимости от того, сколько их
- * (см. [GroupSelector]): до трёх — чипы в строку, дальше — строка-селектор
- * с выпадающим списком. Ряд чипов при десяти группах прокручивался бы вслепую:
- * не видно ни сколько групп всего, ни есть ли ещё справа.
- */
 @Composable
 fun ServersTab(
     state: ServersState,
     active: SubscriptionItem?,
     onAction: (MainAction) -> Unit,
 ) {
-    // Серверов может не быть не потому, что список не загрузился, а потому,
-    // что их не выдали. Тогда вкладка не притворяется списком, а называет
-    // причину — теми же словами, что и главный экран.
     val noServers = noServersReason(active?.profile, active?.panel)
 
-    // Описание узла от провайдера («Франкфурт, 10 Гбит») вместо типа протокола.
-    // Тип в подписи узла человеку не говорит ничего: он одинаковый у всех
-    // узлов подписки. Описания приходят не от ядра — оно о таком поле не знает,
-    // — а из разбора конфигурации, поэтому лежат в данных панели.
     val descriptions = active?.panel?.descriptions.orEmpty()
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -80,8 +65,6 @@ fun ServersTab(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                // Сколько узлов в открытой группе. Число знает только она:
-                // состав остальных ядро не отдаёт, пока их не открыли.
                 val count = state.groups.getOrNull(state.selected)?.proxies?.size ?: 0
 
                 if (count > 0) {
@@ -93,8 +76,6 @@ fun ServersTab(
                 }
             }
             if (state.testing) {
-                // Индикатор ровно того же размера, что и иконка под ним: иначе
-                // шапка дёргается по высоте на каждый запуск проверки.
                 CircularProgressIndicator(
                     modifier = Modifier
                         .padding(12.dp)
@@ -104,9 +85,6 @@ fun ServersTab(
             } else {
                 IconButton(
                     onClick = { onAction(MainAction.TestDelays) },
-                    // Работает и до подключения: там задержки меряет не ядро,
-                    // а разовый разбор файла подписки. Не работает только там,
-                    // где ядро уже занято, а групп не отдаёт (см. readOnly).
                     enabled = state.groups.isNotEmpty() && !state.readOnly && noServers == null,
                 ) {
                     Icon(
@@ -161,9 +139,6 @@ fun ServersTab(
             return@Column
         }
 
-        // Отмеченные звездой — наверх, как на ПК. Сортировка устойчивая,
-        // поэтому внутри каждой половины порядок остаётся тот, который прислало
-        // ядро (по умолчанию — как в подписке, либо по имени/задержке).
         val proxies = remember(group.proxies, state.favorites) {
             if (state.favorites.isEmpty()) {
                 group.proxies
@@ -190,8 +165,6 @@ fun ServersTab(
                     delay = proxy.delay,
                     selected = proxy.name == group.now,
                     favorite = proxy.name in state.favorites,
-                    // Нажатие обрабатывается всегда: если выбрать нельзя,
-                    // человек получит внятное объяснение, а не тишину.
                     onClick = { onAction(MainAction.SelectProxy(proxy.name)) },
                     onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
                 )
@@ -226,21 +199,6 @@ private fun EmptyServers() {
     }
 }
 
-/**
- * Выбор группы.
- *
- * Три случая, и в каждом своё:
- *
- *  * **одна группа** — выбирать не из чего, элемента нет вовсе, экран целиком
- *    отдан списку узлов. Это самый частый случай у подписок Remnawave;
- *  * **две-три** — чипы в строку: и переключение в один тап, и сразу видно,
- *    что групп ровно столько;
- *  * **четыре и больше** — одна строка-селектор с выпадающим списком. В строке
- *    написано, какая по счёту группа выбрана из скольких.
- *
- * Порог в три группы — от ширины экрана: четвёртый чип на 360 dp уже уезжает
- * за край, и о его существовании человек не узнает.
- */
 @Composable
 private fun GroupSelector(state: ServersState, onAction: (MainAction) -> Unit) {
     val groups = state.groups
@@ -254,19 +212,6 @@ private fun GroupSelector(state: ServersState, onAction: (MainAction) -> Unit) {
     }
 }
 
-/**
- * Группы чипами: две-три штуки в строку.
- *
- * Раньше здесь стоял сегментированный переключатель на всю ширину. Он делил
- * ширину поровну между группами независимо от длины имён, и на 360 dp при трёх
- * группах на имя оставалось меньше десяти знаков — «Основн…», «Резерв…».
- * Чип берёт ровно столько, сколько нужно тексту, а выбранный отмечен заливкой
- * `secondaryContainer` — это цветовая роль, а не `primary` под 16 % прозрачности,
- * и контраст у неё посчитан, а не подобран на глаз.
- *
- * Строка прокручивается: имена групп задаёт панель, и упереться в край экрана
- * можно и на двух.
- */
 @Composable
 private fun ChipGroups(state: ServersState, onAction: (MainAction) -> Unit) {
     Row(
@@ -292,13 +237,6 @@ private fun ChipGroups(state: ServersState, onAction: (MainAction) -> Unit) {
     }
 }
 
-/**
- * Строка-селектор с выпадающим списком: групп четыре и больше.
- *
- * Числа узлов в строке больше нет: то же число теперь стоит в шапке вкладки,
- * а два одинаковых «6 узлов» подряд на одном экране читаются как две разные
- * величины, и человек ищет между ними разницу.
- */
 @Composable
 private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
@@ -335,9 +273,6 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
                             overflow = TextOverflow.Ellipsis,
                         )
                     },
-                    // Числа узлов у пунктов нет намеренно: состав группы
-                    // ядро отдаёт только для открытой, у остальных список
-                    // пуст, и в меню стояли бы нули.
                     onClick = {
                         expanded = false
 
@@ -349,5 +284,4 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
     }
 }
 
-/** До скольких групп включительно показываем чипы, а не выпадающий список. */
 private const val CHIP_GROUPS_LIMIT = 3

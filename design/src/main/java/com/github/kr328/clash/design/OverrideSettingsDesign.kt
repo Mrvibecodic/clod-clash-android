@@ -62,9 +62,6 @@ class OverrideSettingsDesign(
         when (action) {
             OverrideSettingsAction.Back -> requests.trySend(Request.Back)
             OverrideSettingsAction.Reset -> requests.trySend(Request.ResetOverride)
-            // Объект настроек правится на месте — экрану остаётся сказать,
-            // что пора перерисоваться. Сохраняет его активити целиком,
-            // когда экран закрывают.
             OverrideSettingsAction.Changed -> state = state.copy(revision = state.revision + 1)
         }
     }

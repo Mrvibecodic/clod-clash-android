@@ -36,18 +36,6 @@ import com.github.kr328.clash.design.util.elapsedIntervalString
 import com.github.kr328.clash.design.util.toBytesString
 import kotlinx.coroutines.launch
 
-/**
- * @param inBaseDir открыт корень профиля. В корне лежит сам `config.yaml`,
- *   и трогать его как обычный файл нельзя: ни переименовать, ни удалить,
- *   ни создать рядом соседа.
- * @param configurationEditable профиль не привязан к ссылке. У профиля по
- *   ссылке конфигурация перезаписывается при каждом обновлении, поэтому
- *   правка на месте была бы работой, которая молча пропадёт.
- * @param currentTime часы для строки «N минут назад». Приходят снаружи
- *   и обновляются раз в минуту: считать их в теле экрана значило бы
- *   пересчитывать при каждой перерисовке, а меняться от этого они не начнут.
- * @param menuFor файл, для которого открыто меню действий.
- */
 @Immutable
 data class FilesState(
     val files: List<File> = emptyList(),
@@ -69,7 +57,6 @@ sealed interface FilesAction {
     data class Delete(val file: File) : FilesAction
 }
 
-/** Экран «Файлы»: содержимое каталога профиля. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilesScreen(
@@ -86,7 +73,6 @@ fun FilesScreen(
         onBack = { onAction(FilesAction.Back) },
         modifier = modifier,
         actions = {
-            // В корне профиля добавлять нечего: там живёт сама конфигурация.
             if (!state.inBaseDir) {
                 IconButton(onClick = { onAction(FilesAction.New) }) {
                     Icon(
@@ -118,8 +104,6 @@ fun FilesScreen(
     val target = state.menuFor
 
     if (target != null) {
-        // Лист уезжает вниз анимацией, и только потом снимается состояние:
-        // без этого он исчезал бы рывком в момент нажатия.
         val close = { action: FilesAction ->
             scope.launch { sheetState.hide() }.invokeOnCompletion { onAction(action) }
         }
@@ -129,8 +113,6 @@ fun FilesScreen(
             sheetState = sheetState,
         ) {
             Column(modifier = Modifier.navigationBarsPadding()) {
-                // Заменить содержимое можно у файла, но не у конфигурации
-                // профиля по ссылке — её перезапишет ближайшее обновление.
                 if (!target.isDirectory && (!state.inBaseDir || state.configurationEditable)) {
                     MenuAction(
                         title = stringResource(R.string.import_),
@@ -139,7 +121,6 @@ fun FilesScreen(
                     )
                 }
 
-                // Выгружать пустой файл нечего.
                 if (!target.isDirectory && target.size > 0) {
                     MenuAction(
                         title = stringResource(R.string.export),

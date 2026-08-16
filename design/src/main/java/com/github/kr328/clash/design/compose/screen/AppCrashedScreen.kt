@@ -26,12 +26,6 @@ sealed interface AppCrashedAction {
     data object Back : AppCrashedAction
 }
 
-/**
- * Экран «Приложение упало»: системный лог падения.
- *
- * Текст выделяемый — его сюда и показывают затем, чтобы человек мог скопировать
- * и переслать. Моноширинный шрифт: в трассировке стека столбцы имеют смысл.
- */
 @Composable
 fun AppCrashedScreen(
     state: AppCrashedState,

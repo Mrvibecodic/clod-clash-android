@@ -48,7 +48,6 @@ import com.github.kr328.clash.service.model.Profile
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-/** Шаги добавления подписки. Ровно два экрана: ввод и результат. */
 enum class AddProfileStep {
     Input,
     Fetching,
@@ -59,19 +58,11 @@ enum class AddProfileStep {
 data class AddProfileState(
     val url: String = "",
     val step: AddProfileStep = AddProfileStep.Input,
-    /** Что именно сейчас качается — приходит из наблюдателя загрузки ядра. */
     val progressText: String = "",
     val progress: Float = 0f,
     val error: String? = null,
-    /**
-     * clod:chan — подписка ходит только по защищённому каналу до прослойки.
-     *
-     * Провайдер пишет об этом в инструкции. Галочку можно только поставить:
-     * снять её потом нельзя, профиль придётся удалить и завести заново.
-     */
     val secure: Boolean = false,
     val result: Profile? = null,
-    /** Название от панели. Профиль в базе всё ещё зовётся по умолчанию. */
     val resultTitle: String = "",
 )
 
@@ -84,13 +75,6 @@ sealed interface AddProfileAction {
     data object Finish : AddProfileAction
 }
 
-/**
- * Добавление подписки в два полноэкранных шага, а не диалогом.
- *
- * На десктопе это тоже два шага: сначала одно поле, потом — что нашлось по ссылке.
- * Имя, интервал обновления, срок и трафик приходят из ответа панели, спрашивать
- * их у человека незачем — старый экран CMFA требовал заполнить их руками.
- */
 @Composable
 fun AddProfileScreen(
     state: AddProfileState,
@@ -100,8 +84,6 @@ fun AddProfileScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            // Без этого заголовок уезжает под системную панель: экран рисуется
-            // во всё окно, а своей шапки с отступами у него нет.
             .safeDrawingPadding()
             .verticalScroll(rememberScrollState())
             .imePadding()
@@ -162,9 +144,6 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.clod_secure_channel),
-                // Заголовок строки, а не обычный текст: без явного цвета он
-                // брал LocalContentColor и на тёмной теме читался бледнее
-                // собственного пояснения — строка выглядела выключенной.
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
@@ -239,8 +218,6 @@ private fun DoneStep(state: AddProfileState, onAction: (AddProfileAction) -> Uni
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                // Название от панели, а не то, под которым профиль лёг в базу:
-                // человек его не задавал и видеть «New Profile» не должен.
                 text = state.resultTitle.ifBlank { profile?.name.orEmpty() },
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,

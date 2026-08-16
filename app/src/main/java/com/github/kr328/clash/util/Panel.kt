@@ -7,12 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
-/**
- * `panel.json` профиля с фонового потока.
- *
- * Сам разбор живёт в модуле службы: то же самое нужно ей самой — заголовок
- * шторки и уведомления об обновлении подписки берут название оттуда же.
- */
 suspend fun Context.queryPanelInfo(uuid: UUID): PanelInfo? = withContext(Dispatchers.IO) {
     readPanelInfo(uuid)
 }

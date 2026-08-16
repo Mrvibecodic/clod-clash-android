@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Фирменный индиго Clod Clash: тот же цвет, что в иконке приложения. -->
     <color name="color_clash_light">#4F46E5</color>
-    <!-- Осветлённый вариант того же индиго: на тёмном фоне #4F46E5 не читается. -->
     <color name="color_clash_dark">#A7A5FF</color>
     <color name="color_system_ui_overlay">#50000000</color>
     <color name="color_light_background">#FFFAFAFA</color>

@@ -31,8 +31,6 @@ class HelpActivity : BaseActivity<HelpDesign>() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         } catch (e: Exception) {
-            // Браузера может не быть вовсе: на голой прошивке без Play
-            // такое встречается, и падать из-за этого экран не должен.
             launch { design?.showExceptionToast(e) }
         }
     }

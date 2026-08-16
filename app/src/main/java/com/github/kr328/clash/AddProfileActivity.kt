@@ -17,14 +17,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import java.util.UUID
 
-/**
- * Добавление подписки: ссылка → загрузка → что нашлось.
- *
- * Заменяет связку NewProfileActivity + PropertiesActivity для основного случая.
- * Прочие способы (файл, внешние приложения-провайдеры) остались за ссылкой
- * «Другие способы импорта»: ими пользуются редко, и тащить их на первый экран
- * значит утопить единственное поле, ради которого экран и открывают.
- */
 class AddProfileActivity : BaseActivity<AddProfileDesign>() {
     private val scanLauncher = registerForActivityResult(ScanQRCode(), ::onScanResult)
 
@@ -61,9 +53,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
 
         setFetching()
 
-        // Профиль создаётся сразу «отложенным»: ядро скачивает конфиг именно
-        // в его каталог. Если загрузка сорвалась, отложенный профиль надо снять,
-        // иначе он останется висеть в списке пустым.
         val uuid: UUID = withProfile {
             create(Profile.Type.Url, getString(R.string.new_profile), source, secure = secure)
         }
@@ -87,16 +76,12 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                 return
             }
 
-            // Первая подписка сразу становится активной: иначе человек добавил её
-            // и упёрся в «подписка не выбрана» на главном экране.
             val hasActive = withProfile { queryActive() } != null
 
             if (!hasActive) {
                 withProfile { setActive(profile) }
             }
 
-            // Название приходит заголовком панели и лежит в panel.json рядом
-            // с конфигом — в базе профиль всё ещё зовётся по умолчанию.
             setDone(profile, queryPanelInfo(uuid)?.title.orEmpty())
         } catch (e: Exception) {
             withProfile { release(uuid) }
@@ -105,13 +90,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         }
     }
 
-    /**
-     * Приводит введённое к ссылке, по которой можно ходить.
-     *
-     * Люди вставляют не только `https://…`, но и `clash://install-config?url=…`
-     * — такую ссылку им даёт сама панель кнопкой «добавить в клиент». Внутри
-     * лежит настоящий адрес в percent-encoding, его и достаём.
-     */
     private fun normalizeSource(input: String): String? {
         val trimmed = input.trim()
 

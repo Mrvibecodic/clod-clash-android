@@ -51,7 +51,6 @@ object Parcelizer {
             previousValue: T?
         ): T = decodeSerializableValue(deserializer)
 
-
         override fun endStructure(descriptor: SerialDescriptor) {
 
         }

@@ -21,8 +21,6 @@ class AppListCacheModule(service: Service) : Module<Unit>(service) {
                 val info = v[0]
 
                 if (v.size == 1) {
-                    // Force use package name if only one app in a single sharedUid group
-                    // Example: firefox
 
                     info.applicationInfo!!.uid to info.packageName
                 } else {

@@ -29,16 +29,6 @@ class TileService : TileService() {
     private var currentProfile = ""
     private var clashRunning = false
 
-    /**
-     * Имя текущей подписки живёт в процессе службы (`:background`) и достаётся
-     * оттуда через `ContentProvider`, то есть блокирующим вызовом Binder,
-     * который заодно может этот процесс поднять.
-     *
-     * Шторка быстрых настроек рисуется системным процессом и ждёт наш ответ:
-     * замороженная или занятая служба означала бы подвисшую шторку и ANR.
-     * Поэтому спрашиваем с `Dispatchers.IO`, а плитку рисуем дважды — сразу
-     * тем, что известно, и ещё раз, когда придёт ответ.
-     */
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var refreshing: Job? = null
 
@@ -89,14 +79,6 @@ class TileService : TileService() {
         super.onDestroy()
     }
 
-    /**
-     * Спрашивает имя подписки у службы и перерисовывает плитку.
-     *
-     * [updateRunning] — считать ли по ответу, запущено ли ядро. При старте
-     * прослушивания другого источника нет; на `ACTION_PROFILE_LOADED` факт
-     * запуска уже известен из самого объявления, и перебивать его ответом
-     * не нужно.
-     */
     private fun refreshProfile(updateRunning: Boolean) {
         refreshing?.cancel()
 

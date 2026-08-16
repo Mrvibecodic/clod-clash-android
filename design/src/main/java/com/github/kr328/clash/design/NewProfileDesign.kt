@@ -45,8 +45,6 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
                 }
             }
             is NewProfileAction.Detail -> {
-                // Сведения о приложении есть только у внешних поставщиков:
-                // у файла, ссылки и QR открывать нечего.
                 val provider = action.provider as? ProfileProvider.External ?: return
 
                 requests.trySend(Request.OpenDetail(provider))

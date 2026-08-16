@@ -18,12 +18,6 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.SwitchRow
 
-/**
- * @param darkMode индекс в `DarkMode.values()`: экран не знает про сам enum,
- *   чтобы не тащить в разметку модель настроек.
- * @param notificationEditable уведомление со скоростью нельзя переключать
- *   на ходу — оно собирается при запуске службы.
- */
 @Immutable
 data class AppSettingsState(
     val autoRestart: Boolean = false,
@@ -47,13 +41,6 @@ sealed interface AppSettingsAction {
     data class SetSubNotifications(val enabled: Boolean) : AppSettingsAction
 }
 
-/**
- * Настройки приложения.
- *
- * Первый экран настроек на Compose. Строит его тот же набор строк, что и
- * остальные экраны, — вместо самодельного DSL `preferenceScreen`, который
- * собирал вьюхи в рантайме и держал ссылки на свойства хранилищ.
- */
 @Composable
 fun AppSettingsScreen(
     state: AppSettingsState,
@@ -112,8 +99,6 @@ fun AppSettingsScreen(
                 subtitle = if (state.notificationEditable) {
                     stringResource(R.string.show_traffic_summary)
                 } else {
-                    // Молча погашенная строка выглядит как поломка: объясняем,
-                    // почему её нельзя тронуть прямо сейчас.
                     stringResource(R.string.clod_setting_needs_stop)
                 },
                 icon = painterResource(R.drawable.ic_baseline_domain),

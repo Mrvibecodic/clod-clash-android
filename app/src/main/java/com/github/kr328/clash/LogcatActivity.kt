@@ -118,8 +118,6 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                             startActivity(LogsActivity::class.intent)
                             finish()
                         }
-                        // Уход с экрана запись НЕ останавливает — для этого
-                        // есть кнопка «стоп». Так было и на старом экране.
                         LogcatDesign.Request.Back -> {
                             finish()
                         }

@@ -21,20 +21,6 @@ abstract class Database : RoomDatabase() {
     abstract fun openSelectionProxyDao(): SelectionDao
 
     companion object {
-        /**
-         * Один экземпляр на процесс, живёт столько же, сколько процесс.
-         *
-         * Апстрим держал базу за `SoftReference`: при нехватке памяти сборщик
-         * очищал ссылку, и следующий же запрос открывал файл SQLite заново.
-         * Экономия при этом мнимая — `RoomDatabase` без открытых курсоров
-         * занимает килобайты, — а цена реальная: повторное открытие идёт
-         * с миграциями и с блокировкой файла, а у нас к базе ходят ДВА
-         * процесса (приложение и служба в `:background`), и второй в этот
-         * момент вполне может писать.
-         *
-         * `by lazy` синхронизирован по умолчанию, отдельный `@Synchronized`
-         * геттер больше не нужен.
-         */
         val database: Database by lazy { open(Global.application) }
 
         private fun open(context: Context): Database {

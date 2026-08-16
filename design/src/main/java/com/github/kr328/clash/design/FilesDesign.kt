@@ -25,7 +25,6 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         data class ImportFile(val file: File?) : Request
         data class ExportFile(val file: File) : Request
 
-        /** Шаг вверх по каталогам, а из корня — уход с экрана. */
         data object PopStack : Request
     }
 
@@ -58,9 +57,6 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
                     requests.trySend(Request.OpenFile(action.file))
                 }
             }
-            // Меню закрывается сразу: работа за ним идёт в активити и может
-            // спросить имя файла или открыть системный выбор — лист поверх
-            // всего этого висел бы до самого конца.
             is FilesAction.Import -> pick(Request.ImportFile(action.file))
             is FilesAction.Export -> pick(Request.ExportFile(action.file))
             is FilesAction.Rename -> pick(Request.RenameFile(action.file))
@@ -80,7 +76,6 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         }
     }
 
-    /** Пересчитать строки «N минут назад»: активити зовёт раз в минуту. */
     fun updateElapsed() {
         state = state.copy(currentTime = System.currentTimeMillis())
     }

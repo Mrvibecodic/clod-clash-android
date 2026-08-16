@@ -38,32 +38,13 @@ type Status struct {
 type fetchHeader struct {
 	SubscriptionUserInfo  string
 	ProfileUpdateInterval string
-	// Полный набор заголовков ответа: из него берутся название подписки,
-	// объявления и ссылки панели (см. panel.go). Держать их по одному полю
-	// на заголовок — значит править эту структуру на каждый новый.
-	//
-	// Тип именно map[string][]string, а не http.Header: клиент ядра построен
-	// на форке github.com/metacubex/http, и его Header — другой именованный тип
-	// с тем же основанием, так что присвоение требует явного преобразования.
-	Raw map[string][]string
+	Raw                   map[string][]string
 }
 
-// subscriptionHeaders — то, чем клиент представляется панели.
-//
-// `User-Agent` — ровно один на всё приложение: панель Remnawave показывает его
-// в списке устройств рядом с `x-hwid`, и два разных UA от одного клиента она
-// считает двумя устройствами (грабля koala-clash). Формат `имя/версия`
-// с пометкой платформы: имя матчится регулярками правил подписки
-// с учётом регистра, поэтому оно захардкожено, а не собирается из названия.
-//
-// Заголовки опознания устройства добавляются, только если оно включено:
-// см. `app.DeviceHeaders`.
 func subscriptionHeaders() http.Header {
 	header := http.Header{
 		"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"},
-		// Обязателен: правила ответа Remnawave отдают браузерам HTML-страницу,
-		// а не конфигурацию, и опознают их как раз по `Accept`.
-		"Accept": {"*/*"},
+		"Accept":     {"*/*"},
 	}
 
 	for name, value := range app.DeviceHeaders() {
@@ -91,12 +72,6 @@ func openContent(url string) (io.ReadCloser, error) {
 	return app.OpenContent(url)
 }
 
-// fetchConfig — загрузка САМОЙ подписки, в отличие от `fetch`, которым качаются
-// провайдеры правил и узлов: защищённый канал бывает только у неё.
-//
-// Ключ прослойки кладётся рядом с конфигурацией, поэтому каталог берём
-// из пути файла — отдельным параметром его пришлось бы протаскивать через
-// все ветки запасных адресов.
 func fetchConfig(url *U.URL, file string) (fetchHeader, error) {
 	if !SecureChannel() || (url.Scheme != "http" && url.Scheme != "https") {
 		return fetch(url, file)
@@ -194,11 +169,6 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 	if userinfo != "" {
 		info := provider.NewSubscriptionInfo(userinfo)
 
-		// `subscription-userinfo` требует секунды, но панели встречаются и с
-		// миллисекундами. Умножение вслепую давало бы срок в пятидесятитысячном
-		// году: карточка подписки показывала бы бессмыслицу, а напоминания
-		// о конце срока молчали бы вечно. Граница 10^12 — это 2001 год
-		// в секундах и 1970-й в миллисекундах, ошибиться нечем.
 		expire := info.Expire
 		if expire > 0 && expire < 1_000_000_000_000 {
 			expire *= 1000
@@ -217,14 +187,6 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 	reportStatus(string(bytes))
 }
 
-// fetchFromSpare пробует запасные адреса, которые провайдер дал в прошлом
-// ответе (`fallback-url`, `fallback-domain`).
-//
-// Ходим сюда только после отказа основного адреса и только по порядку,
-// который задаёт панель. Сохранённый адрес подписки при этом НЕ меняется:
-// запасной домен даётся на случай блокировки основного, и переезжать на него
-// навсегда нельзя — в следующий раз снова пробуем основной. Переезд — это
-// отдельная история и отдельные заголовки (`new-url` / `new-domain`).
 func fetchFromSpare(
 	info PanelInfo,
 	primary *U.URL,
@@ -266,8 +228,6 @@ func fetchFromSpare(
 		return header, nil
 	}
 
-	// Возвращаем ПЕРВУЮ ошибку, а не последнюю: человеку важно, почему
-	// не ответил его основной адрес, а не запасной адрес провайдера.
 	return fetchHeader{}, cause
 }
 
@@ -294,8 +254,6 @@ func FetchAndValid(
 
 		reportStatus(string(bytes))
 
-		// Прошлый ответ панели читаем ДО загрузки: в нём лежат запасные
-		// адреса, а перезапишем мы его через несколько строк.
 		info := readPanelInfo(path)
 
 		header, err := fetchConfig(url, configPath)
@@ -308,25 +266,10 @@ func FetchAndValid(
 
 		reportSubscriptionInfo(header, reportStatus)
 
-		// Заголовки панели сохраняем сразу: дальше по коду ответа уже нет,
-		// а разбор конфига может и не дойти до конца.
-		//
-		// Адрес для проверки переезда — ОСНОВНОЙ, даже если ответ пришёл
-		// с запасного: сохранённый адрес подписки не менялся.
 		applyHeaders(&info, header.Raw, url.String())
-		// Логотип провайдера кладём рядом с конфигом сразу же. Тянуть его с
-		// чужого хоста на каждую отрисовку экрана значило бы отдавать этому
-		// хосту адрес человека и мигать пустотой на холодном старте и офлайн.
 		info.LogoFile = fetchLogo(path, info.LogoURL)
 		writePanelInfo(path, info)
 
-		// Панель отказалась выдать конфигурацию этому устройству — значит
-		// в теле ответа заглушка: узлы там с адресом 0.0.0.0. Записать её
-		// поверх рабочей подписки означает отнять у человека рабочие серверы
-		// за то, что он подключил лишний телефон. Обновление отменяем.
-		//
-		// Файл уже перезаписан, но это `processingDir`: в рабочий каталог
-		// он переезжает только после успеха, а на ошибке выбрасывается.
 		if err := deviceRefused(info); err != nil {
 			return err
 		}
@@ -339,21 +282,11 @@ func FetchAndValid(
 		return err
 	}
 
-	// Состав групп и узлов кладём рядом с конфигом: пока туннель не поднят,
-	// ядро о них ничего не знает, а список серверов нужен и до подключения.
 	panelInfo := readPanelInfo(path)
 	applyGroups(&panelInfo, rawCfg)
 
-	// Узлы-обманки к этому месту уже выброшены фильтром (`filterSentinels`
-	// в списке процессоров), но факт «настоящих серверов не было ни одного»
-	// экрану нужен: без него пустой список выглядит как поломка приложения,
-	// а не как отказ сервиса.
 	report := inspectSentinels(rawCfg)
 
-	// При `clod-show-0hosts` фильтр не работал, и узлы-обманки остались
-	// в конфиге намеренно. Статус «серверов нет» тогда не поднимаем: провайдер
-	// просил показать список как есть, а карточка с объяснением поверх него
-	// была бы ровно тем, что заголовок и отключает.
 	panelInfo.NoServers = report.OnlySentinels && !panelInfo.ShowZeroHosts
 
 	if len(report.Remarks) > 0 {
@@ -398,9 +331,6 @@ func FetchAndValid(
 		if prefix == RULES {
 			if pib, uok := provider["path-in-bundle"]; uok {
 				if pib, uok := pib.(string); uok && pib != "" {
-					// actually, we don't need to extract the file here; the core will do it.
-					// however, due to historical reasons, CMFA fetches provider content when loading profile,
-					// so we maintain consistency with the old behavior.
 					if file, err := RB.Open(pib); err == nil {
 						defer file.Close()
 						if err := writeFile(ps, file); err == nil {
@@ -433,8 +363,6 @@ func FetchAndValid(
 	return nil
 }
 
-// Ошибки отказа панели по устройству. Разбираются на стороне Kotlin
-// и превращаются в человеческий текст — переводов в ядре нет.
 var (
 	ErrHwidLimitReached = errors.New("clod-device-limit")
 	ErrHwidNotSupported = errors.New("clod-device-not-identified")

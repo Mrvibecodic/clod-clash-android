@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Clod Clash. Робот-логотип, перенесён с десктопной версии
-     (src-tauri/icons/icon.png, src/assets/image/logo-robot.svg). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="@color/color_clash">
-    <!-- Одноцветный силуэт: градиент в 24 dp превращается в кашу.
-         Глаза и рот — дырки (fillType evenOdd), а не закрашенные фигуры. -->
     <path
         android:fillColor="#FFFFFFFF"
         android:pathData="M12.00,1.03 a1.19,1.19 0 1,1 0,2.38 a1.19,1.19 0 1,1 0,-2.38 Z" />

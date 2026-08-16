@@ -14,14 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/**
- * Разбор списка изменений в том виде, в каком его пишут в UPDATELOG.md.
- *
- * Полноценный markdown сюда не нужен: в списке изменений встречаются ровно три
- * вещи — заголовок раздела `### Добавлено`, пункт `- текст` и обычный абзац.
- * Тащить ради этого библиотеку разметки (сотни килобайт и своя тема) — перебор,
- * а показывать сырые решётки и дефисы человеку нельзя.
- */
 private sealed interface NoteLine {
     data class Heading(val text: String) : NoteLine
     data class Bullet(val text: String) : NoteLine
@@ -54,8 +46,6 @@ private fun parseNotes(raw: String): List<NoteLine> {
                 lines += NoteLine.Bullet(trimmed.drop(2).trim())
             }
 
-            // Продолжение пункта: в UPDATELOG длинные пункты переносятся
-            // с отступом, и склеивать их надо с предыдущим, а не начинать абзац.
             line.startsWith("  ") && lines.lastOrNull() is NoteLine.Bullet -> {
                 val last = lines.removeAt(lines.lastIndex) as NoteLine.Bullet
                 lines += NoteLine.Bullet(last.text + " " + trimmed)
@@ -73,7 +63,6 @@ private fun parseNotes(raw: String): List<NoteLine> {
     return lines
 }
 
-/** Отрисовка списка изменений: заголовки разделов, пункты с точками, абзацы. */
 @Composable
 fun ReleaseNotes(raw: String, modifier: Modifier = Modifier) {
     val lines = parseNotes(raw)

@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Clod Clash. Робот-логотип v2 (14.08.2026): та же мимика, что и раньше, но
-     крупнее голова, без ножек и по выверенной сетке — перенос с десктопной
-     версии (src-tauri/icons/icon.png, src/assets/image/logo-robot.svg). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Робот вписан в безопасную зону: максимальное удаление от центра 33 dp
-         (гарантированно видимый круг 66 dp из 108 dp). -->
     <path
         android:fillColor="#FFFFFFFF"
         android:pathData="M54.0,30.05 a4.03,4.03 0 1,1 0,8.06 a4.03,4.03 0 1,1 0,-8.06 Z" />

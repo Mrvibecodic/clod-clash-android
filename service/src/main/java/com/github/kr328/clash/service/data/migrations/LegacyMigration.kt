@@ -69,16 +69,16 @@ private suspend fun migrationFromLegacy234(
 
         do {
             val newType = when (cursor.getInt(type)) {
-                1 -> { // TYPE_FILE
+                1 -> {
                     Profile.Type.File
                 }
-                2 -> { // TYPE_URL
+                2 -> {
                     Profile.Type.Url
                 }
-                3 -> { // TYPE_EXTERNAL
+                3 -> {
                     Profile.Type.External
                 }
-                else -> { // unknown
+                else -> {
                     continue
                 }
             }

@@ -17,21 +17,12 @@ import com.github.kr328.clash.service.store.ServiceStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Экран «Приложения» — какие приложения пускать в туннель.
- *
- * @param selected НАСТОЯЩИЙ набор выбранного: активити сохраняет его в
- *   настройки при уходе с экрана и по изменению перезапускает ядро. Экран
- *   правит его на месте, а Compose перерисовывает по снимку в состоянии —
- *   на самом изменяемом множестве галочки не двигались бы вовсе.
- */
 class AccessControlDesign(
     context: Context,
     private val uiStore: UiStore,
     private val srvStore: ServiceStore,
     private val selected: MutableSet<String>,
 ) : Design<AccessControlDesign.Request>(context) {
-    /** Порядок важен: экран отдаёт индекс, в хранилище лежит значение. */
     private val modes = AccessControlMode.entries
 
     enum class Request {
@@ -81,8 +72,6 @@ class AccessControlDesign(
                 syncSelected()
             }
             is AccessControlAction.Search -> {
-                // Уход из поиска стирает слово: вернуться к отфильтрованному
-                // списку через закрытый поиск было бы нечем.
                 state = if (action.enabled) {
                     state.copy(searching = true)
                 } else {
@@ -124,13 +113,6 @@ class AccessControlDesign(
         }
     }
 
-    /**
-     * Показать то, что сейчас в наборе.
-     *
-     * Зовётся после того, как набор поменяла активити (выделить всё, снять всё,
-     * инвертировать, вставить из буфера) — она правит `selected` на месте,
-     * и без снимка экран об этом не узнает.
-     */
     suspend fun rebindAll() {
         withContext(Dispatchers.Main) {
             syncSelected()

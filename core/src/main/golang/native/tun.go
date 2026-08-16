@@ -1,6 +1,5 @@
 package main
 
-//#include "bridge.h"
 import "C"
 
 import (
@@ -63,7 +62,6 @@ func (t *remoteTun) close() {
 	C.release_object(t.callback)
 }
 
-//export startTun
 func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) C.int {
 	rTunLock.Lock()
 	defer rTunLock.Unlock()
@@ -97,7 +95,6 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	return 0
 }
 
-//export stopTun
 func stopTun() {
 	rTunLock.Lock()
 	defer rTunLock.Unlock()

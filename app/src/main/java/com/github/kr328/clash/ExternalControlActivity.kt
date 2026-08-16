@@ -81,10 +81,6 @@ class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
     }
 
     private fun startClash() {
-//        if (currentProfile == null) {
-//            Toast.makeText(this, R.string.no_profile_selected, Toast.LENGTH_LONG).show()
-//            return
-//        }
         val vpnRequest = startClashService()
         if (vpnRequest != null) {
             Toast.makeText(this, R.string.unable_to_start_vpn, Toast.LENGTH_LONG).show()

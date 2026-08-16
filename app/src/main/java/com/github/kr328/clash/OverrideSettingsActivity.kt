@@ -21,10 +21,6 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
         val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
         val service = ServiceStore(this)
 
-        // Замок провайдера (`clod-lock-mode`). Строка «Режим» тут пишет
-        // ПОСТОЯННЫЙ слот: он переживает перезапуск и накладывается на любую
-        // подписку, поэтому при замке её нельзя просто спрятать — надо ещё
-        // и снять то, что человек успел выставить до прихода замка.
         val modeLocked = withProfile { queryActive() }
             ?.let { queryPanelInfo(it.uuid)?.lockMode } == true
 

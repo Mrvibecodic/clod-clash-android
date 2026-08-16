@@ -4,11 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
-/**
- * Таймер сессии врёт заметнее всего тогда, когда системные часы уехали:
- * сдвиг на трое суток превращает секунды после подключения в «73 часа».
- * Здесь проверяется, что монотонные часы этот сдвиг не пускают на экран.
- */
 class SessionClockTest {
     private val hour = TimeUnit.HOURS.toMillis(1)
 
@@ -28,8 +23,6 @@ class SessionClockTest {
     fun `скачок системных часов на трое суток таймер не трогает`() {
         val seconds = SessionClock.seconds(
             startedAt = 1_000_000,
-            // Синхронизация времени увела системные часы на 73 часа вперёд,
-            // монотонные при этом отсчитали ровно две секунды.
             startedElapsed = 60_000,
             nowWall = 1_000_000 + 73 * hour + 2_000,
             nowElapsed = 62_000,
@@ -66,7 +59,6 @@ class SessionClockTest {
     fun `метка от прошлой загрузки телефона в расчёт не идёт`() {
         val seconds = SessionClock.seconds(
             startedAt = 1_000_000,
-            // После перезагрузки счётчик пошёл заново и оказался меньше метки.
             startedElapsed = 900_000,
             nowWall = 1_045_000,
             nowElapsed = 30_000,

@@ -8,14 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.TimeUnit
 
-/**
- * `panel.json` пишет ядро, а читает приложение — то есть формат живёт в двух
- * языках сразу. Здесь проверяется та часть договора, которую видно со стороны
- * Kotlin: старый файл без новых полей должен читаться, а не ронять разбор,
- * и поправка часов не должна применяться, когда ей верить нельзя.
- */
 class PanelInfoTest {
-    // Тот же разбор, что в `service/util/Panel.kt`.
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun decode(text: String) = json.decodeFromString(PanelInfo.serializer(), text)
@@ -32,9 +25,6 @@ class PanelInfoTest {
 
     @Test
     fun `заголовок, которого приложение ещё не знает, не роняет разбор`() {
-        // Ядро может уйти вперёд приложения: обновилось оно вместе с APK, но
-        // старый `panel.json` мог остаться от сборки посвежее — например,
-        // после отката. Неизвестное поле должно молча игнорироваться.
         val info = decode("""{"title":"Провайдер","clodSomethingNew":42}""")
 
         assertEquals("Провайдер", info.title)
@@ -44,8 +34,6 @@ class PanelInfoTest {
     fun `молчание панели о напоминаниях и режиме — это null, а не пустота`() {
         val info = decode("{}")
 
-        // null означает «панель не сказала, берём умолчания», пустой список —
-        // «панель выключила». Значение-заглушка стёрло бы эту разницу.
         assertNull(info.notifyExpireDays)
         assertNull(info.notifyTrafficPercent)
         assertNull(info.lockMode)
@@ -72,9 +60,6 @@ class PanelInfoTest {
 
     @Test
     fun `ссылки провайдера читаются теми же именами, что пишет ядро`() {
-        // Имена полей — договор с Go (`native/config/panel/panel.go`).
-        // Разъедутся — строки в настройках молча исчезнут, и виноватым будет
-        // выглядеть провайдер, а не опечатка в имени поля.
         val info = decode(
             """{"portalUrl":"https://provider.example/cabinet",""" +
                 """"supportUrl":"https://t.me/provider_support",""" +
@@ -92,8 +77,6 @@ class PanelInfoTest {
 
     @Test
     fun `подписка без ссылок отдаёт пустые строки, а не null`() {
-        // Экран настроек решает по `isNotBlank()`: пустая строка означает
-        // «заголовка не было», и блока ссылок тогда нет вовсе.
         val info = decode("{}")
 
         assertEquals("", info.botUrl)
@@ -101,14 +84,6 @@ class PanelInfoTest {
         assertEquals("", info.guideUrl)
     }
 
-    // --- поправка часов ---
-
-    /**
-     * Часы читаются с запасом в минуту назад намеренно. Прод сравнивает возраст
-     * измерения с нулём (`age in 0..MAX`), а `clockSkewMillis()` читает часы
-     * ВТОРОЙ раз — шаг NTP назад между двумя чтениями дал бы `age == -1`
-     * и невоспроизводимо красный CI.
-     */
     private fun measuredJustNow() = System.currentTimeMillis() / 1000 - 60
 
     private fun nowSeconds() = System.currentTimeMillis() / 1000
@@ -144,14 +119,10 @@ class PanelInfoTest {
 
     @Test
     fun `измерение из будущего выбрасывается`() {
-        // Отрицательный возраст значит, что часы устройства уехали назад
-        // ПОД измерением — верить старой поправке в этот момент нельзя.
         val info = PanelInfo(clockSkew = 120, clockSkewAt = nowSeconds() + TimeUnit.DAYS.toSeconds(2))
 
         assertEquals(0L, info.clockSkewMillis())
     }
-
-    // --- «показывать ли карточку провайдера» ---
 
     @Test
     fun `одного логотипа хватает, чтобы подписка перестала быть пустой`() {
@@ -163,8 +134,6 @@ class PanelInfoTest {
 
     @Test
     fun `служебные поля пустоту не отменяют`() {
-        // Срок обновления трафика и лимит устройств показывать не в чем:
-        // карточка провайдера строится из названия, логотипа и объявлений.
         assertTrue(PanelInfo(refillDate = 1_700_000_000, hwidMaxDevices = 3).isEmpty)
     }
 }

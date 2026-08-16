@@ -50,23 +50,6 @@ func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
 	return rawConfig, nil
 }
 
-// parseMutex сериализует разбор конфигурации.
-//
-// `config.ParseRawConfig` в mihomo на время разбора подменяет ГЛОБАЛЬНЫЕ
-// настройки ядра (`temporaryUpdateGeneral` в `hub/executor`): режим, DisableIPv6,
-// интерфейс, routing-mark, User-Agent, адреса geodata — и в конце возвращает то,
-// что было на входе. Пока разбор один, это незаметно. Но с появлением проверки
-// задержек до подключения разборов стало два, и они могут наложиться: проверка
-// захватывает настройки простоя, следом загрузка профиля применяет боевые,
-// а откат проверки затирает их обратно — туннель остаётся в чужом режиме.
-//
-// Мьютекс накрывает разбор ВМЕСТЕ с применением: сериализовать одни разборы
-// мало, потому что откат может лечь и на `hub.ApplyConfig`, случившийся между
-// захватом и откатом соседнего разбора. Поэтому у `Load`/`LoadDefault` лок
-// держится до конца применения.
-//
-// `sync.Mutex` не рекурсивный, отсюда пара `Parse` (берёт лок) и `parseLocked`
-// (уже под локом): вложенный вызов был бы мгновенным самодедлоком.
 var parseMutex sync.Mutex
 
 func Parse(rawConfig *config.RawConfig) (*config.Config, error) {
@@ -95,13 +78,10 @@ func Load(path string) error {
 
 	logDns(rawCfg)
 
-	// Разбор и применение — под одним локом: между ними нельзя пускать
-	// чужой разбор, иначе его откат затрёт только что применённое.
 	parseMutex.Lock()
 
 	cfg, err := parseLocked(rawCfg)
 	if err == nil {
-		// like hub.Parse()
 		hub.ApplyConfig(cfg)
 	}
 
@@ -121,9 +101,6 @@ func Load(path string) error {
 }
 
 func LoadDefault() {
-	// Тоже под локом: это `ParseRawConfig` из mihomo, и он подменяет
-	// глобальные настройки ядра ровно так же. Зовётся при каждом `reset()`,
-	// то есть на каждом подключении и отключении.
 	parseMutex.Lock()
 	defer parseMutex.Unlock()
 

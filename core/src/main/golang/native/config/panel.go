@@ -6,16 +6,11 @@ import (
 	"cfa/native/config/panel"
 )
 
-// Разбор заголовков панели вынесен в отдельный пакет `panel`: он не зависит
-// ни от ядра, ни от Android, и поэтому проверяется обычными Go-тестами на
-// любой машине. Здесь остаётся только то, чему нужен разобранный конфиг,
-// и имена, которыми пользуется остальной пакет.
 type (
 	PanelInfo  = panel.Info
 	PanelGroup = panel.Group
 )
 
-// Состояния устройства, как их видит экран.
 const (
 	HwidUnknown      = panel.HwidUnknown
 	HwidActive       = panel.HwidActive
@@ -35,14 +30,11 @@ func applyHeaders(info *PanelInfo, header map[string][]string, current string) {
 	panel.ApplyHeaders(info, header, current)
 }
 
-// applyGroups достаёт из разобранного конфига состав групп.
 func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 	if cfg == nil {
 		return
 	}
 
-	// Полный список узлов — им подменяется состав группы, которая набирается
-	// не перечислением, а из proxy-provider'а: имён оттуда в конфиге нет.
 	all := make([]string, 0, len(cfg.Proxy))
 	for _, proxy := range cfg.Proxy {
 		if name, ok := proxy["name"].(string); ok && name != "" {
@@ -50,10 +42,6 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 		}
 	}
 
-	// Описания узлов: панель кладёт их прямо в узел, ядро о таком поле
-	// не знает и через API его не отдаёт — собираем при разборе конфигурации.
-	// Ключ пишут по-разному: Remnawave шлёт `serverDescription`, клиенты-доноры
-	// принимают ещё две записи, а конфиг может прийти и не от панели.
 	descriptions := make(map[string]string, len(cfg.Proxy))
 	for _, proxy := range cfg.Proxy {
 		name, ok := proxy["name"].(string)
@@ -83,12 +71,6 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 			continue
 		}
 
-		// `hidden: true` — просьба конфига не показывать группу в интерфейсе.
-		// Ядро её уважает (см. `QueryProxyGroupNames`: там отсеиваются группы
-		// с `Hidden()`), а этот разбор — нет, и на вкладке «Серверы» до
-		// подключения вылезали служебные группы шаблона: балансировщик,
-		// спрятанный `PROXY`. После подключения они пропадали — то есть список
-		// групп менялся сам собой.
 		if panel.Hidden(raw["hidden"]) {
 			continue
 		}

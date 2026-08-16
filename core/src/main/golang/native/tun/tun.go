@@ -24,7 +24,7 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 
 	var prefix4 []netip.Prefix
 	var prefix6 []netip.Prefix
-	for _, gatewayStr := range strings.Split(gateway, ",") { // "172.19.0.1/30" or "172.19.0.1/30,fdfe:dcba:9876::1/126"
+	for _, gatewayStr := range strings.Split(gateway, ",") {
 		gatewayStr = strings.TrimSpace(gatewayStr)
 		if len(gatewayStr) == 0 {
 			continue
@@ -43,7 +43,7 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 	}
 
 	var dnsHijack []string
-	for _, dnsStr := range strings.Split(dns, ",") { // "172.19.0.2" or "0.0.0.0"
+	for _, dnsStr := range strings.Split(dns, ",") {
 		dnsStr = strings.TrimSpace(dnsStr)
 		if len(dnsStr) == 0 {
 			continue
@@ -56,11 +56,11 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 		Device:              sing_tun.InterfaceName,
 		Stack:               tunStack,
 		DNSHijack:           dnsHijack,
-		AutoRoute:           false, // had set route in TunService.kt
-		AutoDetectInterface: false, // implements by VpnService::protect
+		AutoRoute:           false,
+		AutoDetectInterface: false,
 		Inet4Address:        prefix4,
 		Inet6Address:        prefix6,
-		MTU:                 9000, // private const val TUN_MTU = 9000 in TunService.kt
+		MTU:                 9000,
 		FileDescriptor:      fd,
 	}
 

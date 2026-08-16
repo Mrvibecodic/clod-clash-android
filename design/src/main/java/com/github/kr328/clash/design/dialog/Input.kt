@@ -22,14 +22,6 @@ suspend fun Context.requestModelTextInput(
     return this.requestModelTextInput(initial, title, null, hint, error, validator)!!
 }
 
-/**
- * Диалог с одним полем ввода. Возвращает введённое значение, `initial`
- * при отмене и `null`, если нажата кнопка сброса.
- *
- * Рамка диалога материаловская, содержимое — Compose. Так осталась
- * приостанавливаемая форма вызова, ради которой диалог и написан (экран
- * просто ждёт строку), и при этом ушла разметка с полем ввода.
- */
 suspend fun Context.requestModelTextInput(
     initial: String?,
     title: CharSequence,
@@ -51,8 +43,6 @@ suspend fun Context.requestModelTextInput(
                         onChanged = { text, valid ->
                             current = text
 
-                            // До show() кнопок ещё не существует, поэтому
-                            // начальное состояние выставляется отдельно, ниже.
                             dialog?.getButton(AlertDialog.BUTTON_POSITIVE)?.isEnabled = valid
                         },
                         hint = hint?.toString(),

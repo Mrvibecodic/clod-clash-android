@@ -27,13 +27,6 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SubScreenScaffold
 import com.github.kr328.clash.design.compose.component.SwitchRow
 
-/**
- * Содержимое экрана «О приложении».
- *
- * @param coreVersion версия ядра. Отдельно от версии приложения, но обновляется
- *   только вместе с ним: ядро вкомпилировано в APK, подменить его нечем.
- * @param checking идёт проверка обновления — кнопка занята.
- */
 @Immutable
 data class AboutState(
     val versionName: String = "",
@@ -43,13 +36,6 @@ data class AboutState(
     val checking: Boolean = false,
 )
 
-/**
- * «О приложении» — версии и всё, что связано с обновлением.
- *
- * Раньше это был системный диалог с двумя строчками версий. Настройки
- * обновления не показывались нигде: канал и автопроверка лежали в хранилище,
- * но выключить их из приложения было нельзя.
- */
 @Composable
 fun AboutScreen(
     state: AboutState,

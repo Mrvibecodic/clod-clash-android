@@ -15,15 +15,6 @@ import java.net.Proxy
 import java.net.URL
 import java.security.MessageDigest
 
-/**
- * Проверка и загрузка обновлений приложения.
- *
- * Почему приложение обновляется целиком, а не «ядром отдельно», как на компьютере:
- * ядро mihomo здесь не отдельный исполняемый файл, а libclash.so, слинкованная
- * с libbridge.so внутри APK. Заменить её по одной нельзя — сломается JNI-контракт,
- * плюс Google Play прямо запрещает приложениям скачивать .so из сети. Поэтому
- * единица обновления — APK, а версия ядра просто показывается рядом с версией приложения.
- */
 object Updater {
     private const val TAG = "Updater"
 
@@ -42,13 +33,6 @@ object Updater {
         val platform: UpdateManifest.Platform,
     )
 
-    /**
-     * Возвращает обновление, если оно новее установленного, иначе null.
-     *
-     * @param mixedPort порт локального прокси ядра; если задан, при неудаче прямого
-     *   запроса попытка повторяется через него. Ровно так же поступает десктоп:
-     *   там, где GitHub недоступен напрямую, обновление тянется через собственный туннель.
-     */
     suspend fun check(context: Context, nightly: Boolean, mixedPort: Int?): Available? =
         withContext(Dispatchers.IO) {
             val url = if (nightly) MANIFEST_NIGHTLY else MANIFEST_RELEASE
@@ -69,14 +53,6 @@ object Updater {
             Available(manifest, platform)
         }
 
-    /**
-     * Качает APK во внутренний кеш и проверяет его.
-     *
-     * Две проверки перед установкой, обе обязательные:
-     *  1. sha256 из манифеста — против подмены файла при загрузке;
-     *  2. подпись APK — против установки чужой сборки. Система и сама откажет,
-     *     но лучше сказать это внятно до того, как пользователь увидит системную ошибку.
-     */
     suspend fun download(
         context: Context,
         available: Available,
@@ -121,11 +97,6 @@ object Updater {
         }
     }
 
-    /**
-     * Сверяет подпись скачанного APK с подписью установленного приложения.
-     * Несовпадение означает, что система откажет с INSTALL_FAILED_UPDATE_INCOMPATIBLE
-     * и данные не перенесутся, — такой файл лучше не предлагать вовсе.
-     */
     private fun hasSameSignature(context: Context, apk: File): Boolean {
         val pm = context.packageManager
 
@@ -157,11 +128,6 @@ object Updater {
         }
     }
 
-    /**
-     * Запрос сначала напрямую, при неудаче — через локальный прокси ядра.
-     * Порядок именно такой: пока туннель выключен, прямой путь единственный,
-     * а когда он заблокирован — работает второй.
-     */
     private fun fetch(
         url: String,
         mixedPort: Int?,
@@ -189,8 +155,6 @@ object Updater {
             connectTimeout = CONNECT_TIMEOUT
             readTimeout = READ_TIMEOUT
             instanceFollowRedirects = true
-            // Один User-Agent на всё приложение: панель считает устройства по нему,
-            // и два разных агента из одного клиента выглядят как два устройства.
             setRequestProperty("User-Agent", USER_AGENT)
         }
 
@@ -211,7 +175,6 @@ object Updater {
                     if (read < 0) break
                     output.write(buffer, 0, read)
                     received += read
-                    // Не чаще чем раз в 256 КБ — иначе прогресс сам себя тормозит.
                     if (received - lastReported >= 256 * 1024) {
                         lastReported = received
                         onProgress(received, total)
@@ -227,19 +190,5 @@ object Updater {
         }
     }
 
-    /**
-     * Один User-Agent на всё приложение — им же ходит за подпиской ядро
-     * (`config/fetch.go`), и строки должны совпадать байт в байт.
-     *
-     * Начало `ClodClash/<версия>` — ровно как у десктопной версии, поэтому правила
-     * ответов в панели переделывать не нужно: `additionalExtendedClientsRegex`
-     * там `^ClodClash/` без якоря на конец, и суффикс его не ломает. Панель ещё
-     * и считает устройства по User-Agent, так что два разных агента из одного
-     * клиента выглядели бы как два устройства.
-     *
-     * Суффикс `(Android)` — чтобы в списке устройств панели телефон отличался
-     * от компьютера. До этапа A3 отдельных заголовков `x-ver-os`/`x-device-model`
-     * у нас нет, и платформу больше показать негде.
-     */
     val USER_AGENT: String = "ClodClash/" + BuildConfig.VERSION_NAME + " (Android)"
 }

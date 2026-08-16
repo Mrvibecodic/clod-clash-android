@@ -6,11 +6,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Блок ссылок провайдера в настройках строится только из того, что прислала
- * панель. Проверяется здесь ровно это: состав, порядок и то, что без
- * заголовков блока нет вовсе.
- */
 class ProviderLinksTest {
     @Test
     fun `без подписки ссылок нет`() {
@@ -19,8 +14,6 @@ class ProviderLinksTest {
 
     @Test
     fun `панель не прислала ни одной ссылки — блока нет`() {
-        // Заголовок с именем провайдера и пустотой под ним человек читает
-        // как поломку приложения, а не как «у провайдера нет бота».
         assertTrue(providerLinks(PanelInfo(title = "Провайдер")).isEmpty())
     }
 
@@ -50,8 +43,6 @@ class ProviderLinksTest {
 
     @Test
     fun `непришедшие ссылки выпадают, остальные не сдвигаются`() {
-        // Провайдер вправе иметь бота и не иметь мониторинга — дыры в списке
-        // быть не должно, а порядок оставшихся не меняется.
         val links = providerLinks(
             PanelInfo(
                 botUrl = "tg://resolve?domain=provider_bot",

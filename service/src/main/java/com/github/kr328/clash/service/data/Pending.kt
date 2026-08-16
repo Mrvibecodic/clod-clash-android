@@ -20,6 +20,5 @@ data class Pending(
     @ColumnInfo(name = "expire") val expire: Long,
     @ColumnInfo(name = "createdAt") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "ageSecretKey") val ageSecretKey: String? = null,
-    // clod:chan — защищённый канал до прослойки; поднимается, но не снимается.
     @ColumnInfo(name = "secure") val secure: Boolean = false,
 )

@@ -22,19 +22,9 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 sealed interface ApkBrokenAction {
     data object Back : ApkBrokenAction
 
-    /** Открыть страницу релизов: адрес берётся из ресурсов, а не приходит извне. */
     data object OpenReleases : ApkBrokenAction
 }
 
-/**
- * Экран «Приложение повреждено»: apk собран не полностью или подменён,
- * работать с ним нельзя, и единственное осмысленное действие — поставить
- * приложение заново со страницы релизов.
- *
- * Состояния у экрана нет: он показывает один и тот же текст всегда.
- * Последний экран, живший на XML и старом DSL `preferenceScreen`, — вместе
- * с ним из проекта ушли разметки, `dataBinding` и `kapt`.
- */
 @Composable
 fun ApkBrokenScreen(
     onAction: (ApkBrokenAction) -> Unit,

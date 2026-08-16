@@ -24,7 +24,6 @@ class AppSettingsDesign(
     private val onHideIconChange: (hide: Boolean) -> Unit,
 ) : Design<AppSettingsDesign.Request>(context) {
     sealed interface Request {
-        /** Тема или режим в недавних сменились — открытые экраны надо пересобрать. */
         data object ReCreateAllActivities : Request
         data object Back : Request
     }
@@ -38,8 +37,6 @@ class AppSettingsDesign(
             hideAppIcon = uiStore.hideAppIcon,
             hideFromRecents = uiStore.hideFromRecents,
             dynamicNotification = srvStore.dynamicNotification,
-            // Уведомление собирается при запуске службы: на ходу его состав
-            // не поменять, поэтому при работающем туннеле строка погашена.
             notificationEditable = !running,
             enableHwid = srvStore.enableHwid,
             subNotifications = srvStore.enableSubNotifications,
@@ -54,14 +51,6 @@ class AppSettingsDesign(
         }
     }
 
-    /**
-     * Каждое переключение пишется сразу.
-     *
-     * Так вёл себя и старый экран: настройки применяются по месту, кнопки
-     * «сохранить» тут нет и не было. Состояние экрана обновляется отдельно
-     * от записи — хранилище читать обратно незачем, а сама запись у части
-     * настроек не мгновенная (переключение компонента в PackageManager).
-     */
     private fun onAction(action: AppSettingsAction) {
         when (action) {
             AppSettingsAction.Back -> requests.trySend(Request.Back)
@@ -77,8 +66,6 @@ class AppSettingsDesign(
 
                 state = state.copy(darkMode = action.index)
 
-                // Тему нельзя поменять на месте: она задаётся при создании
-                // активити, поэтому пересоздаём все открытые.
                 requests.trySend(Request.ReCreateAllActivities)
             }
             is AppSettingsAction.SetHideAppIcon -> {

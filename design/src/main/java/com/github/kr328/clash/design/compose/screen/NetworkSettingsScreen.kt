@@ -27,13 +27,6 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.SwitchRow
 
-/**
- * @param editable туннель не поднят. Всё, что описывает, как поднимать
- *   туннель, меняется только пока он опущен.
- * @param systemProxySupported системный прокси через VpnService умеет
- *   Android 10 и новее; ниже строку показывать нечестно.
- * @param tunStack индекс в `system` / `gvisor` / `mixed`.
- */
 @Immutable
 data class NetworkSettingsState(
     val enableVpn: Boolean = true,
@@ -45,10 +38,6 @@ data class NetworkSettingsState(
     val systemProxySupported: Boolean = true,
     val tunStack: Int = 0,
     val editable: Boolean = true,
-    /**
-     * Рвать ли живые соединения при смене сети. В отличие от остальных
-     * настроек читается на лету, поэтому меняется и при поднятом туннеле.
-     */
     val resetConnections: Boolean = true,
 )
 
@@ -64,21 +53,12 @@ sealed interface NetworkSettingsAction {
     data class SetResetConnections(val enabled: Boolean) : NetworkSettingsAction
 }
 
-/**
- * Настройки сети.
- *
- * Пока туннель поднят, менять тут нечего: всё это описывает, как его
- * поднимать. Раньше про это сообщал бессрочный снекбар — он закрывал нижние
- * строки ровно того списка, который объяснял. Теперь это полоска сверху.
- */
 @Composable
 fun NetworkSettingsScreen(
     state: NetworkSettingsState,
     onAction: (NetworkSettingsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Настройки самого VpnService имеют смысл, только когда системный трафик
-    // вообще идёт через него.
     val vpnOptions = state.editable && state.enableVpn
 
     ActivityScaffold(
@@ -155,16 +135,7 @@ fun NetworkSettingsScreen(
                 enabled = vpnOptions,
                 onSelect = { onAction(NetworkSettingsAction.SetTunStack(it)) },
             )
-            // Ни выбора приложений, ни режима доступа здесь больше нет: и то
-            // и другое живёт на экране «Ещё → Приложения». Две кнопки на один
-            // экран в разных разделах — это не два пути к нему, а вопрос
-            // «чем они отличаются»; а режим в отрыве от списка, к которому он
-            // применяется, вообще ничего не говорит.
 
-            // Отдельной секцией и БЕЗ `vpnOptions`: остальное на этом экране
-            // описывает, как поднимать туннель, и меняется только пока он
-            // опущен. Это читается на лету, в момент смены сети, — значит
-            // и переключать его можно на ходу.
             SectionHeader(stringResource(R.string.clod_network_switch))
             SwitchRow(
                 title = stringResource(R.string.clod_reset_connections),

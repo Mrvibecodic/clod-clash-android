@@ -28,11 +28,6 @@ func forEachProviders(rawCfg *config.RawConfig, fun func(index int, total int, k
 	}
 }
 
-// DestroyProviders закрывает провайдеры, созданные разбором конфигурации.
-//
-// Нужен всем, кто разбирает конфиг, не поднимая его: провайдеры держат
-// горутины обновления и файлы, и без закрытия каждая проверка оставляла бы
-// за собой копию.
 func DestroyProviders(cfg *config.Config) {
 	for _, p := range cfg.Providers {
 		if p, ok := p.(io.Closer); ok {

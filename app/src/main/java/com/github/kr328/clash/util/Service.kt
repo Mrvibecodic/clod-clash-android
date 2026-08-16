@@ -7,6 +7,5 @@ fun Context.unbindServiceSilent(connection: ServiceConnection) {
     try {
         unbindService(connection)
     } catch (e: Exception) {
-        // ignore
     }
 }

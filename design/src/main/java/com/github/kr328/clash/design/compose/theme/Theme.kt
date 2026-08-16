@@ -16,13 +16,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-/**
- * Тема Clod Clash для Compose.
- *
- * Пока интерфейс переезжает с XML на Compose, обе темы живут рядом: XML-экраны берут
- * цвета из `design/res/values/themes.xml`, Compose-экраны — отсюда. Значения совпадают
- * по смыслу (фирменный индиго), поэтому переход между экранами не бросается в глаза.
- */
 private val LightColors: ColorScheme = lightColorScheme(
     primary = LightPrimary,
     onPrimary = LightOnPrimary,
@@ -99,11 +92,6 @@ private val DarkColors: ColorScheme = darkColorScheme(
     surfaceContainerHighest = DarkSurfaceContainerHighest,
 )
 
-/**
- * Цвета, которых нет в [ColorScheme]: состояния подключения и фирменный градиент.
- * Отдаются через CompositionLocal, чтобы экраны читали их так же, как
- * `MaterialTheme.colorScheme`.
- */
 @Immutable
 data class ClodExtraColors(
     val statusConnected: Color,
@@ -112,9 +100,6 @@ data class ClodExtraColors(
     val brandGradient: Brush,
 )
 
-// Значения по умолчанию заданы здесь, а не в конструкторе: цвета из Color.kt
-// объявлены internal, и тащить их в значения по умолчанию публичного класса —
-// значит светить internal-объявления в публичном API модуля.
 private val BrandGradient = Brush.linearGradient(listOf(BrandGradientStart, BrandGradientEnd))
 
 private val LightExtraColors = ClodExtraColors(
@@ -138,12 +123,6 @@ object ClodTheme {
         @Composable get() = LocalClodExtraColors.current
 }
 
-/**
- * Корневая тема всех Compose-экранов.
- *
- * @param dynamicColor брать акцент из обоев (Material You). Работает с Android 12;
- *   по умолчанию выключено — фирменный индиго должен совпадать с иконкой.
- */
 @Composable
 fun ClodClashTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

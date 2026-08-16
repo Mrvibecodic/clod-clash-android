@@ -34,4 +34,3 @@ fun Context.registerReceiverCompat(
         )
     else
         registerReceiver(receiver, filter, permission, handler)
-

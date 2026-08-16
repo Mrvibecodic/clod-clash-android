@@ -20,9 +20,6 @@ dependencies {
     implementation(libs.kaidl.runtime)
     implementation(libs.rikkax.multiprocess)
 
-    // Тесты на чистые считалки (`SubscriptionAlerts`, `PanelInfo`) — считают
-    // на JVM, без телефона и без эмулятора. Локальных сборок у нас нет,
-    // проверки гоняет CI на каждый push.
     testImplementation(libs.junit)
 }
 

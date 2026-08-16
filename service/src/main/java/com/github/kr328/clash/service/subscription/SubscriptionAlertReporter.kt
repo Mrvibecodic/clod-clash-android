@@ -28,41 +28,20 @@ private val stateSerializer = MapSerializer(String.serializer(), Long.serializer
 
 private const val ALERT_CHANNEL = "subscription_alert_channel"
 
-/** Имя файла с состоянием напоминаний в каталоге профиля. */
 private const val STATE_FILE = "alerts.json"
 
-/**
- * Напоминания о сроке и трафике подписки.
- *
- * Зовётся в двух местах: после каждого обновления подписки (в том числе
- * неудачного — срок считается по часам и от сети не зависит) и при
- * открытии главного экрана. Второе обязательно: обновления расписаны
- * будильником, но интервал можно поставить в «вручную», и тогда будильника
- * нет вовсе — а подписка кончается всё равно.
- *
- * Своего таймера нет намеренно: он будил бы телефон ради работы, которую и так
- * делает открытие приложения, а сказать о конце подписки в тот момент, когда
- * человек на неё не смотрит, некому и незачем.
- */
 suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
     if (!ServiceStore(this).enableSubNotifications) return
 
-    // Уведомления запрещены системой (на Android 13+ разрешение можно не дать):
-    // выходим ДО записи состояния. Иначе порог пометился бы пройденным, само
-    // уведомление молча выбросил бы менеджер, и о нём не сказали бы уже никогда.
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
 
     val imported = ImportedDao().queryByUUID(uuid) ?: return
 
-    // Панель молчит про пороги — берём умолчания; прислала пустой список —
-    // значит напоминания выключены ею, и это надо уважать.
     val panel = readPanelInfo(uuid)
     val expireDays = panel?.notifyExpireDays ?: SubscriptionAlerts.DEFAULT_EXPIRE_DAYS
     val trafficPercent = panel?.notifyTrafficPercent ?: SubscriptionAlerts.DEFAULT_TRAFFIC_PERCENT
 
     if (expireDays.isEmpty() && trafficPercent.isEmpty()) {
-        // Панель выключила обе семьи: старые отметки больше ни к чему
-        // не относятся, и держать их в каталоге профиля незачем.
         stateFile(uuid).delete()
 
         return
@@ -79,8 +58,6 @@ suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
             trafficPercent = trafficPercent,
             notified = previous,
         ),
-        // По часам панели, а не устройства: иначе на телефоне со сбитыми
-        // часами «осталось 3 дня» прилетело бы на день раньше срока.
         nowMillis = System.currentTimeMillis() + (panel?.clockSkewMillis() ?: 0),
     )
 
@@ -97,13 +74,6 @@ suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
     outcome.alerts.forEach { notifyAlert(it, name) }
 }
 
-/**
- * Состояние лежит файлом в каталоге профиля, а не одной строкой в настройках,
- * ровно по той же причине, что и `panel.json`: писать его могут одновременно
- * разные процессы (служба обновления в `:background` и приложение), и общая
- * строка на все подписки означала бы, что последний записавший затирает
- * чужие отметки.
- */
 private fun Context.stateFile(uuid: UUID): File =
     importedDir.resolve(uuid.toString()).resolve(STATE_FILE)
 
@@ -147,9 +117,6 @@ private fun Context.createAlertChannel() {
 }
 
 private fun Context.notifyAlert(alert: SubscriptionAlert, name: String) {
-    // Идентификатор постоянный и свой у каждой семьи: свежий на каждое
-    // напоминание копил бы их в шторке столбиком, а так новое сообщение
-    // о сроке заменяет предыдущее.
     val id = when (alert) {
         is SubscriptionAlert.Expired, is SubscriptionAlert.ExpiresIn -> R.id.nf_subscription_expire
         is SubscriptionAlert.TrafficUsed -> R.id.nf_subscription_traffic
@@ -166,9 +133,6 @@ private fun Context.notifyAlert(alert: SubscriptionAlert, name: String) {
         is SubscriptionAlert.TrafficUsed -> getString(R.string.clod_alert_traffic, alert.percent)
     }
 
-    // Ведём на главный экран, а не в свойства профиля: делать по такому
-    // напоминанию нужно не «посмотреть настройки», а продлить или написать
-    // в поддержку, и обе ссылки провайдера лежат на главной.
     val intent = PendingIntent.getActivity(
         this,
         id,

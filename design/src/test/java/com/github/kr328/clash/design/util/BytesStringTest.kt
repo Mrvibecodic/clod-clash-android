@@ -6,15 +6,9 @@ import org.junit.Before
 import org.junit.Test
 import java.util.Locale
 
-/**
- * `toBytesString` показывает трафик подписки — то самое «осталось 12.34 GiB»
- * на карточке. В отличие от счётчика ядра здесь приходит обычное число байт
- * из `subscription-userinfo`, без упаковки.
- */
 class BytesStringTest {
     private lateinit var restore: Locale
 
-    /** Разделитель дробной части зависит от локали — фиксируем на время проверок. */
     @Before
     fun setUp() {
         restore = Locale.getDefault()
@@ -45,8 +39,6 @@ class BytesStringTest {
 
     @Test
     fun `безлимит в терабайтах не ломает разряды`() {
-        // Панели с безлимитом присылают заведомо огромное число: оно должно
-        // осесть в старшей единице, а не переполниться в отрицательное.
         val huge = 1024L * 1024 * 1024 * 1024 * 1024 * 1024 * 5
 
         assertEquals("5.00 EiB", huge.toBytesString())

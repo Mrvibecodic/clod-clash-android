@@ -64,7 +64,6 @@ import com.github.kr328.clash.service.model.Profile
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
-/** Состояние карточки подписки — то, чем определяется её цвет и текст бейджа. */
 internal enum class SubscriptionState {
     Active,
     Expiring,
@@ -72,15 +71,6 @@ internal enum class SubscriptionState {
     Expired,
 }
 
-/**
- * Считает состояние подписки по данным профиля.
- *
- * `total` и `expire` приходят из заголовка `subscription-userinfo`, который панель
- * отдаёт вместе с конфигом; ноль в любом из них означает «ограничения нет», а не
- * «ноль осталось» — иначе безлимитная подписка показывалась бы исчерпанной.
- *
- * Порог «истекает» — трое суток, как на десктопе.
- */
 internal fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
     val used = profile.upload + profile.download
     return when {
@@ -110,12 +100,6 @@ internal fun SubscriptionState.label(): String = stringResource(
     },
 )
 
-/**
- * Вкладка «Подписки»: карточки со сроком и трафиком.
- *
- * Фильтров по группам, как в макете, здесь нет: группы подписок — понятие
- * десктопной версии, на Android профили плоские. Появятся вместе с группами.
- */
 @Composable
 fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -131,12 +115,6 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
             )
-            // Кнопка не подменяется крутилкой, а крутится сама: подмена
-            // прыгала вёрсткой и на глаз читалась как «кнопка пропала»,
-            // а не как «идёт обновление».
-            // Пока подписок нет, добавление — единственное, что здесь можно
-            // сделать, и жить ему в углу незачем: угловой значок ищут глазами
-            // на пустом экране дольше, чем читают подсказку по центру.
             if (state.profiles.isNotEmpty()) {
                 SyncIconButton(
                     spinning = state.updating,
@@ -158,8 +136,6 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             return@Column
         }
 
-        // Чипы появляются, только когда группы кто-то завёл: одинокий чип
-        // «Все · 1» — это строка, которая ничего не даёт и занимает место.
         val groups = state.profiles.mapNotNull { it.group }.distinct().sorted()
         if (groups.isNotEmpty()) {
             Row(
@@ -220,10 +196,6 @@ private fun SubscriptionCard(
 ) {
     val profile = item.profile
     val context = LocalContext.current
-    // Время берём на момент отрисовки: карточка перерисовывается при возврате на
-    // вкладку и при любом обновлении списка, а секундной точности здесь не нужно.
-    // С поправкой на часы панели: «осталось 3 дня» на сбитых часах телефона
-    // иначе показывалось бы днём раньше или позже, чем на самом деле.
     val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
     val used = profile.upload + profile.download
@@ -244,9 +216,6 @@ private fun SubscriptionCard(
 
     Card(
         colors = CardDefaults.cardColors(
-            // Контейнерная роль вместо полупрозрачного primary: у роли контраст
-            // с фоном посчитан схемой в обеих темах, а заливка 10 % на светлой
-            // теме почти не отличалась от соседних карточек.
             containerColor = if (profile.active) {
                 MaterialTheme.colorScheme.secondaryContainer
             } else {
@@ -259,11 +228,6 @@ private fun SubscriptionCard(
             .clickable { onAction(MainAction.ActivateProfile(profile)) },
     ) {
         Row {
-            // Отметка активной подписки. Заливки в 10 % не хватало: на светлой
-            // теме она отличается от `surfaceContainerLow` на единицы яркости,
-            // и при трёх карточках подряд было не видно, какая из них
-            // применена. Место под полосу занято всегда — иначе текст карточек
-            // прыгал бы вправо при каждом переключении подписки.
             Box(
                 modifier = Modifier
                     .padding(vertical = 14.dp)
@@ -285,8 +249,6 @@ private fun SubscriptionCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        // Название от панели, а не «New Profile»: своё имя подписке
-                        // человек в нашем сценарии добавления не задаёт вовсе.
                         text = item.title,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -295,13 +257,6 @@ private fun SubscriptionCard(
                         modifier = Modifier.weight(1f),
                     )
                     StatusBadge(status.label(), status.color())
-                    // Пока подписка обновляется, у её карточки крутится значок:
-                    // на «Обновить» жмут из меню, и после закрытия меню человеку
-                    // больше негде увидеть, что запрос вообще ушёл.
-                    //
-                    // Место под значок занято всегда: появись он по месту, метка
-                    // состояния и кнопка меню дёргались бы влево-вправо на каждом
-                    // старте и финише обновления.
                     Box(
                         modifier = Modifier
                             .padding(start = 8.dp)
@@ -325,14 +280,9 @@ private fun SubscriptionCard(
                             )
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            // Обновление есть только у подписок по ссылке: локальный
-                            // файл обновлять неоткуда.
                             if (profile.type != Profile.Type.File) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.update)) },
-                                    // Пока предыдущее обновление не закончилось,
-                                    // повторное нажатие только поставит в очередь
-                                    // ещё один поход в сеть за тем же файлом.
                                     enabled = !updating,
                                     onClick = {
                                         menuOpen = false
@@ -414,16 +364,6 @@ private fun SubscriptionCard(
     }
 }
 
-/**
- * Карточка проблемной подписки на главном экране: срок, трафик и, если панель
- * их прислала, кнопки продления. Отдельная от карточки в списке — там нужны
- * меню и выбор, а здесь только сведения и действие.
- *
- * Показывается ТОЛЬКО когда с подпиской что-то не так. Здоровое состояние
- * теперь целиком закрыто без неё: строка в шапке отвечает «жива ли подписка»,
- * а в отключённом состоянии срок и трафик рисуют карточки квоты — и большая
- * карточка при живой подписке лишь дублировала бы их.
- */
 @Composable
 fun ActiveSubscriptionCard(
     item: SubscriptionItem,
@@ -435,7 +375,6 @@ fun ActiveSubscriptionCard(
     val status = subscriptionState(profile, now)
     val critical = status != SubscriptionState.Active
 
-    // Проблемы нет — карточке на главном делать нечего.
     if (!critical) return
     if (profile.total <= 0L && profile.expire <= 0L) return
 
@@ -513,10 +452,6 @@ fun ActiveSubscriptionCard(
                 )
             }
 
-            // clod: платёжных кнопок нет — единственная ссылка провайдера,
-            // ведущая к оплате, это личный кабинет. Место у пары одно на весь
-            // экран: раньше она же рисовалась баннером выше, и в критическом
-            // состоянии человек видел две одинаковые пары подряд.
             if (showActions && panel != null &&
                 (panel.portalUrl.isNotBlank() || panel.supportUrl.isNotBlank())
             ) {
@@ -525,11 +460,6 @@ fun ActiveSubscriptionCard(
                     if (panel.portalUrl.isNotBlank()) {
                         Button(
                             onClick = { onAction(MainAction.OpenUrl(panel.portalUrl)) },
-                            // Долю ширины забирает только «Личный кабинет»:
-                            // при делении поровну он не влезал в половину
-                            // экрана, переносился на две строки и тянул вверх
-                            // соседнюю кнопку. «Поддержка» короче и занимает
-                            // ровно столько, сколько ей надо.
                             modifier = Modifier.weight(1f),
                         ) {
                             Text(
@@ -542,9 +472,6 @@ fun ActiveSubscriptionCard(
                     if (panel.supportUrl.isNotBlank()) {
                         OutlinedButton(
                             onClick = { onAction(MainAction.OpenUrl(panel.supportUrl)) },
-                            // Ширину делит только соседняя кнопка. Но если её
-                            // нет вовсе, одинокая «Поддержка» не должна липнуть
-                            // к левому краю — тогда долю забирает она.
                             modifier = if (panel.portalUrl.isBlank()) {
                                 Modifier.weight(1f)
                             } else {
@@ -564,11 +491,6 @@ fun ActiveSubscriptionCard(
     }
 }
 
-/**
- * Выбор группы для подписки: уже заведённые группы списком плюс поле для новой.
- * Отдельного экрана управления группами нет намеренно — группа это одна строка
- * текста, и заводить ради неё раздел настроек не за что.
- */
 @Composable
 private fun GroupPicker(
     current: String?,
@@ -671,9 +593,6 @@ private fun EmptySubscriptions(onAction: (MainAction) -> Unit) {
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(24.dp))
-            // Кнопка живёт здесь только в пустом состоянии: как только
-            // появится первая подписка, добавление уезжает обратно в угол,
-            // чтобы не отнимать место у списка.
             Button(onClick = { onAction(MainAction.NewProfile) }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_baseline_add),

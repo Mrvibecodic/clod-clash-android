@@ -16,25 +16,21 @@ class AppStore(context: Context) {
         defaultValue = -1,
     )
 
-    /** Проверять обновления автоматически (раз в сутки при запуске). */
     var autoCheckUpdate: Boolean by store.boolean(
         key = "auto_check_update",
         defaultValue = true,
     )
 
-    /** Ночной канал: ставить сборки из main раньше релизов. */
     var nightlyChannel: Boolean by store.boolean(
         key = "nightly_channel",
         defaultValue = false,
     )
 
-    /** Когда в последний раз ходили за манифестом — чтобы не дёргать GitHub на каждый запуск. */
     var lastUpdateCheck: Long by store.long(
         key = "last_update_check",
         defaultValue = 0,
     )
 
-    /** Версия, от которой пользователь отказался: второй раз не предлагаем. */
     var skippedVersionCode: Long by store.long(
         key = "skipped_version_code",
         defaultValue = 0,

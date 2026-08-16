@@ -9,16 +9,7 @@ import (
 	"time"
 )
 
-// Проверки на разбор заголовков панели. Всё здесь — чистые функции: ни сети,
-// ни ядра, ни устройства, поэтому гоняются на любой машине за миллисекунды.
-//
-// Смысл именно в этом наборе: заголовки приходят от чужой стороны, форматы
-// у панелей разные, и почти каждая правка в этом файле раньше ловилась
-// только глазами на телефоне.
-
 func TestThresholdsSilenceIsNotOff(t *testing.T) {
-	// Молчание панели и выключенные напоминания — РАЗНОЕ. nil значит
-	// «клиент берёт свои умолчания», пустой список — «не напоминать вовсе».
 	if got := thresholds("", 1, 365); got != nil {
 		t.Fatalf("пустое значение должно давать nil, получено %#v", got)
 	}
@@ -67,7 +58,6 @@ func TestThresholdsParsing(t *testing.T) {
 }
 
 func TestThresholdsLimit(t *testing.T) {
-	// Список на тысячу значений — это тысяча уведомлений, а не забота.
 	raw := "1,2,3,4,5,6,7,8,9,10,11,12,13"
 
 	got := thresholds(raw, 1, 365)
@@ -83,7 +73,6 @@ func TestThresholdsLimit(t *testing.T) {
 func TestServerTime(t *testing.T) {
 	want := time.Date(2026, time.August, 8, 12, 0, 0, 0, time.UTC).Unix()
 
-	// Ключ ищется без учёта регистра: заголовок приходит и как `Date`, и как `date`.
 	for _, key := range []string{"Date", "date", "DATE"} {
 		header := map[string][]string{key: {"Sat, 08 Aug 2026 12:00:00 GMT"}}
 
@@ -112,8 +101,6 @@ func TestParseRefillDate(t *testing.T) {
 	}{
 		{name: "пусто", raw: "", want: 0},
 		{name: "секунды", raw: "1786309200", want: 1786309200},
-		// Панели встречаются и с миллисекундами: без деления срок уезжал
-		// в 50-тысячный год.
 		{name: "миллисекунды", raw: "1786309200000", want: 1786309200},
 		{name: "ноль", raw: "0", want: 0},
 		{name: "отрицательное", raw: "-1", want: 0},
@@ -146,8 +133,6 @@ func TestValidateNewURL(t *testing.T) {
 		{name: "пусто", current: current, candidate: "", want: ""},
 		{name: "новый адрес", current: current, candidate: "https://new.example.com/sub/token", want: "https://new.example.com/sub/token"},
 		{name: "тот же адрес переездом не считается", current: current, candidate: current, want: ""},
-		// Понижение https → http запрещено: увести загрузку подписки на открытый
-		// канал могла бы заголовком та же сторона, которую мы и проверяем.
 		{name: "понижение до http", current: current, candidate: "http://new.example.com/sub", want: ""},
 		{name: "http остаётся http", current: "http://panel.example.com/sub", candidate: "http://new.example.com/sub", want: "http://new.example.com/sub"},
 		{name: "чужая схема", current: current, candidate: "ftp://new.example.com/sub", want: ""},
@@ -178,14 +163,11 @@ func TestSwapDomain(t *testing.T) {
 		{name: "с хвостом пути", current: current, domain: "new.example.com/ignored", want: "https://new.example.com/sub/token?key=1"},
 		{name: "с косой чертой на конце", current: current, domain: "new.example.com/", want: "https://new.example.com/sub/token?key=1"},
 		{name: "с портом", current: current, domain: "new.example.com:8443", want: "https://new.example.com:8443/sub/token?key=1"},
-		// Порт только числом в диапазоне: полная пробная загрузка по мусорному
-		// кандидату стоит столько же, сколько по настоящему.
 		{name: "порт буквами", current: current, domain: "new.example.com:abc", want: ""},
 		{name: "порт вне диапазона", current: current, domain: "new.example.com:99999", want: ""},
 		{name: "порт нулевой", current: current, domain: "new.example.com:0", want: ""},
 		{name: "порт со знаком", current: current, domain: "new.example.com:+80", want: ""},
 		{name: "порт пустой", current: current, domain: "new.example.com:", want: ""},
-		// Режем по ПОСЛЕДНЕМУ двоеточию, иначе IPv6 превращается в мусор.
 		{name: "IPv6 с портом", current: current, domain: "[2001:db8::1]:8443", want: "https://[2001:db8::1]:8443/sub/token?key=1"},
 		{name: "IPv6 без порта", current: current, domain: "[2001:db8::1]", want: "https://[2001:db8::1]/sub/token?key=1"},
 		{name: "тот же хост переездом не считается", current: current, domain: "panel.example.com", want: ""},
@@ -212,13 +194,10 @@ func TestHeaderValue(t *testing.T) {
 		t.Fatalf("точное совпадение имени: получено %q", got)
 	}
 
-	// Панели ставят одно и то же поле то как `announce`, то как `x-announce`.
 	if got := headerValue(header, "announce"); got != "объявление" {
 		t.Fatalf("совпадение по суффиксу: получено %q", got)
 	}
 
-	// Суффикс только по границе через дефис: `announce-url` не должен
-	// отвечать на запрос `url` половиной чужого заголовка.
 	if got := headerValue(map[string][]string{"Announceurl": {"нет"}}, "url"); got != "" {
 		t.Fatalf("совпадение внутри слова недопустимо: получено %q", got)
 	}
@@ -227,8 +206,6 @@ func TestHeaderValue(t *testing.T) {
 		t.Fatalf("отсутствующий заголовок должен давать пустую строку, получено %q", got)
 	}
 
-	// Победитель выбирается по алфавиту, а не по порядку обхода map, иначе
-	// баннер менялся бы сам по себе от запуска к запуску.
 	both := map[string][]string{
 		"announce":            {"первый"},
 		"x-amz-meta-announce": {"второй"},
@@ -244,8 +221,6 @@ func TestHeaderValue(t *testing.T) {
 func TestDecodeHeaderValue(t *testing.T) {
 	const text = "Привет, мир"
 
-	// Кириллицу нельзя положить в заголовок сырыми байтами, поэтому панели
-	// кодируют её — то стандартным алфавитом, то url-safe, то без выравнивания.
 	for _, encoding := range []*base64.Encoding{
 		base64.StdEncoding,
 		base64.RawStdEncoding,
@@ -263,16 +238,12 @@ func TestDecodeHeaderValue(t *testing.T) {
 		t.Fatalf("текст без префикса должен пройти как есть, получено %q", got)
 	}
 
-	// Значение объявило себя base64 и им не оказалось: литерал `base64:…`
-	// в баннере хуже пустого места.
 	if got := decodeHeaderValue("base64:!!!не base64!!!"); got != "" {
 		t.Fatalf("битый base64 должен давать пустую строку, получено %q", got)
 	}
 }
 
 func TestURLFilters(t *testing.T) {
-	// Значение уходит прямо в Intent(ACTION_VIEW), то есть открывается одним
-	// нажатием из содержимого, которым панель распоряжается целиком.
 	if got := httpsURL("https://example.com/page"); got != "https://example.com/page" {
 		t.Fatalf("https должен проходить, получено %q", got)
 	}
@@ -283,7 +254,6 @@ func TestURLFilters(t *testing.T) {
 		}
 	}
 
-	// У поддержки есть свои законные схемы.
 	for _, value := range []string{"https://t.me/support", "tg://resolve?domain=support", "mailto:help@example.com"} {
 		if got := contactURL(value); got != value {
 			t.Fatalf("contactURL(%q) = %q", value, got)
@@ -298,7 +268,6 @@ func TestURLFilters(t *testing.T) {
 }
 
 func TestTruncate(t *testing.T) {
-	// Считаем рунами, а не байтами: иначе кириллица резалась бы посреди символа.
 	if got := truncate("абвгд", 3); got != "абв…" {
 		t.Fatalf("truncate = %q", got)
 	}
@@ -318,8 +287,6 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestHwidState(t *testing.T) {
-	// Порядок проверок важен: Remnawave 3.x ставит `x-hwid-limit: true` ВСЕГДА,
-	// а `x-hwid-max-devices-reached` — только при настоящем превышении.
 	cases := []struct {
 		name   string
 		header map[string][]string
@@ -343,8 +310,6 @@ func TestHwidState(t *testing.T) {
 }
 
 func TestOptionalBool(t *testing.T) {
-	// Молчание оставляет решение человеку, явный false снимает замок,
-	// который мог стоять раньше, — это разные вещи.
 	if got := optionalBool(map[string][]string{}, "clod-lock-mode"); got != nil {
 		t.Fatalf("молчание должно давать nil, получено %v", *got)
 	}
@@ -400,7 +365,6 @@ func TestApplyHeaders(t *testing.T) {
 		t.Fatalf("поддержка = %q", info.SupportURL)
 	}
 
-	// Логотип по http не берём вовсе.
 	if info.LogoURL != "" {
 		t.Fatalf("логотип по http не должен приниматься, получено %q", info.LogoURL)
 	}
@@ -425,8 +389,6 @@ func TestApplyHeaders(t *testing.T) {
 		t.Fatalf("переезд = %q", info.MigrateURL)
 	}
 
-	// `global-mode: false` у панелей под Prizrak-Box значит «спрячьте
-	// переключатель режимов» — то же самое, что наш замок.
 	if info.LockMode == nil || !*info.LockMode {
 		t.Fatalf("замок режимов должен быть выставлен")
 	}
@@ -450,14 +412,12 @@ func TestApplyHeadersNewURLWinsOverDomain(t *testing.T) {
 func TestApplyHeadersBareExpireToggle(t *testing.T) {
 	var info Info
 
-	// Совместимость с Happ: голый тумблер без списка включает умолчания.
 	ApplyHeaders(&info, map[string][]string{"notification-subs-expire": {"true"}}, "https://panel.example.com/sub")
 
 	if !reflect.DeepEqual(info.NotifyExpireDays, defaultNotifyExpireDays) {
 		t.Fatalf("ожидались умолчания %#v, получено %#v", defaultNotifyExpireDays, info.NotifyExpireDays)
 	}
 
-	// Явный список сильнее тумблера.
 	info = Info{}
 
 	ApplyHeaders(&info, map[string][]string{
@@ -471,8 +431,6 @@ func TestApplyHeadersBareExpireToggle(t *testing.T) {
 }
 
 func TestApplyHeadersResetsStateFields(t *testing.T) {
-	// Состояние последнего ответа, а не накопленное знание: панель перестала
-	// слать число устройств — значит его больше нет.
 	info := Info{
 		HwidState:            HwidActive,
 		HwidMaxDevices:       5,
@@ -492,17 +450,12 @@ func TestApplyHeadersResetsStateFields(t *testing.T) {
 		t.Fatalf("пороги должны сбрасываться: %#v %#v", info.NotifyExpireDays, info.NotifyTrafficPercent)
 	}
 
-	// А вот название держится до следующего непустого: под ним подписка лежит
-	// в списке, и остаться без имени из-за одного ответа она не должна.
 	if info.Title != "Провайдер" {
 		t.Fatalf("название не должно теряться, получено %q", info.Title)
 	}
 }
 
 func TestApplyHeadersPanelTextsFollowPanel(t *testing.T) {
-	// Объявление, промо, логотип и текст для диалога устройства — тоже
-	// состояние последнего ответа. Снятое провайдером объявление висело бы
-	// вечно, а логотип прежнего провайдера — поверх нового.
 	info := Info{
 		Title:            "Провайдер",
 		LogoURL:          "https://old.example/logo.png",
@@ -539,7 +492,6 @@ func TestApplyHeadersPanelTextsFollowPanel(t *testing.T) {
 func TestApplyHeadersClockSkew(t *testing.T) {
 	var info Info
 
-	// Час вперёд — как на телефоне со сбитыми часами.
 	served := time.Now().UTC().Add(time.Hour)
 
 	ApplyHeaders(&info, map[string][]string{
@@ -554,7 +506,6 @@ func TestApplyHeadersClockSkew(t *testing.T) {
 		t.Fatalf("время измерения не проставлено")
 	}
 
-	// Ответ без `Date` ничего не говорит о часах: прошлое измерение остаётся.
 	before := info.ClockSkew
 
 	ApplyHeaders(&info, map[string][]string{}, "https://panel.example.com/sub")
@@ -567,7 +518,6 @@ func TestApplyHeadersClockSkew(t *testing.T) {
 func TestInfoRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 
-	// Файла нет — не ошибка: панель могла и не прислать ничего.
 	if got := Read(dir); got.Title != "" {
 		t.Fatalf("пустой каталог должен давать пустую структуру, получено %#v", got)
 	}
@@ -583,8 +533,6 @@ func TestInfoRoundTrip(t *testing.T) {
 
 	got := Read(dir)
 
-	// Пустой список должен пережить запись и чтение: с omitempty он стал бы
-	// неотличим от молчания панели, и напоминания включились бы обратно.
 	if got.NotifyExpireDays == nil || len(got.NotifyExpireDays) != 0 {
 		t.Fatalf("выключенные напоминания не пережили запись: %#v", got.NotifyExpireDays)
 	}
@@ -603,9 +551,6 @@ func TestInfoRoundTrip(t *testing.T) {
 }
 
 func TestApplyHeadersShowZeroHosts(t *testing.T) {
-	// Заголовок отключает НАШИ экраны «серверов нет»: узлы-обманки
-	// показываются как есть. Поведение по умолчанию — экраны включены,
-	// поэтому включать режим имеет право только внятное «да».
 	for _, raw := range []string{"true", "TRUE", "1", "yes", "on"} {
 		info := Info{}
 		ApplyHeaders(&info, http.Header{"Clod-Show-0Hosts": []string{raw}}, "https://panel.example/sub")
@@ -626,9 +571,6 @@ func TestApplyHeadersShowZeroHosts(t *testing.T) {
 }
 
 func TestApplyHeadersShowZeroHostsFollowsPanel(t *testing.T) {
-	// Поле — состояние последнего ответа, а не накопленное знание. Убрали
-	// заголовок в панели — наши экраны возвращаются со следующим обновлением,
-	// а не живут до переустановки приложения.
 	info := Info{ShowZeroHosts: true}
 
 	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, "https://panel.example/sub")
@@ -639,9 +581,6 @@ func TestApplyHeadersShowZeroHostsFollowsPanel(t *testing.T) {
 }
 
 func TestApplyHeadersFallbackAddresses(t *testing.T) {
-	// Запасные адреса — состояние последнего ответа: панель перестала их слать,
-	// значит запасного адреса больше нет. Иначе клиент годами ходил бы
-	// на домен, который провайдер давно отдал кому-то другому.
 	info := Info{FallbackURL: "https://old.example/sub", FallbackDomain: "old.example"}
 
 	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, "https://panel.example/sub")
@@ -665,7 +604,6 @@ func TestApplyHeadersFallbackAddresses(t *testing.T) {
 }
 
 func TestApplyHeadersFallbackURLRejectsPlainHTTP(t *testing.T) {
-	// Запасной адрес — такой же адрес подписки, и правило то же: только https.
 	var info Info
 
 	ApplyHeaders(&info, http.Header{"Fallback-Url": []string{"http://backup.example/sub"}}, "https://panel.example/sub")
@@ -694,8 +632,6 @@ func TestSpareAddresses(t *testing.T) {
 func TestSpareAddressesSkipsCurrentAndEmpty(t *testing.T) {
 	const current = "https://panel.example/sub"
 
-	// Запасной адрес, равный основному, повторять незачем: он только что
-	// не ответил. То же и с доменом, который уже стоит в адресе.
 	info := Info{FallbackURL: current, FallbackDomain: "panel.example"}
 
 	if got := info.SpareAddresses(current); len(got) != 0 {
@@ -718,8 +654,6 @@ func TestDescription(t *testing.T) {
 		}
 	}
 
-	// Длинное режется: в строке списка его всё равно негде показать.
-	// `truncate` дописывает многоточие, поэтому длина на один знак больше.
 	long := strings.Repeat("я", descriptionMaxChars+20)
 	got := Description(long)
 
@@ -733,16 +667,12 @@ func TestDescription(t *testing.T) {
 }
 
 func TestHidden(t *testing.T) {
-	// Флаг из шаблона mihomo: группу с ним прячет и ядро, и наш разбор
-	// конфигурации.
 	for _, raw := range []any{true, "true", "True", " yes ", "on", "1", 1, int64(1), 2.0} {
 		if !Hidden(raw) {
 			t.Fatalf("%#v должно означать спрятанную группу", raw)
 		}
 	}
 
-	// Всё остальное — «показывать»: спрятать группу по ошибке хуже, чем
-	// показать лишнюю.
 	for _, raw := range []any{nil, false, "false", "", "  ", "нет", 0, 0.0, map[string]any{}} {
 		if Hidden(raw) {
 			t.Fatalf("%#v не должно прятать группу", raw)
@@ -751,9 +681,6 @@ func TestHidden(t *testing.T) {
 }
 
 func TestApplyHeadersProviderLinks(t *testing.T) {
-	// Пять ссылок провайдера, те же, что на ПК. Проверка у бота своя: адрес
-	// у него почти всегда `tg:`, а мониторинг и инструкция — обычные
-	// страницы, и ничего, кроме https, за ними быть не должно.
 	const current = "https://panel.example.com/sub/token"
 
 	var info Info
@@ -786,7 +713,6 @@ func TestApplyHeadersProviderLinks(t *testing.T) {
 		t.Fatalf("инструкция = %q", info.GuideURL)
 	}
 
-	// Бот принимает и обычную ссылку, и почту — как поддержка.
 	for _, raw := range []string{"https://t.me/provider_bot", "mailto:bot@provider.example"} {
 		var one Info
 
@@ -797,7 +723,6 @@ func TestApplyHeadersProviderLinks(t *testing.T) {
 		}
 	}
 
-	// А мониторингу и инструкции ни `tg:`, ни голый http не годятся.
 	var strict Info
 
 	ApplyHeaders(&strict, map[string][]string{
@@ -813,8 +738,6 @@ func TestApplyHeadersProviderLinks(t *testing.T) {
 		)
 	}
 
-	// Кириллицу и длинные адреса панели шлют через base64, и ссылки тут
-	// ничем не отличаются от остальных заголовков.
 	var encoded Info
 
 	ApplyHeaders(&encoded, map[string][]string{
@@ -829,10 +752,6 @@ func TestApplyHeadersProviderLinks(t *testing.T) {
 }
 
 func TestApplyHeadersLinksVanishWhenPanelStops(t *testing.T) {
-	// Ссылки провайдера — состояние последнего ответа. Панель перестала слать
-	// заголовок — строки в настройках не должно быть тем же обновлением.
-	// Сохранённая ссылка пережила бы и смену тарифа, и подмену ссылки
-	// подписки на другого провайдера — и увела бы человека в чужой кабинет.
 	info := Info{
 		Title:      "Провайдер",
 		PortalURL:  "https://old.example/cabinet",
@@ -843,7 +762,6 @@ func TestApplyHeadersLinksVanishWhenPanelStops(t *testing.T) {
 		GuideURL:   "https://old.example/help",
 	}
 
-	// Ответ следующего провайдера: у него есть только кабинет и бот.
 	ApplyHeaders(&info, map[string][]string{
 		"clod-portal-url": {"https://new.example/cabinet"},
 		"clod-bot-url":    {"tg://resolve?domain=new_bot"},
@@ -864,23 +782,18 @@ func TestApplyHeadersLinksVanishWhenPanelStops(t *testing.T) {
 		)
 	}
 
-	// Ответ вовсе без ссылок не оставляет ни одной.
 	ApplyHeaders(&info, map[string][]string{"profile-title": {"Провайдер"}}, "https://panel.example.com/sub/token")
 
 	if info.PortalURL != "" || info.BotURL != "" {
 		t.Fatalf("ссылки должны исчезать целиком: кабинет %q, бот %q", info.PortalURL, info.BotURL)
 	}
 
-	// А название держится: имя подписки между обновлениями пропадать не должно.
 	if info.Title != "Провайдер" {
 		t.Fatalf("название = %q", info.Title)
 	}
 }
 
 func TestApplyHeadersBadLinkDropsOldOne(t *testing.T) {
-	// Негодная ссылка (http, javascript:) — это НЕ «оставь прошлую»: панель
-	// заголовок прислала, просто он никуда не годится, и открывать по нему
-	// нечего. Иначе кривая настройка панели навсегда прибивала бы старый адрес.
 	info := Info{MonitorURL: "https://status.old.example"}
 
 	ApplyHeaders(&info, map[string][]string{
