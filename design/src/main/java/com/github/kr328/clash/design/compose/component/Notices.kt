@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -101,8 +102,9 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
 
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.inverseSurface,
-            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             shadowElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
@@ -140,7 +142,7 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
                     ) {
                         Text(
                             text = actionLabel,
-                            color = MaterialTheme.colorScheme.inversePrimary,
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
