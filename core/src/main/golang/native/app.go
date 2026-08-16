@@ -1,5 +1,6 @@
 package main
 
+//#include "bridge.h"
 import "C"
 
 import (
@@ -28,22 +29,26 @@ func openRemoteContent(url string) (int, error) {
 	return int(fd), nil
 }
 
+//export notifyDnsChanged
 func notifyDnsChanged(dnsList C.c_string) {
 	d := C.GoString(dnsList)
 
 	app.NotifyDnsChanged(d)
 }
 
+//export notifyInstalledAppsChanged
 func notifyInstalledAppsChanged(uids C.c_string) {
 	u := C.GoString(uids)
 
 	app.NotifyInstallAppsChanged(u)
 }
 
+//export notifyTimeZoneChanged
 func notifyTimeZoneChanged(name C.c_string, offset C.int) {
 	app.NotifyTimeZoneChanged(C.GoString(name), int(offset))
 }
 
+//export queryConfiguration
 func queryConfiguration() *C.char {
 	response := &struct{}{}
 
@@ -54,6 +59,7 @@ func init() {
 	app.ApplyContentContext(openRemoteContent)
 }
 
+//export setDeviceInfo
 func setDeviceInfo(hwid, os, osVersion, model C.c_string) {
 	app.ApplyDeviceInfo(C.GoString(hwid), C.GoString(os), C.GoString(osVersion), C.GoString(model))
 }

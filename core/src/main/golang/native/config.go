@@ -1,5 +1,6 @@
 package main
 
+//#include "bridge.h"
 import "C"
 
 import (
@@ -22,6 +23,7 @@ type ageKeyPair struct {
 	PublicKey string `json:"publicKey"`
 }
 
+//export fetchAndValid
 func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
 	go func(path, url string, callback unsafe.Pointer) {
 		cb := &remoteValidCallback{callback: callback}
@@ -36,10 +38,12 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
 	}(C.GoString(path), C.GoString(url), callback)
 }
 
+//export setSecureChannel
 func setSecureChannel(enabled C.int) {
 	config.SetSecureChannel(enabled != 0)
 }
 
+//export load
 func load(completable unsafe.Pointer, path C.c_string) {
 	go func(path string) {
 		C.complete(completable, marshalString(config.Load(path)))
@@ -50,20 +54,24 @@ func load(completable unsafe.Pointer, path C.c_string) {
 	}(C.GoString(path))
 }
 
+//export readOverride
 func readOverride(slot C.int) *C.char {
 	return C.CString(config.ReadOverride(config.OverrideSlot(slot)))
 }
 
+//export writeOverride
 func writeOverride(slot C.int, content C.c_string) {
 	c := C.GoString(content)
 
 	config.WriteOverride(config.OverrideSlot(slot), c)
 }
 
+//export clearOverride
 func clearOverride(slot C.int) {
 	config.ClearOverride(config.OverrideSlot(slot))
 }
 
+//export setAgeSecretKey
 func setAgeSecretKey(key C.c_string) {
 	if key == nil {
 		config.SetGlobalSecretKeys()
@@ -74,6 +82,7 @@ func setAgeSecretKey(key C.c_string) {
 	config.SetGlobalSecretKeys(k)
 }
 
+//export genX25519KeyPair
 func genX25519KeyPair() *C.char {
 	secretKey, publicKey, err := config.GenX25519KeyPair()
 	if err != nil {
@@ -83,6 +92,7 @@ func genX25519KeyPair() *C.char {
 	return marshalJson(ageKeyPair{SecretKey: secretKey, PublicKey: publicKey})
 }
 
+//export genHybridKeyPair
 func genHybridKeyPair() *C.char {
 	secretKey, publicKey, err := config.GenHybridKeyPair()
 	if err != nil {
@@ -92,6 +102,7 @@ func genHybridKeyPair() *C.char {
 	return marshalJson(ageKeyPair{SecretKey: secretKey, PublicKey: publicKey})
 }
 
+//export veritySecretKeys
 func veritySecretKeys(secretKeys C.c_string) C.int {
 	if config.VeritySecretKeys(C.GoString(secretKeys)) != nil {
 		return 0
@@ -100,6 +111,7 @@ func veritySecretKeys(secretKeys C.c_string) C.int {
 	return 1
 }
 
+//export toPublicKeys
 func toPublicKeys(secretKeys C.c_string) *C.char {
 	publicKeys, err := config.ToPublicKeys(C.GoString(secretKeys))
 	if err != nil {
@@ -109,6 +121,7 @@ func toPublicKeys(secretKeys C.c_string) *C.char {
 	return marshalJson(publicKeys)
 }
 
+//export verityPublicKeys
 func verityPublicKeys(publicKeys C.c_string) C.int {
 	if config.VerityPublicKeys(C.GoString(publicKeys)) != nil {
 		return 0

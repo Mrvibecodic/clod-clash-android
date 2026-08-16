@@ -1,5 +1,6 @@
 package main
 
+//#include "bridge.h"
 import "C"
 
 import (
@@ -9,6 +10,7 @@ import (
 	"cfa/native/tunnel"
 )
 
+//export queryTunnelState
 func queryTunnelState() *C.char {
 	mode := tunnel.QueryMode()
 
@@ -19,6 +21,7 @@ func queryTunnelState() *C.char {
 	return marshalJson(response)
 }
 
+//export queryNow
 func queryNow(upload, download *C.uint64_t) {
 	up, down := tunnel.Now()
 
@@ -26,6 +29,7 @@ func queryNow(upload, download *C.uint64_t) {
 	*download = C.uint64_t(down)
 }
 
+//export queryTotal
 func queryTotal(upload, download *C.uint64_t) {
 	up, down := tunnel.Total()
 
@@ -33,10 +37,12 @@ func queryTotal(upload, download *C.uint64_t) {
 	*download = C.uint64_t(down)
 }
 
+//export queryGroupNames
 func queryGroupNames(excludeNotSelectable C.int) *C.char {
 	return marshalJson(tunnel.QueryProxyGroupNames(excludeNotSelectable != 0))
 }
 
+//export queryGroup
 func queryGroup(name C.c_string, sortMode C.c_string) *C.char {
 	n := C.GoString(name)
 	s := C.GoString(sortMode)
@@ -59,6 +65,7 @@ func queryGroup(name C.c_string, sortMode C.c_string) *C.char {
 	return marshalJson(response)
 }
 
+//export healthCheck
 func healthCheck(completable unsafe.Pointer, name C.c_string) {
 	go func(name string) {
 		tunnel.HealthCheck(name)
@@ -67,22 +74,27 @@ func healthCheck(completable unsafe.Pointer, name C.c_string) {
 	}(C.GoString(name))
 }
 
+//export testProfileDelays
 func testProfileDelays(path C.c_string) *C.char {
 	return marshalJson(tunnel.TestProfileDelays(C.GoString(path)))
 }
 
+//export healthCheckAll
 func healthCheckAll() {
 	tunnel.HealthCheckAll()
 }
 
+//export notifyNetworkChanged
 func notifyNetworkChanged(closeConnections C.int) {
 	tunnel.OnNetworkChanged(closeConnections != 0)
 }
 
+//export probeCurrentNodes
 func probeCurrentNodes() {
 	tunnel.ProbeCurrentNodes()
 }
 
+//export patchSelector
 func patchSelector(selector, name C.c_string) C.int {
 	s := C.GoString(selector)
 	n := C.GoString(name)
@@ -94,10 +106,12 @@ func patchSelector(selector, name C.c_string) C.int {
 	return 0
 }
 
+//export queryProviders
 func queryProviders() *C.char {
 	return marshalJson(tunnel.QueryProviders())
 }
 
+//export updateProvider
 func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_string) {
 	go func(pType, name string) {
 		C.complete(completable, marshalString(tunnel.UpdateProvider(pType, name)))
@@ -106,6 +120,7 @@ func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_strin
 	}(C.GoString(pType), C.GoString(name))
 }
 
+//export suspend
 func suspend(suspended C.int) {
 	tunnel.Suspend(suspended != 0)
 }

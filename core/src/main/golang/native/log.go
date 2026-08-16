@@ -1,5 +1,6 @@
 package main
 
+//#include "bridge.h"
 import "C"
 
 import (
@@ -40,6 +41,7 @@ func init() {
 	}()
 }
 
+//export subscribeLogcat
 func subscribeLogcat(remote unsafe.Pointer) {
 	go func(remote unsafe.Pointer) {
 		sub := log.Subscribe()
