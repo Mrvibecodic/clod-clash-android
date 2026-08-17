@@ -208,6 +208,14 @@
             </intent-filter>
         </receiver>
 
+        <activity
+            android:name=".WidgetToggleActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <receiver
             android:name=".ToggleWidgetProvider"
             android:exported="false"

@@ -83,8 +83,8 @@ class ToggleWidgetProvider : AppWidgetProvider() {
             PendingIntent.getActivity(
                 context,
                 0,
-                ExternalControlActivity::class.intent
-                    .setAction(Intents.ACTION_TOGGLE_CLASH),
+                WidgetToggleActivity::class.intent
+                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
             ),
         )
