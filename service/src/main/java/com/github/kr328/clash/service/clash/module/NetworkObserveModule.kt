@@ -208,7 +208,7 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
         Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
 
-        if (isInteractive()) {
+        if (isInteractive() || store.keepAwake) {
             Clash.probeCurrentNodes()
         } else {
             probePending = true

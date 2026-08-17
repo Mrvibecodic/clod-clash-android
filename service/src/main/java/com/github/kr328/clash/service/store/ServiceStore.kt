@@ -102,6 +102,11 @@ class ServiceStore(context: Context) {
         defaultValue = false
     )
 
+    var keepAwake by store.boolean(
+        key = "keep_awake",
+        defaultValue = false
+    )
+
     fun markSessionStarted(): Long {
         val startedAt = System.currentTimeMillis()
 

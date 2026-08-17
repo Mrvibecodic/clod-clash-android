@@ -36,6 +36,7 @@ class NetworkSettingsDesign(
             tunStack = tunStacks.indexOf(srvStore.tunStackMode).coerceAtLeast(0),
             editable = !running,
             resetConnections = srvStore.resetConnectionsOnNetworkChange,
+            keepAwake = srvStore.keepAwake,
         ),
     )
 
@@ -75,6 +76,11 @@ class NetworkSettingsDesign(
                 srvStore.resetConnectionsOnNetworkChange = action.enabled
 
                 state = state.copy(resetConnections = action.enabled)
+            }
+            is NetworkSettingsAction.SetKeepAwake -> {
+                srvStore.keepAwake = action.enabled
+
+                state = state.copy(keepAwake = action.enabled)
             }
             is NetworkSettingsAction.SetSystemProxy -> {
                 srvStore.systemProxy = action.enabled

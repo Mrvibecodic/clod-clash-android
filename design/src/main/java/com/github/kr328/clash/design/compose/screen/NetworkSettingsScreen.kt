@@ -39,6 +39,7 @@ data class NetworkSettingsState(
     val tunStack: Int = 0,
     val editable: Boolean = true,
     val resetConnections: Boolean = true,
+    val keepAwake: Boolean = false,
 )
 
 sealed interface NetworkSettingsAction {
@@ -51,6 +52,7 @@ sealed interface NetworkSettingsAction {
     data class SetSystemProxy(val enabled: Boolean) : NetworkSettingsAction
     data class SetTunStack(val index: Int) : NetworkSettingsAction
     data class SetResetConnections(val enabled: Boolean) : NetworkSettingsAction
+    data class SetKeepAwake(val enabled: Boolean) : NetworkSettingsAction
 }
 
 @Composable
@@ -143,6 +145,15 @@ fun NetworkSettingsScreen(
                 subtitle = stringResource(R.string.clod_reset_connections_summary),
                 checked = state.resetConnections,
                 onCheckedChange = { onAction(NetworkSettingsAction.SetResetConnections(it)) },
+            )
+
+            SectionHeader(stringResource(R.string.clod_background))
+            SwitchRow(
+                title = stringResource(R.string.clod_keep_awake),
+                subtitle = stringResource(R.string.clod_keep_awake_summary),
+                checked = state.keepAwake,
+                enabled = state.editable,
+                onCheckedChange = { onAction(NetworkSettingsAction.SetKeepAwake(it)) },
             )
 
             Spacer(Modifier.height(24.dp))

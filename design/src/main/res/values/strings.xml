@@ -425,6 +425,9 @@
     <string name="clod_network_switch">Network switching</string>
     <string name="clod_reset_connections">Drop connections when the network changes</string>
     <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout.</string>
+    <string name="clod_background">Background</string>
+    <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
+    <string name="clod_keep_awake_summary">The core is not suspended and connections survive screen-off. Battery usage is higher.</string>
     <string name="clod_secure_channel">Secure connection</string>
     <string name="clod_secure_channel_hint">The provider must support it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
     <string name="clod_home_connected_to">Connected to</string>
