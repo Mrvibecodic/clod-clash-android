@@ -6,7 +6,6 @@ import android.os.Bundle
 import android.widget.Toast
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.design.R
 
 class WidgetToggleActivity : Activity() {
@@ -16,10 +15,6 @@ class WidgetToggleActivity : Activity() {
         overridePendingTransition(0, 0)
 
         if (StatusClient(this).currentProfile() != null) {
-            ToggleWidgetProvider.notifyWait(this)
-            stopClashService()
-            Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_SHORT).show()
-
             return finish()
         }
 

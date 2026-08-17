@@ -386,6 +386,9 @@
     <string name="clod_access_sub_include">Через VPN (из подписки)</string>
     <string name="clod_access_sub_exclude">Мимо VPN (из подписки)</string>
     <string name="clod_widget_description">Включает и выключает подключение одним нажатием</string>
+    <string name="clod_widget_channel">Виджет</string>
+    <string name="clod_widget_perm_title">Нужно разрешение VPN</string>
+    <string name="clod_widget_perm_text">Нажмите, чтобы разрешить подключение и включить его</string>
     <string name="clod_portal">Личный кабинет</string>
     <string name="clod_support">Поддержка</string>
     <string name="clod_bot">Бот</string>

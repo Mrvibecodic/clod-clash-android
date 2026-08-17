@@ -5,9 +5,11 @@
     android:layout_height="match_parent">
 
     <FrameLayout
+        android:id="@+id/widget_button"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:layout_gravity="center">
+        android:layout_gravity="center"
+        android:foreground="@drawable/widget_ripple">
 
         <ImageView
             android:id="@+id/widget_circle"
