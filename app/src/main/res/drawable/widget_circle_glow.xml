@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:centerX="0.5"
+                android:centerY="0.5"
+                android:gradientRadius="30dp"
+                android:startColor="#8C4F46E5"
+                android:centerColor="#664F46E5"
+                android:endColor="#004F46E5" />
+        </shape>
+    </item>
+    <item android:inset="5dp" android:drawable="@drawable/widget_circle_core" />
+</layer-list>

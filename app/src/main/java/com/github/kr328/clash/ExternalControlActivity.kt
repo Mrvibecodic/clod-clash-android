@@ -81,13 +81,15 @@ class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
     private fun startClash() {
         val vpnRequest = startClashService()
         if (vpnRequest != null) {
-            Toast.makeText(this, R.string.unable_to_start_vpn, Toast.LENGTH_LONG).show()
+            startActivity(MainActivity::class.intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
+        ToggleWidgetProvider.notifyWait(this)
         Toast.makeText(this, R.string.external_control_started, Toast.LENGTH_LONG).show()
     }
 
     private fun stopClash() {
+        ToggleWidgetProvider.notifyWait(this)
         stopClashService()
         Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()
     }

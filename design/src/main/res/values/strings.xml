@@ -399,6 +399,7 @@
     <string name="clod_profile_error_notify_summary">Show a notification when a subscription fails to update</string>
     <string name="clod_access_sub_include">Via VPN (subscription)</string>
     <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
+    <string name="clod_widget_description">Toggles the connection with one tap</string>
     <string name="clod_portal">Customer portal</string>
     <string name="clod_support">Support</string>
     <string name="clod_bot">Bot</string>
