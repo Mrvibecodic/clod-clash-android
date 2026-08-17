@@ -289,6 +289,7 @@
     <string name="allow_ipv6">Разрешить IPv6</string>
     <string name="allow_ipv6_summary">Пропускать трафик IPv6 через VpnService</string>
     <string name="tun_stack_mode">Сетевой стек</string>
+    <string name="tun_stack_auto">Авто (из подписки)</string>
     <string name="tun_stack_system">Системный</string>
     <string name="tun_stack_gvisor">gVisor</string>
     <string name="tun_stack_mixed">Смешанный</string>
@@ -380,6 +381,10 @@
     <string name="clod_hwid_summary">Панели, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
     <string name="clod_sub_notify_title">Напоминания о подписке</string>
     <string name="clod_sub_notify_summary">Предупреждать, когда подписка заканчивается или трафик на исходе. Пороги задаёт ваш сервис.</string>
+    <string name="clod_profile_error_notify_title">Ошибки обновления подписки</string>
+    <string name="clod_profile_error_notify_summary">Показывать уведомление, когда подписка не обновилась</string>
+    <string name="clod_access_sub_include">Через VPN (из подписки)</string>
+    <string name="clod_access_sub_exclude">Мимо VPN (из подписки)</string>
     <string name="clod_portal">Личный кабинет</string>
     <string name="clod_support">Поддержка</string>
     <string name="clod_bot">Бот</string>

@@ -12,9 +12,12 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.parseCIDR
+import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStopped
 import kotlinx.coroutines.*
@@ -128,6 +131,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private fun TunModule.open() {
         val store = ServiceStore(self)
+        val prefs = activeTunPrefs() ?: TunPrefs()
+        val includeFromProfile = prefs.includePackages.toSet()
+        val excludeFromProfile = prefs.excludePackages.toSet()
 
         val device = with(Builder()) {
             addAddress(TUN_GATEWAY, TUN_SUBNET_PREFIX)
@@ -156,15 +162,29 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 }
             }
 
+            val installedIncludes = (includeFromProfile - excludeFromProfile).filter {
+                runCatching { packageManager.getApplicationInfo(it, 0) }.isSuccess
+            }.toSet()
+
             when (store.accessControlMode) {
-                AccessControlMode.AcceptAll -> Unit
+                AccessControlMode.AcceptAll -> {
+                    if (installedIncludes.isNotEmpty()) {
+                        (installedIncludes + packageName).forEach {
+                            runCatching { addAllowedApplication(it) }
+                        }
+                    } else {
+                        (excludeFromProfile - packageName).forEach {
+                            runCatching { addDisallowedApplication(it) }
+                        }
+                    }
+                }
                 AccessControlMode.AcceptSelected -> {
-                    (store.accessControlPackages + packageName).forEach {
+                    (store.accessControlPackages + installedIncludes + packageName).forEach {
                         runCatching { addAllowedApplication(it) }
                     }
                 }
                 AccessControlMode.DenySelected -> {
-                    (store.accessControlPackages - packageName).forEach {
+                    (store.accessControlPackages + excludeFromProfile - packageName).forEach {
                         runCatching { addDisallowedApplication(it) }
                     }
                 }
@@ -213,7 +233,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             TunModule.TunDevice(
                 fd = establish()?.detachFd()
                     ?: throw NullPointerException("Establish VPN rejected by system"),
-                stack = store.tunStackMode,
+                stack = resolveTunStack(store.tunStackMode, prefs.stack),
                 gateway = "$TUN_GATEWAY/$TUN_SUBNET_PREFIX" + if (store.allowIpv6) ",$TUN_GATEWAY6/$TUN_SUBNET_PREFIX6" else "",
                 portal = TUN_PORTAL + if (store.allowIpv6) ",$TUN_PORTAL6" else "",
                 dns = if (store.dnsHijacking) NET_ANY else (TUN_DNS + if (store.allowIpv6) ",$TUN_DNS6" else ""),

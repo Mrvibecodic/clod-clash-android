@@ -60,8 +60,8 @@ private const val DELAY_UNKNOWN = 0xffff
 @Composable
 private fun delayColor(delay: Int): Color = when {
     delay <= 0 || delay >= DELAY_UNKNOWN -> ClodTheme.extraColors.statusStopped
-    delay < 100 -> ClodTheme.extraColors.statusConnected
-    delay < 200 -> ClodTheme.extraColors.statusConnecting
+    delay < 200 -> ClodTheme.extraColors.statusConnected
+    delay < 400 -> ClodTheme.extraColors.statusConnecting
     else -> MaterialTheme.colorScheme.error
 }
 
@@ -110,8 +110,8 @@ fun DelayPill(delay: Int, modifier: Modifier = Modifier) {
     }
 
     val color = when {
-        delay < 100 -> DelayPillFast
-        delay < 200 -> DelayPillMedium
+        delay < 200 -> DelayPillFast
+        delay < 400 -> DelayPillMedium
         else -> DelayPillSlow
     }
 

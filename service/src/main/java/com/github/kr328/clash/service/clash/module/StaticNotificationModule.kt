@@ -32,6 +32,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                 pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
             )
         )
+        .addAction(0, service.getText(R.string.clod_notification_stop), stopIntent(service))
 
     override suspend fun run() {
         val loaded = receiveBroadcast(capacity = Channel.CONFLATED) {
@@ -54,6 +55,15 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
 
     companion object {
         const val CHANNEL_ID = "clash_status_channel"
+
+        fun stopIntent(service: Service): PendingIntent {
+            return PendingIntent.getBroadcast(
+                service,
+                R.id.nf_clash_status,
+                Intent(Intents.ACTION_CLASH_REQUEST_STOP).setPackage(service.packageName),
+                pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
+            )
+        }
 
         fun createNotificationChannel(service: Service) {
             NotificationManagerCompat.from(service).createNotificationChannel(

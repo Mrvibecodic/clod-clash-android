@@ -34,10 +34,6 @@ class SuspendModule(service: Service) : Module<Unit>(service) {
 
                         Log.d("Clash suspended")
                     }
-                    else -> {
-
-                        Clash.healthCheckAll()
-                    }
                 }
             }
         } finally {

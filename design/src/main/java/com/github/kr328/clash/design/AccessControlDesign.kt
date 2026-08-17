@@ -20,6 +20,8 @@ class AccessControlDesign(
     private val uiStore: UiStore,
     private val srvStore: ServiceStore,
     private val selected: MutableSet<String>,
+    includeFromProfile: Set<String> = emptySet(),
+    excludeFromProfile: Set<String> = emptySet(),
 ) : Design<AccessControlDesign.Request>(context) {
     private val modes = AccessControlMode.entries
 
@@ -40,6 +42,8 @@ class AccessControlDesign(
             reverse = uiStore.accessControlReverse,
             systemApps = uiStore.accessControlSystemApp,
             mode = modes.indexOf(srvStore.accessControlMode).coerceAtLeast(0),
+            includeFromProfile = includeFromProfile,
+            excludeFromProfile = excludeFromProfile,
         ),
     )
 

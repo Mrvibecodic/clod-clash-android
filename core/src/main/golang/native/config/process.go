@@ -9,6 +9,7 @@ import (
 	"github.com/dlclark/regexp2"
 
 	"cfa/native/common"
+	"cfa/native/config/panel"
 
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/config"
@@ -91,7 +92,33 @@ func patchDns(cfg *config.RawConfig, _ string) error {
 	return nil
 }
 
-func patchTun(cfg *config.RawConfig, _ string) error {
+func patchTun(cfg *config.RawConfig, profileDir string) error {
+	prefs := panel.TunPrefs{
+		IncludePackages: panel.SanitizePackages(cfg.Tun.IncludePackage),
+		ExcludePackages: panel.SanitizePackages(cfg.Tun.ExcludePackage),
+	}
+
+	if cfg.Tun.Enable {
+		prefs.Stack = panel.NormalizeTunStack(cfg.Tun.Stack.String())
+	}
+
+	for _, mapping := range cfg.Listeners {
+		if listenerType, ok := mapping["type"].(string); !ok || listenerType != "tun" {
+			continue
+		}
+
+		prefs.IncludePackages = panel.MergePackages(prefs.IncludePackages, panel.StringsFromAny(mapping["include-package"]))
+		prefs.ExcludePackages = panel.MergePackages(prefs.ExcludePackages, panel.StringsFromAny(mapping["exclude-package"]))
+
+		if prefs.Stack == "" {
+			if stack, ok := mapping["stack"].(string); ok {
+				prefs.Stack = panel.NormalizeTunStack(stack)
+			}
+		}
+	}
+
+	panel.WriteTunPrefs(profileDir, prefs)
+
 	cfg.Tun.Enable = false
 	cfg.Tun.AutoRoute = false
 	cfg.Tun.AutoDetectInterface = false

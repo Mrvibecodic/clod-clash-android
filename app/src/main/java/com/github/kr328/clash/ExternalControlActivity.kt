@@ -67,7 +67,9 @@ class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
                 startClash()
             }
 
-            Intents.ACTION_STOP_CLASH -> stopClash()
+            Intents.ACTION_STOP_CLASH -> if (isClashRunning()) {
+                stopClash()
+            }
         }
         return finish()
     }

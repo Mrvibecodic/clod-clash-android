@@ -5,6 +5,8 @@
     <string name="profile_service_status">Статус сервиса профиля</string>
     <string name="profile_process_status">Статус обработки профиля</string>
     <string name="profile_process_result">Результат обработки профиля</string>
+    <string name="profile_process_error">Ошибки обновления подписки</string>
+    <string name="clod_notification_stop">Отключить</string>
     <string name="update_successfully">Успешно обновлено</string>
     <string name="update_failure">Не удалось обновить</string>
     <string name="format_update_complete">Обновление %s завершено</string>

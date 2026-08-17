@@ -40,6 +40,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
                 pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
             )
         )
+        .addAction(0, service.getText(R.string.clod_notification_stop), StaticNotificationModule.stopIntent(service))
 
     private val notificationManager = NotificationManagerCompat.from(service)
 

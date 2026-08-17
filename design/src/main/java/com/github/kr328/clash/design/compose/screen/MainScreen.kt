@@ -731,6 +731,8 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                         text = notice,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 6,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

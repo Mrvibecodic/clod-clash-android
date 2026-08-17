@@ -107,7 +107,23 @@ class ProfileReceiver : BroadcastReceiver() {
             val interval = (imported.interval - (current - last)).coerceAtLeast(0)
 
             context.getSystemService<AlarmManager>()
-                ?.set(AlarmManager.RTC, current + interval, intent)
+                ?.set(AlarmManager.RTC_WAKEUP, current + interval, intent)
+        }
+
+        fun scheduleRetry(context: Context, imported: Imported) {
+            val intent = pendingIntentOf(context, imported)
+
+            context.getSystemService<AlarmManager>()?.cancel(intent)
+
+            if (imported.interval < TimeUnit.MINUTES.toMillis(15))
+                return
+
+            context.getSystemService<AlarmManager>()
+                ?.set(
+                    AlarmManager.RTC_WAKEUP,
+                    System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(15),
+                    intent
+                )
         }
 
         private suspend fun reset() = lock.withLock {

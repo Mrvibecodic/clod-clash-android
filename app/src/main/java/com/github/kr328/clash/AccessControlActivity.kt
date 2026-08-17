@@ -11,6 +11,7 @@ import com.github.kr328.clash.design.AccessControlDesign
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,16 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             }
         }
 
-        val design = AccessControlDesign(this, uiStore, service, selected)
+        val tunPrefs = withContext(Dispatchers.IO) { activeTunPrefs() }
+
+        val design = AccessControlDesign(
+            this,
+            uiStore,
+            service,
+            selected,
+            tunPrefs?.includePackages?.toSet() ?: emptySet(),
+            tunPrefs?.excludePackages?.toSet() ?: emptySet(),
+        )
 
         setContentDesign(design)
 

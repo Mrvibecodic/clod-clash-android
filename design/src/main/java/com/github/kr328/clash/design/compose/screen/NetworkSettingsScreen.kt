@@ -127,6 +127,7 @@ fun NetworkSettingsScreen(
             SelectRow(
                 title = stringResource(R.string.tun_stack_mode),
                 options = listOf(
+                    stringResource(R.string.tun_stack_auto),
                     stringResource(R.string.tun_stack_system),
                     stringResource(R.string.tun_stack_gvisor),
                     stringResource(R.string.tun_stack_mixed),

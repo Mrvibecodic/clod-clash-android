@@ -17,6 +17,7 @@ import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.data.ImportedDao
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
@@ -96,8 +97,12 @@ class ProfileWorker : BaseService() {
             completed(imported.uuid, displayProfileName(imported.uuid, imported.name))
 
             ProfileReceiver.scheduleNext(this, imported)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             failed(imported.uuid, name, e.message ?: "Unknown")
+
+            ProfileReceiver.scheduleRetry(this, imported)
         }
 
         try {
@@ -123,7 +128,11 @@ class ProfileWorker : BaseService() {
                 NotificationChannelCompat.Builder(
                     RESULT_CHANNEL,
                     NotificationManagerCompat.IMPORTANCE_DEFAULT
-                ).setName(getString(R.string.profile_process_result)).build()
+                ).setName(getString(R.string.profile_process_result)).build(),
+                NotificationChannelCompat.Builder(
+                    ERROR_CHANNEL,
+                    NotificationManagerCompat.IMPORTANCE_DEFAULT
+                ).setName(getString(R.string.profile_process_error)).build()
             )
         )
     }
@@ -166,7 +175,7 @@ class ProfileWorker : BaseService() {
         }
     }
 
-    private fun resultBuilder(id: Int, uuid: UUID): NotificationCompat.Builder {
+    private fun resultBuilder(id: Int, uuid: UUID, channel: String): NotificationCompat.Builder {
         val intent = PendingIntent.getActivity(
             this,
             id,
@@ -174,7 +183,7 @@ class ProfileWorker : BaseService() {
             pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
         )
 
-        return NotificationCompat.Builder(this, RESULT_CHANNEL)
+        return NotificationCompat.Builder(this, channel)
             .setColor(getColorCompat(R.color.color_clash))
             .setSmallIcon(R.drawable.ic_logo_service)
             .setOnlyAlertOnce(true)
@@ -184,9 +193,9 @@ class ProfileWorker : BaseService() {
     }
 
     private fun completed(uuid: UUID, name: String) {
-        val id = UndefinedIds.next()
+        val id = uuid.hashCode()
 
-        val notification = resultBuilder(id, uuid)
+        val notification = resultBuilder(id, uuid, RESULT_CHANNEL)
             .setContentTitle(getString(R.string.update_successfully))
             .setContentText(getString(R.string.format_update_complete, name))
             .build()
@@ -198,18 +207,20 @@ class ProfileWorker : BaseService() {
     }
 
     private fun failed(uuid: UUID, name: String, reason: String) {
-        val id = UndefinedIds.next()
+        if (ServiceStore(this).notifyProfileErrors) {
+            val id = uuid.hashCode()
 
-        val content = getString(R.string.format_update_failure, name, reason)
+            val content = getString(R.string.format_update_failure, name, reason)
 
-        val notification = resultBuilder(id, uuid)
-            .setContentTitle(getString(R.string.update_failure))
-            .setContentText(content)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(content))
-            .build()
+            val notification = resultBuilder(id, uuid, ERROR_CHANNEL)
+                .setContentTitle(getString(R.string.update_failure))
+                .setContentText(content)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
+                .build()
 
-        NotificationManagerCompat.from(this)
-            .notify(id, notification)
+            NotificationManagerCompat.from(this)
+                .notify(id, notification)
+        }
 
         sendProfileUpdateFailed(uuid, reason)
     }
@@ -218,6 +229,7 @@ class ProfileWorker : BaseService() {
         private const val SERVICE_CHANNEL = "profile_service_channel"
         private const val STATUS_CHANNEL = "profile_status_channel"
         private const val RESULT_CHANNEL = "profile_result_channel"
+        private const val ERROR_CHANNEL = "profile_error_channel"
     }
 
     override fun onBind(intent: Intent?): IBinder {

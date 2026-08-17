@@ -22,7 +22,7 @@ class NetworkSettingsDesign(
         data object Back : Request
     }
 
-    private val tunStacks = listOf("system", "gvisor", "mixed")
+    private val tunStacks = listOf("auto", "system", "gvisor", "mixed")
 
     private var state by mutableStateOf(
         NetworkSettingsState(

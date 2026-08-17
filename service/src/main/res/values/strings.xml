@@ -5,6 +5,8 @@
     <string name="profile_service_status">Profile Service Status</string>
     <string name="profile_process_status">Profile Processing Status</string>
     <string name="profile_process_result">Profile Process Result</string>
+    <string name="profile_process_error">Profile Update Errors</string>
+    <string name="clod_notification_stop">Disconnect</string>
     <string name="update_successfully">Update Successfully</string>
     <string name="update_failure">Update Failure</string>
     <string name="format_update_complete">Update %s completed</string>

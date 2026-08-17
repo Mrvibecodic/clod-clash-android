@@ -69,6 +69,8 @@ data class AccessControlState(
     val reverse: Boolean = false,
     val systemApps: Boolean = false,
     val mode: Int = 0,
+    val includeFromProfile: Set<String> = emptySet(),
+    val excludeFromProfile: Set<String> = emptySet(),
 )
 
 sealed interface AccessControlAction {
@@ -231,6 +233,11 @@ fun AccessControlScreen(
                 AppRow(
                     app = app,
                     selected = app.packageName in state.selected,
+                    profileNote = when (app.packageName) {
+                        in state.excludeFromProfile -> stringResource(R.string.clod_access_sub_exclude)
+                        in state.includeFromProfile -> stringResource(R.string.clod_access_sub_include)
+                        else -> null
+                    },
                     onClick = { onAction(AccessControlAction.Toggle(app.packageName)) },
                 )
             }
@@ -376,6 +383,7 @@ private fun CheckableItem(title: String, checked: Boolean, onClick: () -> Unit) 
 private fun AppRow(
     app: AppInfo,
     selected: Boolean,
+    profileNote: String?,
     onClick: () -> Unit,
 ) {
     Row(
@@ -407,6 +415,15 @@ private fun AppRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (profileNote != null) {
+                Text(
+                    text = profileNote,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         Checkbox(
             checked = selected,

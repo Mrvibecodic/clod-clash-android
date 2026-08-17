@@ -207,6 +207,7 @@
     <string name="always_light">Always Light</string>
 
     <string name="tun_stack_mode">Stack Mode</string>
+    <string name="tun_stack_auto">Auto (from subscription)</string>
     <string name="tun_stack_system">System Stack</string>
     <string name="tun_stack_gvisor">Gvisor Stack</string>
     <string name="tun_stack_mixed">Mixed Stack</string>
@@ -394,6 +395,10 @@
     <string name="clod_hwid_summary">Panels that limit the number of devices count them by this. The id is derived from a device value and hashed — the raw value never leaves the phone.</string>
     <string name="clod_sub_notify_title">Subscription reminders</string>
     <string name="clod_sub_notify_summary">Notify when the subscription is about to end or the traffic runs low. Thresholds are set by your provider.</string>
+    <string name="clod_profile_error_notify_title">Subscription update errors</string>
+    <string name="clod_profile_error_notify_summary">Show a notification when a subscription fails to update</string>
+    <string name="clod_access_sub_include">Via VPN (subscription)</string>
+    <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
     <string name="clod_portal">Customer portal</string>
     <string name="clod_support">Support</string>
     <string name="clod_bot">Bot</string>

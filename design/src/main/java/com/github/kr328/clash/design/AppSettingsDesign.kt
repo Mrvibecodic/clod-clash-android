@@ -38,6 +38,7 @@ class AppSettingsDesign(
             notificationEditable = !running,
             enableHwid = srvStore.enableHwid,
             subNotifications = srvStore.enableSubNotifications,
+            profileErrorNotifications = srvStore.notifyProfileErrors,
         ),
     )
 
@@ -85,6 +86,11 @@ class AppSettingsDesign(
                 srvStore.enableSubNotifications = action.enabled
 
                 state = state.copy(subNotifications = action.enabled)
+            }
+            is AppSettingsAction.SetProfileErrorNotifications -> {
+                srvStore.notifyProfileErrors = action.enabled
+
+                state = state.copy(profileErrorNotifications = action.enabled)
             }
             is AppSettingsAction.SetDynamicNotification -> {
                 srvStore.dynamicNotification = action.enabled

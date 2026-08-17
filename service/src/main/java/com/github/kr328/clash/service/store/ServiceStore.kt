@@ -41,6 +41,11 @@ class ServiceStore(context: Context) {
         defaultValue = true,
     )
 
+    var notifyProfileErrors: Boolean by store.boolean(
+        key = "notify_profile_update_errors",
+        defaultValue = true,
+    )
+
     var clashStartedAt: Long by store.long(
         key = "clash_started_at",
         defaultValue = 0L
@@ -79,7 +84,7 @@ class ServiceStore(context: Context) {
 
     var allowBypass by store.boolean(
         key = "allow_bypass",
-        defaultValue = true
+        defaultValue = false
     )
 
     var allowIpv6 by store.boolean(
@@ -89,7 +94,7 @@ class ServiceStore(context: Context) {
 
     var tunStackMode by store.string(
         key = "tun_stack_mode",
-        defaultValue = "system"
+        defaultValue = "auto"
     )
 
     var dynamicNotification by store.boolean(

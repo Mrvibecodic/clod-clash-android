@@ -28,6 +28,7 @@ data class AppSettingsState(
     val notificationEditable: Boolean = true,
     val enableHwid: Boolean = true,
     val subNotifications: Boolean = true,
+    val profileErrorNotifications: Boolean = true,
 )
 
 sealed interface AppSettingsAction {
@@ -39,6 +40,7 @@ sealed interface AppSettingsAction {
     data class SetDynamicNotification(val enabled: Boolean) : AppSettingsAction
     data class SetEnableHwid(val enabled: Boolean) : AppSettingsAction
     data class SetSubNotifications(val enabled: Boolean) : AppSettingsAction
+    data class SetProfileErrorNotifications(val enabled: Boolean) : AppSettingsAction
 }
 
 @Composable
@@ -121,6 +123,13 @@ fun AppSettingsScreen(
                 icon = painterResource(R.drawable.ic_baseline_notifications),
                 checked = state.subNotifications,
                 onCheckedChange = { onAction(AppSettingsAction.SetSubNotifications(it)) },
+            )
+            SwitchRow(
+                title = stringResource(R.string.clod_profile_error_notify_title),
+                subtitle = stringResource(R.string.clod_profile_error_notify_summary),
+                icon = painterResource(R.drawable.ic_outline_info),
+                checked = state.profileErrorNotifications,
+                onCheckedChange = { onAction(AppSettingsAction.SetProfileErrorNotifications(it)) },
             )
 
             Spacer(Modifier.height(24.dp))
