@@ -14,6 +14,7 @@ import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.store.ServiceStore
+import kotlinx.coroutines.launch
 
 class AppSettingsDesign(
     context: Context,
