@@ -2,23 +2,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:fillAlpha=".5"
-        android:fillType="evenOdd"
-        android:pathData="M19 11.938V15a7 7 0 0 1-6.25 6.96V15a.75.75 0 0 0-1.5 0v6.96A7 7 0 0 1 5 15v-3.062A3.94 3.94 0 0 1 8.938 8h6.124A3.94 3.94 0 0 1 19 11.938" />
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M19 14.75v-1.5h3a.75.75 0 0 1 0 1.5zm-1.504 4.586c.31-.393.58-.82.801-1.276l2.538 1.27a.75.75 0 1 1-.67 1.34zM5.703 18.06q.333.684.801 1.276l-2.669 1.335a.75.75 0 0 1-.67-1.342zM5 13.25H2a.75.75 0 0 0 0 1.5h3zm12.354-4.515l2.81-1.406a.75.75 0 1 1 .671 1.341L18.42 9.88a4 4 0 0 0-1.065-1.144M6.647 8.735c-.427.306-.79.695-1.067 1.144L3.165 8.67a.75.75 0 0 1 .67-1.341zM16.5 8.27V7.5a4.5 4.5 0 1 0-9 0v.77A3.9 3.9 0 0 1 8.938 8h6.124c.508 0 .993.096 1.438.27" />
-    <path
-        android:fillColor="@android:color/white"
-        android:fillAlpha=".5"
-        android:pathData="M6.376 1.584a.75.75 0 0 0 .208 1.04l2.36 1.573a4.5 4.5 0 0 1 1.387-.877L7.416 1.376a.75.75 0 0 0-1.04.208m8.68 2.613a4.5 4.5 0 0 0-1.387-.877l2.915-1.944a.75.75 0 1 1 .832 1.248z" />
-    <path
-        android:fillColor="@android:color/white"
-        android:fillType="evenOdd"
-        android:pathData="M12 14.25a.75.75 0 0 1 .75.75v7h-1.5v-7a.75.75 0 0 1 .75-.75" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M200-521v-40q0-72 33-131t87-97l-75-75 36-36 84.5 84q25.85-12 55.17-18.5Q450-841 480-841t59.5 6.5Q569-828 595-816l84-84 36 36-75 75q54 38 87 97.24 33 59.24 33 130.93V-521H200Zm428.5-91.5Q640-624 640-641t-11.5-28.5Q617-681 600-681t-28.5 11.5Q560-658 560-641t11.5 28.5Q583-601 600-601t28.5-11.5Zm-240 0Q400-624 400-641t-11.5-28.5Q377-681 360-681t-28.5 11.5Q320-658 320-641t11.5 28.5Q343-601 360-601t28.5-11.5Zm-107 491Q200-203 200-320v-161h560v161q0 117-81.5 198.5T480-40q-117 0-198.5-81.5Z" />
+    </group>
 </vector>

@@ -2,14 +2,12 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24"
+    android:viewportWidth="960"
+    android:viewportHeight="960"
     android:tint="?attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/white"
-        android:pathData="M20 10.875a.75.75 0 0 0 .538-1.272l-4-4.125a.75.75 0 0 0-1.076 0l-4 4.125A.75.75 0 0 0 12 10.875h3.25V18a.75.75 0 0 0 1.5 0v-7.125z" />
-    <path
-        android:fillColor="@android:color/white"
-        android:fillAlpha=".5"
-        android:pathData="M12 13.125a.75.75 0 0 1 .538 1.272l-4 4.125a.75.75 0 0 1-1.076 0l-4-4.125A.75.75 0 0 1 4 13.125h3.25V6a.75.75 0 1 1 1.5 0v7.125z" />
+    <group android:translateY="960">
+        <path
+            android:fillColor="@android:color/white"
+            android:pathData="M331.5-458.5Q323-467 323-480v-286L223-666q-9 9-21 9t-21-9q-9-9-9-21t9-21l151-151q5-5 10-7t11-2q6 0 11 2t10 7l151 151q9 9 9 21t-9 21q-9 9-21 9t-21-9L383-766v286q0 13-8.5 21.5T353-450q-13 0-21.5-8.5ZM596-94q-5-2-10-7L435-252q-9-9-9-21t9-21q9-9 21-9t21 9l100 100v-286q0-13 8.5-21.5T607-510q13 0 21.5 8.5T637-480v286l100-100q9-9 21-9t21 9q9 9 9 21t-9 21L628-101q-5 5-10 7t-11 2q-6 0-11-2Z" />
+    </group>
 </vector>
