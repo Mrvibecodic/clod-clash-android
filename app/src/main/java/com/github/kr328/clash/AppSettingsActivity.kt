@@ -13,6 +13,7 @@ import com.github.kr328.clash.design.AppSettingsDesign
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
@@ -27,6 +28,8 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             this,
             clashRunning,
             ::onHideIconChange,
+            { clashRunning },
+            ::onReset,
         )
 
         setContentDesign(design)
@@ -118,6 +121,14 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             } catch (e: Exception) {
                 Log.w("Open notification settings: $e", e)
             }
+        }
+    }
+
+    private fun onReset() {
+        AppStore(this).apply {
+            autoCheckUpdate = true
+            nightlyChannel = false
+            skippedVersionCode = 0
         }
     }
 

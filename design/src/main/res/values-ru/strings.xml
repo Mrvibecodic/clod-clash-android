@@ -434,4 +434,9 @@
     <string name="clod_notify_ask_later">Не сейчас</string>
     <string name="clod_notify_blocked">Уведомления запрещены в системе. Пока запрет держится, приложение не покажет ни состояние туннеля, ни напоминания о подписке.</string>
     <string name="clod_notify_open_settings">Открыть настройки</string>
+    <string name="clod_reset_section">Сброс</string>
+    <string name="clod_reset_title">Сбросить настройки</string>
+    <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским. Подписки, профили и их собственные настройки останутся.</string>
+    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Подписки и профили останутся нетронутыми.</string>
+    <string name="clod_reset_action">Сбросить</string>
 </resources>

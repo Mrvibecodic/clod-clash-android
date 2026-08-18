@@ -12,6 +12,7 @@ import com.github.kr328.clash.design.compose.screen.AppSettingsState
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.store.ServiceStore
 
 class AppSettingsDesign(
@@ -19,8 +20,10 @@ class AppSettingsDesign(
     private val uiStore: UiStore,
     private val srvStore: ServiceStore,
     private val behavior: Behavior,
-    running: Boolean,
+    private val running: Boolean,
     private val onHideIconChange: (hide: Boolean) -> Unit,
+    private val isRunning: () -> Boolean,
+    private val onReset: () -> Unit,
 ) : Design<AppSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ReCreateAllActivities : Request
@@ -43,6 +46,7 @@ class AppSettingsDesign(
             subNotifications = srvStore.enableSubNotifications,
             profileErrorNotifications = srvStore.notifyProfileErrors,
             notificationsBlocked = notificationsBlocked(),
+            resetEnabled = !running,
         ),
     )
 
@@ -52,6 +56,38 @@ class AppSettingsDesign(
 
     fun refreshNotifications() {
         state = state.copy(notificationsBlocked = notificationsBlocked())
+    }
+
+    private fun resetSettings() {
+        if (isRunning()) {
+            state = state.copy(resetEnabled = false)
+
+            launch { showToast(R.string.clod_setting_needs_stop, ToastDuration.Long) }
+
+            return
+        }
+
+        behavior.autoRestart = false
+
+        onHideIconChange(false)
+
+        uiStore.reset()
+        srvStore.reset()
+        onReset()
+
+        state = state.copy(
+            autoRestart = behavior.autoRestart,
+            darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+            hideAppIcon = false,
+            hideFromRecents = uiStore.hideFromRecents,
+            dynamicNotification = srvStore.dynamicNotification,
+            enableHwid = srvStore.enableHwid,
+            subNotifications = srvStore.enableSubNotifications,
+            profileErrorNotifications = srvStore.notifyProfileErrors,
+            notificationsBlocked = notificationsBlocked(),
+        )
+
+        requests.trySend(Request.ReCreateAllActivities)
     }
 
     private fun notificationsBlocked(): Boolean {
@@ -76,6 +112,7 @@ class AppSettingsDesign(
             AppSettingsAction.Back -> requests.trySend(Request.Back)
             AppSettingsAction.OpenSystemNotifications ->
                 requests.trySend(Request.OpenSystemNotifications)
+            AppSettingsAction.ResetSettings -> resetSettings()
             is AppSettingsAction.SetAutoRestart -> {
                 behavior.autoRestart = action.enabled
 

@@ -442,4 +442,9 @@
     <string name="clod_notify_ask_later">Not now</string>
     <string name="clod_notify_blocked">Notifications are blocked in system settings. While the block holds, the app cannot show the tunnel state or subscription reminders.</string>
     <string name="clod_notify_open_settings">Open settings</string>
+    <string name="clod_reset_section">Reset</string>
+    <string name="clod_reset_title">Reset settings</string>
+    <string name="clod_reset_summary">App, network and notification settings go back to defaults. Subscriptions, profiles and their own settings stay.</string>
+    <string name="clod_reset_confirm">App, network and notification settings will go back to defaults. Subscriptions and profiles stay untouched.</string>
+    <string name="clod_reset_action">Reset</string>
 </resources>

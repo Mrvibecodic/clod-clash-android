@@ -11,11 +11,17 @@ import com.github.kr328.clash.design.model.DarkMode
 import java.util.UUID
 
 class UiStore(context: Context) {
-    private val store = Store(
-        context
-            .getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
-            .asStoreProvider()
-    )
+    private val preferences = context.getSharedPreferences(PREFERENCE_NAME, Context.MODE_PRIVATE)
+
+    private val store = Store(preferences.asStoreProvider())
+
+    fun reset() {
+        val editor = preferences.edit()
+
+        SETTING_KEYS.forEach { editor.remove(it) }
+
+        editor.apply()
+    }
 
     var enableVpn: Boolean by store.boolean(
         key = "enable_vpn",
@@ -86,6 +92,18 @@ class UiStore(context: Context) {
 
     companion object {
         private const val PREFERENCE_NAME = "ui"
+
+        private val SETTING_KEYS = listOf(
+            "enable_vpn",
+            "dark_mode",
+            "hide_app_icon",
+            "hide_from_recents",
+            "proxy_sort",
+            "proxy_last_group",
+            "access_control_sort",
+            "access_control_reverse",
+            "access_control_system_app",
+        )
 
         val Context.mainActivityAlias: ComponentName
             get() = ComponentName(this, "com.github.kr328.clash.MainActivityAlias")

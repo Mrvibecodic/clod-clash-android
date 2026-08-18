@@ -107,6 +107,23 @@ class ServiceStore(context: Context) {
         defaultValue = false
     )
 
+    fun reset() {
+        enableHwid = true
+        resetConnectionsOnNetworkChange = true
+        enableSubNotifications = true
+        notifyProfileErrors = true
+        bypassPrivateNetwork = true
+        accessControlMode = AccessControlMode.AcceptAll
+        accessControlPackages = emptySet()
+        dnsHijacking = true
+        systemProxy = true
+        allowBypass = false
+        allowIpv6 = false
+        tunStackMode = "auto"
+        dynamicNotification = false
+        keepAwake = false
+    }
+
     fun markSessionStarted(): Long {
         val startedAt = System.currentTimeMillis()
 
