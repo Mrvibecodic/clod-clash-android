@@ -157,6 +157,7 @@ data class MainScreenState(
     val about: AboutState = AboutState(),
     val routingData: RoutingDataState = RoutingDataState(),
     val update: UpdateState? = null,
+    val notificationPrompt: Boolean = false,
 )
 
 sealed interface MainAction {
@@ -192,9 +193,31 @@ sealed interface MainAction {
     data class UpdateProfile(val profile: Profile) : MainAction
     data class EditProfile(val profile: Profile) : MainAction
     data class DeleteProfile(val profile: Profile) : MainAction
+    data object AllowNotifications : MainAction
+    data object SkipNotifications : MainAction
+    data object DismissNotifications : MainAction
 }
 
 private const val TAB_TRANSITION_MILLIS = 200
+
+@Composable
+private fun NotificationPromptDialog(onAction: (MainAction) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onAction(MainAction.DismissNotifications) },
+        title = { Text(stringResource(R.string.clod_notify_ask_title)) },
+        text = { Text(stringResource(R.string.clod_notify_ask_text)) },
+        confirmButton = {
+            TextButton(onClick = { onAction(MainAction.AllowNotifications) }) {
+                Text(stringResource(R.string.clod_notify_ask_allow))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(MainAction.SkipNotifications) }) {
+                Text(stringResource(R.string.clod_notify_ask_later))
+            }
+        },
+    )
+}
 
 @Composable
 fun MainScreen(
@@ -208,6 +231,10 @@ fun MainScreen(
         bottomBar = { MainBottomBar(state.selectedTab, onAction) },
     ) { padding ->
         state.update?.let { UpdateDialog(it, onAction) }
+
+        if (state.notificationPrompt) {
+            NotificationPromptDialog(onAction)
+        }
 
         Box(modifier = Modifier.padding(padding)) {
             when (state.subScreen) {

@@ -304,6 +304,30 @@ class MainActivity : BaseActivity<MainDesign>() {
                             )
                         is MainDesign.Request.DeleteProfile ->
                             withProfile { delete(request.profile.uuid) }
+                        MainDesign.Request.AllowNotifications -> {
+                            design.setNotificationPrompt(false)
+
+                            launch {
+                                requestNotifications()
+
+                                uiStore.notificationsAsked = true
+
+                                if (!clashRunning) {
+                                    design.startClash()
+                                }
+                            }
+                        }
+                        MainDesign.Request.SkipNotifications -> {
+                            uiStore.notificationsAsked = true
+
+                            design.setNotificationPrompt(false)
+
+                            if (!clashRunning) {
+                                design.startClash()
+                            }
+                        }
+                        MainDesign.Request.DismissNotifications ->
+                            design.setNotificationPrompt(false)
                         is MainDesign.Request.SetSubscriptionGroup -> {
                             patchSubscriptionGroup(request.profile.uuid, request.group)
 
@@ -586,7 +610,39 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
+    private fun shouldAskNotifications(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+            return false
+
+        if (uiStore.notificationsAsked)
+            return false
+
+        return ContextCompat.checkSelfPermission(
+            this,
+            android.Manifest.permission.POST_NOTIFICATIONS,
+        ) != PackageManager.PERMISSION_GRANTED
+    }
+
+    private suspend fun requestNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+            return
+
+        try {
+            startActivityForResult(RequestPermission(), android.Manifest.permission.POST_NOTIFICATIONS)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Request notifications: $e", e)
+        }
+    }
+
     private suspend fun MainDesign.startClash() {
+        if (shouldAskNotifications()) {
+            setNotificationPrompt(true)
+
+            return
+        }
+
         val active = withProfile { queryActive() }
 
         if (active == null || !active.imported) {
@@ -781,18 +837,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val requestPermissionLauncher =
-                registerForActivityResult(RequestPermission()
-                ) { isGranted: Boolean ->
-                }
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    android.Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
+
         setupShortcuts()
     }
 

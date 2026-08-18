@@ -42,6 +42,11 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
+    var notificationsAsked: Boolean by store.boolean(
+        key = "notifications_asked",
+        defaultValue = false,
+    )
+
     fun favorites(profile: UUID): Set<String> {
         return store.provider.getStringSet(favoritesKey(profile), emptySet())
     }

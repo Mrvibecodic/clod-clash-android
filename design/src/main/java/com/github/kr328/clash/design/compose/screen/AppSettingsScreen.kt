@@ -1,11 +1,17 @@
 package com.github.kr328.clash.design.compose.screen
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
@@ -29,6 +35,7 @@ data class AppSettingsState(
     val enableHwid: Boolean = true,
     val subNotifications: Boolean = true,
     val profileErrorNotifications: Boolean = true,
+    val notificationsBlocked: Boolean = false,
 )
 
 sealed interface AppSettingsAction {
@@ -41,6 +48,7 @@ sealed interface AppSettingsAction {
     data class SetEnableHwid(val enabled: Boolean) : AppSettingsAction
     data class SetSubNotifications(val enabled: Boolean) : AppSettingsAction
     data class SetProfileErrorNotifications(val enabled: Boolean) : AppSettingsAction
+    data object OpenSystemNotifications : AppSettingsAction
 }
 
 @Composable
@@ -96,6 +104,9 @@ fun AppSettingsScreen(
             )
 
             SectionHeader(stringResource(R.string.service))
+            if (state.notificationsBlocked) {
+                BlockedNotice(onAction)
+            }
             SwitchRow(
                 title = stringResource(R.string.show_traffic),
                 subtitle = if (state.notificationEditable) {
@@ -105,7 +116,7 @@ fun AppSettingsScreen(
                 },
                 icon = painterResource(R.drawable.ic_baseline_domain),
                 checked = state.dynamicNotification,
-                enabled = state.notificationEditable,
+                enabled = state.notificationEditable && !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetDynamicNotification(it)) },
             )
 
@@ -122,6 +133,7 @@ fun AppSettingsScreen(
                 subtitle = stringResource(R.string.clod_sub_notify_summary),
                 icon = painterResource(R.drawable.ic_baseline_notifications),
                 checked = state.subNotifications,
+                enabled = !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetSubNotifications(it)) },
             )
             SwitchRow(
@@ -129,10 +141,35 @@ fun AppSettingsScreen(
                 subtitle = stringResource(R.string.clod_profile_error_notify_summary),
                 icon = painterResource(R.drawable.ic_outline_info),
                 checked = state.profileErrorNotifications,
+                enabled = !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetProfileErrorNotifications(it)) },
             )
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun BlockedNotice(onAction: (AppSettingsAction) -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 4.dp),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.clod_notify_blocked),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(onClick = { onAction(AppSettingsAction.OpenSystemNotifications) }) {
+                Text(stringResource(R.string.clod_notify_open_settings))
+            }
         }
     }
 }

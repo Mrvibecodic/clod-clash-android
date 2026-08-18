@@ -65,6 +65,9 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class EditProfile(val profile: Profile) : Request
         data class DeleteProfile(val profile: Profile) : Request
         data class SetSubscriptionGroup(val profile: Profile, val group: String?) : Request
+        data object AllowNotifications : Request
+        data object SkipNotifications : Request
+        data object DismissNotifications : Request
     }
 
     private var state by mutableStateOf(MainScreenState())
@@ -76,6 +79,9 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     private fun onAction(action: MainAction) {
         when (action) {
             MainAction.ToggleStatus -> request(Request.ToggleStatus)
+            MainAction.AllowNotifications -> request(Request.AllowNotifications)
+            MainAction.SkipNotifications -> request(Request.SkipNotifications)
+            MainAction.DismissNotifications -> request(Request.DismissNotifications)
             MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenAppSettings -> request(Request.OpenAppSettings)
@@ -156,6 +162,12 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
 
     private fun toast(resId: Int) {
         launch { showToast(resId, ToastDuration.Long) }
+    }
+
+    suspend fun setNotificationPrompt(show: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(notificationPrompt = show)
+        }
     }
 
     suspend fun setActiveProfile(active: SubscriptionItem?) {

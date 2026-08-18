@@ -428,4 +428,10 @@
     <string name="clod_data_title">Базы и провайдеры</string>
     <string name="clod_just_now">только что</string>
     <string name="clod_never">не обновлялось</string>
+    <string name="clod_notify_ask_title">Показывать уведомления?</string>
+    <string name="clod_notify_ask_text">В постоянном уведомлении видно состояние туннеля и есть кнопка «Отключить». Туда же приходят напоминания о подписке и сообщения об ошибках её обновления.</string>
+    <string name="clod_notify_ask_allow">Разрешить</string>
+    <string name="clod_notify_ask_later">Не сейчас</string>
+    <string name="clod_notify_blocked">Уведомления запрещены в системе. Пока запрет держится, приложение не покажет ни состояние туннеля, ни напоминания о подписке.</string>
+    <string name="clod_notify_open_settings">Открыть настройки</string>
 </resources>

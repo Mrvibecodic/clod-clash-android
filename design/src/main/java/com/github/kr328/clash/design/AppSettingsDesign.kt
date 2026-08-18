@@ -2,6 +2,7 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -23,6 +24,8 @@ class AppSettingsDesign(
 ) : Design<AppSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ReCreateAllActivities : Request
+        data object OpenSystemNotifications : Request
+        data object RequestNotifications : Request
         data object Back : Request
     }
 
@@ -39,6 +42,7 @@ class AppSettingsDesign(
             enableHwid = srvStore.enableHwid,
             subNotifications = srvStore.enableSubNotifications,
             profileErrorNotifications = srvStore.notifyProfileErrors,
+            notificationsBlocked = notificationsBlocked(),
         ),
     )
 
@@ -46,9 +50,32 @@ class AppSettingsDesign(
         AppSettingsScreen(state = state, onAction = ::onAction)
     }
 
+    fun refreshNotifications() {
+        state = state.copy(notificationsBlocked = notificationsBlocked())
+    }
+
+    private fun notificationsBlocked(): Boolean {
+        if (!uiStore.notificationsAsked)
+            return false
+
+        return !NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    private fun askNotificationsIfNeeded(enabled: Boolean) {
+        if (!enabled || uiStore.notificationsAsked)
+            return
+
+        if (NotificationManagerCompat.from(context).areNotificationsEnabled())
+            return
+
+        requests.trySend(Request.RequestNotifications)
+    }
+
     private fun onAction(action: AppSettingsAction) {
         when (action) {
             AppSettingsAction.Back -> requests.trySend(Request.Back)
+            AppSettingsAction.OpenSystemNotifications ->
+                requests.trySend(Request.OpenSystemNotifications)
             is AppSettingsAction.SetAutoRestart -> {
                 behavior.autoRestart = action.enabled
 
@@ -86,16 +113,22 @@ class AppSettingsDesign(
                 srvStore.enableSubNotifications = action.enabled
 
                 state = state.copy(subNotifications = action.enabled)
+
+                askNotificationsIfNeeded(action.enabled)
             }
             is AppSettingsAction.SetProfileErrorNotifications -> {
                 srvStore.notifyProfileErrors = action.enabled
 
                 state = state.copy(profileErrorNotifications = action.enabled)
+
+                askNotificationsIfNeeded(action.enabled)
             }
             is AppSettingsAction.SetDynamicNotification -> {
                 srvStore.dynamicNotification = action.enabled
 
                 state = state.copy(dynamicNotification = action.enabled)
+
+                askNotificationsIfNeeded(action.enabled)
             }
         }
     }
