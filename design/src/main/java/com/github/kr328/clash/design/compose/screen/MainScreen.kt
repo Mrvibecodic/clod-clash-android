@@ -421,7 +421,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 leading = painterResource(R.drawable.ic_nav_servers),
                 onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
                 trailing = if (current != null) {
-                    { PingBadge(current.delay) }
+                    { PingBadge(current.delay, marksOnly = state.active?.panel?.disablePing == true) }
                 } else {
                     null
                 },

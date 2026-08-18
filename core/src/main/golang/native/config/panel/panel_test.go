@@ -570,6 +570,36 @@ func TestApplyHeadersShowZeroHosts(t *testing.T) {
 	}
 }
 
+func TestApplyHeadersDisablePing(t *testing.T) {
+	for _, raw := range []string{"true", "TRUE", "1", "yes", "on"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-Disable-Ping": []string{raw}}, "https://panel.example/sub")
+
+		if !info.DisablePing {
+			t.Fatalf("%q должно скрывать цифры пинга", raw)
+		}
+	}
+
+	for _, raw := range []string{"", "  ", "false", "0", "off", "no", "мусор", "maybe"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-Disable-Ping": []string{raw}}, "https://panel.example/sub")
+
+		if info.DisablePing {
+			t.Fatalf("%q не должно скрывать цифры пинга", raw)
+		}
+	}
+}
+
+func TestApplyHeadersDisablePingFollowsPanel(t *testing.T) {
+	info := Info{DisablePing: true}
+
+	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, "https://panel.example/sub")
+
+	if info.DisablePing {
+		t.Fatal("панель перестала слать заголовок — режим должен сняться")
+	}
+}
+
 func TestApplyHeadersShowZeroHostsFollowsPanel(t *testing.T) {
 	info := Info{ShowZeroHosts: true}
 

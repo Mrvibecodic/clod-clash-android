@@ -44,6 +44,8 @@ data class PanelInfo(
 
     val showZeroHosts: Boolean = false,
 
+    val disablePing: Boolean = false,
+
     val groups: List<PanelGroup> = emptyList(),
 ) {
     fun clockSkewMillis(): Long {

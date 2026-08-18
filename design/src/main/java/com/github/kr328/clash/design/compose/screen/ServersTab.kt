@@ -163,6 +163,7 @@ fun ServersTab(
                     subtitle = descriptions[proxy.name]?.takeIf { it.isNotBlank() }
                         ?: proxy.subtitle,
                     delay = proxy.delay,
+                    marksOnly = active?.panel?.disablePing == true,
                     selected = proxy.name == group.now,
                     favorite = proxy.name in state.favorites,
                     onClick = { onAction(MainAction.SelectProxy(proxy.name)) },

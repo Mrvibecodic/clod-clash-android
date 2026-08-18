@@ -66,9 +66,31 @@ private fun delayColor(delay: Int): Color = when {
 }
 
 @Composable
-fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
-    val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
-    val color = delayColor(delay)
+fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
+    val color: Color
+    val label: String
+
+    if (marksOnly) {
+        when {
+            delay <= 0 -> {
+                color = ClodTheme.extraColors.statusStopped
+                label = "—"
+            }
+            delay >= DELAY_UNKNOWN -> {
+                color = MaterialTheme.colorScheme.error
+                label = "✕"
+            }
+            else -> {
+                color = ClodTheme.extraColors.statusConnected
+                label = "✓"
+            }
+        }
+    } else {
+        val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
+
+        color = delayColor(delay)
+        label = if (unknown) "—" else "$delay ms"
+    }
 
     Box(
         modifier = modifier
@@ -77,7 +99,7 @@ fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
-            text = if (unknown) "—" else "$delay ms",
+            text = label,
             color = color,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
@@ -86,7 +108,29 @@ fun PingBadge(delay: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun DelayPill(delay: Int, modifier: Modifier = Modifier) {
+fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
+    if (marksOnly && delay > 0) {
+        val failed = delay >= DELAY_UNKNOWN
+
+        Box(
+            modifier = modifier
+                .widthIn(min = 52.dp)
+                .clip(RoundedCornerShape(50))
+                .background(if (failed) DelayPillSlow else DelayPillFast)
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = if (failed) "✕" else "✓",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+
+        return
+    }
+
     val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
 
     if (unknown) {
@@ -137,6 +181,7 @@ fun ProxyRow(
     title: String,
     subtitle: String,
     delay: Int,
+    marksOnly: Boolean,
     selected: Boolean,
     favorite: Boolean,
     onClick: () -> Unit,
@@ -206,7 +251,7 @@ fun ProxyRow(
             }
         }
         Spacer(Modifier.width(10.dp))
-        DelayPill(delay)
+        DelayPill(delay, marksOnly)
         Spacer(Modifier.width(6.dp))
         Box(
             modifier = Modifier

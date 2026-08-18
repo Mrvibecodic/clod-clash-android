@@ -56,6 +56,8 @@ type Info struct {
 
 	ShowZeroHosts bool `json:"showZeroHosts,omitempty"`
 
+	DisablePing bool `json:"disablePing,omitempty"`
+
 	Groups []Group `json:"groups,omitempty"`
 }
 
@@ -142,6 +144,8 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.FallbackDomain = strings.TrimSpace(headerValue(header, "fallback-domain"))
 
 	info.ShowZeroHosts = boolHeader(header, "clod-show-0hosts")
+
+	info.DisablePing = boolHeader(header, "clod-disable-ping")
 
 	info.LockMode = optionalBool(header, "clod-lock-mode")
 

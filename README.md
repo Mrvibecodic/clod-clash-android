@@ -64,7 +64,8 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 `notify-expire-days` / `notify-traffic-percent` (плюс голый
 `notification-subs-expire` и `global-mode` для совместимости), переезд подписки
 `new-url` / `new-domain`, запасные адреса `fallback-url` / `fallback-domain`,
-часы панели по стандартному `Date`, `clod-lock-mode` и `clod-show-0hosts`.
+часы панели по стандартному `Date`, `clod-lock-mode`, `clod-show-0hosts`
+и `clod-disable-ping` (галочка/крестик вместо цифр задержки).
 
 **Чего пока нет против десктопа:** `clod-connect-mode` (чем ловить трафик),
 `clod-device-remove` (кнопка «Освободить устройство» в диалоге лимита) и
