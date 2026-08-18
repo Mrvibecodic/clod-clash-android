@@ -365,6 +365,8 @@
     <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>
+    <string name="clod_notice_expand">Show full text</string>
+    <string name="clod_notice_collapse">Collapse</string>
     <string name="clod_no_servers_hint">Add a subscription and connect — the list comes from the panel.</string>
     <string name="clod_action_connect">Connect</string>
     <string name="clod_action_disconnect">Disconnect</string>

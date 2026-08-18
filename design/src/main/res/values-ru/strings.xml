@@ -332,6 +332,8 @@
     <string name="clod_select_failed">Не удалось выбрать этот сервер. Обновите подписку и попробуйте снова.</string>
     <string name="clod_test_delays">Проверить задержки</string>
     <string name="clod_no_servers">Серверов нет</string>
+    <string name="clod_notice_expand">Показать полностью</string>
+    <string name="clod_notice_collapse">Свернуть</string>
     <string name="clod_no_servers_hint">Добавьте подписку и подключитесь — список приходит из панели.</string>
     <string name="clod_action_connect">Подключиться</string>
     <string name="clod_action_disconnect">Отключиться</string>

@@ -3,6 +3,7 @@ package com.github.kr328.clash.design.compose.screen
 import android.graphics.BitmapFactory
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -41,6 +42,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.NavigationBar
@@ -58,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -706,6 +710,8 @@ private fun formatSession(seconds: Long): String {
     }
 }
 
+private const val COLLAPSED_NOTICE_LINES = 6
+
 @Composable
 private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit) {
     val panel = active.panel ?: return
@@ -729,6 +735,13 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
         }
 
         if (notice.isNotBlank()) {
+            var expanded by remember(notice) { mutableStateOf(false) }
+            var truncated by remember(notice) { mutableStateOf(false) }
+            val rotation by animateFloatAsState(
+                targetValue = if (expanded) 180f else 0f,
+                label = "noticeChevron",
+            )
+
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -745,7 +758,8 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                                 Modifier
                             },
                         )
-                        .padding(14.dp),
+                        .padding(14.dp)
+                        .animateContentSize(),
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_outline_info),
@@ -758,9 +772,40 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                         text = notice,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 6,
+                        maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_NOTICE_LINES,
                         overflow = TextOverflow.Ellipsis,
+                        onTextLayout = {
+                            if (!expanded) {
+                                truncated = it.hasVisualOverflow
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
                     )
+                    if (truncated) {
+                        Spacer(Modifier.width(4.dp))
+                        IconButton(
+                            onClick = { expanded = !expanded },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                contentColor = MaterialTheme.colorScheme.primary,
+                            ),
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chevron_down),
+                                contentDescription = stringResource(
+                                    if (expanded) {
+                                        R.string.clod_notice_collapse
+                                    } else {
+                                        R.string.clod_notice_expand
+                                    },
+                                ),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(rotation),
+                            )
+                        }
+                    }
                 }
             }
         }
