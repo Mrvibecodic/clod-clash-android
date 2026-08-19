@@ -1,17 +1,3 @@
-# Релиз Android-версии Clod Clash.
-#
-# Конвейер повторяет десктопный (release-clod.yml в основном репозитории):
-#   тег android-v* -> сверка версии -> черновик релиза -> сборка -> публикация релиза
-#   -> latest.json в сам релиз и в плавающий релиз updater.
-#
-# Почему черновик создаётся отдельным джобом: если релиз создавать из джоба сборки,
-# параллельные джобы дерутся за создание одного и того же релиза и проигравший получает 403.
-#
-# С 0.1.0 релиз публикуется обычным (не pre-release), как и на десктопе. Манифест
-# обновлений всё равно дублируется в плавающий релиз с тегом updater — на него и
-# смотрит приложение; сам служебный релиз остаётся pre-release, чтобы GitHub не
-# считал "latest" именно его.
-
 name: Release
 
 on:
@@ -26,7 +12,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # ABI, под которые собираются отдельные APK. Универсальный APK собирается всегда.
   ABIS: 'arm64-v8a armeabi-v7a x86_64'
 
 jobs:
@@ -72,7 +57,6 @@ jobs:
           set -euo pipefail
           TAG="${GITHUB_REF_NAME}"
 
-          # При 404 gh печатает тело ошибки в stdout, поэтому смотрим на код возврата.
           existing=''
           if out=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq '{id: .id, draft: .draft}' 2>/dev/null); then
             existing="$out"
@@ -113,8 +97,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      # Go — форк MetaCubeX с двумя патчами GOROOT (см. .github/patch).
-      # Без них ломаются armeabi-v7a на старых ядрах и pidfd на Android.
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
@@ -125,8 +107,6 @@ jobs:
           cd $(go env GOROOT)
           for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
 
-      # Кеш Go. Помним общее правило GitHub: кеш не переживает тег,
-      # поэтому релизная сборка всегда холодная — это ожидаемо, а не поломка.
       - uses: actions/cache@v5
         with:
           path: |
@@ -141,9 +121,6 @@ jobs:
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
-      # Ключ подписи приходит из секрета base64. В репозитории его нет и быть не должно:
-      # тот же ключ = единственное условие, при котором обновление ставится поверх
-      # установленного приложения без потери данных.
       - name: Ключ подписи из секретов
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -163,14 +140,10 @@ jobs:
             echo "key.alias=$KEY_ALIAS"
             echo "key.password=$KEY_PASSWORD"
           } > signing.properties
-          # Содержимое в лог не печатаем (апстрим печатал).
 
       - name: Сборка релиза
         run: ./gradlew --no-daemon app:assembleStandardRelease
 
-      # 16 KB page size: с NDK r29 выравнивание получается само, но "само" —
-      # это не гарантия. Проверяем явно, иначе на новых устройствах библиотеки
-      # просто не загрузятся, а узнаем мы об этом от пользователей.
       - name: Проверка выравнивания 16 KB
         run: |
           set -euo pipefail
@@ -179,8 +152,6 @@ jobs:
           fail=0
           for apk in app/build/outputs/apk/standard/release/*.apk; do
             tmp=$(mktemp -d); unzip -q -o "$apk" 'lib/*' -d "$tmp" || true
-            # Только 64-битные ABI: 16 KB страницы существуют лишь там, у armeabi-v7a
-            # и x86 выравнивание 0x1000 — это норма, а не поломка.
             while IFS= read -r so; do
               align=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | tail -1)
               if [[ "$align" != "0x4000" && "$align" != "0x10000" ]]; then
@@ -194,29 +165,20 @@ jobs:
 
       - name: Переименовать APK и посчитать SHA-256
         id: assets
-        env:
-          VERSION: ${{ needs.check_version.outputs.version }}
         run: |
           set -euo pipefail
           mkdir -p dist
-          # Gradle уже кладёт имя вида clodclash-<версия>-standard-<abi>-release.apk
-          # (archivesBaseName), поэтому ABI достаём по известному списку, а не разбором
-          # имени: у универсального APK части с ABI нет вовсе.
           for apk in app/build/outputs/apk/standard/release/*.apk; do
             name=$(basename "$apk")
             abi=universal
             for candidate in arm64-v8a armeabi-v7a x86_64 x86; do
               if [[ "$name" == *"-$candidate-"* ]]; then abi="$candidate"; break; fi
             done
-            cp "$apk" "dist/clodclash-$VERSION-$abi.apk"
-            echo "$abi clodclash-$VERSION-$abi.apk" >> dist/abis.txt
+            cp "$apk" "dist/clodclash-$abi.apk"
+            echo "$abi clodclash-$abi.apk" >> dist/abis.txt
           done
           cd dist && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt abis.txt
 
-      # Манифест обновлений. Схема повторяет десктопный latest.json, но с двумя
-      # обязательными для Android добавками: versionCode (сравнение версий монотонным
-      # числом, а не строкой) и sha256 (подписи minisign, как на ПК, здесь не нужны —
-      # целостность APK гарантирует ключ подписи, но MITM при загрузке ловим хешем).
       - name: Собрать latest.json
         env:
           VERSION: ${{ needs.check_version.outputs.version }}
@@ -267,7 +229,6 @@ jobs:
           RELEASE_ID: ${{ needs.prepare_release.outputs.release_id }}
         run: |
           set -euo pipefail
-          # По тегу gh release upload черновики не видит — только по release_id.
           for f in dist/*; do
             name=$(basename "$f")
             old=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
@@ -289,8 +250,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Гейт комплектности: лучше упасть здесь, чем выпустить релиз без APK
-      # под какой-то ABI или без манифеста, на который смотрит апдейтер.
       - name: Проверить, что релиз укомплектован
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -325,8 +284,6 @@ jobs:
           gh api -X PATCH "repos/${{ github.repository }}/releases/$RELEASE_ID" \
             -F draft=false -F prerelease=false -f body="$NOTES" --jq .html_url
 
-      # Плавающий релиз updater: GitHub не отдаёт pre-release по /releases/latest,
-      # поэтому приложение ходит за манифестом сюда — адрес не меняется от версии к версии.
       - name: Обновить плавающий релиз updater
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
