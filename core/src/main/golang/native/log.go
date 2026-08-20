@@ -8,6 +8,8 @@ import (
 	"time"
 	"unsafe"
 
+	"cfa/native/app"
+
 	"github.com/metacubex/mihomo/log"
 )
 
@@ -68,5 +70,5 @@ func subscribeLogcat(remote unsafe.Pointer) {
 		}
 	}(remote)
 
-	log.Infoln("[APP] Logcat level: %s", log.Level().String())
+	log.Infoln("[APP] ClodClash %s, logcat level: %s", app.VersionName(), log.Level().String())
 }

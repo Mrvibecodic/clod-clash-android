@@ -1,3 +1,20 @@
+diff --git a/adapter/outbound/anytls.go b/adapter/outbound/anytls.go
+index 9978661..84d30ef 100644
+--- a/adapter/outbound/anytls.go
++++ b/adapter/outbound/anytls.go
+@@ -86,6 +86,12 @@ func (t *AnyTLS) ProxyInfo() C.ProxyInfo {
+ 	return info
+ }
+ 
++func (t *AnyTLS) ResetNetwork() {
++	if t.client != nil {
++		t.client.ResetNetwork()
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (t *AnyTLS) Close() error {
+ 	return t.client.Close()
 diff --git a/adapter/outbound/hysteria2.go b/adapter/outbound/hysteria2.go
 index 4731611..81f0661 100644
 --- a/adapter/outbound/hysteria2.go
@@ -35,6 +52,26 @@ index 57a64c2..e1ab84a 100644
  // Close implements C.ProxyAdapter
  func (s *SingMux) Close() error {
  	if s.client != nil {
+diff --git a/adapter/outbound/ssh.go b/adapter/outbound/ssh.go
+index 601dfc8..ce52c43 100644
+--- a/adapter/outbound/ssh.go
++++ b/adapter/outbound/ssh.go
+@@ -102,6 +102,15 @@ func (s *Ssh) ProxyInfo() C.ProxyInfo {
+ 	return info
+ }
+ 
++func (s *Ssh) ResetNetwork() {
++	s.cMutex.Lock()
++	defer s.cMutex.Unlock()
++	if s.client != nil {
++		_ = s.client.Close()
++		s.client = nil
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (s *Ssh) Close() error {
+ 	s.cMutex.Lock()
 diff --git a/adapter/outbound/trojan.go b/adapter/outbound/trojan.go
 index d581e80..ddcc5e8 100644
 --- a/adapter/outbound/trojan.go
@@ -52,6 +89,23 @@ index d581e80..ddcc5e8 100644
  // Close implements C.ProxyAdapter
  func (t *Trojan) Close() error {
  	var errs []error
+diff --git a/adapter/outbound/tuic.go b/adapter/outbound/tuic.go
+index ed54d99..40ab12c 100644
+--- a/adapter/outbound/tuic.go
++++ b/adapter/outbound/tuic.go
+@@ -70,6 +70,12 @@ type TuicOption struct {
+ }
+ 
+ // DialContext implements C.ProxyAdapter
++func (t *Tuic) ResetNetwork() {
++	if t.client != nil {
++		t.client.ResetNetwork()
++	}
++}
++
+ func (t *Tuic) DialContext(ctx context.Context, metadata *C.Metadata) (C.Conn, error) {
+ 	conn, err := t.client.DialContext(ctx, metadata)
+ 	if err != nil {
 diff --git a/adapter/outbound/vless.go b/adapter/outbound/vless.go
 index 6b9edd3..9374591 100644
 --- a/adapter/outbound/vless.go
@@ -86,3 +140,78 @@ index aef7cce..ed9b3a5 100644
  // Close implements C.ProxyAdapter
  func (v *Vmess) Close() error {
  	var errs []error
+diff --git a/transport/anytls/client.go b/transport/anytls/client.go
+index fce4d4a..c3601d6 100644
+--- a/transport/anytls/client.go
++++ b/transport/anytls/client.go
+@@ -98,6 +98,10 @@ func (c *Client) createOutboundTLSConnection(ctx context.Context) (net.Conn, err
+ 	return tlsConn, nil
+ }
+ 
++func (h *Client) ResetNetwork() {
++	h.sessionClient.ResetSessions()
++}
++
+ func (h *Client) Close() error {
+ 	return h.sessionClient.Close()
+ }
+diff --git a/transport/anytls/session/client.go b/transport/anytls/session/client.go
+index 2e03855..51143d2 100644
+--- a/transport/anytls/session/client.go
++++ b/transport/anytls/session/client.go
+@@ -150,6 +150,29 @@ func (c *Client) createSession(ctx context.Context) (*Session, error) {
+ 	return session, nil
+ }
+ 
++func (c *Client) ResetSessions() {
++	c.idleSessionLock.Lock()
++	it := c.idleSession.Iterate()
++	for it.IsNotEnd() {
++		key := it.Key()
++		it.MoveToNext()
++		c.idleSession.Remove(key)
++	}
++	c.idleSessionLock.Unlock()
++
++	c.sessionsLock.Lock()
++	sessionToClose := make([]*Session, 0, len(c.sessions))
++	for _, session := range c.sessions {
++		sessionToClose = append(sessionToClose, session)
++	}
++	c.sessions = make(map[uint64]*Session)
++	c.sessionsLock.Unlock()
++
++	for _, session := range sessionToClose {
++		session.Close()
++	}
++}
++
+ func (c *Client) Close() error {
+ 	c.dieCancel()
+ 
+diff --git a/transport/tuic/pool_client.go b/transport/tuic/pool_client.go
+index 82efbfe..59f267a 100644
+--- a/transport/tuic/pool_client.go
++++ b/transport/tuic/pool_client.go
+@@ -119,6 +119,21 @@ func (t *PoolClient) getClient(udp bool) Client {
+ 	}
+ }
+ 
++func (t *PoolClient) ResetNetwork() {
++	closeAll := func(clients *list.List[Client], clientsMutex *sync.Mutex) {
++		clientsMutex.Lock()
++		defer clientsMutex.Unlock()
++		for it := clients.Front(); it != nil; it = it.Next() {
++			if it.Value != nil {
++				it.Value.Close()
++			}
++		}
++		clients.Init()
++	}
++	closeAll(&t.tcpClients, &t.tcpClientsMutex)
++	closeAll(&t.udpClients, &t.udpClientsMutex)
++}
++
+ func NewPoolClientV4(clientOption *ClientOptionV4, dialFn DialFunc) *PoolClient {
+ 	p := &PoolClient{
+ 		dialFn: dialFn,
