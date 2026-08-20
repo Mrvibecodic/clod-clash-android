@@ -10,6 +10,8 @@ import (
 func OnNetworkChanged(closeConnections bool) {
 	NoteNetworkChange()
 
+	CancelHealthChecks()
+
 	iface.FlushCache()
 
 	resolver.ResetConnection()
