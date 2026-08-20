@@ -23,7 +23,105 @@ const (
 	healthCheckTotalTimeout = 45 * time.Second
 )
 
-func groupCheckOptions(g outboundgroup.ProxyGroup) (string, utils.IntRanges[uint16]) {
+type probeResult struct {
+	done   chan struct{}
+	probed bool
+	delay  uint16
+	err    error
+}
+
+var (
+	probeMu       sync.Mutex
+	probeRoot     context.Context
+	probeAbort    context.CancelFunc
+	probeInflight = map[string]*probeResult{}
+	probeSlots    = make(chan struct{}, healthCheckConcurrency)
+)
+
+func probeContext() context.Context {
+	probeMu.Lock()
+	defer probeMu.Unlock()
+
+	if probeRoot == nil || probeRoot.Err() != nil {
+		probeRoot, probeAbort = context.WithCancel(context.Background())
+	}
+
+	return probeRoot
+}
+
+func CancelHealthChecks() {
+	probeMu.Lock()
+	defer probeMu.Unlock()
+
+	if probeAbort != nil {
+		probeAbort()
+	}
+}
+
+func healthCheckBudget(count int) time.Duration {
+	need := time.Duration(count/healthCheckConcurrency+2) * healthCheckProbeTimeout
+
+	if need < healthCheckTotalTimeout {
+		return healthCheckTotalTimeout
+	}
+
+	return need
+}
+
+func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) (uint16, bool, error) {
+	key := px.Name() + "|" + url + "|" + statusKey
+
+	for {
+		probeMu.Lock()
+
+		if shared, ok := probeInflight[key]; ok {
+			probeMu.Unlock()
+
+			select {
+			case <-shared.done:
+				if !shared.probed && ctx.Err() == nil {
+					continue
+				}
+
+				return shared.delay, shared.probed, shared.err
+			case <-ctx.Done():
+				return 0, false, ctx.Err()
+			}
+		}
+
+		own := &probeResult{done: make(chan struct{})}
+		probeInflight[key] = own
+
+		probeMu.Unlock()
+
+		defer func() {
+			probeMu.Lock()
+			delete(probeInflight, key)
+			probeMu.Unlock()
+
+			close(own.done)
+		}()
+
+		select {
+		case probeSlots <- struct{}{}:
+			defer func() { <-probeSlots }()
+		case <-ctx.Done():
+			own.err = ctx.Err()
+
+			return 0, false, own.err
+		}
+
+		probe, cancel := context.WithTimeout(probeContext(), healthCheckProbeTimeout)
+		defer cancel()
+
+		own.probed = true
+		own.delay, own.err = px.URLTest(probe, url, expected)
+
+		return own.delay, true, own.err
+	}
+}
+
+func groupCheckOptions(g outboundgroup.ProxyGroup) (string, string, utils.IntRanges[uint16]) {
 	url := ""
 	status := ""
 
@@ -56,21 +154,21 @@ func groupCheckOptions(g outboundgroup.ProxyGroup) (string, utils.IntRanges[uint
 	}
 
 	if status == "" || status == "*" {
-		return url, nil
+		return url, "", nil
 	}
 
 	expected, err := utils.NewUnsignedRanges[uint16](status)
 	if err != nil {
 		log.Warnln("Health check: bad expected status `%s`: %s", status, err.Error())
 
-		return url, nil
+		return url, "", nil
 	}
 
-	return url, expected
+	return url, status, expected
 }
 
 func GroupTestURL(g outboundgroup.ProxyGroup) string {
-	url, _ := groupCheckOptions(g)
+	url, _, _ := groupCheckOptions(g)
 
 	return url
 }
@@ -98,17 +196,16 @@ func HealthCheck(name string) {
 		return
 	}
 
-	url, expectedStatus := groupCheckOptions(g)
+	url, statusKey, expectedStatus := groupCheckOptions(g)
 
 	log.Infoln("Health check `%s`: %d proxies via %s", name, len(proxies), url)
 
-	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTotalTimeout)
+	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(proxies)))
 	defer cancel()
 
 	var checked, alive atomic.Int32
 
 	wg := &sync.WaitGroup{}
-	sem := make(chan struct{}, healthCheckConcurrency)
 
 	for _, proxy := range proxies {
 		wg.Add(1)
@@ -116,19 +213,15 @@ func HealthCheck(name string) {
 		go func(px C.Proxy) {
 			defer wg.Done()
 
-			select {
-			case sem <- struct{}{}:
-				defer func() { <-sem }()
-			case <-ctx.Done():
+			_, done, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
+
+			if !done {
 				return
 			}
 
-			probe, cancelProbe := context.WithTimeout(context.Background(), healthCheckProbeTimeout)
-			defer cancelProbe()
-
 			checked.Add(1)
 
-			if _, err := px.URLTest(probe, url, expectedStatus); err != nil {
+			if err != nil {
 				log.Debugln("Health check `%s`: %s failed: %s", name, px.Name(), err.Error())
 
 				return
@@ -150,6 +243,18 @@ func ProbeCurrentNodes() {
 	proxies := tunnel.Proxies()
 	seen := make(map[string]bool, len(proxies))
 
+	ctx, cancel := context.WithTimeout(probeContext(), healthCheckTotalTimeout)
+
+	var pending atomic.Int32
+
+	pending.Add(1)
+
+	release := func() {
+		if pending.Add(-1) == 0 {
+			cancel()
+		}
+	}
+
 	for _, p := range proxies {
 		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
 		if !ok {
@@ -166,7 +271,7 @@ func ProbeCurrentNodes() {
 			continue
 		}
 
-		url, expectedStatus := groupCheckOptions(g)
+		url, statusKey, expectedStatus := groupCheckOptions(g)
 		if url == "" {
 			continue
 		}
@@ -178,20 +283,23 @@ func ProbeCurrentNodes() {
 
 		seen[key] = true
 
-		go func(px C.Proxy, url string, expected utils.IntRanges[uint16]) {
-			ctx, cancel := context.WithTimeout(context.Background(), healthCheckProbeTimeout)
-			defer cancel()
+		pending.Add(1)
 
-			delay, err := px.URLTest(ctx, url, expected)
-			if err != nil {
-				log.Infoln("Probe after network change: %s failed: %s", px.Name(), err.Error())
+		go func(px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) {
+			defer release()
+
+			delay, done, err := probeProxy(ctx, px, url, statusKey, expected)
+			if !done || err != nil {
+				log.Infoln("Probe after network change: %s failed", px.Name())
 
 				return
 			}
 
 			log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
-		}(target, url, expectedStatus)
+		}(target, url, statusKey, expectedStatus)
 	}
+
+	release()
 }
 
 func HealthCheckAll() {

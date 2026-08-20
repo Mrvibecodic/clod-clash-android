@@ -66,13 +66,12 @@ func TestProfileDelays(path string) map[string]int {
 
 	log.Infoln("Test profile `%s`: %d proxies via %s", path, len(proxies), url)
 
-	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTotalTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), healthCheckBudget(len(proxies)))
 	defer cancel()
 
 	var mu sync.Mutex
 
 	wg := &sync.WaitGroup{}
-	sem := make(chan struct{}, healthCheckConcurrency)
 
 	for _, proxy := range proxies {
 		wg.Add(1)
@@ -81,8 +80,8 @@ func TestProfileDelays(path string) map[string]int {
 			defer wg.Done()
 
 			select {
-			case sem <- struct{}{}:
-				defer func() { <-sem }()
+			case probeSlots <- struct{}{}:
+				defer func() { <-probeSlots }()
 			case <-ctx.Done():
 				return
 			}
