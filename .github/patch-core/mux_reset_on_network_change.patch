@@ -1,8 +1,25 @@
+diff --git a/adapter/outbound/hysteria2.go b/adapter/outbound/hysteria2.go
+index 4731611..81f0661 100644
+--- a/adapter/outbound/hysteria2.go
++++ b/adapter/outbound/hysteria2.go
+@@ -111,6 +111,12 @@ func (h *Hysteria2) ListenPacketContext(ctx context.Context, metadata *C.Metadat
+ 	return NewPacketConn(N.NewThreadSafePacketConn(pc), h), nil
+ }
+ 
++func (h *Hysteria2) ResetNetwork() {
++	if h.client != nil {
++		_ = h.client.CloseWithError(errors.New("network changed"))
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (h *Hysteria2) Close() error {
+ 	if h.client != nil {
 diff --git a/adapter/outbound/singmux.go b/adapter/outbound/singmux.go
-index 57a64c2..c06c08b 100644
+index 57a64c2..e1ab84a 100644
 --- a/adapter/outbound/singmux.go
 +++ b/adapter/outbound/singmux.go
-@@ -83,6 +83,12 @@ func (s *SingMux) ProxyInfo() C.ProxyInfo {
+@@ -83,6 +83,15 @@ func (s *SingMux) ProxyInfo() C.ProxyInfo {
  	return info
  }
  
@@ -10,8 +27,62 @@ index 57a64c2..c06c08b 100644
 +	if s.client != nil {
 +		s.client.Reset()
 +	}
++	if r, ok := s.ProxyAdapter.(interface{ ResetNetwork() }); ok {
++		r.ResetNetwork()
++	}
 +}
 +
  // Close implements C.ProxyAdapter
  func (s *SingMux) Close() error {
  	if s.client != nil {
+diff --git a/adapter/outbound/trojan.go b/adapter/outbound/trojan.go
+index d581e80..ddcc5e8 100644
+--- a/adapter/outbound/trojan.go
++++ b/adapter/outbound/trojan.go
+@@ -269,6 +269,12 @@ func (t *Trojan) ProxyInfo() C.ProxyInfo {
+ 	return info
+ }
+ 
++func (t *Trojan) ResetNetwork() {
++	if t.gunClient != nil {
++		_ = t.gunClient.Close()
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (t *Trojan) Close() error {
+ 	var errs []error
+diff --git a/adapter/outbound/vless.go b/adapter/outbound/vless.go
+index 6b9edd3..9374591 100644
+--- a/adapter/outbound/vless.go
++++ b/adapter/outbound/vless.go
+@@ -414,6 +414,12 @@ func (v *Vless) ProxyInfo() C.ProxyInfo {
+ 	return info
+ }
+ 
++func (v *Vless) ResetNetwork() {
++	if v.gunClient != nil {
++		_ = v.gunClient.Close()
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (v *Vless) Close() error {
+ 	var errs []error
+diff --git a/adapter/outbound/vmess.go b/adapter/outbound/vmess.go
+index aef7cce..ed9b3a5 100644
+--- a/adapter/outbound/vmess.go
++++ b/adapter/outbound/vmess.go
+@@ -445,6 +445,12 @@ func (v *Vmess) ProxyInfo() C.ProxyInfo {
+ 	return info
+ }
+ 
++func (v *Vmess) ResetNetwork() {
++	if v.gunClient != nil {
++		_ = v.gunClient.Close()
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (v *Vmess) Close() error {
+ 	var errs []error
