@@ -90,6 +90,11 @@ jobs:
       - name: Подтянуть submodule ядра
         run: git submodule update --init --recursive --force
 
+      - name: Патчи ядра mihomo
+        run: |
+          cd core/src/foss/golang/clash
+          for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 < "$p"; done
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin

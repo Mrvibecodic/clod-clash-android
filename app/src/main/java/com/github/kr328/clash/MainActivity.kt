@@ -110,6 +110,12 @@ class MainActivity : BaseActivity<MainDesign>() {
                         Event.ActivityStart -> {
                             design.fetch()
 
+                            if (clashRunning && proxyGroupNames.isNotEmpty() &&
+                                SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
+                            ) {
+                                launch { design.runHealthCheck() }
+                            }
+
                             if (awaitingInstallPermission &&
                                 ApkInstaller.canInstall(this@MainActivity)
                             ) {
@@ -427,6 +433,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var healthCheckedGroups: List<String> = emptyList()
 
+    private var healthChecking = false
+
+    private var lastHealthCheckAt = 0L
+
     private var offlineDelays: Map<String, Int> = emptyMap()
 
     private var offlineProfile: UUID? = null
@@ -467,11 +477,17 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.runHealthCheck() {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
+        lastHealthCheckAt = SystemClock.elapsedRealtime()
+
         if (offlineGroups.isNotEmpty()) {
             runOfflineHealthCheck()
 
             return
         }
+
+        if (healthChecking) return
+
+        healthChecking = true
 
         setProxyTesting(true)
 
@@ -486,6 +502,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: Exception) {
             Log.w("Health check: $e", e)
         } finally {
+            healthChecking = false
+
             setProxyTesting(false)
         }
     }
@@ -588,6 +606,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         private val DELAYS_SERIALIZER = MapSerializer(String.serializer(), Int.serializer())
 
         private const val LOCAL_PROXY_PORT = 7890
+
+        private const val HEALTH_STALE_MS = 300_000L
     }
 
     private var sessionStartedAt: Long = 0

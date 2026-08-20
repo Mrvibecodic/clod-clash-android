@@ -96,6 +96,11 @@ func probeCurrentNodes() {
 	tunnel.ProbeCurrentNodes()
 }
 
+//export recoverDeadNodes
+func recoverDeadNodes() {
+	go tunnel.RecoverDeadNodes()
+}
+
 //export patchSelector
 func patchSelector(selector, name C.c_string) C.int {
 	s := C.GoString(selector)

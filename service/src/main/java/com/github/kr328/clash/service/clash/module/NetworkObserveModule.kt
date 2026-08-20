@@ -8,6 +8,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
@@ -64,6 +65,9 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
     @Volatile
     private var retriggerScheduled = false
+
+    @Volatile
+    private var recoverScheduled = false
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -210,8 +214,28 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
         if (isInteractive() || store.keepAwake) {
             Clash.probeCurrentNodes()
+
+            scheduleRecover(scope)
         } else {
             probePending = true
+        }
+    }
+
+    private fun scheduleRecover(scope: CoroutineScope) {
+        if (recoverScheduled) {
+            return
+        }
+
+        recoverScheduled = true
+
+        scope.launch {
+            delay(RECOVER_DELAY_MS)
+
+            recoverScheduled = false
+
+            if (isInteractive() || store.keepAwake) {
+                Clash.recoverDeadNodes()
+            }
         }
     }
 
@@ -250,6 +274,8 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             coroutineScope {
                 val scope = this
 
+                val probeTicker = scope.ticker(PROBE_TICK_MS)
+
                 while (true) {
                     select<Unit> {
                         networks.onReceive {
@@ -264,6 +290,13 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
                                 Log.i("NetworkObserve deferred probe after screen on")
 
+                                Clash.probeCurrentNodes()
+                            }
+
+                            Clash.recoverDeadNodes()
+                        }
+                        probeTicker.onReceive {
+                            if (isInteractive() || store.keepAwake) {
                                 Clash.probeCurrentNodes()
                             }
                         }
@@ -282,5 +315,9 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
     companion object {
         private const val RESET_THROTTLE_MS = 5_000L
+
+        private const val RECOVER_DELAY_MS = 8_000L
+
+        private const val PROBE_TICK_MS = 300_000L
     }
 }

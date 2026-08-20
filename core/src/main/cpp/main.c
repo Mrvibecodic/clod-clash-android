@@ -251,6 +251,13 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeProbeCurrentNodes(JNIEnv *e
     probeCurrentNodes();
 }
 
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeRecoverDeadNodes(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    recoverDeadNodes();
+}
+
 JNIEXPORT jboolean JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
                                                                    jstring selector, jstring name) {

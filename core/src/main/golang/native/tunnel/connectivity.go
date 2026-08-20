@@ -102,6 +102,12 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 			close(own.done)
 		}()
 
+		if err := waitNetworkSettled(ctx); err != nil {
+			own.err = err
+
+			return 0, false, own.err
+		}
+
 		select {
 		case probeSlots <- struct{}{}:
 			defer func() { <-probeSlots }()
@@ -300,6 +306,101 @@ func ProbeCurrentNodes() {
 	}
 
 	release()
+}
+
+const recoverCooldown = 20 * time.Second
+
+var (
+	recoverBusy   atomic.Bool
+	recoverLastAt atomic.Int64
+)
+
+type deadTarget struct {
+	proxy    C.Proxy
+	url      string
+	status   string
+	expected utils.IntRanges[uint16]
+}
+
+func RecoverDeadNodes() {
+	if !recoverBusy.CompareAndSwap(false, true) {
+		return
+	}
+
+	defer recoverBusy.Store(false)
+
+	if time.Since(time.Unix(0, recoverLastAt.Load())) < recoverCooldown {
+		return
+	}
+
+	targets := []deadTarget{}
+	seen := map[string]bool{}
+
+	for _, p := range tunnel.Proxies() {
+		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
+		if !ok {
+			continue
+		}
+
+		url, statusKey, expected := groupCheckOptions(g)
+		if url == "" {
+			continue
+		}
+
+		for _, px := range g.Proxies() {
+			if _, isGroup := px.Adapter().(outboundgroup.ProxyGroup); isGroup {
+				continue
+			}
+
+			if px.AliveForTestUrl(url) {
+				continue
+			}
+
+			key := px.Name() + "|" + url
+			if seen[key] {
+				continue
+			}
+
+			seen[key] = true
+
+			targets = append(targets, deadTarget{px, url, statusKey, expected})
+		}
+	}
+
+	if len(targets) == 0 {
+		return
+	}
+
+	recoverLastAt.Store(time.Now().UnixNano())
+
+	log.Infoln("Recover dead nodes: %d to re-probe", len(targets))
+
+	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(targets)))
+	defer cancel()
+
+	wg := &sync.WaitGroup{}
+
+	var revived atomic.Int32
+
+	for _, t := range targets {
+		wg.Add(1)
+
+		go func(t deadTarget) {
+			defer wg.Done()
+
+			delay, done, err := probeProxy(ctx, t.proxy, t.url, t.status, t.expected)
+
+			if done && err == nil {
+				revived.Add(1)
+
+				log.Infoln("Recover dead nodes: %s alive, %d ms", t.proxy.Name(), delay)
+			}
+		}(t)
+	}
+
+	wg.Wait()
+
+	log.Infoln("Recover dead nodes: %d of %d revived", revived.Load(), len(targets))
 }
 
 func HealthCheckAll() {

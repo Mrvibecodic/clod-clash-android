@@ -1,0 +1,48 @@
+diff --git a/adapter/adapter.go b/adapter/adapter.go
+index 6f20c08..bfe39a8 100644
+--- a/adapter/adapter.go
++++ b/adapter/adapter.go
+@@ -168,6 +168,9 @@ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.In
+ 
+ 	defer func() {
+ 		alive := err == nil
++		if (!alive || !satisfied) && C.ProbeHolding(time.Now().UnixNano()) {
++			return
++		}
+ 		record := C.DelayHistory{Time: time.Now()}
+ 		if alive {
+ 			record.Delay = t
+diff --git a/adapter/outboundgroup/groupbase.go b/adapter/outboundgroup/groupbase.go
+index eed45e0..f57b605 100644
+--- a/adapter/outboundgroup/groupbase.go
++++ b/adapter/outboundgroup/groupbase.go
+@@ -267,6 +267,10 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
+ 		return
+ 	}
+ 
++	if C.ProbeHolding(time.Now().UnixNano()) {
++		return
++	}
++
+ 	if errors.Is(err, C.ErrNotSupport) {
+ 		return
+ 	}
+diff --git a/constant/probehold.go b/constant/probehold.go
+new file mode 100644
+index 0000000..adef14e
+--- /dev/null
++++ b/constant/probehold.go
+@@ -0,0 +1,13 @@
++package constant
++
++import "sync/atomic"
++
++var probeHoldUntil atomic.Int64
++
++func SetProbeHoldUntil(nanos int64) {
++	probeHoldUntil.Store(nanos)
++}
++
++func ProbeHolding(nanos int64) bool {
++	return nanos < probeHoldUntil.Load()
++}

@@ -15,7 +15,7 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 | Что | Откуда | Лицензия |
 |---|---|---|
 | **Оболочка приложения**: `VpnService`, JNI-мост Go↔Kotlin, многопроцессный сервисный слой, хранилище профилей, сборка Go-ядра, CI | [MetaCubeX/ClashMetaForAndroid](https://github.com/MetaCubeX/ClashMetaForAndroid) — база этого репозитория, история сохранена целиком | GPL-3.0 |
-| **Ядро** | [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo), подключено submodule'ом, **не форкается и не патчится**; закреплено на стабильном теге `v1.19.29` (`e26714a1`) — в `.gitmodules` стоит `branch = Alpha`, но CI тянет submodule только по `--init`, без `--remote`, поэтому пин держится. Двигать пин осознанно и вместе с обоими `go.mod` | GPL-3.0 |
+| **Ядро** | [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo), подключено submodule'ом, **не форкается**; точечные патчи лежат в `.github/patch-core/` и накладываются на submodule при сборке в CI (для локальной сборки наложить их так же, `patch -p1` из каталога ядра); закреплено на стабильном теге `v1.19.29` (`e26714a1`) — в `.gitmodules` стоит `branch = Alpha`, но CI тянет submodule только по `--init`, без `--remote`, поэтому пин держится. Двигать пин осознанно и вместе с обоими `go.mod` | GPL-3.0 |
 | **Интерфейс** | наш: все экраны написаны здесь на Jetpack Compose поверх оболочки апстрима; от CMFA не осталось ни одной разметки | GPL-3.0 |
 | **Логика подписок и заголовков Remnawave** | наша, написана здесь: заголовки разбирает Go (`core/…/config/panel/`), решения по подписке — Kotlin (`service/…/SubscriptionAlerts.kt`). Правила те же, что в десктопном [Mrvibecodic/clod-clash](https://github.com/Mrvibecodic/clod-clash), но код отдельный — общего крейта через FFI у Android нет | GPL-3.0 |
 

@@ -137,6 +137,10 @@ object Clash {
         Bridge.nativeProbeCurrentNodes()
     }
 
+    fun recoverDeadNodes() {
+        Bridge.nativeRecoverDeadNodes()
+    }
+
     fun setDeviceInfo(hwid: String, os: String, osVersion: String, model: String) {
         Bridge.nativeSetDeviceInfo(hwid, os, osVersion, model)
     }

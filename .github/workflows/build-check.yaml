@@ -17,6 +17,11 @@ jobs:
       - name: Checkout submodules
         run: git submodule update --init --recursive --force
 
+      - name: Apply Core Patches
+        run: |
+          cd core/src/foss/golang/clash
+          for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 < "$p"; done
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
