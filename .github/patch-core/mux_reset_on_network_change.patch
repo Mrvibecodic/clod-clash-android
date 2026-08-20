@@ -1,0 +1,17 @@
+diff --git a/adapter/outbound/singmux.go b/adapter/outbound/singmux.go
+index 57a64c2..c06c08b 100644
+--- a/adapter/outbound/singmux.go
++++ b/adapter/outbound/singmux.go
+@@ -83,6 +83,12 @@ func (s *SingMux) ProxyInfo() C.ProxyInfo {
+ 	return info
+ }
+ 
++func (s *SingMux) ResetNetwork() {
++	if s.client != nil {
++		s.client.Reset()
++	}
++}
++
+ // Close implements C.ProxyAdapter
+ func (s *SingMux) Close() error {
+ 	if s.client != nil {

@@ -3,7 +3,9 @@ package tunnel
 import (
 	"github.com/metacubex/mihomo/component/iface"
 	"github.com/metacubex/mihomo/component/resolver"
+	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/tunnel"
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
@@ -17,6 +19,8 @@ func OnNetworkChanged(closeConnections bool) {
 	resolver.ResetConnection()
 
 	resolver.ClearCache()
+
+	resetProxyTransports()
 
 	if !closeConnections {
 		log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset")
@@ -35,4 +39,40 @@ func OnNetworkChanged(closeConnections bool) {
 	})
 
 	log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset, %d connection(s) closed", closed)
+}
+
+func resetProxyTransports() {
+	seen := map[C.ProxyAdapter]struct{}{}
+
+	reset := 0
+
+	resetOne := func(p C.Proxy) {
+		a := p.Adapter()
+
+		if _, done := seen[a]; done {
+			return
+		}
+
+		seen[a] = struct{}{}
+
+		if r, ok := a.(interface{ ResetNetwork() }); ok {
+			r.ResetNetwork()
+
+			reset++
+		}
+	}
+
+	for _, p := range tunnel.Proxies() {
+		resetOne(p)
+	}
+
+	for _, pd := range tunnel.Providers() {
+		for _, p := range pd.Proxies() {
+			resetOne(p)
+		}
+	}
+
+	if reset > 0 {
+		log.Infoln("Network changed: %d multiplex session pool(s) reset", reset)
+	}
 }
