@@ -51,6 +51,8 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
     private val networkChanges: Channel<Unit> = Channel(Channel.CONFLATED)
 
+    private val networkReady: Channel<Unit> = Channel(Channel.CONFLATED)
+
     @Volatile
     private var currentNetwork: Network? = null
 
@@ -69,6 +71,8 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     @Volatile
     private var recoverScheduled = false
 
+    private var idleTicks = 0
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             Log.i("NetworkObserve onAvailable network=$network")
@@ -86,6 +90,10 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             }
 
             onNetworkMaybeChanged(network)
+
+            if (network == currentNetwork) {
+                networkReady.trySend(Unit)
+            }
         }
 
         override fun onLosing(network: Network, maxMsToLive: Int) {
@@ -212,6 +220,10 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
         Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
 
+        if (isCurrentNetworkValidated()) {
+            Clash.notifyNetworkReady()
+        }
+
         if (isInteractive() || store.keepAwake) {
             Clash.probeCurrentNodes()
 
@@ -241,6 +253,14 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
     private fun isInteractive(): Boolean =
         service.getSystemService<PowerManager>()?.isInteractive ?: true
+
+    private fun isCurrentNetworkValidated(): Boolean {
+        val network = currentNetwork ?: return false
+
+        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
+
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
 
     private fun preferredNetwork(): Network? =
         networkInfos.asSequence().minByOrNull { networkToInt(it) }?.key
@@ -284,6 +304,9 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
                         networkChanges.onReceive {
                             handleNetworkChanged(scope)
                         }
+                        networkReady.onReceive {
+                            Clash.notifyNetworkReady()
+                        }
                         screenOn.onReceive {
                             if (probePending) {
                                 probePending = false
@@ -297,6 +320,12 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
                         }
                         probeTicker.onReceive {
                             if (isInteractive() || store.keepAwake) {
+                                idleTicks = 0
+
+                                Clash.probeCurrentNodes()
+                            } else if (++idleTicks >= IDLE_TICKS_PER_PROBE) {
+                                idleTicks = 0
+
                                 Clash.probeCurrentNodes()
                             }
                         }
@@ -316,8 +345,10 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     companion object {
         private const val RESET_THROTTLE_MS = 5_000L
 
-        private const val RECOVER_DELAY_MS = 8_000L
+        private const val RECOVER_DELAY_MS = 5_000L
 
         private const val PROBE_TICK_MS = 300_000L
+
+        private const val IDLE_TICKS_PER_PROBE = 3
     }
 }

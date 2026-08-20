@@ -8,7 +8,11 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 )
 
-const networkSettleWindow = 5 * time.Second
+const (
+	networkSettleWindow = 5 * time.Second
+
+	networkReadyGrace = time.Second
+)
 
 var settleUntil atomic.Int64
 
@@ -18,6 +22,23 @@ func NoteNetworkChange() {
 	settleUntil.Store(until)
 
 	C.SetProbeHoldUntil(until)
+}
+
+func NoteNetworkReady() {
+	until := time.Now().Add(networkReadyGrace).UnixNano()
+
+	for {
+		cur := settleUntil.Load()
+		if cur <= until {
+			return
+		}
+
+		if settleUntil.CompareAndSwap(cur, until) {
+			C.SetProbeHoldUntil(until)
+
+			return
+		}
+	}
 }
 
 func waitNetworkSettled(ctx context.Context) error {

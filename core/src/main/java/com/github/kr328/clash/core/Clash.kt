@@ -141,6 +141,10 @@ object Clash {
         Bridge.nativeRecoverDeadNodes()
     }
 
+    fun notifyNetworkReady() {
+        Bridge.nativeNotifyNetworkReady()
+    }
+
     fun setDeviceInfo(hwid: String, os: String, osVersion: String, model: String) {
         Bridge.nativeSetDeviceInfo(hwid, os, osVersion, model)
     }

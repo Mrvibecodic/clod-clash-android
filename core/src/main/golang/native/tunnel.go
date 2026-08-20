@@ -101,6 +101,11 @@ func recoverDeadNodes() {
 	go tunnel.RecoverDeadNodes()
 }
 
+//export notifyNetworkReady
+func notifyNetworkReady() {
+	tunnel.NoteNetworkReady()
+}
+
 //export patchSelector
 func patchSelector(selector, name C.c_string) C.int {
 	s := C.GoString(selector)
