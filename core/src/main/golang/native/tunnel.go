@@ -97,8 +97,8 @@ func probeCurrentNodes() {
 }
 
 //export recoverDeadNodes
-func recoverDeadNodes() {
-	go tunnel.RecoverDeadNodes()
+func recoverDeadNodes(force C.int) {
+	go tunnel.RecoverDeadNodes(force != 0)
 }
 
 //export notifyNetworkReady

@@ -57,6 +57,9 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     private var currentNetwork: Network? = null
 
     @Volatile
+    private var currentValidatedSeen = false
+
+    @Volatile
     private var networkKnown = false
 
     @Volatile
@@ -183,6 +186,7 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
         }
 
         currentNetwork = network
+        currentValidatedSeen = false
 
         if (!networkKnown) {
             networkKnown = true
@@ -221,6 +225,8 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
         Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
 
         if (isCurrentNetworkValidated()) {
+            currentValidatedSeen = true
+
             Clash.notifyNetworkReady()
         }
 
@@ -246,7 +252,7 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             recoverScheduled = false
 
             if (isInteractive() || store.keepAwake) {
-                Clash.recoverDeadNodes()
+                Clash.recoverDeadNodes(true)
             }
         }
     }
@@ -306,6 +312,18 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
                         }
                         networkReady.onReceive {
                             Clash.notifyNetworkReady()
+
+                            if (!currentValidatedSeen) {
+                                currentValidatedSeen = true
+
+                                if (isInteractive() || store.keepAwake) {
+                                    Clash.probeCurrentNodes()
+
+                                    scheduleRecover(scope)
+                                } else {
+                                    probePending = true
+                                }
+                            }
                         }
                         screenOn.onReceive {
                             if (probePending) {
@@ -316,7 +334,7 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
                                 Clash.probeCurrentNodes()
                             }
 
-                            Clash.recoverDeadNodes()
+                            Clash.recoverDeadNodes(false)
                         }
                         probeTicker.onReceive {
                             if (isInteractive() || store.keepAwake) {

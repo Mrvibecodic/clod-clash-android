@@ -252,10 +252,11 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeProbeCurrentNodes(JNIEnv *e
 }
 
 JNIEXPORT void JNICALL
-Java_com_github_kr328_clash_core_bridge_Bridge_nativeRecoverDeadNodes(JNIEnv *env, jobject thiz) {
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeRecoverDeadNodes(JNIEnv *env, jobject thiz,
+                                                                      jboolean force) {
     TRACE_METHOD();
 
-    recoverDeadNodes();
+    recoverDeadNodes((int) force);
 }
 
 JNIEXPORT void JNICALL

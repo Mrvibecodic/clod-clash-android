@@ -322,14 +322,14 @@ type deadTarget struct {
 	expected utils.IntRanges[uint16]
 }
 
-func RecoverDeadNodes() {
+func RecoverDeadNodes(force bool) {
 	if !recoverBusy.CompareAndSwap(false, true) {
 		return
 	}
 
 	defer recoverBusy.Store(false)
 
-	if time.Since(time.Unix(0, recoverLastAt.Load())) < recoverCooldown {
+	if !force && time.Since(time.Unix(0, recoverLastAt.Load())) < recoverCooldown {
 		return
 	}
 

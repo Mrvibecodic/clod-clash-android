@@ -29,7 +29,7 @@ object Bridge {
     external fun nativeHealthCheckAll()
     external fun nativeNotifyNetworkChanged(closeConnections: Boolean)
     external fun nativeProbeCurrentNodes()
-    external fun nativeRecoverDeadNodes()
+    external fun nativeRecoverDeadNodes(force: Boolean)
     external fun nativeNotifyNetworkReady()
     external fun nativeTestProfileDelays(path: String): String?
     external fun nativeSetDeviceInfo(hwid: String, os: String, osVersion: String, model: String)

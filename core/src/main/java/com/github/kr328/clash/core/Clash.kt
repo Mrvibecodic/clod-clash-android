@@ -137,8 +137,8 @@ object Clash {
         Bridge.nativeProbeCurrentNodes()
     }
 
-    fun recoverDeadNodes() {
-        Bridge.nativeRecoverDeadNodes()
+    fun recoverDeadNodes(force: Boolean) {
+        Bridge.nativeRecoverDeadNodes(force)
     }
 
     fun notifyNetworkReady() {
