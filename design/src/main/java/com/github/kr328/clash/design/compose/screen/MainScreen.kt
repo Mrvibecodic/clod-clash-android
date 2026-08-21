@@ -960,24 +960,17 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 icon = painterResource(R.drawable.ic_baseline_apps),
                 onClick = { onAction(MainAction.OpenAccessControl) },
             )
+            ReliabilityRows(state.reliability, onAction)
             ActionRow(
                 title = stringResource(R.string.network),
                 subtitle = stringResource(R.string.clod_settings_network_subtitle),
                 icon = painterResource(R.drawable.ic_baseline_dns),
                 onClick = { onAction(MainAction.OpenNetworkSettings) },
             )
-            ActionRow(
-                title = stringResource(R.string.clod_data_title),
-                subtitle = stringResource(R.string.clod_geo_subtitle),
-                icon = painterResource(R.drawable.ic_baseline_domain),
-                onClick = { onAction(MainAction.OpenSubScreen(SubScreen.RoutingData)) },
-            )
-
-            ReliabilitySection(state.reliability, onAction)
 
             SectionHeader(stringResource(R.string.clod_section_settings))
             ActionRow(
-                title = stringResource(R.string.app),
+                title = stringResource(R.string.clod_settings_app_title),
                 subtitle = stringResource(R.string.clod_settings_app_subtitle),
                 icon = painterResource(R.drawable.ic_baseline_settings),
                 onClick = { onAction(MainAction.OpenAppSettings) },
@@ -988,26 +981,30 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 icon = painterResource(R.drawable.ic_baseline_meta),
                 onClick = { onAction(MainAction.OpenMetaSettings) },
             )
+            ActionRow(
+                title = stringResource(R.string.clod_data_title),
+                subtitle = stringResource(R.string.clod_geo_subtitle),
+                icon = painterResource(R.drawable.ic_baseline_domain),
+                onClick = { onAction(MainAction.OpenSubScreen(SubScreen.RoutingData)) },
+            )
 
             SectionHeader(stringResource(R.string.clod_section_support))
-            ActionRow(
-                title = stringResource(R.string.logs),
-                icon = painterResource(R.drawable.ic_baseline_assignment),
-                onClick = { onAction(MainAction.OpenLogs) },
-            )
             ActionRow(
                 title = stringResource(R.string.help),
                 icon = painterResource(R.drawable.ic_baseline_help_center),
                 onClick = { onAction(MainAction.OpenHelp) },
             )
             ActionRow(
-                title = stringResource(R.string.clod_update_check),
-                icon = painterResource(R.drawable.ic_baseline_update),
-                onClick = { onAction(MainAction.CheckUpdate) },
+                title = stringResource(R.string.logs),
+                icon = painterResource(R.drawable.ic_baseline_assignment),
+                onClick = { onAction(MainAction.OpenLogs) },
             )
             ActionRow(
                 title = stringResource(R.string.about),
-                subtitle = state.about.versionName.takeIf { it.isNotBlank() },
+                subtitle = state.about.versionName
+                    .takeIf { it.isNotBlank() }
+                    ?.let { stringResource(R.string.clod_about_subtitle, it) }
+                    ?: stringResource(R.string.clod_update_check),
                 icon = painterResource(R.drawable.ic_baseline_info),
                 onClick = { onAction(MainAction.OpenSubScreen(SubScreen.About)) },
             )

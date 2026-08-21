@@ -333,8 +333,9 @@
     <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_no_logs">No saved logs yet</string>
-    <string name="clod_section_settings">Settings</string>
-    <string name="clod_section_support">Help and updates</string>
+    <string name="clod_section_settings">App</string>
+    <string name="clod_section_support">Help</string>
+    <string name="clod_settings_app_title">Look and behavior</string>
     <string name="clod_settings_app_subtitle">Theme, auto restart, icon</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, system proxy</string>
     <string name="clod_settings_override_subtitle">Applied on top of the subscription config</string>
@@ -355,6 +356,7 @@
     <string name="clod_update_later">Later</string>
     <string name="clod_update_skip">Skip</string>
     <string name="clod_update_downloading">Downloading\u2026</string>
+    <string name="clod_about_subtitle">%1$s · check for updates</string>
     <string name="clod_update_check">Check for updates</string>
     <string name="clod_update_none">You are on the latest version</string>
     <string name="clod_update_permission">Allow installation so the app can update itself. The system will open its own screen — turn the switch on there.</string>
@@ -442,7 +444,6 @@
     <string name="clod_notify_ask_text">The ongoing notification shows the tunnel state and carries a Disconnect button. Subscription reminders and update errors arrive there too.</string>
     <string name="clod_notify_ask_allow">Allow</string>
     <string name="clod_notify_ask_later">Not now</string>
-    <string name="clod_section_reliability">Connection reliability</string>
     <string name="clod_reliability_title">Keep the connection from dropping</string>
     <string name="clod_reliability_text">Two Android settings. Asked once — afterwards they live in the More tab.</string>
     <string name="clod_reliability_battery">Unrestricted battery</string>

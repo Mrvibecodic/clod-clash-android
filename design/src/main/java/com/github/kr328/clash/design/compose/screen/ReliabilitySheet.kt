@@ -28,7 +28,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
-import com.github.kr328.clash.design.compose.component.SectionHeader
 
 @Immutable
 data class ReliabilityState(
@@ -178,8 +177,7 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
 }
 
 @Composable
-fun ReliabilitySection(state: ReliabilityState, onAction: (MainAction) -> Unit) {
-    SectionHeader(stringResource(R.string.clod_section_reliability))
+fun ReliabilityRows(state: ReliabilityState, onAction: (MainAction) -> Unit) {
     ReliabilityStep(
         title = stringResource(R.string.clod_reliability_battery),
         subtitle = if (state.batteryIgnored) {

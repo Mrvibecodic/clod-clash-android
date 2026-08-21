@@ -300,8 +300,9 @@
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
-    <string name="clod_section_settings">Настройки</string>
-    <string name="clod_section_support">Помощь и обновления</string>
+    <string name="clod_section_settings">Приложение</string>
+    <string name="clod_section_support">Помощь</string>
+    <string name="clod_settings_app_title">Внешний вид и поведение</string>
     <string name="clod_settings_app_subtitle">Тема, автозапуск, значок</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, системный прокси</string>
     <string name="clod_settings_override_subtitle">Применяется поверх конфигурации подписки</string>
@@ -322,6 +323,7 @@
     <string name="clod_update_later">Позже</string>
     <string name="clod_update_skip">Пропустить</string>
     <string name="clod_update_downloading">Загружаем\u2026</string>
+    <string name="clod_about_subtitle">%1$s · проверить обновление</string>
     <string name="clod_update_check">Проверить обновление</string>
     <string name="clod_update_none">Установлена последняя версия</string>
     <string name="clod_update_permission">Разрешите приложению установку, чтобы оно могло обновить себя. Система откроет свой экран — включите там переключатель.</string>
@@ -434,7 +436,6 @@
     <string name="clod_notify_ask_text">В постоянном уведомлении видно состояние туннеля и есть кнопка «Отключить». Туда же приходят напоминания о подписке и сообщения об ошибках её обновления.</string>
     <string name="clod_notify_ask_allow">Разрешить</string>
     <string name="clod_notify_ask_later">Не сейчас</string>
-    <string name="clod_section_reliability">Надёжность соединения</string>
     <string name="clod_reliability_title">Чтобы соединение не отваливалось</string>
     <string name="clod_reliability_text">Две настройки Android. Спрашиваем один раз — потом они живут во вкладке «Ещё».</string>
     <string name="clod_reliability_battery">Не ограничивать батарею</string>
