@@ -95,6 +95,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         sessionStartedAt = ServiceStore(this).markSessionStarted()
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceStore(this).vpnAlwaysOn = if (isAlwaysOn) 1 else 0
+        }
+
         StaticNotificationModule.createNotificationChannel(this)
         StaticNotificationModule.notifyLoadingNotification(this)
 

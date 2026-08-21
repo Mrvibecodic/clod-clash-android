@@ -3,6 +3,8 @@ package com.github.kr328.clash
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.os.SystemClock
@@ -109,6 +111,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                     when (it) {
                         Event.ActivityStart -> {
                             design.fetch()
+
+                            design.fetchReliability()
 
                             if (clashRunning && proxyGroupNames.isNotEmpty() &&
                                 SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
@@ -334,6 +338,31 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         MainDesign.Request.DismissNotifications ->
                             design.setNotificationPrompt(false)
+                        MainDesign.Request.ReliabilityAllowBattery ->
+                            launch {
+                                requestBatteryException()
+
+                                design.fetchReliability()
+                            }
+                        MainDesign.Request.ReliabilityOpenVpnSettings ->
+                            openVpnSettings()
+                        MainDesign.Request.ReliabilityConnect -> {
+                            design.setReliability(
+                                batteryIgnored = isBatteryIgnored(),
+                                alwaysOn = alwaysOnState(),
+                                prompt = false,
+                            )
+
+                            if (!clashRunning) {
+                                design.startClash()
+                            }
+                        }
+                        MainDesign.Request.ReliabilityDismiss ->
+                            design.setReliability(
+                                batteryIgnored = isBatteryIgnored(),
+                                alwaysOn = alwaysOnState(),
+                                prompt = false,
+                            )
                         is MainDesign.Request.SetSubscriptionGroup -> {
                             patchSubscriptionGroup(request.profile.uuid, request.group)
 
@@ -656,9 +685,97 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
+    private fun isBatteryIgnored(): Boolean {
+        val power = getSystemService(PowerManager::class.java) ?: return false
+
+        return power.isIgnoringBatteryOptimizations(packageName)
+    }
+
+    private suspend fun alwaysOnState(): Boolean? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
+            return null
+
+        return withContext(Dispatchers.IO) {
+            when (ServiceStore(this@MainActivity).vpnAlwaysOn) {
+                1 -> true
+                0 -> false
+                else -> null
+            }
+        }
+    }
+
+    private suspend fun MainDesign.fetchReliability() {
+        setReliability(batteryIgnored = isBatteryIgnored(), alwaysOn = alwaysOnState())
+    }
+
+    private fun startSettings(vararg intents: Intent): Boolean {
+        for (intent in intents) {
+            if (intent.resolveActivity(packageManager) == null)
+                continue
+
+            try {
+                startActivity(intent)
+
+                return true
+            } catch (e: Exception) {
+                Log.w("Open settings ${intent.action}: $e", e)
+            }
+        }
+
+        return false
+    }
+
+    private suspend fun requestBatteryException() {
+        if (isBatteryIgnored())
+            return
+
+        val direct = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            .setData(Uri.parse("package:$packageName"))
+
+        if (direct.resolveActivity(packageManager) != null) {
+            try {
+                startActivityForResult(ActivityResultContracts.StartActivityForResult(), direct)
+
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Request battery exception: $e", e)
+            }
+        }
+
+        if (!startSettings(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))) {
+            design?.showToast(DesignR.string.clod_reliability_no_settings, ToastDuration.Long)
+        }
+    }
+
+    private suspend fun openVpnSettings() {
+        val opened = startSettings(
+            Intent(Settings.ACTION_VPN_SETTINGS),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                .setData(Uri.parse("package:$packageName")),
+        )
+
+        if (!opened) {
+            design?.showToast(DesignR.string.clod_reliability_no_settings, ToastDuration.Long)
+        }
+    }
+
     private suspend fun MainDesign.startClash() {
         if (shouldAskNotifications()) {
             setNotificationPrompt(true)
+
+            return
+        }
+
+        if (!uiStore.reliabilityAsked) {
+            uiStore.reliabilityAsked = true
+
+            setReliability(
+                batteryIgnored = isBatteryIgnored(),
+                alwaysOn = alwaysOnState(),
+                prompt = true,
+            )
 
             return
         }

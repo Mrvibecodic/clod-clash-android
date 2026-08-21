@@ -162,6 +162,7 @@ data class MainScreenState(
     val routingData: RoutingDataState = RoutingDataState(),
     val update: UpdateState? = null,
     val notificationPrompt: Boolean = false,
+    val reliability: ReliabilityState = ReliabilityState(),
 )
 
 sealed interface MainAction {
@@ -200,6 +201,10 @@ sealed interface MainAction {
     data object AllowNotifications : MainAction
     data object SkipNotifications : MainAction
     data object DismissNotifications : MainAction
+    data object ReliabilityAllowBattery : MainAction
+    data object ReliabilityOpenVpnSettings : MainAction
+    data object ReliabilityConnect : MainAction
+    data object ReliabilityDismiss : MainAction
 }
 
 private const val TAB_TRANSITION_MILLIS = 200
@@ -238,6 +243,10 @@ fun MainScreen(
 
         if (state.notificationPrompt) {
             NotificationPromptDialog(onAction)
+        }
+
+        if (state.reliability.prompt) {
+            ReliabilitySheet(state.reliability, onAction)
         }
 
         Box(modifier = Modifier.padding(padding)) {
@@ -963,6 +972,8 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 icon = painterResource(R.drawable.ic_baseline_domain),
                 onClick = { onAction(MainAction.OpenSubScreen(SubScreen.RoutingData)) },
             )
+
+            ReliabilitySection(state.reliability, onAction)
 
             SectionHeader(stringResource(R.string.clod_section_settings))
             ActionRow(

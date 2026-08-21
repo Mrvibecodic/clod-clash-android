@@ -291,21 +291,38 @@ func ProbeCurrentNodes() {
 
 		pending.Add(1)
 
-		go func(px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) {
+		go func(px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16], group string, reselect bool) {
 			defer release()
 
 			delay, done, err := probeProxy(ctx, px, url, statusKey, expected)
-			if !done || err != nil {
+			if !done {
+				return
+			}
+
+			if err != nil {
 				log.Infoln("Probe after network change: %s failed", px.Name())
+
+				if reselect {
+					go HealthCheck(group)
+				}
 
 				return
 			}
 
 			log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
-		}(target, url, statusKey, expectedStatus)
+		}(target, url, statusKey, expectedStatus, g.Name(), reselectsItself(g))
 	}
 
 	release()
+}
+
+func reselectsItself(g outboundgroup.ProxyGroup) bool {
+	switch g.Type() {
+	case C.URLTest, C.Fallback:
+		return true
+	default:
+		return false
+	}
 }
 
 const recoverCooldown = 20 * time.Second

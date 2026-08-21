@@ -53,6 +53,11 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
+    var reliabilityAsked: Boolean by store.boolean(
+        key = "reliability_asked",
+        defaultValue = false,
+    )
+
     fun favorites(profile: UUID): Set<String> {
         return store.provider.getStringSet(favoritesKey(profile), emptySet())
     }

@@ -46,6 +46,11 @@ class ServiceStore(context: Context) {
         defaultValue = true,
     )
 
+    var vpnAlwaysOn: Int by store.int(
+        key = "vpn_always_on",
+        defaultValue = -1,
+    )
+
     var clashStartedAt: Long by store.long(
         key = "clash_started_at",
         defaultValue = 0L

@@ -68,6 +68,10 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object AllowNotifications : Request
         data object SkipNotifications : Request
         data object DismissNotifications : Request
+        data object ReliabilityAllowBattery : Request
+        data object ReliabilityOpenVpnSettings : Request
+        data object ReliabilityConnect : Request
+        data object ReliabilityDismiss : Request
     }
 
     private var state by mutableStateOf(MainScreenState())
@@ -82,6 +86,10 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.AllowNotifications -> request(Request.AllowNotifications)
             MainAction.SkipNotifications -> request(Request.SkipNotifications)
             MainAction.DismissNotifications -> request(Request.DismissNotifications)
+            MainAction.ReliabilityAllowBattery -> request(Request.ReliabilityAllowBattery)
+            MainAction.ReliabilityOpenVpnSettings -> request(Request.ReliabilityOpenVpnSettings)
+            MainAction.ReliabilityConnect -> request(Request.ReliabilityConnect)
+            MainAction.ReliabilityDismiss -> request(Request.ReliabilityDismiss)
             MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenAppSettings -> request(Request.OpenAppSettings)
@@ -167,6 +175,18 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     suspend fun setNotificationPrompt(show: Boolean) {
         withContext(Dispatchers.Main) {
             state = state.copy(notificationPrompt = show)
+        }
+    }
+
+    suspend fun setReliability(batteryIgnored: Boolean, alwaysOn: Boolean?, prompt: Boolean? = null) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                reliability = state.reliability.copy(
+                    prompt = prompt ?: state.reliability.prompt,
+                    batteryIgnored = batteryIgnored,
+                    alwaysOn = alwaysOn,
+                ),
+            )
         }
     }
 
