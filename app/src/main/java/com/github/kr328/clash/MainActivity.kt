@@ -145,8 +145,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
                             }
                         }
+                        Event.ClashStart -> {
+                            design.fetch()
+
+                            if (UpdatePrompt.shouldCheckInBackground(this@MainActivity)) {
+                                launch { design.checkUpdate(manual = false) }
+                            }
+                        }
                         Event.ServiceRecreated,
-                        Event.ClashStart,
                         Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
                         else -> Unit
                     }

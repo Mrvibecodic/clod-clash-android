@@ -31,6 +31,11 @@ class AppStore(context: Context) {
         defaultValue = 0,
     )
 
+    var lastUpdateCheckFailed: Boolean by store.boolean(
+        key = "last_update_check_failed",
+        defaultValue = false,
+    )
+
     var skippedVersionCode: Long by store.long(
         key = "skipped_version_code",
         defaultValue = 0,

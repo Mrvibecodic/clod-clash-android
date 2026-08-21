@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -25,6 +26,8 @@ object Updater {
 
     private const val CONNECT_TIMEOUT = 15_000
     private const val READ_TIMEOUT = 30_000
+    private const val BUFFER_SIZE = 64 * 1024
+    private const val PROGRESS_STEP = 256 * 1024
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -33,24 +36,28 @@ object Updater {
         val platform: UpdateManifest.Platform,
     )
 
-    suspend fun check(context: Context, nightly: Boolean, mixedPort: Int?): Available? =
+    suspend fun check(context: Context, nightly: Boolean, mixedPort: Int?): Result<Available?> =
         withContext(Dispatchers.IO) {
             val url = if (nightly) MANIFEST_NIGHTLY else MANIFEST_RELEASE
-            val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8) ?: return@withContext null
+
+            val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8)
+                ?: return@withContext Result.failure(IOException("манифест недоступен"))
 
             val manifest = runCatching { json.decodeFromString(UpdateManifest.serializer(), body) }
                 .onFailure { Log.w("$TAG: манифест не разобран", it) }
-                .getOrNull() ?: return@withContext null
+                .getOrElse { return@withContext Result.failure(it) }
 
-            if (manifest.versionCode <= currentVersionCode(context)) return@withContext null
+            if (manifest.versionCode <= currentVersionCode(context)) {
+                return@withContext Result.success(null)
+            }
 
             val platform = manifest.platformFor(Build.SUPPORTED_ABIS.toList())
             if (platform == null) {
                 Log.w("$TAG: в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}")
-                return@withContext null
+                return@withContext Result.success(null)
             }
 
-            Available(manifest, platform)
+            Result.success(Available(manifest, platform))
         }
 
     suspend fun download(
@@ -64,25 +71,21 @@ object Updater {
         runCatching {
             target.delete()
 
-            val bytes = fetch(available.platform.url, mixedPort, onProgress)
+            val actual = downloadTo(available.platform.url, mixedPort, target, onProgress)
                 ?: error("не удалось скачать обновление")
 
-            val actual = MessageDigest.getInstance("SHA-256").digest(bytes)
-                .joinToString("") { "%02x".format(it) }
             if (!actual.equals(available.platform.sha256, ignoreCase = true)) {
                 error("контрольная сумма не совпала: ожидалась ${available.platform.sha256}, получена $actual")
             }
 
-            target.writeBytes(bytes)
-
             if (!hasSameSignature(context, target)) {
-                target.delete()
                 error("файл подписан другим ключом — установка поверх невозможна")
             }
 
             target
         }.onFailure {
             Log.w("$TAG: загрузка не удалась", it)
+
             target.delete()
         }
     }
@@ -128,66 +131,87 @@ object Updater {
         }
     }
 
-    private fun fetch(
+    private fun routes(mixedPort: Int?): List<Proxy> = buildList {
+        add(Proxy.NO_PROXY)
+
+        if (mixedPort != null && mixedPort > 0) {
+            add(Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", mixedPort)))
+        }
+    }
+
+    private fun <T : Any> request(
         url: String,
         mixedPort: Int?,
-        onProgress: (Long, Long) -> Unit = { _, _ -> },
-    ): ByteArray? {
-        val routes = buildList {
-            add(Proxy.NO_PROXY)
-            if (mixedPort != null && mixedPort > 0) {
-                add(Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", mixedPort)))
-            }
-        }
+        read: (HttpURLConnection) -> T,
+    ): T? {
+        for (proxy in routes(mixedPort)) {
+            val result = runCatching {
+                val connection = (URL(url).openConnection(proxy) as HttpURLConnection).apply {
+                    connectTimeout = CONNECT_TIMEOUT
+                    readTimeout = READ_TIMEOUT
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", USER_AGENT)
+                }
 
-        for (proxy in routes) {
-            val result = runCatching { request(url, proxy, onProgress) }
-                .onFailure { Log.d("$TAG: $url через $proxy не удалось: ${it.message}") }
-                .getOrNull()
+                try {
+                    if (connection.responseCode !in 200..299) {
+                        error("HTTP ${connection.responseCode}")
+                    }
+
+                    read(connection)
+                } finally {
+                    connection.disconnect()
+                }
+            }.onFailure {
+                Log.d("$TAG: $url через $proxy не удалось: ${it.message}")
+            }.getOrNull()
+
             if (result != null) return result
         }
 
         return null
     }
 
-    private fun request(url: String, proxy: Proxy, onProgress: (Long, Long) -> Unit): ByteArray {
-        val connection = (URL(url).openConnection(proxy) as HttpURLConnection).apply {
-            connectTimeout = CONNECT_TIMEOUT
-            readTimeout = READ_TIMEOUT
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", USER_AGENT)
-        }
+    private fun fetch(url: String, mixedPort: Int?): ByteArray? =
+        request(url, mixedPort) { connection -> connection.inputStream.use { it.readBytes() } }
 
-        try {
-            if (connection.responseCode !in 200..299) {
-                error("HTTP ${connection.responseCode}")
-            }
+    private fun downloadTo(
+        url: String,
+        mixedPort: Int?,
+        target: File,
+        onProgress: (Long, Long) -> Unit,
+    ): String? = request(url, mixedPort) { connection ->
+        val total = connection.contentLengthLong
+        val digest = MessageDigest.getInstance("SHA-256")
+        val buffer = ByteArray(BUFFER_SIZE)
+        var received = 0L
+        var lastReported = 0L
 
-            val total = connection.contentLengthLong
-            val buffer = ByteArray(64 * 1024)
-            val output = java.io.ByteArrayOutputStream(maxOf(total.toInt(), 64 * 1024))
-            var received = 0L
-            var lastReported = 0L
-
-            connection.inputStream.use { input ->
+        connection.inputStream.use { input ->
+            target.outputStream().use { output ->
                 while (true) {
                     val read = input.read(buffer)
                     if (read < 0) break
+
                     output.write(buffer, 0, read)
+                    digest.update(buffer, 0, read)
+
                     received += read
-                    if (received - lastReported >= 256 * 1024) {
+
+                    if (received - lastReported >= PROGRESS_STEP) {
                         lastReported = received
+
                         onProgress(received, total)
                     }
                 }
+
+                output.flush()
             }
-
-            onProgress(received, total)
-
-            return output.toByteArray()
-        } finally {
-            connection.disconnect()
         }
+
+        onProgress(received, total)
+
+        digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     val USER_AGENT: String = "ClodClash/" + BuildConfig.VERSION_NAME + " (Android)"
