@@ -2,19 +2,29 @@ package tunnel
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 const (
 	networkSettleWindow = 5 * time.Second
 
 	networkReadyGrace = time.Second
+
+	heartbeatInterval = 10 * time.Second
+
+	heartbeatFreezeGap = 45 * time.Second
 )
 
-var settleUntil atomic.Int64
+var (
+	settleUntil atomic.Int64
+
+	heartbeatOnce sync.Once
+)
 
 func NoteNetworkChange() {
 	until := time.Now().Add(networkSettleWindow).UnixNano()
@@ -38,6 +48,35 @@ func NoteNetworkReady() {
 
 			return
 		}
+	}
+}
+
+func StartHeartbeat() {
+	heartbeatOnce.Do(func() {
+		go heartbeat()
+	})
+}
+
+func heartbeat() {
+	last := time.Now().UnixNano()
+
+	C.ProbeBeat(last)
+
+	ticker := time.NewTicker(heartbeatInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		now := time.Now().UnixNano()
+
+		if gap := time.Duration(now - last); gap > heartbeatFreezeGap {
+			NoteNetworkChange()
+
+			log.Infoln("Resumed after %s pause: probes held for %s", gap.Round(time.Second), networkSettleWindow)
+		}
+
+		last = now
+
+		C.ProbeBeat(now)
 	}
 }
 

@@ -1,5 +1,5 @@
 diff --git a/adapter/adapter.go b/adapter/adapter.go
-index 6f20c08..bfe39a8 100644
+index 6f20c08a..bfe39a84 100644
 --- a/adapter/adapter.go
 +++ b/adapter/adapter.go
 @@ -168,6 +168,9 @@ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.In
@@ -13,7 +13,7 @@ index 6f20c08..bfe39a8 100644
  		if alive {
  			record.Delay = t
 diff --git a/adapter/outboundgroup/groupbase.go b/adapter/outboundgroup/groupbase.go
-index eed45e0..f57b605 100644
+index eed45e0d..f57b6054 100644
 --- a/adapter/outboundgroup/groupbase.go
 +++ b/adapter/outboundgroup/groupbase.go
 @@ -267,6 +267,10 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
@@ -29,20 +29,35 @@ index eed45e0..f57b605 100644
  	}
 diff --git a/constant/probehold.go b/constant/probehold.go
 new file mode 100644
-index 0000000..adef14e
+index 00000000..24bb32df
 --- /dev/null
 +++ b/constant/probehold.go
-@@ -0,0 +1,13 @@
+@@ -0,0 +1,28 @@
 +package constant
 +
 +import "sync/atomic"
 +
-+var probeHoldUntil atomic.Int64
++const probeFreezeGap = int64(45 * 1e9)
++
++var (
++	probeHoldUntil atomic.Int64
++	probeLastBeat  atomic.Int64
++)
 +
 +func SetProbeHoldUntil(nanos int64) {
 +	probeHoldUntil.Store(nanos)
 +}
 +
++func ProbeBeat(nanos int64) {
++	probeLastBeat.Store(nanos)
++}
++
 +func ProbeHolding(nanos int64) bool {
-+	return nanos < probeHoldUntil.Load()
++	if nanos < probeHoldUntil.Load() {
++		return true
++	}
++
++	beat := probeLastBeat.Load()
++
++	return beat != 0 && nanos-beat > probeFreezeGap
 +}
