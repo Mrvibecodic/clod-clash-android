@@ -20,13 +20,13 @@ func OnNetworkChanged(closeConnections bool) {
 
 	resolver.ClearCache()
 
-	resetProxyTransports()
-
 	if !closeConnections {
 		log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset")
 
 		return
 	}
+
+	resetProxyTransports()
 
 	closed := 0
 
@@ -73,6 +73,6 @@ func resetProxyTransports() {
 	}
 
 	if reset > 0 {
-		log.Infoln("Network changed: %d multiplex session pool(s) reset", reset)
+		log.Infoln("Network changed: %d proxy transport(s) reset", reset)
 	}
 }
