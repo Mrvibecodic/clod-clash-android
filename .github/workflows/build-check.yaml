@@ -130,3 +130,44 @@ jobs:
           if-no-files-found: error
           path: |
             app/build/outputs/apk/standard/debug/*.apk
+
+      # R8 запускается только в релизной сборке, а этот воркфлоу собирал один
+      # debug — поэтому сломанная минификация всплывала лишь при выпуске версии
+      # (22.08 так вылезли метаданные Kotlin 2.4). Гоняем не весь
+      # assembleStandardRelease: задача minify не тянет за собой ни Go, ни CMake,
+      # то есть проверка стоит минут, а не десятков.
+      - name: Minify release with R8
+        if: success()
+        run: |
+          set -eo pipefail
+          ./gradlew --no-daemon -Pclod.abi=arm64-v8a \
+            app:minifyStandardReleaseWithR8 \
+            app:optimizeStandardReleaseResources 2>&1 | tee r8.log
+
+      # Непонятные ему метаданные Kotlin R8 сообщает ПРЕДУПРЕЖДЕНИЕМ: сборка
+      # зелёная, а сигнатуры классов молча теряются. Видно это только в логе.
+      # Строку про async parsing он печатает всегда — она не в счёт.
+      - name: Check R8 log
+        if: success()
+        run: |
+          set -eo pipefail
+          if grep -nE "R8: (An error occurred when parsing kotlin metadata|Unsupported)" r8.log; then
+            echo "::error::R8 не разобрал метаданные Kotlin — поднять com.android.tools:r8 в gradle/libs.versions.toml"
+            exit 1
+          fi
+
+      # Мост JNI зовётся из C по именам и держится только на -dontobfuscate
+      # в app/proguard-rules.pro. Уедут правила — APK соберётся, но ядро не
+      # стартует; в dex это видно сразу.
+      - name: Check JNI bridge in dex
+        if: success()
+        run: |
+          set -eo pipefail
+          dir=app/build/intermediates/dex/standardRelease/minifyStandardReleaseWithR8
+          ls "$dir"/classes*.dex >/dev/null
+          cat "$dir"/classes*.dex > "$RUNNER_TEMP/all.dex"
+          fail=0
+          for sym in com/github/kr328/clash/core/bridge/Bridge nativeStartTun nativeStopTun nativeQueryTunnelState; do
+            grep -aq "$sym" "$RUNNER_TEMP/all.dex" || { echo "::error::$sym не найден в dex после R8"; fail=1; }
+          done
+          [ $fail -eq 0 ]
