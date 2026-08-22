@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
@@ -21,6 +22,7 @@ import com.github.kr328.clash.design.util.resolveThemedBoolean
 import com.github.kr328.clash.design.util.resolveThemedColor
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
 import com.github.kr328.clash.util.ApplicationObserver
@@ -89,6 +91,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applyDayNight()
+        syncAppLocale()
 
         checkNotNull(getSystemService<ActivityManager>()).appTasks.forEach { task ->
             task.setExcludeFromRecents(uiStore.hideFromRecents)
@@ -230,4 +233,22 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         ProfileUpdateCompleted,
         ProfileUpdateFailed,
     }
+
+    private fun syncAppLocale() {
+        if (appLocaleSynced) return
+
+        appLocaleSynced = true
+
+        val tag = AppCompatDelegate.getApplicationLocales()[0]?.toLanguageTag().orEmpty()
+
+        if (tag.isEmpty()) return
+
+        val store = ServiceStore(this)
+
+        if (store.appLocale != tag) {
+            store.appLocale = tag
+        }
+    }
 }
+
+private var appLocaleSynced = false

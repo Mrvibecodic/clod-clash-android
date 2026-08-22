@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
 import com.github.kr328.clash.service.PreferenceProvider
 import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.util.KEY_APP_LOCALE
 import java.util.*
 
 class ServiceStore(context: Context) {
@@ -33,6 +34,11 @@ class ServiceStore(context: Context) {
 
     var hwid: String by store.string(
         key = "hwid",
+        defaultValue = "",
+    )
+
+    var appLocale: String by store.string(
+        key = KEY_APP_LOCALE,
         defaultValue = "",
     )
 
@@ -133,6 +139,7 @@ class ServiceStore(context: Context) {
         tunStackMode = "auto"
         dynamicNotification = false
         keepAwake = false
+        appLocale = ""
     }
 
     fun markSessionStarted(): Long {

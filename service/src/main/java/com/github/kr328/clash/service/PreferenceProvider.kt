@@ -12,7 +12,7 @@ class PreferenceProvider : PreferenceProvider() {
     }
 
     companion object {
-        private const val FILE_NAME = "service"
+        const val FILE_NAME = "service"
 
         fun createSharedPreferencesFromContext(context: Context): SharedPreferences {
             return when (context) {

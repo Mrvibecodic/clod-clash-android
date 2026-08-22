@@ -25,12 +25,17 @@ import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.unwrap
 import com.github.kr328.clash.util.logsDir
+import com.github.kr328.clash.util.withAppLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.io.IOException
 import java.util.*
 
 class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.Default), IInterface {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.withAppLocale())
+    }
+
     private val cache = LogcatCache()
 
     private val connection = object : ServiceConnection {

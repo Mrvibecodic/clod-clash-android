@@ -1,14 +1,20 @@
 package com.github.kr328.clash
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.util.withAppLocale
 
 class WidgetToggleActivity : Activity() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.withAppLocale())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         @Suppress("DEPRECATION")

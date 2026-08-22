@@ -1,6 +1,7 @@
 package com.github.kr328.clash
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -20,8 +21,13 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import java.util.*
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.util.withAppLocale
 
 class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.withAppLocale())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         @Suppress("DEPRECATION")

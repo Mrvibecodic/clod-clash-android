@@ -2,6 +2,7 @@ package com.github.kr328.clash.service
 
 import android.annotation.TargetApi
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.net.ProxyInfo
 import android.net.VpnService
@@ -20,12 +21,17 @@ import com.github.kr328.clash.service.util.parseCIDR
 import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStopped
+import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
 
 class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.Default) {
     private val self: TunService
         get() = this
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base.withStoredLocale())
+    }
 
     private var reason: String? = null
 

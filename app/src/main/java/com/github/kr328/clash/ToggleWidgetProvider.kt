@@ -18,6 +18,7 @@ import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.packageName
+import com.github.kr328.clash.util.withAppLocale
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.R as ServiceR
@@ -97,12 +98,16 @@ class ToggleWidgetProvider : AppWidgetProvider() {
     }
 
     private fun showToast(context: Context, text: Int) {
+        val localized = context.withAppLocale()
+
         Handler(Looper.getMainLooper()).post {
-            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+            Toast.makeText(localized, text, Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun requestVpnPermission(context: Context) {
+    private fun requestVpnPermission(base: Context) {
+        val context = base.withAppLocale()
+
         val manager = NotificationManagerCompat.from(context)
 
         manager.createNotificationChannel(
