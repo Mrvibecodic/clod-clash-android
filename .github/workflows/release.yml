@@ -71,11 +71,14 @@ jobs:
             fi
           fi
 
+          PRERELEASE=false
+          [[ "${{ needs.check_version.outputs.version }}" == *-* ]] && PRERELEASE=true
+
           id=$(gh api -X POST "repos/${{ github.repository }}/releases" \
             -f tag_name="$TAG" \
             -f name="Clod Clash для Android $TAG" \
             -f body="Черновик — наполняется сборкой." \
-            -F draft=true -F prerelease=false --jq .id)
+            -F draft=true -F prerelease=$PRERELEASE --jq .id)
           echo "release_id=$id" >> "$GITHUB_OUTPUT"
 
   build:
@@ -286,8 +289,11 @@ jobs:
           [[ -z "${NOTES// }" ]] && NOTES=$(git tag -l --format='%(contents)' "$TAG")
           [[ -z "${NOTES// }" ]] && NOTES="Вышла версия $VERSION."
 
+          PRERELEASE=false
+          [[ "$VERSION" == *-* ]] && PRERELEASE=true
+
           gh api -X PATCH "repos/${{ github.repository }}/releases/$RELEASE_ID" \
-            -F draft=false -F prerelease=false -f body="$NOTES" --jq .html_url
+            -F draft=false -F prerelease=$PRERELEASE -f body="$NOTES" --jq .html_url
 
       - name: Обновить плавающий релиз updater
         env:
