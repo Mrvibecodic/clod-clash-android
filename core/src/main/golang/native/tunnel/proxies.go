@@ -26,7 +26,7 @@ type Proxy struct {
 	Title    string `json:"title"`
 	Subtitle string `json:"subtitle"`
 	Type     string `json:"type"`
-	Icon     string `json:"icon"`
+	Icon     string `json:"icon,omitempty"`
 	Delay    int    `json:"delay"`
 	IsGroup  bool   `json:"isGroup"`
 }
@@ -81,7 +81,7 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 	}
 
 	proxies := providers[0].Proxies()
-	result := make([]string, 0, len(proxies)+1)
+	result := make([]string, 0, len(proxies))
 
 	selectable := make([]string, 0, len(proxies))
 
@@ -198,7 +198,7 @@ func httpsIcon(raw string) string {
 	}
 
 	parsed, err := url.Parse(value)
-	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil {
 		return ""
 	}
 

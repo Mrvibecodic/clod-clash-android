@@ -11,9 +11,9 @@ data class Proxy(
     val title: String,
     val subtitle: String,
     val type: String,
-    val icon: String = "",
     val delay: Int,
     var isGroup: Boolean,
+    val icon: String = "",
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         Parcelizer.encodeToParcel(serializer(), parcel, this)

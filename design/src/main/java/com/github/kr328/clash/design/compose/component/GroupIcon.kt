@@ -3,6 +3,7 @@ package com.github.kr328.clash.design.compose.component
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -28,7 +29,13 @@ fun rememberGroupIcon(url: String?): ImageBitmap? {
 
 @Composable
 fun GroupIcon(url: String?, modifier: Modifier = Modifier, size: Dp = 20.dp) {
-    val bitmap = rememberGroupIcon(url) ?: return
+    val bitmap = rememberGroupIcon(url)
+
+    if (bitmap == null) {
+        Spacer(modifier = modifier.size(size))
+
+        return
+    }
 
     Image(
         bitmap = bitmap,

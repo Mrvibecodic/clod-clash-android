@@ -9,6 +9,8 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.Collections
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object GroupIcons {
@@ -17,31 +19,49 @@ object GroupIcons {
     private const val TIMEOUT_MILLIS = 10_000
     private const val TARGET_PIXELS = 96
 
-    private val memory = ConcurrentHashMap<String, ImageBitmap>()
-    private val failed = ConcurrentHashMap.newKeySet<String>()
+    private const val MEMORY_LIMIT = 48
+    private const val RETRY_DELAY_MILLIS = 60_000L
+
+    private val memory = Collections.synchronizedMap(
+        object : LinkedHashMap<String, ImageBitmap>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean {
+                return size > MEMORY_LIMIT
+            }
+        },
+    )
+
+    private val broken = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+
+    private val retryAfter = ConcurrentHashMap<String, Long>()
 
     fun load(context: Context, url: String): ImageBitmap? {
         memory[url]?.let { return it }
 
-        if (url in failed) return null
+        if (url in broken) return null
 
         val file = cacheFile(context, url)
 
         val bitmap = decode(file) ?: run {
+            val now = System.currentTimeMillis()
+
+            if ((retryAfter[url] ?: 0L) > now) return null
+
             if (!download(url, file)) {
-                failed.add(url)
+                retryAfter[url] = now + RETRY_DELAY_MILLIS
 
                 return null
             }
 
-            decode(file)
-        }
+            retryAfter.remove(url)
 
-        if (bitmap == null) {
-            failed.add(url)
+            decode(file).also { decoded ->
+                if (decoded == null) {
+                    broken.add(url)
 
-            return null
-        }
+                    file.delete()
+                }
+            }
+        } ?: return null
 
         memory[url] = bitmap
 
@@ -83,7 +103,7 @@ object GroupIcons {
 
         if (!parsed.protocol.equals("https", ignoreCase = true)) return false
 
-        val temporary = File(target.absolutePath + ".tmp")
+        val temporary = File(target.absolutePath + "." + UUID.randomUUID() + ".tmp")
 
         return try {
             val connection = parsed.openConnection() as HttpURLConnection
