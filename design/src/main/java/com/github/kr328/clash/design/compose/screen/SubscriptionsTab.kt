@@ -60,6 +60,7 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.theme.ClodTheme
+import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.service.model.Profile
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -563,7 +564,7 @@ internal fun StatusBadge(text: String, color: Color) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(color.copy(alpha = 0.14f))
+            .background(color.statusContainer())
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(text = text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)

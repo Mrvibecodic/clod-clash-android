@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
+import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 import java.text.DateFormat
@@ -84,7 +85,7 @@ fun NoServersCard(
 
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = accent.copy(alpha = 0.13f),
+            containerColor = accent.statusContainer(),
         ),
         modifier = modifier.fillMaxWidth(),
     ) {

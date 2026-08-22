@@ -123,6 +123,10 @@ object ClodTheme {
         @Composable get() = LocalClodExtraColors.current
 }
 
+private const val STATUS_CONTAINER_ALPHA = 0.14f
+
+fun Color.statusContainer(): Color = copy(alpha = STATUS_CONTAINER_ALPHA)
+
 @Composable
 fun ClodClashTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),

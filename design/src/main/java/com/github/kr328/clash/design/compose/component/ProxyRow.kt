@@ -37,6 +37,7 @@ import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.DelayPillFast
 import com.github.kr328.clash.design.compose.theme.DelayPillMedium
 import com.github.kr328.clash.design.compose.theme.DelayPillSlow
+import com.github.kr328.clash.design.compose.theme.statusContainer
 
 fun splitFlag(title: String): Pair<String?, String> {
     var i = 0
@@ -95,7 +96,7 @@ fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(color.copy(alpha = 0.14f))
+            .background(color.statusContainer())
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(

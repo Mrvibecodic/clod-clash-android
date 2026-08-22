@@ -102,6 +102,7 @@ import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
+import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
@@ -652,7 +653,7 @@ private fun StatusPill(status: ConnectionStatus) {
     val container = if (status == ConnectionStatus.Disconnected) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
-        accent.copy(alpha = 0.14f)
+        accent.statusContainer()
     }
 
     Row(
