@@ -35,6 +35,7 @@ import com.github.kr328.clash.design.compose.component.SwitchRow
 data class AppSettingsState(
     val autoRestart: Boolean = false,
     val darkMode: Int = 0,
+    val language: Int = 0,
     val hideAppIcon: Boolean = false,
     val hideFromRecents: Boolean = false,
     val dynamicNotification: Boolean = false,
@@ -51,6 +52,7 @@ sealed interface AppSettingsAction {
     data object Back : AppSettingsAction
     data class SetAutoRestart(val enabled: Boolean) : AppSettingsAction
     data class SetDarkMode(val index: Int) : AppSettingsAction
+    data class SetLanguage(val index: Int) : AppSettingsAction
     data class SetHideAppIcon(val enabled: Boolean) : AppSettingsAction
     data class SetHideFromRecents(val enabled: Boolean) : AppSettingsAction
     data class SetDynamicNotification(val enabled: Boolean) : AppSettingsAction
@@ -98,6 +100,17 @@ fun AppSettingsScreen(
                 ),
                 selectedIndex = state.darkMode,
                 onSelect = { onAction(AppSettingsAction.SetDarkMode(it)) },
+            )
+            SelectRow(
+                title = stringResource(R.string.clod_language_title),
+                icon = painterResource(R.drawable.ic_baseline_language),
+                options = listOf(
+                    stringResource(R.string.clod_language_system),
+                    "English",
+                    "Русский",
+                ),
+                selectedIndex = state.language,
+                onSelect = { onAction(AppSettingsAction.SetLanguage(it)) },
             )
             SwitchRow(
                 title = stringResource(R.string.hide_app_icon_title),

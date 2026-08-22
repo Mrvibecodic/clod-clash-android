@@ -404,6 +404,8 @@
     <string name="clod_profile_update_notify_title">Successful subscription updates</string>
     <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
     <string name="clod_delay_unavailable">No server responded to the delay test</string>
+    <string name="clod_language_title">Language</string>
+    <string name="clod_language_system">System default</string>
     <string name="clod_access_sub_include">Via VPN (subscription)</string>
     <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
     <string name="clod_widget_description">Toggles the connection with one tap</string>

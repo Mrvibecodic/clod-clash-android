@@ -2,7 +2,9 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.view.View
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.os.LocaleListCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -35,10 +37,13 @@ class AppSettingsDesign(
 
     private val darkModes = DarkMode.entries
 
+    private val languageTags = listOf("", "en", "ru")
+
     private var state by mutableStateOf(
         AppSettingsState(
             autoRestart = behavior.autoRestart,
             darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+            language = currentLanguage(),
             hideAppIcon = uiStore.hideAppIcon,
             hideFromRecents = uiStore.hideFromRecents,
             dynamicNotification = srvStore.dynamicNotification,
@@ -77,9 +82,12 @@ class AppSettingsDesign(
         srvStore.reset()
         onReset()
 
+        applyLanguage(0)
+
         state = state.copy(
             autoRestart = behavior.autoRestart,
             darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+            language = 0,
             hideAppIcon = false,
             hideFromRecents = uiStore.hideFromRecents,
             dynamicNotification = srvStore.dynamicNotification,
@@ -91,6 +99,30 @@ class AppSettingsDesign(
         )
 
         requests.trySend(Request.ReCreateAllActivities)
+    }
+
+    private fun currentLanguage(): Int {
+        val tag = AppCompatDelegate.getApplicationLocales()
+            .toLanguageTags()
+            .substringBefore(',')
+            .substringBefore('-')
+            .lowercase()
+
+        val index = languageTags.indexOf(tag)
+
+        return if (index > 0) index else 0
+    }
+
+    private fun applyLanguage(index: Int) {
+        val tag = languageTags.getOrNull(index) ?: return
+
+        AppCompatDelegate.setApplicationLocales(
+            if (tag.isEmpty()) {
+                LocaleListCompat.getEmptyLocaleList()
+            } else {
+                LocaleListCompat.forLanguageTags(tag)
+            },
+        )
     }
 
     private fun notificationsBlocked(): Boolean {
@@ -120,6 +152,11 @@ class AppSettingsDesign(
                 behavior.autoRestart = action.enabled
 
                 state = state.copy(autoRestart = action.enabled)
+            }
+            is AppSettingsAction.SetLanguage -> {
+                state = state.copy(language = action.index)
+
+                applyLanguage(action.index)
             }
             is AppSettingsAction.SetDarkMode -> {
                 val mode = darkModes.getOrNull(action.index) ?: return
