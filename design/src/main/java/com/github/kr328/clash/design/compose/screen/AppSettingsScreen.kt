@@ -38,6 +38,7 @@ data class AppSettingsState(
     val language: Int = 0,
     val showGroupIcons: Boolean = true,
     val hideAppIcon: Boolean = false,
+    val canHideAppIcon: Boolean = true,
     val hideFromRecents: Boolean = false,
     val dynamicNotification: Boolean = false,
     val notificationEditable: Boolean = true,
@@ -123,13 +124,15 @@ fun AppSettingsScreen(
                 checked = state.showGroupIcons,
                 onCheckedChange = { onAction(AppSettingsAction.SetShowGroupIcons(it)) },
             )
-            SwitchRow(
-                title = stringResource(R.string.hide_app_icon_title),
-                subtitle = stringResource(R.string.hide_app_icon_desc),
-                icon = painterResource(R.drawable.ic_baseline_hide),
-                checked = state.hideAppIcon,
-                onCheckedChange = { onAction(AppSettingsAction.SetHideAppIcon(it)) },
-            )
+            if (state.canHideAppIcon) {
+                SwitchRow(
+                    title = stringResource(R.string.hide_app_icon_title),
+                    subtitle = stringResource(R.string.hide_app_icon_desc),
+                    icon = painterResource(R.drawable.ic_baseline_hide),
+                    checked = state.hideAppIcon,
+                    onCheckedChange = { onAction(AppSettingsAction.SetHideAppIcon(it)) },
+                )
+            }
             SwitchRow(
                 title = stringResource(R.string.hide_from_recents_title),
                 subtitle = stringResource(R.string.hide_from_recents_desc),

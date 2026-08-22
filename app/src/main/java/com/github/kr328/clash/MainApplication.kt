@@ -2,11 +2,15 @@ package com.github.kr328.clash
 
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageManager
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.currentProcessName
+import com.github.kr328.clash.common.compat.isTelevision
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.util.sendServiceRecreated
+import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.util.clashDir
 import java.io.File
 import java.io.FileOutputStream
@@ -25,6 +29,7 @@ class MainApplication : Application() {
 
         val processName = currentProcessName
         extractGeoFiles()
+        restoreLauncherIconOnTelevision()
 
         Log.d("Process $processName started")
 
@@ -33,6 +38,20 @@ class MainApplication : Application() {
         } else {
             sendServiceRecreated()
         }
+    }
+
+    private fun restoreLauncherIconOnTelevision() {
+        val uiStore = UiStore(this)
+
+        if (!uiStore.hideAppIcon || !isTelevision()) return
+
+        uiStore.hideAppIcon = false
+
+        packageManager.setComponentEnabledSetting(
+            mainActivityAlias,
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+            PackageManager.DONT_KILL_APP,
+        )
     }
 
     private fun extractGeoFiles() {

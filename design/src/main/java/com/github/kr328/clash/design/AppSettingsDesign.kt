@@ -8,6 +8,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.common.compat.isTelevision
 import com.github.kr328.clash.design.compose.screen.AppSettingsAction
 import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
 import com.github.kr328.clash.design.compose.screen.AppSettingsState
@@ -41,6 +42,8 @@ class AppSettingsDesign(
 
     private val languageTags = listOf("", "en", "ru")
 
+    private val canHideAppIcon: Boolean = !context.isTelevision()
+
     private var state by mutableStateOf(
         AppSettingsState(
             autoRestart = behavior.autoRestart,
@@ -48,6 +51,7 @@ class AppSettingsDesign(
             language = currentLanguage(),
             showGroupIcons = uiStore.showGroupIcons,
             hideAppIcon = uiStore.hideAppIcon,
+            canHideAppIcon = canHideAppIcon,
             hideFromRecents = uiStore.hideFromRecents,
             dynamicNotification = srvStore.dynamicNotification,
             notificationEditable = !running,
@@ -119,6 +123,8 @@ class AppSettingsDesign(
 
     private fun applyLanguage(index: Int) {
         val tag = languageTags.getOrNull(index) ?: return
+
+        srvStore.appLocale = tag
 
         AppCompatDelegate.setApplicationLocales(
             if (tag.isEmpty()) {

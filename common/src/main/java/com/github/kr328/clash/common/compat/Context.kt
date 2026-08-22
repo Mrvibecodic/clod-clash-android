@@ -3,9 +3,12 @@
 package com.github.kr328.clash.common.compat
 
 import android.annotation.SuppressLint
+import android.app.UiModeManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Handler
@@ -34,3 +37,12 @@ fun Context.registerReceiverCompat(
         )
     else
         registerReceiver(receiver, filter, permission, handler)
+
+fun Context.isTelevision(): Boolean {
+    if (packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK))
+        return true
+
+    val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+
+    return uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+}

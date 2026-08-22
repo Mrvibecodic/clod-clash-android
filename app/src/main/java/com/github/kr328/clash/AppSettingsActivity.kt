@@ -25,6 +25,7 @@ import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
+import com.github.kr328.clash.util.applyDynamicShortcuts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -291,6 +292,8 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             newState,
             PackageManager.DONT_KILL_APP
         )
+
+        applyDynamicShortcuts(hide)
     }
 
     private companion object {
