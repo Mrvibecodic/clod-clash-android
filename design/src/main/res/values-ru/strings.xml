@@ -394,6 +394,14 @@
     <string name="clod_language_system">Как в системе</string>
     <string name="clod_group_icons_title">Иконки групп</string>
     <string name="clod_group_icons_summary">Показывать значки из подписки рядом с названиями групп</string>
+    <string name="clod_backup_export_title">Сохранить подписки</string>
+    <string name="clod_backup_export_summary">Сохранить ссылки подписок в файл. Не передавайте его: по ссылкам открывается доступ к подпискам</string>
+    <string name="clod_backup_import_title">Восстановить подписки</string>
+    <string name="clod_backup_import_summary">Добавить подписки из сохранённого файла</string>
+    <string name="clod_backup_saved">Копия сохранена</string>
+    <string name="clod_backup_empty">Нет подписок со ссылкой</string>
+    <string name="clod_backup_invalid">Это не файл с копией подписок</string>
+    <string name="clod_backup_restored">Восстановлено %1$d из %2$d</string>
     <string name="clod_access_sub_include">Через VPN (из подписки)</string>
     <string name="clod_access_sub_exclude">Мимо VPN (из подписки)</string>
     <string name="clod_widget_description">Включает и выключает подключение одним нажатием</string>

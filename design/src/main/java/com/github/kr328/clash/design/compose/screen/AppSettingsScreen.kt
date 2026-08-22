@@ -63,6 +63,8 @@ sealed interface AppSettingsAction {
     data class SetProfileErrorNotifications(val enabled: Boolean) : AppSettingsAction
     data class SetProfileUpdateNotifications(val enabled: Boolean) : AppSettingsAction
     data object OpenSystemNotifications : AppSettingsAction
+    data object ExportProfiles : AppSettingsAction
+    data object ImportProfiles : AppSettingsAction
     data object ResetSettings : AppSettingsAction
 }
 
@@ -184,6 +186,21 @@ fun AppSettingsScreen(
                 checked = state.profileUpdateNotifications,
                 enabled = !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetProfileUpdateNotifications(it)) },
+            )
+
+            ActionRow(
+                title = stringResource(R.string.clod_backup_export_title),
+                subtitle = stringResource(R.string.clod_backup_export_summary),
+                subtitleMaxLines = 2,
+                icon = painterResource(R.drawable.ic_baseline_publish),
+                onClick = { onAction(AppSettingsAction.ExportProfiles) },
+            )
+            ActionRow(
+                title = stringResource(R.string.clod_backup_import_title),
+                subtitle = stringResource(R.string.clod_backup_import_summary),
+                subtitleMaxLines = 2,
+                icon = painterResource(R.drawable.ic_baseline_get_app),
+                onClick = { onAction(AppSettingsAction.ImportProfiles) },
             )
 
             SectionHeader(stringResource(R.string.clod_reset_section))

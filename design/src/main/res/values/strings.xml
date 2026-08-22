@@ -408,6 +408,14 @@
     <string name="clod_language_system">System default</string>
     <string name="clod_group_icons_title">Group icons</string>
     <string name="clod_group_icons_summary">Show icons provided by the subscription next to group names</string>
+    <string name="clod_backup_export_title">Back up subscriptions</string>
+    <string name="clod_backup_export_summary">Save subscription links to a file. Keep it private: the links give access to your subscriptions</string>
+    <string name="clod_backup_import_title">Restore subscriptions</string>
+    <string name="clod_backup_import_summary">Add subscriptions from a backup file</string>
+    <string name="clod_backup_saved">Backup saved</string>
+    <string name="clod_backup_empty">No subscriptions with a link to back up</string>
+    <string name="clod_backup_invalid">The file is not a subscription backup</string>
+    <string name="clod_backup_restored">Restored %1$d of %2$d</string>
     <string name="clod_access_sub_include">Via VPN (subscription)</string>
     <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
     <string name="clod_widget_description">Toggles the connection with one tap</string>

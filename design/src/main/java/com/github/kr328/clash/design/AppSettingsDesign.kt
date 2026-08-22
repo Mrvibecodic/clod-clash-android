@@ -32,6 +32,8 @@ class AppSettingsDesign(
         data object ReCreateAllActivities : Request
         data object OpenSystemNotifications : Request
         data object RequestNotifications : Request
+        data object ExportProfiles : Request
+        data object ImportProfiles : Request
         data object Back : Request
     }
 
@@ -154,6 +156,12 @@ class AppSettingsDesign(
                 behavior.autoRestart = action.enabled
 
                 state = state.copy(autoRestart = action.enabled)
+            }
+            AppSettingsAction.ExportProfiles -> {
+                requests.trySend(Request.ExportProfiles)
+            }
+            AppSettingsAction.ImportProfiles -> {
+                requests.trySend(Request.ImportProfiles)
             }
             is AppSettingsAction.SetLanguage -> {
                 state = state.copy(language = action.index)

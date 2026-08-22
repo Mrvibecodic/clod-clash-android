@@ -6,11 +6,22 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.componentName
 import com.github.kr328.clash.design.AppSettingsDesign
+import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.design.model.Behavior
+import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.util.withProfile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.store.AppStore
@@ -20,6 +31,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 
 class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
+    private val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
     override suspend fun main() {
         val design = AppSettingsDesign(
             this,
@@ -57,11 +70,139 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                         AppSettingsDesign.Request.RequestNotifications ->
                             requestNotifications()
 
+                        AppSettingsDesign.Request.ExportProfiles ->
+                            exportProfiles(design)
+
+                        AppSettingsDesign.Request.ImportProfiles ->
+                            importProfiles(design)
+
                         AppSettingsDesign.Request.Back -> finish()
                     }
                 }
             }
         }
+    }
+
+    @Serializable
+    private data class BackupProfile(
+        val name: String,
+        val source: String,
+        val interval: Long = 0,
+        val secure: Boolean = false,
+        val active: Boolean = false,
+    )
+
+    @Serializable
+    private data class Backup(
+        val version: Int = BACKUP_VERSION,
+        val profiles: List<BackupProfile> = emptyList(),
+    )
+
+    private suspend fun exportProfiles(design: AppSettingsDesign) {
+        val profiles = withProfile { queryAll() }
+            .filter { it.type == Profile.Type.Url && it.source.isNotBlank() }
+
+        if (profiles.isEmpty()) {
+            design.showToast(DesignR.string.clod_backup_empty, ToastDuration.Long)
+
+            return
+        }
+
+        val backup = Backup(
+            profiles = profiles.map {
+                BackupProfile(
+                    name = it.name,
+                    source = it.source,
+                    interval = it.interval,
+                    secure = it.secure,
+                    active = it.active,
+                )
+            },
+        )
+
+        val output = startActivityForResult(
+            ActivityResultContracts.CreateDocument("application/json"),
+            BACKUP_FILE_NAME,
+        ) ?: return
+
+        try {
+            withContext(Dispatchers.IO) {
+                contentResolver.openOutputStream(output)?.use { stream ->
+                    stream.write(backupJson.encodeToString(Backup.serializer(), backup).toByteArray())
+                }
+            }
+
+            design.showToast(DesignR.string.clod_backup_saved, ToastDuration.Long)
+        } catch (e: Exception) {
+            design.showExceptionToast(e)
+        }
+    }
+
+    private suspend fun importProfiles(design: AppSettingsDesign) {
+        val input = startActivityForResult(
+            ActivityResultContracts.GetContent(),
+            "application/json",
+        ) ?: return
+
+        val backup = try {
+            val content = withContext(Dispatchers.IO) {
+                contentResolver.openInputStream(input)?.use { it.readBytes().decodeToString() }
+            } ?: return
+
+            backupJson.decodeFromString(Backup.serializer(), content)
+        } catch (e: Exception) {
+            Log.w("Read subscriptions backup: $e", e)
+
+            design.showToast(DesignR.string.clod_backup_invalid, ToastDuration.Long)
+
+            return
+        }
+
+        val wanted = backup.profiles.filter { it.source.isNotBlank() }
+
+        if (wanted.isEmpty()) {
+            design.showToast(DesignR.string.clod_backup_invalid, ToastDuration.Long)
+
+            return
+        }
+
+        val known = withProfile { queryAll() }.map { it.source }.toSet()
+        val hasActive = withProfile { queryActive() } != null
+
+        var restored = 0
+
+        for (item in wanted) {
+            if (item.source in known) continue
+
+            val uuid = withProfile {
+                create(Profile.Type.Url, item.name, item.source, secure = item.secure)
+            }
+
+            try {
+                withProfile { coroutineScope { commit(uuid) } }
+
+                val profile = withProfile { queryByUUID(uuid) } ?: throw IllegalStateException()
+
+                if (item.interval > 0) {
+                    withProfile { patch(uuid, profile.name, profile.source, item.interval, null) }
+                }
+
+                if (item.active && !hasActive) {
+                    withProfile { setActive(profile) }
+                }
+
+                restored += 1
+            } catch (e: Exception) {
+                Log.w("Restore subscription: $e", e)
+
+                withProfile { release(uuid) }
+            }
+        }
+
+        design.showToast(
+            getString(DesignR.string.clod_backup_restored, restored, wanted.size),
+            ToastDuration.Long,
+        )
     }
 
     override var autoRestart: Boolean
@@ -143,5 +284,10 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             newState,
             PackageManager.DONT_KILL_APP
         )
+    }
+
+    private companion object {
+        private const val BACKUP_VERSION = 1
+        private const val BACKUP_FILE_NAME = "clodclash-subscriptions.json"
     }
 }
