@@ -46,6 +46,7 @@ class AppSettingsDesign(
             enableHwid = srvStore.enableHwid,
             subNotifications = srvStore.enableSubNotifications,
             profileErrorNotifications = srvStore.notifyProfileErrors,
+            profileUpdateNotifications = srvStore.notifyProfileUpdates,
             notificationsBlocked = notificationsBlocked(),
             resetEnabled = !running,
         ),
@@ -85,6 +86,7 @@ class AppSettingsDesign(
             enableHwid = srvStore.enableHwid,
             subNotifications = srvStore.enableSubNotifications,
             profileErrorNotifications = srvStore.notifyProfileErrors,
+            profileUpdateNotifications = srvStore.notifyProfileUpdates,
             notificationsBlocked = notificationsBlocked(),
         )
 
@@ -158,6 +160,13 @@ class AppSettingsDesign(
                 srvStore.notifyProfileErrors = action.enabled
 
                 state = state.copy(profileErrorNotifications = action.enabled)
+
+                askNotificationsIfNeeded(action.enabled)
+            }
+            is AppSettingsAction.SetProfileUpdateNotifications -> {
+                srvStore.notifyProfileUpdates = action.enabled
+
+                state = state.copy(profileUpdateNotifications = action.enabled)
 
                 askNotificationsIfNeeded(action.enabled)
             }

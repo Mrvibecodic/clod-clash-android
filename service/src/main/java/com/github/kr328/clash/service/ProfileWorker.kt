@@ -193,15 +193,17 @@ class ProfileWorker : BaseService() {
     }
 
     private fun completed(uuid: UUID, name: String) {
-        val id = uuid.hashCode()
+        if (ServiceStore(this).notifyProfileUpdates) {
+            val id = uuid.hashCode()
 
-        val notification = resultBuilder(id, uuid, RESULT_CHANNEL)
-            .setContentTitle(getString(R.string.update_successfully))
-            .setContentText(getString(R.string.format_update_complete, name))
-            .build()
+            val notification = resultBuilder(id, uuid, RESULT_CHANNEL)
+                .setContentTitle(getString(R.string.update_successfully))
+                .setContentText(getString(R.string.format_update_complete, name))
+                .build()
 
-        NotificationManagerCompat.from(this)
-            .notify(id, notification)
+            NotificationManagerCompat.from(this)
+                .notify(id, notification)
+        }
 
         sendProfileUpdateCompleted(uuid)
     }

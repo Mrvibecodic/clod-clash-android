@@ -401,6 +401,8 @@
     <string name="clod_sub_notify_summary">Notify when the subscription is about to end or the traffic runs low. Thresholds are set by your provider.</string>
     <string name="clod_profile_error_notify_title">Subscription update errors</string>
     <string name="clod_profile_error_notify_summary">Show a notification when a subscription fails to update</string>
+    <string name="clod_profile_update_notify_title">Successful subscription updates</string>
+    <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
     <string name="clod_access_sub_include">Via VPN (subscription)</string>
     <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
     <string name="clod_widget_description">Toggles the connection with one tap</string>

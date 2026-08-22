@@ -46,6 +46,11 @@ class ServiceStore(context: Context) {
         defaultValue = true,
     )
 
+    var notifyProfileUpdates: Boolean by store.boolean(
+        key = "notify_profile_update_success",
+        defaultValue = true,
+    )
+
     var vpnAlwaysOn: Int by store.int(
         key = "vpn_always_on",
         defaultValue = -1,
@@ -117,6 +122,7 @@ class ServiceStore(context: Context) {
         resetConnectionsOnNetworkChange = true
         enableSubNotifications = true
         notifyProfileErrors = true
+        notifyProfileUpdates = true
         bypassPrivateNetwork = true
         accessControlMode = AccessControlMode.AcceptAll
         accessControlPackages = emptySet()

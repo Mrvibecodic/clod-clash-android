@@ -42,6 +42,7 @@ data class AppSettingsState(
     val enableHwid: Boolean = true,
     val subNotifications: Boolean = true,
     val profileErrorNotifications: Boolean = true,
+    val profileUpdateNotifications: Boolean = true,
     val notificationsBlocked: Boolean = false,
     val resetEnabled: Boolean = true,
 )
@@ -56,6 +57,7 @@ sealed interface AppSettingsAction {
     data class SetEnableHwid(val enabled: Boolean) : AppSettingsAction
     data class SetSubNotifications(val enabled: Boolean) : AppSettingsAction
     data class SetProfileErrorNotifications(val enabled: Boolean) : AppSettingsAction
+    data class SetProfileUpdateNotifications(val enabled: Boolean) : AppSettingsAction
     data object OpenSystemNotifications : AppSettingsAction
     data object ResetSettings : AppSettingsAction
 }
@@ -152,6 +154,14 @@ fun AppSettingsScreen(
                 checked = state.profileErrorNotifications,
                 enabled = !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetProfileErrorNotifications(it)) },
+            )
+            SwitchRow(
+                title = stringResource(R.string.clod_profile_update_notify_title),
+                subtitle = stringResource(R.string.clod_profile_update_notify_summary),
+                icon = painterResource(R.drawable.ic_baseline_sync),
+                checked = state.profileUpdateNotifications,
+                enabled = !state.notificationsBlocked,
+                onCheckedChange = { onAction(AppSettingsAction.SetProfileUpdateNotifications(it)) },
             )
 
             SectionHeader(stringResource(R.string.clod_reset_section))
