@@ -34,6 +34,7 @@ fun TextRow(
     placeholder: String = stringResource(R.string.dont_modify),
     empty: String? = null,
     numeric: Boolean = false,
+    blankIsNull: Boolean = true,
     valid: (String) -> Boolean = { true },
     enabled: Boolean = true,
 ) {
@@ -73,7 +74,7 @@ fun TextRow(
             onConfirm = {
                 editing = false
 
-                onValue(text)
+                onValue(if (blankIsNull && text.isBlank()) null else text)
             },
         )
     }
