@@ -107,6 +107,6 @@ class Broadcasts(private val context: Application) {
     }
 
     private fun refreshRunning() {
-        clashRunning = StatusClient(context).currentProfile() != null
+        clashRunning = StatusClient(context).isRunning()
     }
 }

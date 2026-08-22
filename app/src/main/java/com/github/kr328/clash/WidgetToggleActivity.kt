@@ -14,7 +14,7 @@ class WidgetToggleActivity : Activity() {
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
 
-        if (StatusClient(this).currentProfile() != null) {
+        if (StatusClient(this).isRunning()) {
             return finish()
         }
 

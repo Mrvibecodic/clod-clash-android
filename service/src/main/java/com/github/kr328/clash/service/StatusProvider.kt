@@ -11,12 +11,10 @@ class StatusProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         return when (method) {
             METHOD_CURRENT_PROFILE -> {
-                return if (serviceRunning)
-                    Bundle().apply {
-                        putString("name", currentProfile)
-                    }
-                else
-                    null
+                return Bundle().apply {
+                    putBoolean(KEY_RUNNING, serviceRunning)
+                    putString(KEY_NAME, currentProfile)
+                }
             }
             else -> super.call(method, arg, extras)
         }
@@ -59,12 +57,18 @@ class StatusProvider : ContentProvider() {
 
     companion object {
         const val METHOD_CURRENT_PROFILE = "currentProfile"
+        const val KEY_RUNNING = "running"
+        const val KEY_NAME = "name"
 
         private const val CLASH_SERVICE_RUNNING_FILE = "service_running.lock"
 
         var serviceRunning: Boolean = false
             set(value) {
                 field = value
+
+                if (!value) {
+                    currentProfile = null
+                }
 
                 shouldStartClashOnBoot = value
             }

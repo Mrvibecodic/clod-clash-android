@@ -75,7 +75,7 @@ class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
     }
 
     private fun isClashRunning(): Boolean {
-        return StatusClient(this).currentProfile() != null
+        return StatusClient(this).isRunning()
     }
 
     private fun startClash() {

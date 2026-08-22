@@ -15,20 +15,27 @@ class StatusClient(private val context: Context) {
                 .build()
         }
 
-    fun currentProfile(): String? {
+    data class Status(val running: Boolean, val name: String?)
+
+    fun status(): Status {
         return try {
             val result = context.contentResolver.call(
                 uri,
                 StatusProvider.METHOD_CURRENT_PROFILE,
                 null,
                 null
+            ) ?: return Status(running = false, name = null)
+
+            Status(
+                running = result.getBoolean(StatusProvider.KEY_RUNNING),
+                name = result.getString(StatusProvider.KEY_NAME),
             )
-
-            result?.getString("name")
         } catch (e: Exception) {
-            Log.w("Query current profile: $e", e)
+            Log.w("Query clash status: $e", e)
 
-            null
+            Status(running = false, name = null)
         }
     }
+
+    fun isRunning(): Boolean = status().running
 }

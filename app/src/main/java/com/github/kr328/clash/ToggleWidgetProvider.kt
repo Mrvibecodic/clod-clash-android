@@ -92,7 +92,7 @@ class ToggleWidgetProvider : AppWidgetProvider() {
 
     private suspend fun isRunning(context: Context): Boolean {
         return withContext(Dispatchers.IO) {
-            StatusClient(context).currentProfile() != null
+            StatusClient(context).isRunning()
         }
     }
 

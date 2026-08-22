@@ -83,15 +83,15 @@ class TileService : TileService() {
         refreshing?.cancel()
 
         refreshing = scope.launch {
-            val name = withContext(Dispatchers.IO) {
-                StatusClient(this@TileService).currentProfile()
+            val status = withContext(Dispatchers.IO) {
+                StatusClient(this@TileService).status()
             }
 
             if (updateRunning) {
-                clashRunning = name != null
+                clashRunning = status.running
             }
 
-            currentProfile = name ?: ""
+            currentProfile = status.name ?: ""
 
             updateTile()
         }
