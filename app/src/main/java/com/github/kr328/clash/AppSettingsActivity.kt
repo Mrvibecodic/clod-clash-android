@@ -18,7 +18,6 @@ import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -127,8 +126,11 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         try {
             withContext(Dispatchers.IO) {
-                contentResolver.openOutputStream(output)?.use { stream ->
-                    stream.write(backupJson.encodeToString(Backup.serializer(), backup).toByteArray())
+                val stream = contentResolver.openOutputStream(output, "wt")
+                    ?: throw IllegalStateException(output.toString())
+
+                stream.use {
+                    it.write(backupJson.encodeToString(Backup.serializer(), backup).toByteArray())
                 }
             }
 
@@ -160,14 +162,13 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         val wanted = backup.profiles.filter { it.source.isNotBlank() }
 
-        if (wanted.isEmpty()) {
+        if (backup.version > BACKUP_VERSION || wanted.isEmpty()) {
             design.showToast(DesignR.string.clod_backup_invalid, ToastDuration.Long)
 
             return
         }
 
         val known = withProfile { queryAll() }.map { it.source }.toSet()
-        val hasActive = withProfile { queryActive() } != null
 
         var restored = 0
 
@@ -178,16 +179,20 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                 create(Profile.Type.Url, item.name, item.source, secure = item.secure)
             }
 
+            var committed = false
+
             try {
-                withProfile { coroutineScope { commit(uuid) } }
+                if (item.interval > 0) {
+                    withProfile { patch(uuid, item.name, item.source, item.interval, null) }
+                }
+
+                withProfile { commit(uuid) }
+
+                committed = true
 
                 val profile = withProfile { queryByUUID(uuid) } ?: throw IllegalStateException()
 
-                if (item.interval > 0) {
-                    withProfile { patch(uuid, profile.name, profile.source, item.interval, null) }
-                }
-
-                if (item.active && !hasActive) {
+                if (item.active && withProfile { queryActive() } == null) {
                     withProfile { setActive(profile) }
                 }
 
@@ -195,7 +200,9 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             } catch (e: Exception) {
                 Log.w("Restore subscription: $e", e)
 
-                withProfile { release(uuid) }
+                if (!committed) {
+                    withProfile { release(uuid) }
+                }
             }
         }
 
