@@ -276,6 +276,12 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         }
     }
 
+    suspend fun setGroupIcons(icons: Map<String, String>) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(servers = state.servers.copy(icons = icons))
+        }
+    }
+
     suspend fun setProxyGroup(index: Int, now: String, selectable: Boolean, proxies: List<Proxy>) {
         withContext(Dispatchers.Main) {
             val groups = state.servers.groups

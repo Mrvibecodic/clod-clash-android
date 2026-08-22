@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -40,7 +41,9 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.ProxyRow
 import com.github.kr328.clash.design.compose.component.noServersReason
+import com.github.kr328.clash.design.compose.component.GroupIcon
 import com.github.kr328.clash.design.compose.component.SelectorRow
+import com.github.kr328.clash.design.compose.component.rememberGroupIcon
 
 @Composable
 fun ServersTab(
@@ -233,6 +236,9 @@ private fun ChipGroups(state: ServersState, onAction: (MainAction) -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
+                leadingIcon = state.icons[group.name]?.let { icon ->
+                    { GroupIcon(url = icon, size = 18.dp) }
+                },
             )
         }
     }
@@ -245,6 +251,8 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
     val selected = state.groups.getOrNull(state.selected)
 
     Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+        val selectedIcon = rememberGroupIcon(selected?.name?.let { state.icons[it] })
+
         SelectorRow(
             label = stringResource(
                 R.string.clod_group_index,
@@ -253,7 +261,8 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
             ),
             value = selected?.name.orEmpty(),
             onClick = { expanded = true },
-            leading = painterResource(R.drawable.ic_nav_servers),
+            leading = selectedIcon?.let { BitmapPainter(it) }
+                ?: painterResource(R.drawable.ic_nav_servers),
         )
 
         DropdownMenu(
@@ -273,6 +282,9 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                    },
+                    leadingIcon = state.icons[group.name]?.let { icon ->
+                        { GroupIcon(url = icon, size = 20.dp) }
                     },
                     onClick = {
                         expanded = false

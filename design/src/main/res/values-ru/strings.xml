@@ -392,6 +392,8 @@
     <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
     <string name="clod_language_title">Язык</string>
     <string name="clod_language_system">Как в системе</string>
+    <string name="clod_group_icons_title">Иконки групп</string>
+    <string name="clod_group_icons_summary">Показывать значки из подписки рядом с названиями групп</string>
     <string name="clod_access_sub_include">Через VPN (из подписки)</string>
     <string name="clod_access_sub_exclude">Мимо VPN (из подписки)</string>
     <string name="clod_widget_description">Включает и выключает подключение одним нажатием</string>

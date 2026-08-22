@@ -116,6 +116,7 @@ data class ProxyGroupState(
 @Immutable
 data class ServersState(
     val groups: List<ProxyGroupState> = emptyList(),
+    val icons: Map<String, String> = emptyMap(),
     val selected: Int = 0,
     val testing: Boolean = false,
     val offline: Boolean = false,

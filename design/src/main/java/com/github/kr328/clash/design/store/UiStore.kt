@@ -28,6 +28,11 @@ class UiStore(context: Context) {
         defaultValue = true
     )
 
+    var showGroupIcons: Boolean by store.boolean(
+        key = "show_group_icons",
+        defaultValue = true
+    )
+
     var darkMode: DarkMode by store.enum(
         key = "dark_mode",
         defaultValue = DarkMode.Auto,
@@ -101,6 +106,7 @@ class UiStore(context: Context) {
         private val SETTING_KEYS = listOf(
             "enable_vpn",
             "dark_mode",
+            "show_group_icons",
             "hide_app_icon",
             "hide_from_recents",
             "proxy_sort",

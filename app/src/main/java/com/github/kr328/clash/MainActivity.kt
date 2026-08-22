@@ -24,6 +24,7 @@ import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
@@ -500,6 +501,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setProxyGroupNames(names)
 
+        reloadGroupIcons(names)
+
         reloadProxyGroup(selectedGroup)
 
         if (names != healthCheckedGroups) {
@@ -585,6 +588,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         proxyGroupNames = offlineGroups.map { it.name }
         healthCheckedGroups = emptyList()
 
+        setGroupIcons(emptyMap())
+
         if (active?.uuid != offlineProfile) {
             offlineProfile = active?.uuid
             offlineDelays = emptyMap()
@@ -628,6 +633,27 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
+    private suspend fun MainDesign.reloadGroupIcons(names: List<String>) {
+        if (!uiStore.showGroupIcons) {
+            setGroupIcons(emptyMap())
+
+            return
+        }
+
+        val icons = try {
+            withClash { queryProxyGroup(GLOBAL_GROUP, ProxySort.Default) }
+                .proxies
+                .filter { it.isGroup && it.icon.isNotBlank() && it.name in names }
+                .associate { it.name to it.icon }
+        } catch (e: Exception) {
+            Log.w("Query group icons: $e", e)
+
+            emptyMap()
+        }
+
+        setGroupIcons(icons)
+    }
+
     private suspend fun MainDesign.currentGroupDelays(): List<Int> {
         val name = proxyGroupNames.getOrNull(selectedGroup) ?: return emptyList()
 
@@ -660,6 +686,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private companion object {
         private const val DELAY_UNKNOWN = 0xffff
+
+        private const val GLOBAL_GROUP = "GLOBAL"
 
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
 

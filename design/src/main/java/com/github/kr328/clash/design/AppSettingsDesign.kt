@@ -44,6 +44,7 @@ class AppSettingsDesign(
             autoRestart = behavior.autoRestart,
             darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
             language = currentLanguage(),
+            showGroupIcons = uiStore.showGroupIcons,
             hideAppIcon = uiStore.hideAppIcon,
             hideFromRecents = uiStore.hideFromRecents,
             dynamicNotification = srvStore.dynamicNotification,
@@ -88,6 +89,7 @@ class AppSettingsDesign(
             autoRestart = behavior.autoRestart,
             darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
             language = 0,
+            showGroupIcons = uiStore.showGroupIcons,
             hideAppIcon = false,
             hideFromRecents = uiStore.hideFromRecents,
             dynamicNotification = srvStore.dynamicNotification,
@@ -157,6 +159,13 @@ class AppSettingsDesign(
                 state = state.copy(language = action.index)
 
                 applyLanguage(action.index)
+            }
+            is AppSettingsAction.SetShowGroupIcons -> {
+                uiStore.showGroupIcons = action.enabled
+
+                state = state.copy(showGroupIcons = action.enabled)
+
+                requests.trySend(Request.ReCreateAllActivities)
             }
             is AppSettingsAction.SetDarkMode -> {
                 val mode = darkModes.getOrNull(action.index) ?: return

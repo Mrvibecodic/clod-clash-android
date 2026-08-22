@@ -11,6 +11,7 @@ data class Proxy(
     val title: String,
     val subtitle: String,
     val type: String,
+    val icon: String = "",
     val delay: Int,
     var isGroup: Boolean,
 ) : Parcelable {

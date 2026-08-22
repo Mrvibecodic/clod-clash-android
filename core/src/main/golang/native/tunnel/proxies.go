@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"net/url"
 	"sort"
 	"strings"
 
@@ -25,6 +26,7 @@ type Proxy struct {
 	Title    string `json:"title"`
 	Subtitle string `json:"subtitle"`
 	Type     string `json:"type"`
+	Icon     string `json:"icon"`
 	Delay    int    `json:"delay"`
 	IsGroup  bool   `json:"isGroup"`
 }
@@ -189,6 +191,20 @@ func PatchSelector(selector, name string) bool {
 	return true
 }
 
+func httpsIcon(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		return ""
+	}
+
+	return parsed.String()
+}
+
 func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
@@ -228,13 +244,19 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			}
 		}
 
-		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
+		group, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
+
+		icon := ""
+		if isGroup {
+			icon = httpsIcon(group.Icon())
+		}
 
 		result = append(result, &Proxy{
 			Name:     name,
 			Title:    strings.TrimSpace(title),
 			Subtitle: strings.TrimSpace(subtitle),
 			Type:     p.Type().String(),
+			Icon:     icon,
 			Delay:    int(p.LastDelayForTestUrl(testURL)),
 			IsGroup:  isGroup,
 		})
