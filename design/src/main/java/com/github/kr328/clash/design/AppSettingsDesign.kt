@@ -172,8 +172,6 @@ class AppSettingsDesign(
                 uiStore.showGroupIcons = action.enabled
 
                 state = state.copy(showGroupIcons = action.enabled)
-
-                requests.trySend(Request.ReCreateAllActivities)
             }
             is AppSettingsAction.SetDarkMode -> {
                 val mode = darkModes.getOrNull(action.index) ?: return

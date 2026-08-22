@@ -26,12 +26,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -60,11 +63,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.R
@@ -254,6 +259,7 @@ fun MainScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
         bottomBar = {
             if (!wide) {
                 MainBottomBar(state.selectedTab, onAction)
@@ -270,11 +276,7 @@ fun MainScreen(
             ReliabilitySheet(state.reliability, onAction)
         }
 
-        Row(
-            modifier = Modifier
-                .padding(padding)
-                .displayCutoutPadding(),
-        ) {
+        Row(modifier = Modifier.padding(padding)) {
             if (wide) {
                 MainNavigationRail(state.selectedTab, onAction)
             }
@@ -334,7 +336,10 @@ private fun isTelevision(): Boolean {
 
 @Composable
 private fun MainNavigationRail(selected: MainTab, onAction: (MainAction) -> Unit) {
-    NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+    NavigationRail(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        windowInsets = WindowInsets(0, 0, 0, 0),
+    ) {
         MainTab.entries.forEach { tab ->
             val (labelRes, iconRes) = tabLabelAndIcon(tab)
             val active = selected == tab
@@ -428,7 +433,10 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
     LaunchedEffect(television) {
         if (television) {
+            withFrameNanos { }
+
             runCatching { powerFocus.requestFocus() }
+                .onFailure { Log.w("Request power focus: $it") }
         }
     }
 
