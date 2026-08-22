@@ -534,8 +534,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             }
 
             reloadProxyGroup(selectedGroup)
+
+            notifyDelaysUnavailable(currentGroupDelays())
         } catch (e: Exception) {
             Log.w("Health check: $e", e)
+
+            showExceptionToast(e)
         } finally {
             healthChecking = false
 
@@ -561,8 +565,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             }
 
             fillOfflineProxyGroup(selectedGroup)
+
+            notifyDelaysUnavailable(offlineDelays.values.toList())
         } catch (e: Exception) {
             Log.w("Offline health check: $e", e)
+
+            showExceptionToast(e)
         } finally {
             setProxyTesting(false)
         }
@@ -620,6 +628,23 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
+    private suspend fun MainDesign.currentGroupDelays(): List<Int> {
+        val name = proxyGroupNames.getOrNull(selectedGroup) ?: return emptyList()
+
+        return withClash { queryProxyGroup(name, uiStore.proxySort) }
+            .proxies
+            .filter { !it.isGroup }
+            .map { it.delay }
+    }
+
+    private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {
+        if (delays.isEmpty()) return
+
+        if (delays.any { it in 1 until DELAY_UNKNOWN }) return
+
+        showToast(DesignR.string.clod_delay_unavailable, ToastDuration.Long)
+    }
+
     private suspend fun MainDesign.reloadProxyGroup(index: Int) {
         if (offlineGroups.isNotEmpty()) {
             fillOfflineProxyGroup(index)
@@ -634,6 +659,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private companion object {
+        private const val DELAY_UNKNOWN = 0xffff
+
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
 
         private val OFFLINE_SELECTABLE_GROUPS = setOf("select", "url-test", "fallback")

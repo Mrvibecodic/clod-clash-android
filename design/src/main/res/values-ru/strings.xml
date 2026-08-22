@@ -389,6 +389,7 @@
     <string name="clod_profile_error_notify_summary">Показывать уведомление, когда подписка не обновилась</string>
     <string name="clod_profile_update_notify_title">Успешные обновления подписки</string>
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
+    <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
     <string name="clod_access_sub_include">Через VPN (из подписки)</string>
     <string name="clod_access_sub_exclude">Мимо VPN (из подписки)</string>
     <string name="clod_widget_description">Включает и выключает подключение одним нажатием</string>
