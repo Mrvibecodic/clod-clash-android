@@ -66,10 +66,6 @@ class StatusProvider : ContentProvider() {
             set(value) {
                 field = value
 
-                if (!value) {
-                    currentProfile = null
-                }
-
                 shouldStartClashOnBoot = value
             }
         var shouldStartClashOnBoot: Boolean

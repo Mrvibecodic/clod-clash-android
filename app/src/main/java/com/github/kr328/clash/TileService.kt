@@ -91,7 +91,7 @@ class TileService : TileService() {
                 clashRunning = status.running
             }
 
-            currentProfile = status.name ?: ""
+            currentProfile = status.name?.takeIf { status.running } ?: ""
 
             updateTile()
         }
