@@ -95,7 +95,6 @@ fun OverrideSettingsScreen(
                 value = configuration.httpPort?.let { if (it == 0) "" else it.toString() },
                 empty = disabled,
                 numeric = true,
-                blankIsNull = false,
                 valid = ::isPort,
                 onValue = { configuration.httpPort = it?.let { v -> v.toIntOrNull() ?: 0 }; changed() },
             )
@@ -104,7 +103,6 @@ fun OverrideSettingsScreen(
                 value = configuration.socksPort?.let { if (it == 0) "" else it.toString() },
                 empty = disabled,
                 numeric = true,
-                blankIsNull = false,
                 valid = ::isPort,
                 onValue = { configuration.socksPort = it?.let { v -> v.toIntOrNull() ?: 0 }; changed() },
             )
@@ -113,7 +111,6 @@ fun OverrideSettingsScreen(
                 value = configuration.redirectPort?.let { if (it == 0) "" else it.toString() },
                 empty = disabled,
                 numeric = true,
-                blankIsNull = false,
                 valid = ::isPort,
                 onValue = { configuration.redirectPort = it?.let { v -> v.toIntOrNull() ?: 0 }; changed() },
             )
@@ -122,7 +119,6 @@ fun OverrideSettingsScreen(
                 value = configuration.tproxyPort?.let { if (it == 0) "" else it.toString() },
                 empty = disabled,
                 numeric = true,
-                blankIsNull = false,
                 valid = ::isPort,
                 onValue = { configuration.tproxyPort = it?.let { v -> v.toIntOrNull() ?: 0 }; changed() },
             )
@@ -131,7 +127,6 @@ fun OverrideSettingsScreen(
                 value = configuration.mixedPort?.let { if (it == 0) "" else it.toString() },
                 empty = disabled,
                 numeric = true,
-                blankIsNull = false,
                 valid = ::isPort,
                 onValue = { configuration.mixedPort = it?.let { v -> v.toIntOrNull() ?: 0 }; changed() },
             )
@@ -423,4 +418,4 @@ fun OverrideSettingsScreen(
     }
 }
 
-private fun isPort(text: String): Boolean = text.toIntOrNull()?.let { it in 1..65535 } == true
+private fun isPort(text: String): Boolean = text.toIntOrNull()?.let { it in 0..65535 } == true
