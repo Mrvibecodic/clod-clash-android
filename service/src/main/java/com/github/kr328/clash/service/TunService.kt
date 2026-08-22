@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.log.Log
@@ -111,6 +112,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         return super.onStartCommand(intent, flags, startId)
     }
 
+    override fun onRevoke() {
+        Log.i("TunService revoked")
+
+        stopSelf()
+    }
+
     override fun onDestroy() {
         TunModule.requestStop()
 
@@ -121,6 +128,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         sendClashStopped(reason)
 
         cancelAndJoinBlocking()
+
+        NotificationManagerCompat.from(this).cancel(R.id.nf_clash_status)
 
         Log.i("TunService destroyed: ${reason ?: "successfully"}")
 
