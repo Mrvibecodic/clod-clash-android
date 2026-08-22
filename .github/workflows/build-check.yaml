@@ -7,12 +7,15 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   BuildDebug:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       
       - name: Checkout submodules
         run: git submodule update --init --recursive --force
@@ -23,26 +26,28 @@ jobs:
           for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 < "$p"; done
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: "temurin"
           java-version: 21
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
-        with:
-          go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
-          go-version: '1.26'
+        run: .github/scripts/setup-go.sh
 
       - name: Apply Patches
         run: |
           cd $(go env GOROOT)
           for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
 
-      - uses: actions/cache@v5
+      - name: Configure live diagnostics fingerprint
+        env:
+          DIAGNOSTICS_FINGERPRINT: ${{ secrets.DIAGNOSTICS_FINGERPRINT }}
+        run: python3 .github/scripts/configure-diagnostics.py
+
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: |
             ~/.cache/go-build
@@ -50,12 +55,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
-      - name: Update CA
-        run: |
-          sudo apt-get update && sudo apt-get install ca-certificates
-          sudo update-ca-certificates
-          cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
       # - name: Signing properties
       #   env:
@@ -67,19 +66,25 @@ jobs:
       #     echo keystore.password="$SIGNING_STORE_PASSWORD" > signing.properties
       #     echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
-      # Разбор заголовков панели живёт в Go, и проверяется он тоже на Go —
-      # самым первым шагом: пакет `native/config/panel` не зависит ни от ядра,
-      # ни от Android, собирается из одной стандартной библиотеки за секунду,
-      # и ждать ради него Gradle с NDK незачем.
-      #
-      # Именно этот пакет, а не `native/config` целиком: соседи по каталогу
-      # тянут `native/app`, а тот зовёт mihomo-функции из файла с тегами
-      # `android && cmfa` — на хост-платформе их нет, и сборка падает.
+      # Host-safe contract tests run from the real cfa module. The full native
+      # package is Android-only, so diagnostics and controller processing use
+      # explicit source sets; panel remains an ordinary package test.
       - name: Go unit tests
         id: go-tests
         if: success()
         working-directory: core/src/main/golang
-        run: go test ./native/config/panel/...
+        run: |
+          go test ./native/diagnostics.go ./native/diagnostics_test.go
+          go test \
+            ./native/config/controller_access.go \
+            ./native/config/process.go \
+            ./native/config/process_test.go \
+            ./native/config/override.go \
+            ./native/config/defaults.go \
+            ./native/config/provider.go \
+            ./native/config/sentinel.go \
+            ./native/config/panel.go
+          go test ./native/config/panel/...
 
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная
@@ -98,8 +103,19 @@ jobs:
           core:testStandardDebugUnitTest
           design:testStandardDebugUnitTest
 
+      - name: Verify release signing fails closed
+        run: |
+          set -euo pipefail
+          tasks=$(mktemp)
+          trap 'rm -f "$tasks"' EXIT
+          ./gradlew --no-daemon -q app:tasks --all > "$tasks"
+          if grep -Fq 'assembleStandardRelease' "$tasks"; then
+            echo "::error::Unsigned application release variant is available"
+            exit 1
+          fi
+
       - name: Upload Test Report
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: ${{ !cancelled() && steps.unit-tests.outcome == 'failure' }}
         with:
           name: unit-test-report
@@ -116,6 +132,8 @@ jobs:
 
       - name: Build
         if: success()
+        env:
+          DIAGNOSTICS_ENDPOINT: ${{ vars.DIAGNOSTICS_ENDPOINT }}
         run: ./gradlew --no-daemon app:assembleStandardDebug -Pclod.abi=arm64-v8a
 
       # Один артефакт вместо четырёх: сборка идёт по одной ABI (-Pclod.abi=arm64-v8a),
@@ -123,10 +141,10 @@ jobs:
       # apk/alpha/release/* — этого каталога после ребрендинга не существует,
       # и артефакт не выкладывался вообще.
       - name: Upload Artifact (debug, arm64-v8a)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: ${{ success() }}
         with:
           name: clodclash-debug-arm64-v8a
           if-no-files-found: error
           path: |
-            app/build/outputs/apk/standard/debug/*.apk
+            app/build/outputs/apk/standard/debug/*arm64-v8a*.apk

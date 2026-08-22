@@ -5,7 +5,7 @@ on:
     tags:
       - 'android-v*'
 
-permissions: write-all
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -18,11 +18,13 @@ jobs:
   check_version:
     name: Сверка версии
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.v.outputs.version }}
       version_code: ${{ steps.v.outputs.version_code }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Тег должен совпадать с versionName в build.gradle.kts
         id: v
@@ -46,6 +48,8 @@ jobs:
     name: Черновик релиза
     needs: check_version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       release_id: ${{ steps.draft.outputs.release_id }}
     steps:
@@ -82,8 +86,10 @@ jobs:
     name: Сборка
     needs: [check_version, prepare_release]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
 
@@ -95,24 +101,31 @@ jobs:
           cd core/src/foss/golang/clash
           for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 < "$p"; done
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
-        with:
-          go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
-          go-version: '1.26'
+      # Go — форк MetaCubeX с двумя патчами GOROOT (см. .github/patch).
+      # Без них ломаются armeabi-v7a на старых ядрах и pidfd на Android.
+      - name: Настроить Go
+        run: .github/scripts/setup-go.sh
 
       - name: Патчи Go-тулчейна
         run: |
           cd $(go env GOROOT)
           for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
 
-      - uses: actions/cache@v5
+      - name: Настроить fingerprint live-диагностики
+        env:
+          DIAGNOSTICS_FINGERPRINT: ${{ secrets.DIAGNOSTICS_FINGERPRINT }}
+        run: python3 .github/scripts/configure-diagnostics.py
+
+      # Кеш Go. Помним общее правило GitHub: кеш не переживает тег,
+      # поэтому релизная сборка всегда холодная — это ожидаемо, а не поломка.
+      - uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: |
             ~/.cache/go-build
@@ -126,29 +139,31 @@ jobs:
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
+      # Signing material exists only for the release build and is removed even
+      # when Gradle fails. Every input is required; there is no debug-key fallback.
       - name: Ключ подписи из секретов
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
-            echo "::error::Секрет KEYSTORE_BASE64 не задан — релиз нельзя подписать"
-            exit 1
-          fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          {
-            echo "keystore.path=$RUNNER_TEMP/release.keystore"
-            echo "keystore.password=$KEYSTORE_PASSWORD"
-            echo "key.alias=$KEY_ALIAS"
-            echo "key.password=$KEY_PASSWORD"
-          } > signing.properties
+        run: .github/scripts/configure-signing.sh
 
       - name: Сборка релиза
+        env:
+          DIAGNOSTICS_ENDPOINT: ${{ vars.DIAGNOSTICS_ENDPOINT }}
         run: ./gradlew --no-daemon app:assembleStandardRelease
 
+      - name: Удалить signing inputs
+        if: always()
+        run: rm -f signing.properties "$RUNNER_TEMP/release.keystore"
+
+      - name: Проверить подпись APK
+        run: .github/scripts/verify-apk-signatures.sh app/build/outputs/apk/standard/release
+
+      # 16 KB page size: с NDK r29 выравнивание получается само, но "само" —
+      # это не гарантия. Проверяем явно, иначе на новых устройствах библиотеки
+      # просто не загрузятся, а узнаем мы об этом от пользователей.
       - name: Проверка выравнивания 16 KB
         run: |
           set -euo pipefail
@@ -252,8 +267,10 @@ jobs:
     name: Публикация
     needs: [check_version, prepare_release, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Проверить, что релиз укомплектован
         env:

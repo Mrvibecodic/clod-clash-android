@@ -2,6 +2,7 @@
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.BaseExtension
+import groovy.json.JsonOutput
 import java.net.URL
 import java.util.*
 
@@ -106,6 +107,16 @@ subprojects {
                 dimension = flavorDimensionList[0]
 
                 buildConfigField("boolean", "PREMIUM", "Boolean.parseBoolean(\"false\")")
+                buildConfigField(
+                    "boolean",
+                    "DIAGNOSTICS_AVAILABLE",
+                    rootProject.file("core/src/main/golang/native/diagnostics_credentials_generated.go").exists().toString(),
+                )
+                buildConfigField(
+                    "String",
+                    "DIAGNOSTICS_ENDPOINT",
+                    JsonOutput.toJson(System.getenv("DIAGNOSTICS_ENDPOINT").orEmpty()),
+                )
 
                 resValue("string", "launch_name", "Clod Clash")
                 resValue("string", "application_name", "Clod Clash")
@@ -120,16 +131,25 @@ subprojects {
 
         signingConfigs {
             val keystore = rootProject.file("signing.properties")
-            if (keystore.exists()) {
+            if (isApp && keystore.exists()) {
                 create("release") {
                     val prop = Properties().apply {
                         keystore.inputStream().use(this::load)
                     }
 
-                    storeFile = rootProject.file(prop.getProperty("keystore.path") ?: "release.keystore")
-                    storePassword = prop.getProperty("keystore.password")!!
-                    keyAlias = prop.getProperty("key.alias")!!
-                    keyPassword = prop.getProperty("key.password")!!
+                    fun requiredProperty(name: String): String =
+                        prop.getProperty(name)?.takeIf(String::isNotBlank)
+                            ?: throw GradleException("Missing release signing property: $name")
+
+                    val releaseKeystore = rootProject.file(requiredProperty("keystore.path"))
+                    if (!releaseKeystore.isFile) {
+                        throw GradleException("Release keystore does not exist")
+                    }
+
+                    storeFile = releaseKeystore
+                    storePassword = requiredProperty("keystore.password")
+                    keyAlias = requiredProperty("key.alias")
+                    keyPassword = requiredProperty("key.password")
                 }
             }
         }
@@ -138,7 +158,7 @@ subprojects {
             named("release") {
                 isMinifyEnabled = isApp
                 isShrinkResources = isApp
-                signingConfig = signingConfigs.findByName("release") ?: signingConfigs["debug"]
+                if (isApp) signingConfig = signingConfigs.findByName("release")
                 proguardFiles(
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"
@@ -151,6 +171,14 @@ subprojects {
 
         if (isApp) {
             this as AppExtension
+
+            // A release variant without protected signing input would produce an
+            // unsigned artifact. Do not create that variant at all.
+            variantFilter {
+                if (buildType.name == "release" && !rootProject.file("signing.properties").isFile) {
+                    ignore = true
+                }
+            }
 
             splits {
                 abi {

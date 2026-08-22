@@ -3,6 +3,9 @@
     <include
         domain="sharedpref"
         path="." />
+    <exclude
+        domain="sharedpref"
+        path="diagnostics_credentials.xml" />
     <include
         domain="database"
         path="." />

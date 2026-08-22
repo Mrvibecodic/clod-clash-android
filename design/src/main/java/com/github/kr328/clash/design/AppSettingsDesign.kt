@@ -8,6 +8,8 @@ import androidx.core.os.LocaleListCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.common.model.DiagnosticsState
+import com.github.kr328.clash.design.BuildConfig
 import com.github.kr328.clash.design.compose.screen.AppSettingsAction
 import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
 import com.github.kr328.clash.design.compose.screen.AppSettingsState
@@ -15,7 +17,11 @@ import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.service.store.DiagnosticsCredential
+import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.normalizeDiagnosticsEndpoint
+import com.github.kr328.clash.service.util.sendDiagnosticsChanged
 import kotlinx.coroutines.launch
 
 class AppSettingsDesign(
@@ -27,6 +33,7 @@ class AppSettingsDesign(
     private val onHideIconChange: (hide: Boolean) -> Unit,
     private val isRunning: () -> Boolean,
     private val onReset: () -> Unit,
+    diagnosticsState: DiagnosticsState,
 ) : Design<AppSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ReCreateAllActivities : Request
@@ -38,6 +45,8 @@ class AppSettingsDesign(
     }
 
     private val darkModes = DarkMode.entries
+    private val credentials = DiagnosticsCredentialStore(context)
+    private val diagnosticsEndpoint = normalizeDiagnosticsEndpoint(srvStore.diagnosticsEndpoint).orEmpty()
 
     private val languageTags = listOf("", "en", "ru")
 
@@ -57,6 +66,12 @@ class AppSettingsDesign(
             profileUpdateNotifications = srvStore.notifyProfileUpdates,
             notificationsBlocked = notificationsBlocked(),
             resetEnabled = !running,
+            diagnosticsEnabled = diagnosticsState != DiagnosticsState.STOPPED,
+            diagnosticsAvailable = BuildConfig.DIAGNOSTICS_AVAILABLE,
+            diagnosticsConfigured = credentials.read() != null,
+            diagnosticsEndpoint = diagnosticsEndpoint,
+            vpnServiceRunning = running && uiStore.enableVpn,
+            diagnosticsState = diagnosticsState,
         ),
     )
 
@@ -83,6 +98,8 @@ class AppSettingsDesign(
 
         uiStore.reset()
         srvStore.reset()
+        credentials.clear()
+        context.sendDiagnosticsChanged(false)
         onReset()
 
         applyLanguage(0)
@@ -100,6 +117,10 @@ class AppSettingsDesign(
             profileErrorNotifications = srvStore.notifyProfileErrors,
             profileUpdateNotifications = srvStore.notifyProfileUpdates,
             notificationsBlocked = notificationsBlocked(),
+            diagnosticsEnabled = false,
+            diagnosticsConfigured = false,
+            diagnosticsEndpoint = normalizeDiagnosticsEndpoint(srvStore.diagnosticsEndpoint).orEmpty(),
+            diagnosticsState = DiagnosticsState.STOPPED,
         )
 
         requests.trySend(Request.ReCreateAllActivities)
@@ -229,6 +250,69 @@ class AppSettingsDesign(
 
                 askNotificationsIfNeeded(action.enabled)
             }
+            is AppSettingsAction.SetDiagnostics -> {
+                if (
+                    action.enabled &&
+                    (
+                        !state.diagnosticsAvailable ||
+                            !state.diagnosticsConfigured ||
+                            state.diagnosticsEndpoint.isBlank() ||
+                            !state.vpnServiceRunning
+                    )
+                ) return
+
+                if (action.enabled && credentials.read() == null) return
+                state = state.copy(diagnosticsEnabled = action.enabled)
+                context.sendDiagnosticsChanged(action.enabled)
+            }
+            is AppSettingsAction.SaveDiagnosticsCredential -> {
+                if (state.vpnServiceRunning) return
+                val endpoint = normalizeDiagnosticsEndpoint(action.endpoint) ?: return
+                val replacesCredentials = action.username.isNotBlank() ||
+                    action.password.isNotBlank() ||
+                    action.controllerSecret.isNotBlank() ||
+                    action.remotePort >= 0
+                if (!replacesCredentials && !state.diagnosticsConfigured) return
+
+                val replacement = if (replacesCredentials) {
+                    DiagnosticsCredential.create(
+                        action.username,
+                        action.password,
+                        action.controllerSecret,
+                        action.remotePort,
+                    ) ?: return
+                } else {
+                    null
+                }
+
+                val saved = replacement == null || credentials.save(replacement)
+                if (!saved) {
+                    state = state.copy(diagnosticsEnabled = false)
+                    context.sendDiagnosticsChanged(false)
+                    return
+                }
+
+                srvStore.diagnosticsEndpoint = endpoint
+                state = state.copy(
+                    diagnosticsEnabled = false,
+                    diagnosticsConfigured = credentials.read() != null,
+                    diagnosticsEndpoint = endpoint,
+                )
+                context.sendDiagnosticsChanged(false)
+            }
+            AppSettingsAction.ClearDiagnosticsCredential -> {
+                if (state.vpnServiceRunning) return
+                credentials.clear()
+                state = state.copy(diagnosticsEnabled = false, diagnosticsConfigured = false)
+                context.sendDiagnosticsChanged(false)
+            }
         }
+    }
+
+    fun updateDiagnosticsStatus(status: DiagnosticsState) {
+        state = state.copy(
+            diagnosticsEnabled = status != DiagnosticsState.STOPPED,
+            diagnosticsState = status,
+        )
     }
 }

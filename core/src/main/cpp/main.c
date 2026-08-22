@@ -10,6 +10,8 @@
 
 #include "version.h"
 
+#define CONTROLLER_CONFIGURATION_SECRET_INVALID 2
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeInit(JNIEnv *env, jobject thiz,
                                                           jstring home,
@@ -26,6 +28,61 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeReset(JNIEnv *env, jobject 
     TRACE_METHOD();
 
     reset();
+}
+
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeStartDiagnostics(JNIEnv *env, jobject thiz,
+                                                                      jstring endpoint,
+                                                                      jstring tunnel_auth,
+                                                                      jstring controller_secret,
+                                                                      jint remote_port) {
+    TRACE_METHOD();
+
+    if (endpoint == NULL || tunnel_auth == NULL || controller_secret == NULL) {
+        stopDiagnostics();
+        return;
+    }
+
+    scoped_string _endpoint = get_string(endpoint);
+    scoped_string _tunnel_auth = get_string(tunnel_auth);
+    scoped_string _controller_secret = get_string(controller_secret);
+    startDiagnostics(_endpoint, _tunnel_auth, _controller_secret, remote_port);
+}
+
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeStopDiagnostics(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    stopDiagnostics();
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryDiagnostics(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    scoped_string response = queryDiagnostics();
+
+    return new_string(response);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeUseLocalControllerAccess(JNIEnv *env,
+                                                                              jobject thiz) {
+    TRACE_METHOD();
+
+    return (jint) useLocalControllerAccess();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeUseDiagnosticsControllerAccess(
+        JNIEnv *env, jobject thiz, jstring secret) {
+    TRACE_METHOD();
+
+    if (secret == NULL)
+        return CONTROLLER_CONFIGURATION_SECRET_INVALID;
+
+    scoped_string _secret = get_string(secret);
+    return (jint) useDiagnosticsControllerAccess(_secret);
 }
 
 JNIEXPORT void JNICALL

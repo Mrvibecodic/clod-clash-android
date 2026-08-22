@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.model.DiagnosticsState
 import java.util.*
 
 class Broadcasts(private val context: Application) {
@@ -19,9 +20,11 @@ class Broadcasts(private val context: Application) {
         fun onProfileUpdateCompleted(uuid: UUID?)
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
         fun onProfileLoaded()
+        fun onDiagnosticsStatusChanged(status: DiagnosticsState)
     }
 
     var clashRunning: Boolean = false
+    var diagnosticsState: DiagnosticsState = DiagnosticsState.STOPPED
 
     private var registered = false
     private val receivers = mutableListOf<Observer>()
@@ -72,6 +75,12 @@ class Broadcasts(private val context: Application) {
                         it.onProfileLoaded()
                     }
                 }
+                Intents.ACTION_DIAGNOSTICS_STATUS -> {
+                    diagnosticsState = intent.getStringExtra(Intents.EXTRA_DIAGNOSTICS_STATUS)
+                        ?.let { runCatching { DiagnosticsState.valueOf(it) }.getOrNull() }
+                        ?: DiagnosticsState.STOPPED
+                    receivers.forEach { it.onDiagnosticsStatusChanged(diagnosticsState) }
+                }
             }
         }
     }
@@ -95,6 +104,7 @@ class Broadcasts(private val context: Application) {
                     addAction(Intents.ACTION_PROFILE_UPDATE_COMPLETED)
                     addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
                     addAction(Intents.ACTION_PROFILE_LOADED)
+                    addAction(Intents.ACTION_DIAGNOSTICS_STATUS)
                 })
 
                 registered = true
