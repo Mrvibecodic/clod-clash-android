@@ -118,7 +118,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             if (clashRunning && proxyGroupNames.isNotEmpty() &&
                                 SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
                             ) {
-                                launch { design.runHealthCheck() }
+                                launch { design.runHealthCheck(manual = false) }
                             }
 
                             if (awaitingInstallPermission &&
@@ -197,7 +197,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
                             }
                         }
-                        is MainDesign.Request.UrlTest -> launch { design.runHealthCheck() }
+                        is MainDesign.Request.UrlTest ->
+                            launch { design.runHealthCheck(manual = true) }
                         is MainDesign.Request.ToggleFavorite -> {
                             favoritesProfile?.let { profile ->
                                 val current = uiStore.favorites(profile)
@@ -469,6 +470,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var healthCheckedGroups: List<String> = emptyList()
 
+    private var iconGroups: Pair<UUID?, List<String>>? = null
+
     private var healthChecking = false
 
     private var lastHealthCheckAt = 0L
@@ -508,17 +511,17 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (names != healthCheckedGroups) {
             healthCheckedGroups = names
 
-            launch { runHealthCheck() }
+            launch { runHealthCheck(manual = false) }
         }
     }
 
-    private suspend fun MainDesign.runHealthCheck() {
+    private suspend fun MainDesign.runHealthCheck(manual: Boolean) {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
         lastHealthCheckAt = SystemClock.elapsedRealtime()
 
         if (offlineGroups.isNotEmpty()) {
-            runOfflineHealthCheck()
+            runOfflineHealthCheck(manual)
 
             return
         }
@@ -536,13 +539,19 @@ class MainActivity : BaseActivity<MainDesign>() {
                 }
             }
 
-            reloadProxyGroup(selectedGroup)
+            val delays = reloadProxyGroup(selectedGroup)
 
-            notifyDelaysUnavailable(currentGroupDelays())
+            if (manual) {
+                notifyDelaysUnavailable(delays)
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w("Health check: $e", e)
 
-            showExceptionToast(e)
+            if (manual) {
+                showExceptionToast(e)
+            }
         } finally {
             healthChecking = false
 
@@ -550,7 +559,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun MainDesign.runOfflineHealthCheck() {
+    private suspend fun MainDesign.runOfflineHealthCheck(manual: Boolean) {
         val active = withProfile { queryActive() } ?: return
 
         setProxyTesting(true)
@@ -569,11 +578,17 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             fillOfflineProxyGroup(selectedGroup)
 
-            notifyDelaysUnavailable(offlineDelays.values.toList())
+            if (manual) {
+                notifyDelaysUnavailable(offlineDelays.values.toList())
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w("Offline health check: $e", e)
 
-            showExceptionToast(e)
+            if (manual) {
+                showExceptionToast(e)
+            }
         } finally {
             setProxyTesting(false)
         }
@@ -587,6 +602,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         offlineGroups = panel?.groups.orEmpty()
         proxyGroupNames = offlineGroups.map { it.name }
         healthCheckedGroups = emptyList()
+
+        iconGroups = null
 
         setGroupIcons(emptyMap())
 
@@ -635,6 +652,20 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.reloadGroupIcons(names: List<String>) {
         if (!uiStore.showGroupIcons) {
+            iconGroups = null
+
+            setGroupIcons(emptyMap())
+
+            return
+        }
+
+        val key = withProfile { queryActive() }?.uuid to names
+
+        if (key == iconGroups) return
+
+        if (names.size == 1 && names.first() == GLOBAL_GROUP) {
+            iconGroups = key
+
             setGroupIcons(emptyMap())
 
             return
@@ -648,19 +679,16 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: Exception) {
             Log.w("Query group icons: $e", e)
 
-            emptyMap()
+            iconGroups = null
+
+            setGroupIcons(emptyMap())
+
+            return
         }
 
+        iconGroups = key
+
         setGroupIcons(icons)
-    }
-
-    private suspend fun MainDesign.currentGroupDelays(): List<Int> {
-        val name = proxyGroupNames.getOrNull(selectedGroup) ?: return emptyList()
-
-        return withClash { queryProxyGroup(name, uiStore.proxySort) }
-            .proxies
-            .filter { !it.isGroup }
-            .map { it.delay }
     }
 
     private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {
@@ -671,17 +699,19 @@ class MainActivity : BaseActivity<MainDesign>() {
         showToast(DesignR.string.clod_delay_unavailable, ToastDuration.Long)
     }
 
-    private suspend fun MainDesign.reloadProxyGroup(index: Int) {
+    private suspend fun MainDesign.reloadProxyGroup(index: Int): List<Int> {
         if (offlineGroups.isNotEmpty()) {
             fillOfflineProxyGroup(index)
 
-            return
+            return offlineDelays.values.toList()
         }
 
-        val name = proxyGroupNames.getOrNull(index) ?: return
+        val name = proxyGroupNames.getOrNull(index) ?: return emptyList()
         val group = withClash { queryProxyGroup(name, uiStore.proxySort) }
 
         setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
+
+        return group.proxies.filter { !it.isGroup }.map { it.delay }
     }
 
     private companion object {
