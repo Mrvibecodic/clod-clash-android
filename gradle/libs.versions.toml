@@ -1,5 +1,6 @@
 [versions]
 agp = "8.13.2"
+r8 = "9.2.25"
 kotlin = "2.4.10"
 ksp = "2.3.11"
 golang = "1.0.4"
@@ -23,6 +24,7 @@ lifecycleCompose = "2.10.0"
 navigationCompose = "2.9.8"
 
 [libraries]
+build-r8 = { module = "com.android.tools:r8", version.ref = "r8" }
 build-android = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 build-kotlin-common = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 build-kotlin-serialization = { module = "org.jetbrains.kotlin:kotlin-serialization", version.ref = "kotlin" }

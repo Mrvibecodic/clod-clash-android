@@ -12,6 +12,7 @@ buildscript {
         maven("https://raw.githubusercontent.com/MetaCubeX/maven-backup/main/releases")
     }
     dependencies {
+        classpath(libs.build.r8)
         classpath(libs.build.android)
         classpath(libs.build.kotlin.common)
         classpath(libs.build.kotlin.serialization)
