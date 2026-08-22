@@ -96,6 +96,7 @@
 
     <string name="route_system_traffic">Route System Traffic</string>
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
+    <string name="clod_local_proxy_summary">Traffic goes through the local proxy %1$s</string>
 
     <string name="vpn_service_options">VpnService Options</string>
     <string name="bypass_private_network">Bypass Private Network</string>

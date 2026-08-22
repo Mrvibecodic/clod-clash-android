@@ -17,6 +17,7 @@ class NetworkSettingsDesign(
     private val uiStore: UiStore,
     private val srvStore: ServiceStore,
     running: Boolean,
+    localProxyPort: Int,
 ) : Design<NetworkSettingsDesign.Request>(context) {
     sealed interface Request {
         data object Back : Request
@@ -37,6 +38,7 @@ class NetworkSettingsDesign(
             editable = !running,
             resetConnections = srvStore.resetConnectionsOnNetworkChange,
             keepAwake = srvStore.keepAwake,
+            localProxyPort = localProxyPort,
         ),
     )
 

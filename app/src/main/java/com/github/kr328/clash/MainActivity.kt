@@ -24,6 +24,7 @@ import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
@@ -722,8 +723,6 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         private val DELAYS_SERIALIZER = MapSerializer(String.serializer(), Int.serializer())
 
-        private const val LOCAL_PROXY_PORT = 7890
-
         private const val HEALTH_STALE_MS = 300_000L
     }
 
@@ -912,7 +911,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         setUpdateChecking(true)
 
         val available = try {
-            UpdatePrompt.check(this@MainActivity, manual, LOCAL_PROXY_PORT)
+            UpdatePrompt.check(this@MainActivity, manual, activeLocalProxyPort())
         } finally {
             setUpdateChecking(false)
         }
@@ -952,7 +951,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setUpdateProgress(-1f)
 
-        val result = Updater.download(this@MainActivity, available, LOCAL_PROXY_PORT) { received, total ->
+        val result = Updater.download(this@MainActivity, available, activeLocalProxyPort()) { received, total ->
             if (total > 0) {
                 launch { setUpdateProgress(received.toFloat() / total) }
             }
@@ -1029,7 +1028,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         setRoutingDataUpdating(true)
 
         try {
-            val geo = GeoData.update(this@MainActivity, LOCAL_PROXY_PORT)
+            val geo = GeoData.update(this@MainActivity, activeLocalProxyPort())
 
             val providers = runCatching {
                 updatableProviders().forEach {

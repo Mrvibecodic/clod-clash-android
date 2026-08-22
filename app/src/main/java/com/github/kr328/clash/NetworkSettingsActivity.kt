@@ -2,6 +2,7 @@ package com.github.kr328.clash
 
 import com.github.kr328.clash.design.NetworkSettingsDesign
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.activeLocalProxyPort
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 
@@ -12,6 +13,7 @@ class NetworkSettingsActivity : BaseActivity<NetworkSettingsDesign>() {
             uiStore,
             ServiceStore(this),
             clashRunning,
+            activeLocalProxyPort() ?: 0,
         )
 
         setContentDesign(design)

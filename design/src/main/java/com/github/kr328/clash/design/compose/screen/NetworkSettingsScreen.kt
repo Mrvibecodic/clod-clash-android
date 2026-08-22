@@ -40,6 +40,7 @@ data class NetworkSettingsState(
     val editable: Boolean = true,
     val resetConnections: Boolean = true,
     val keepAwake: Boolean = false,
+    val localProxyPort: Int = 0,
 )
 
 sealed interface NetworkSettingsAction {
@@ -79,7 +80,14 @@ fun NetworkSettingsScreen(
 
             SwitchRow(
                 title = stringResource(R.string.route_system_traffic),
-                subtitle = stringResource(R.string.routing_via_vpn_service),
+                subtitle = if (!state.enableVpn && state.localProxyPort > 0) {
+                    stringResource(
+                        R.string.clod_local_proxy_summary,
+                        "127.0.0.1:${state.localProxyPort}",
+                    )
+                } else {
+                    stringResource(R.string.routing_via_vpn_service)
+                },
                 icon = painterResource(R.drawable.ic_baseline_vpn_lock),
                 checked = state.enableVpn,
                 enabled = state.editable,

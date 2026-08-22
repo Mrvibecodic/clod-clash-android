@@ -94,6 +94,7 @@
 
     <string name="route_system_traffic">Маршрутизировать системный трафик</string>
     <string name="routing_via_vpn_service">Автоматически маршрутизировать весь системный трафик через VPN</string>
+    <string name="clod_local_proxy_summary">Трафик идёт через локальный прокси %1$s</string>
 
     <string name="vpn_service_options">Настройки VPN</string>
     <string name="bypass_private_network">Игнорировать частные сети</string>

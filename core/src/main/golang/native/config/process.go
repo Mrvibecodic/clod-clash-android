@@ -50,15 +50,45 @@ func patchExternalController(cfg *config.RawConfig, _ string) error {
 	return nil
 }
 
-const localProxyPort = 7890
+const defaultMixedPort = 7890
+
+const mixedPortKey = "mixed-port"
+
+func portOccupied(cfg *config.RawConfig, port int) bool {
+	return cfg.Port == port ||
+		cfg.SocksPort == port ||
+		cfg.RedirPort == port ||
+		cfg.TProxyPort == port
+}
+
+func mixedPortOverridden(slot OverrideSlot) bool {
+	var keys map[string]json.RawMessage
+
+	if err := json.Unmarshal([]byte(ReadOverride(slot)), &keys); err != nil {
+		return false
+	}
+
+	_, ok := keys[mixedPortKey]
+
+	return ok
+}
 
 func patchGeneral(cfg *config.RawConfig, profileDir string) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
 
-	cfg.MixedPort = localProxyPort
-	cfg.Port = 0
-	cfg.SocksPort = 0
+	if cfg.MixedPort == 0 && cfg.Port == 0 &&
+		!portOccupied(cfg, defaultMixedPort) &&
+		!mixedPortOverridden(OverrideSlotPersist) &&
+		!mixedPortOverridden(OverrideSlotSession) {
+		cfg.MixedPort = defaultMixedPort
+	}
+
+	panel.WriteInboundPrefs(profileDir, panel.InboundPrefs{
+		MixedPort: cfg.MixedPort,
+		HttpPort:  cfg.Port,
+	})
+
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
 		cfg.ExternalUI = profileDir + "/ui"
 	}
