@@ -659,7 +659,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
-        val key = withProfile { queryActive() }?.uuid to names
+        val key = favoritesProfile to names
 
         if (key == iconGroups) return
 

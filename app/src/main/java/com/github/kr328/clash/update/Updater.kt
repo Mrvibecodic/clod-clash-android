@@ -181,7 +181,7 @@ object Updater {
         target: File,
         onProgress: (Long, Long) -> Unit,
     ): String? = request(url, mixedPort) { connection ->
-        val total = connection.contentLengthLong
+        val total = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteArray(BUFFER_SIZE)
         var received = 0L
