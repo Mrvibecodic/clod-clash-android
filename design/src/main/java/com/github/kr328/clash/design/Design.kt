@@ -5,6 +5,7 @@ import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,6 +16,8 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.compose.component.NoticeHost
 import com.github.kr328.clash.design.compose.component.NoticeState
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
+import com.github.kr328.clash.design.model.DarkMode
+import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,12 +32,20 @@ abstract class Design<R>(val context: Context) :
 
     val notices: NoticeState = NoticeState()
 
+    private val designUiStore by lazy { UiStore(context) }
+
     protected fun composeRoot(
         noticeInset: Dp = 0.dp,
         content: @Composable () -> Unit,
     ): View = ComposeView(context).apply {
         setContent {
-            ClodClashTheme {
+            val darkTheme = when (designUiStore.darkMode) {
+                DarkMode.Auto -> isSystemInDarkTheme()
+                DarkMode.ForceLight -> false
+                DarkMode.ForceDark -> true
+            }
+
+            ClodClashTheme(darkTheme = darkTheme) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     content()
 

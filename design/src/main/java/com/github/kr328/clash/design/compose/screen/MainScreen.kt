@@ -795,8 +795,8 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                         IconButton(
                             onClick = { expanded = !expanded },
                             colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                contentColor = MaterialTheme.colorScheme.primary,
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             ),
                             modifier = Modifier.size(32.dp),
                         ) {
