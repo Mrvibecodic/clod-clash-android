@@ -69,6 +69,10 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 		return []string{}
 	}
 
+	if mode == tunnel.Global {
+		return []string{"GLOBAL"}
+	}
+
 	providers := global.Providers()
 	if len(providers) == 0 {
 		return []string{}
@@ -77,12 +81,7 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 	proxies := providers[0].Proxies()
 	result := make([]string, 0, len(proxies)+1)
 
-	if mode == tunnel.Global {
-		result = append(result, "GLOBAL")
-	}
-
-	selectable := make([]string, 0, len(proxies)+1)
-	selectable = append(selectable, result...)
+	selectable := make([]string, 0, len(proxies))
 
 	for _, p := range proxies {
 		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
