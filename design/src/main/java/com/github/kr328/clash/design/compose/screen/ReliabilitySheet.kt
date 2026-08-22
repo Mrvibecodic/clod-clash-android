@@ -2,6 +2,8 @@ package com.github.kr328.clash.design.compose.screen
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -107,7 +109,11 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
         onDismissRequest = { onAction(MainAction.ReliabilityDismiss) },
         sheetState = sheetState,
     ) {
-        Column(modifier = Modifier.navigationBarsPadding()) {
+        Column(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .verticalScroll(rememberScrollState()),
+        ) {
             Text(
                 text = stringResource(R.string.clod_reliability_title),
                 style = MaterialTheme.typography.titleLarge,

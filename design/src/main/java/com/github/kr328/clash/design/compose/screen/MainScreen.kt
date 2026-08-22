@@ -1,10 +1,11 @@
 package com.github.kr328.clash.design.compose.screen
 
+import android.content.res.Configuration
 import android.graphics.BitmapFactory
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -19,53 +20,62 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.clickable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -78,10 +88,10 @@ import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
-import com.github.kr328.clash.design.compose.component.PowerButton
-import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.PingBadge
+import com.github.kr328.clash.design.compose.component.PowerButton
+import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
@@ -210,6 +220,10 @@ sealed interface MainAction {
 
 private const val TAB_TRANSITION_MILLIS = 200
 
+private const val WIDE_LAYOUT_WIDTH_DP = 600
+
+private val CONTENT_MAX_WIDTH = 640.dp
+
 @Composable
 private fun NotificationPromptDialog(onAction: (MainAction) -> Unit) {
     AlertDialog(
@@ -235,10 +249,16 @@ fun MainScreen(
     onAction: (MainAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_LAYOUT_WIDTH_DP
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = { MainBottomBar(state.selectedTab, onAction) },
+        bottomBar = {
+            if (!wide) {
+                MainBottomBar(state.selectedTab, onAction)
+            }
+        },
     ) { padding ->
         state.update?.let { UpdateDialog(it, onAction) }
 
@@ -250,7 +270,31 @@ fun MainScreen(
             ReliabilitySheet(state.reliability, onAction)
         }
 
-        Box(modifier = Modifier.padding(padding)) {
+        Row(
+            modifier = Modifier
+                .padding(padding)
+                .displayCutoutPadding(),
+        ) {
+            if (wide) {
+                MainNavigationRail(state.selectedTab, onAction)
+            }
+
+            MainContent(state, onAction)
+        }
+    }
+}
+
+@Composable
+private fun MainContent(state: MainScreenState, onAction: (MainAction) -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = CONTENT_MAX_WIDTH)
+                .fillMaxSize(),
+        ) {
             when (state.subScreen) {
                 SubScreen.About -> AboutScreen(state.about, onAction)
                 SubScreen.RoutingData -> RoutingDataScreen(state.routingData, onAction)
@@ -282,44 +326,83 @@ fun MainScreen(
 }
 
 @Composable
+private fun isTelevision(): Boolean {
+    val uiMode = LocalConfiguration.current.uiMode
+
+    return uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
+}
+
+@Composable
+private fun MainNavigationRail(selected: MainTab, onAction: (MainAction) -> Unit) {
+    NavigationRail(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
+        MainTab.entries.forEach { tab ->
+            val (labelRes, iconRes) = tabLabelAndIcon(tab)
+            val active = selected == tab
+
+            NavigationRailItem(
+                selected = active,
+                onClick = { onAction(MainAction.SelectTab(tab)) },
+                icon = { TabIcon(iconRes, active) },
+                label = {
+                    Text(
+                        text = stringResource(labelRes),
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                    )
+                },
+                colors = NavigationRailItemDefaults.colors(
+                    indicatorColor = Color.Transparent,
+                    selectedIconColor = Color.White,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+            )
+        }
+    }
+}
+
+private fun tabLabelAndIcon(tab: MainTab): Pair<Int, Int> = when (tab) {
+    MainTab.Home -> R.string.clod_tab_home to R.drawable.ic_nav_home
+    MainTab.Servers -> R.string.clod_tab_servers to R.drawable.ic_nav_servers
+    MainTab.Subscriptions -> R.string.clod_tab_subscriptions to R.drawable.ic_baseline_view_list
+    MainTab.More -> R.string.clod_tab_more to R.drawable.ic_baseline_settings
+}
+
+@Composable
+private fun TabIcon(iconRes: Int, active: Boolean) {
+    Box(
+        modifier = Modifier
+            .width(56.dp)
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .then(
+                if (active) {
+                    Modifier.background(ClodTheme.extraColors.brandGradient)
+                } else {
+                    Modifier
+                },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+@Composable
 private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
         MainTab.entries.forEach { tab ->
-            val (labelRes, iconRes) = when (tab) {
-                MainTab.Home -> R.string.clod_tab_home to R.drawable.ic_nav_home
-                MainTab.Servers -> R.string.clod_tab_servers to R.drawable.ic_nav_servers
-                MainTab.Subscriptions ->
-                    R.string.clod_tab_subscriptions to R.drawable.ic_baseline_view_list
-
-                MainTab.More -> R.string.clod_tab_more to R.drawable.ic_baseline_settings
-            }
+            val (labelRes, iconRes) = tabLabelAndIcon(tab)
             val active = selected == tab
 
             NavigationBarItem(
                 selected = active,
                 onClick = { onAction(MainAction.SelectTab(tab)) },
-                icon = {
-                    Box(
-                        modifier = Modifier
-                            .width(56.dp)
-                            .height(32.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .then(
-                                if (active) {
-                                    Modifier.background(ClodTheme.extraColors.brandGradient)
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            painter = painterResource(iconRes),
-                            contentDescription = null,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-                },
+                icon = { TabIcon(iconRes, active) },
                 label = {
                     Text(
                         text = stringResource(labelRes),
@@ -340,6 +423,15 @@ private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
 
 @Composable
 private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
+    val powerFocus = remember { FocusRequester() }
+    val television = isTelevision()
+
+    LaunchedEffect(television) {
+        if (television) {
+            runCatching { powerFocus.requestFocus() }
+        }
+    }
+
     val connected = state.status == ConnectionStatus.Connected
     val expansion by animateFloatAsState(
         targetValue = if (connected) 1f else 0f,
@@ -378,6 +470,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             PowerButton(
                 status = state.status,
                 onClick = { onAction(MainAction.ToggleStatus) },
+                modifier = Modifier.focusRequester(powerFocus),
                 diameter = 134.dp,
                 caption = formatSession(state.sessionSeconds).takeIf {
                     connected && state.sessionSeconds > 0
