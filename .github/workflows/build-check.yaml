@@ -2,10 +2,16 @@ name: Build Check
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
   workflow_dispatch:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
 
 jobs:
   BuildDebug:

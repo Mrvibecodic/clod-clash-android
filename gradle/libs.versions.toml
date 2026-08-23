@@ -14,6 +14,8 @@ material = "1.14.0"
 serialization = "1.11.0"
 kaidl = "1.15"
 junit = "4.13.2"
+robolectric = "4.16.1"
+roborazzi = "1.72.0"
 room = "2.8.4"
 multiprocess = "1.0.0"
 quickie = "1.11.0"
@@ -43,6 +45,11 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 google-material = { module = "com.google.android.material:material", version.ref = "material" }
 junit = { module = "junit:junit", version.ref = "junit" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+androidx-compose-ui-test = { module = "androidx.compose.ui:ui-test-junit4" }
+androidx-compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 kaidl-compiler = { module = "com.github.kr328.kaidl:kaidl", version.ref = "kaidl" }
 kaidl-runtime = { module = "com.github.kr328.kaidl:kaidl-runtime", version.ref = "kaidl" }
 rikkax-multiprocess = { module = "dev.rikka.rikkax.preference:multiprocess", version.ref = "multiprocess" }

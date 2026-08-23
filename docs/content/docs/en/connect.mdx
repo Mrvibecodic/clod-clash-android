@@ -1,0 +1,44 @@
+---
+title: "Connecting & servers"
+description: "How to connect, pick a server, measure latency and mark favourites"
+---
+
+## Connecting
+
+Tap the big button on the home screen. The first time, Android asks for the VPN permission —
+you have to grant it, otherwise the tunnel cannot start.
+
+Once connected, the button turns green, with the session timer underneath and counters for
+what was downloaded and uploaded during this session.
+
+<Shots>
+  <Shot src="en/home.png" alt="Disconnected: the 'Tap to connect' hint" />
+  <Shot src="en/connected.png" alt="Connected: session timer and traffic" />
+</Shots>
+
+<Callout title="The prompt on your first connection">
+Once, the app shows a reminder titled "Keep the connection alive": it links to the system
+battery and always-on settings. It is neither an ad nor an error — without those permissions
+Android puts the tunnel to sleep. The same items live in **More → Connection** afterwards.
+</Callout>
+
+## Choosing a server
+
+The **Selected server** row on the home screen opens the **Servers** tab with the full list
+from your subscription. Tapping a row selects that node; you can pick one before connecting
+and the choice is remembered.
+
+<Shot src="en/servers.png" alt="The Servers tab: nodes with their latency" />
+
+- **Latency** is the number on the right. Green up to 200 ms, amber up to 400 ms, red beyond.
+  A cross means the node did not answer.
+- **The star** marks a node as a favourite — favourites float to the top of the list.
+- **The bolt** in the header measures latency again for the whole group.
+
+When there is more than one group (say, "All servers" and "Streaming"), a group selector
+appears above the list.
+
+<Callout title="A dash instead of milliseconds">
+If your provider disabled latency display, you get a tick, a cross or a dash instead of
+numbers — the node is reachable, did not answer, or has not been probed yet.
+</Callout>

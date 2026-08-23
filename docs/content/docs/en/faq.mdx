@@ -1,0 +1,60 @@
+---
+title: "FAQ"
+description: "Dropped connections, an empty server list, red latency and other common cases"
+---
+
+## The connection drops while the phone sits in my pocket
+
+That is Android putting background apps to sleep. Three things help, all in
+**More → Connection**:
+
+1. **Battery restrictions** — remove the restriction for the app.
+2. **Always-on connection** — enable it in the system VPN settings.
+3. **Keep the tunnel awake with the screen off** — in the Network section.
+
+Xiaomi, Huawei, Samsung and Oppo phones add their own autostart and "memory protection"
+lists — the app has to be added there by hand, it cannot do that for you.
+
+## The server list is empty
+
+Usually this is the subscription, not the app. The app spells out the reason:
+
+- **the subscription expired** — renew it with your provider;
+- **traffic is used up** — wait for the package to reset, or renew;
+- **the device is not identified** — the provider requires device identification;
+- **the device limit is reached** — free a slot in your account.
+
+After renewing, refresh the subscription with the icon in the home screen header.
+
+## Latency is red, or there is a cross
+
+Red means the node answers slower than 400 ms, a cross means it did not answer at all.
+Tap the bolt on the Servers tab to re-measure and pick another node. Right after switching
+between Wi-Fi and mobile data the first measurements can be inflated — that is normal,
+try again in a few seconds.
+
+## The internet is gone completely
+
+Turn the tunnel off with the button on the home screen and check whether the network works
+without it. If it does, switch servers and reconnect; if the problem persists, attach the logs
+(**More → Logs → Export**) to a support request.
+
+## Some apps must bypass the tunnel
+
+**More → Apps** — choose "Deny selected apps" and tick them. Banking apps and local services
+are the usual candidates.
+
+## The app asks for notification permission
+
+From Android 13 on, without it you cannot see the ongoing tunnel notification, and the system
+is quicker to put the service to sleep. It is worth granting.
+
+## How do I change the language or the theme
+
+**More → Appearance and behaviour**: "Dark mode" (follow system, always light, always dark)
+and "Language" (follow system, English, Russian).
+
+## The widget and the quick-settings tile
+
+The 1×1 widget is added like any widget from the home screen, the tile from Android's
+quick-settings editor. Both toggle the tunnel without opening the app.

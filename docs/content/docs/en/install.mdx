@@ -1,0 +1,44 @@
+---
+title: "Install & update"
+description: "Which APK to download, how to install it and how updates work afterwards"
+---
+
+## Which file to download
+
+Builds live on the GitHub releases page. File names stay the same from version to version,
+so you can bookmark a link once:
+
+| File | For |
+| --- | --- |
+| `clodclash-arm64-v8a.apk` | Almost every modern phone |
+| `clodclash-armeabi-v7a.apk` | Older 32-bit devices |
+| `clodclash-x86_64.apk` | Emulators and the rare Intel tablet |
+| `clodclash-universal.apk` | If you are not sure: fits everything, twice the size |
+
+<Callout title="How to tell which one you need">
+A phone bought after 2019 is almost certainly `arm64-v8a`. Guessing wrong is harmless —
+Android simply refuses to install an incompatible file.
+</Callout>
+
+## Installing
+
+1. Download the APK to your phone.
+2. Open the file — Android will ask whether apps from this source may be installed.
+3. Allow it and confirm the installation.
+
+The app needs the VPN permission (the system asks for it on your first connection) and,
+starting with Android 13, the notification permission — without it you will not see the
+ongoing notification with the tunnel status.
+
+## Updates
+
+The app checks for updates on its own and shows a dialog with the changelog.
+To check manually: **More → About → Check for update**.
+
+The core is updated together with the app — there is no separate button for it, and none is needed.
+
+<Callout type="warn" title="Pre-releases">
+Pre-release versions carry a suffix in the number, for example `0.1.16-alpha`. The app offers
+those only to people who opted in. Permanent download links always point at the latest
+regular build.
+</Callout>

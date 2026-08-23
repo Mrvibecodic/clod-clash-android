@@ -1,4 +1,14 @@
-# Clod Clash для Android
+<p align="center">
+  <img src="docs/public/promo.png" alt="Clod Clash — подключение по вашей подписке одной кнопкой" width="900">
+</p>
+
+<h1 align="center">Clod Clash для Android</h1>
+
+<p align="center">
+  <a href="https://mrvibecodic.github.io/clod-clash-android/ru/docs">Документация</a> ·
+  <a href="https://github.com/Mrvibecodic/clod-clash-android/releases/latest">Скачать APK</a> ·
+  <a href="https://mrvibecodic.github.io/clod-clash-android/en/docs">English docs</a>
+</p>
 
 Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) — white-label клиента для
 пользователей панели Remnawave. Десктопная версия (Windows / macOS / Linux) живёт в отдельном

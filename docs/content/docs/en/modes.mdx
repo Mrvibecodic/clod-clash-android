@@ -1,0 +1,45 @@
+---
+title: "Modes"
+description: "A device-wide tunnel or a local proxy, plus the three routing modes"
+---
+
+## Tunnel or local proxy
+
+By default the app brings up a system tunnel that carries the traffic of the whole device.
+That is the **Route system traffic** switch in **More → Network**.
+
+<Shot src="en/network.png" alt="Network settings: the system traffic switch and VPN options" />
+
+Turn it off and no tunnel is created; instead the core listens on a local proxy on the device —
+the address is shown right under the switch, usually `127.0.0.1:7890`. This is what you want
+when a single app should route its traffic, rather than the whole system.
+
+<Callout title="The port can be changed">
+The port comes from your subscription; when the subscription does not set one, 7890 is used.
+You can set your own in **More → Core features → Override**: an empty field means "leave it
+alone", and zero switches the local proxy off entirely.
+</Callout>
+
+## Routing modes
+
+**More → Mode** offers three options:
+
+| Mode | What it does |
+| --- | --- |
+| **Rule mode** | The normal one: rules from your subscription decide what goes through the server and what goes direct |
+| **Global mode** | Everything goes through the selected server, no exceptions |
+| **Direct mode** | Nothing is proxied; the tunnel is up but traffic bypasses the servers |
+
+In global mode the Servers tab keeps a single `GLOBAL` group — only that choice has any
+effect, the other groups take no part in this mode.
+
+<Callout type="warn" title="The mode can be locked">
+A provider may pin the mode to the subscription. The switch is then visible but disabled and
+carries a note — that is the provider's decision, not a malfunction.
+</Callout>
+
+## Network stack
+
+**More → Network → Network stack** decides how traffic is intercepted: "Auto (from
+subscription)", "System", "gVisor" or "Mixed". The default is Auto, which lets the
+subscription pick. Change it only if your provider explicitly asked you to.

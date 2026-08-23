@@ -1,0 +1,56 @@
+---
+title: "Settings"
+description: "What lives in the More tab: connection, apps, network, appearance"
+---
+
+Every setting lives in the **More** tab, split into three sections.
+
+<Shot src="en/more.png" alt="The More tab: connection, application, help" />
+
+## Connection
+
+**Mode** — rule, global or direct (see [Modes](/en/docs/modes)).
+
+**Apps** — which apps go through the tunnel. Three options:
+
+- let every app through;
+- allow only the selected ones;
+- deny the selected ones, everything else uses the tunnel.
+
+A subscription may ship its own lists as well — those apps are marked in the list and you do
+not need to tick them by hand.
+
+**Battery restrictions** and **Always-on connection** lead into Android's own settings.
+The first keeps the system from putting the app to sleep, the second starts the tunnel
+together with the phone. Both rows show the current state — restricted by the system, or on.
+
+**Network** — tunnel options:
+
+| Setting | What it is for |
+| --- | --- |
+| Route system traffic | A device-wide tunnel, or a local proxy |
+| Bypass private networks | Your LAN and printers stay reachable directly |
+| DNS hijacking | DNS queries go into the tunnel instead of around it |
+| Allow bypass | Lets other VPN apps bypass our tunnel |
+| Allow IPv6 | Carries IPv6 through the tunnel |
+| System proxy | Tells the system the proxy address (Android 10 and newer) |
+| Network stack | How traffic is intercepted: auto, system, gVisor, mixed |
+| Reset connections on network change | Wi-Fi ⇄ mobile switches recover faster |
+| Keep the tunnel awake with the screen off | The connection does not sleep with the display |
+
+## Application
+
+**Appearance and behaviour** — dark theme, interface language, group icons from the
+subscription, hiding the launcher icon, notifications about subscription refreshes, export and
+import of the subscription list.
+
+**Core features** — sniffer, routing database sources, config overrides. This section is for
+people who know what they are changing; an ordinary user has no reason to go in.
+
+**Databases and providers** — the country, site and network lists the rules rely on.
+Refreshed with a button.
+
+## Help
+
+**Help** and **Logs**. Logs are useful when the connection behaves oddly: you can export them
+to a file and attach it to a support request.
