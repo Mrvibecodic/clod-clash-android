@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { basePath, releasesUrl } from '@/lib/shared';
+import { basePath } from '@/lib/shared';
 
 const copy = {
   ru: {
@@ -52,12 +52,12 @@ export default async function HomePage({ params }: PageProps<'/[lang]'>) {
             >
               {text.docs}
             </Link>
-            <a
-              href={releasesUrl}
+            <Link
+              href={`/${lang}/download`}
               className="rounded-full border border-fd-border px-6 py-2.5 font-medium"
             >
               {text.download}
-            </a>
+            </Link>
           </div>
         </div>
         <img

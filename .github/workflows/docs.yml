@@ -47,6 +47,8 @@ jobs:
           test -f out/ru/index.html
           test -f out/en/index.html
           test -f out/ru/docs/index.html
+          test -f out/ru/download/index.html
+          test -f out/en/download/index.html
           test -f out/promo.png
           test -f out/.nojekyll
           test -f out/screenshots/ru/more.png
