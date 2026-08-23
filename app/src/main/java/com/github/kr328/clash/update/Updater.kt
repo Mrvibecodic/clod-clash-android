@@ -21,8 +21,8 @@ object Updater {
 
     private const val MANIFEST_RELEASE =
         "https://github.com/Mrvibecodic/clod-clash-android/releases/download/updater/latest.json"
-    private const val MANIFEST_NIGHTLY =
-        "https://github.com/Mrvibecodic/clod-clash-android/releases/download/updater-nightly/latest.json"
+    private const val MANIFEST_PRERELEASE =
+        "https://github.com/Mrvibecodic/clod-clash-android/releases/download/updater-prerelease/latest.json"
 
     private const val CONNECT_TIMEOUT = 15_000
     private const val READ_TIMEOUT = 30_000
@@ -36,16 +36,19 @@ object Updater {
         val platform: UpdateManifest.Platform,
     )
 
-    suspend fun check(context: Context, nightly: Boolean, mixedPort: Int?): Result<Available?> =
+    suspend fun check(context: Context, prerelease: Boolean, mixedPort: Int?): Result<Available?> =
         withContext(Dispatchers.IO) {
-            val url = if (nightly) MANIFEST_NIGHTLY else MANIFEST_RELEASE
+            val release = load(MANIFEST_RELEASE, mixedPort)
+            val manifest = if (prerelease) {
+                val preview = load(MANIFEST_PRERELEASE, mixedPort).getOrNull()
 
-            val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8)
-                ?: return@withContext Result.failure(IOException("манифест недоступен"))
-
-            val manifest = runCatching { json.decodeFromString(UpdateManifest.serializer(), body) }
-                .onFailure { Log.w("$TAG: манифест не разобран", it) }
-                .getOrElse { return@withContext Result.failure(it) }
+                listOfNotNull(release.getOrNull(), preview).maxByOrNull { it.versionCode }
+                    ?: return@withContext Result.failure(
+                        release.exceptionOrNull() ?: IOException("манифест недоступен"),
+                    )
+            } else {
+                release.getOrElse { return@withContext Result.failure(it) }
+            }
 
             if (manifest.versionCode <= currentVersionCode(context)) {
                 return@withContext Result.success(null)
@@ -59,6 +62,14 @@ object Updater {
 
             Result.success(Available(manifest, platform))
         }
+
+    private fun load(url: String, mixedPort: Int?): Result<UpdateManifest> {
+        val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8)
+            ?: return Result.failure(IOException("манифест недоступен"))
+
+        return runCatching { json.decodeFromString(UpdateManifest.serializer(), body) }
+            .onFailure { Log.w("$TAG: манифест не разобран", it) }
+    }
 
     suspend fun download(
         context: Context,

@@ -208,5 +208,4 @@ jobs:
 
           for f in dist/*.apk dist/SHA256SUMS.txt; do upload "$NIGHTLY" "$f" "application/octet-stream"; done
 
-          UPD=$(ensure_release updater-nightly "Манифест ночного канала" "Служебный релиз: latest.json ночного канала. APK отсюда не качайте.")
-          upload "$UPD" dist/latest.json "application/json"
+          upload "$NIGHTLY" dist/latest.json "application/json"

@@ -276,7 +276,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
     private fun onReset() {
         AppStore(this).apply {
             autoCheckUpdate = true
-            nightlyChannel = false
+            prereleaseChannel = false
             skippedVersionCode = 0
         }
     }

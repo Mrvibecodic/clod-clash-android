@@ -24,7 +24,7 @@ object UpdatePrompt {
         val store = AppStore(context)
 
         val checked = try {
-            Updater.check(context, store.nightlyChannel, mixedPort)
+            Updater.check(context, store.prereleaseChannel, mixedPort)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

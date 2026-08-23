@@ -399,7 +399,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                         is MainDesign.Request.SetPrerelease ->
                             withContext(Dispatchers.IO) {
-                                AppStore(this@MainActivity).nightlyChannel = request.enabled
+                                AppStore(this@MainActivity).prereleaseChannel = request.enabled
                             }
 
                         MainDesign.Request.LoadRoutingData ->
@@ -1004,7 +1004,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     .substringBefore('_')
                     .removePrefix("v"),
                 autoCheckUpdate = store.autoCheckUpdate,
-                prerelease = store.nightlyChannel,
+                prerelease = store.prereleaseChannel,
             )
         }
     }

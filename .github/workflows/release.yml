@@ -295,10 +295,11 @@ jobs:
           gh api -X PATCH "repos/${{ github.repository }}/releases/$RELEASE_ID" \
             -F draft=false -F prerelease=$PRERELEASE -f body="$NOTES" --jq .html_url
 
-      - name: Обновить плавающий релиз updater
+      - name: Разложить манифест по плавающим релизам
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ needs.prepare_release.outputs.release_id }}
+          VERSION: ${{ needs.check_version.outputs.version }}
         run: |
           set -euo pipefail
           gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" \
@@ -306,26 +307,48 @@ jobs:
           gh api -H "Accept: application/octet-stream" \
             "repos/${{ github.repository }}/releases/assets/$(cat /tmp/asset_id)" > latest.json
 
-          upd=''
-          if out=$(gh api "repos/${{ github.repository }}/releases/tags/updater" --jq .id 2>/dev/null); then
-            [[ "$out" =~ ^[0-9]+$ ]] && upd="$out"
-          fi
-          if [[ -z "$upd" ]]; then
-            upd=$(gh api -X POST "repos/${{ github.repository }}/releases" \
-              -f tag_name=updater \
-              -f name="Манифест обновлений" \
-              -f body="Служебный релиз: здесь всегда лежит latest.json текущей версии. Не скачивайте отсюда APK." \
-              -F draft=false -F prerelease=true --jq .id)
+          ensure_release() {
+            local tag="$1" name="$2" body="$3" id=''
+            if out=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq .id 2>/dev/null); then
+              [[ "$out" =~ ^[0-9]+$ ]] && id="$out"
+            fi
+            if [[ -z "$id" ]]; then
+              id=$(gh api -X POST "repos/${{ github.repository }}/releases" \
+                -f tag_name="$tag" -f name="$name" -f body="$body" \
+                -F draft=false -F prerelease=true --jq .id)
+            fi
+            echo "$id"
+          }
+
+          put_manifest() {
+            local id="$1" old
+            old=$(gh api "repos/${{ github.repository }}/releases/$id/assets" \
+              --jq '.[] | select(.name == "latest.json") | .id' 2>/dev/null || true)
+            if [[ "$old" =~ ^[0-9]+$ ]]; then
+              gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
+            fi
+            gh api --method POST \
+              -H "Content-Type: application/json" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/$id/assets?name=latest.json" \
+              --input latest.json >/dev/null
+          }
+
+          pre=$(ensure_release updater-prerelease "Манифест предварительных сборок" \
+            "Служебный релиз: latest.json самой свежей сборки, включая предварительные. Не скачивайте отсюда APK.")
+          put_manifest "$pre"
+          echo "latest.json разложен в updater-prerelease"
+
+          legacy=$(ensure_release updater-nightly "Манифест предварительных сборок для старых версий" \
+            "Служебный релиз для сборок до 0.1.18, которые ищут манифест здесь. Не скачивайте отсюда APK.")
+          put_manifest "$legacy"
+          echo "latest.json разложен в updater-nightly"
+
+          if [[ "$VERSION" == *-* ]]; then
+            echo "Версия $VERSION предварительная — updater не трогаем"
+            exit 0
           fi
 
-          old=$(gh api "repos/${{ github.repository }}/releases/$upd/assets" \
-            --jq '.[] | select(.name == "latest.json") | .id' 2>/dev/null || true)
-          if [[ "$old" =~ ^[0-9]+$ ]]; then
-            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/$old"
-          fi
-
-          gh api --method POST \
-            -H "Content-Type: application/json" \
-            "https://uploads.github.com/repos/${{ github.repository }}/releases/$upd/assets?name=latest.json" \
-            --input latest.json >/dev/null
+          upd=$(ensure_release updater "Манифест обновлений" \
+            "Служебный релиз: здесь всегда лежит latest.json текущей обычной версии. Не скачивайте отсюда APK.")
+          put_manifest "$upd"
           echo "latest.json разложен в updater"

@@ -21,7 +21,7 @@ class AppStore(context: Context) {
         defaultValue = true,
     )
 
-    var nightlyChannel: Boolean by store.boolean(
+    var prereleaseChannel: Boolean by store.boolean(
         key = "nightly_channel",
         defaultValue = false,
     )
