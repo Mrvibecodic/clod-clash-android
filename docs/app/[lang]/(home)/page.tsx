@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@/components/logo';
 import { basePath } from '@/lib/shared';
 
 const copy = {
@@ -42,7 +43,10 @@ export default async function HomePage({ params }: PageProps<'/[lang]'>) {
     <main className="flex flex-1 flex-col items-center px-4 py-16">
       <div className="flex w-full max-w-5xl flex-col items-center gap-12 md:flex-row md:items-center md:justify-between">
         <div className="flex max-w-xl flex-col gap-6 text-center md:text-left">
-          <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Clod Clash</h1>
+          <div className="flex flex-col items-center gap-4 md:flex-row md:items-center">
+            <Logo className="size-16 rounded-2xl shadow-lg" />
+            <h1 className="text-4xl font-bold tracking-tight md:text-5xl">Clod Clash</h1>
+          </div>
           <p className="text-xl text-fd-muted-foreground">{text.tagline}</p>
           <p className="text-fd-muted-foreground">{text.lead}</p>
           <div className="flex flex-row flex-wrap justify-center gap-3 md:justify-start">
