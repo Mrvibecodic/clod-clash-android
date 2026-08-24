@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"cfa/native/app"
+	"cfa/native/config/sentinel"
 
 	"github.com/metacubex/mihomo/adapter/provider"
 	clashHttp "github.com/metacubex/mihomo/component/http"
@@ -285,9 +286,15 @@ func FetchAndValid(
 	panelInfo := readPanelInfo(path)
 	applyGroups(&panelInfo, rawCfg)
 
-	report := inspectSentinels(rawCfg)
+	report := sentinel.Inspect(rawCfg.Proxy)
 
 	panelInfo.NoServers = report.OnlySentinels && !panelInfo.ShowZeroHosts
+
+	if panelInfo.ShowZeroHosts {
+		panelInfo.Sentinels = nil
+	} else {
+		panelInfo.Sentinels = report.Names
+	}
 
 	if len(report.Remarks) > 0 {
 		log.Infoln("Subscription sent placeholders instead of servers: %s", strings.Join(report.Remarks, " | "))

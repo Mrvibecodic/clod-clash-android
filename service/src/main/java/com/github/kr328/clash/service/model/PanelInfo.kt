@@ -37,6 +37,8 @@ data class PanelInfo(
 
     val noServers: Boolean = false,
 
+    val sentinels: List<String> = emptyList(),
+
     val fallbackUrl: String = "",
     val fallbackDomain: String = "",
 

@@ -143,12 +143,27 @@ fun ServersTab(
             return@Column
         }
 
-        val proxies = remember(group.proxies, state.favorites) {
-            if (state.favorites.isEmpty()) {
+        val sentinels = active?.panel?.sentinels.orEmpty()
+
+        val proxies = remember(group.proxies, state.favorites, sentinels) {
+            val hidden = sentinels.toSet()
+
+            val visible = if (hidden.isEmpty()) {
                 group.proxies
             } else {
-                group.proxies.sortedByDescending { it.name in state.favorites }
+                group.proxies.filterNot { it.name in hidden }
             }
+
+            if (state.favorites.isEmpty()) {
+                visible
+            } else {
+                visible.sortedByDescending { it.name in state.favorites }
+            }
+        }
+
+        if (proxies.isEmpty()) {
+            EmptyServers()
+            return@Column
         }
 
         key(state.selected) {

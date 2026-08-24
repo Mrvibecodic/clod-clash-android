@@ -49,6 +49,8 @@ type Info struct {
 
 	NoServers bool `json:"noServers,omitempty"`
 
+	Sentinels []string `json:"sentinels,omitempty"`
+
 	FallbackURL    string `json:"fallbackUrl,omitempty"`
 	FallbackDomain string `json:"fallbackDomain,omitempty"`
 

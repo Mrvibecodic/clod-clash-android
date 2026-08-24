@@ -1,10 +1,8 @@
-package config
+package sentinel
 
 import (
 	"strconv"
 	"strings"
-
-	"github.com/metacubex/mihomo/config"
 )
 
 const nilUUID = "00000000-0000-0000-0000-000000000000"
@@ -15,7 +13,7 @@ var serverlessTypes = map[string]bool{
 
 var credentialKeys = []string{"uuid", "password", "psk", "private-key", "auth", "auth-str", "token"}
 
-func isSentinelProxy(proxy map[string]any) bool {
+func Is(proxy map[string]any) bool {
 	if kind, ok := proxy["type"].(string); ok && serverlessTypes[strings.ToLower(strings.TrimSpace(kind))] {
 		return false
 	}
@@ -74,99 +72,43 @@ func missingCredentials(proxy map[string]any) bool {
 	return true
 }
 
-type SentinelReport struct {
+type Report struct {
 	Remarks       []string
+	Names         []string
 	OnlySentinels bool
 }
 
 const maxReportedRemarks = 4
 
-func inspectSentinels(cfg *config.RawConfig) SentinelReport {
-	report := SentinelReport{}
+func Inspect(proxies []map[string]any) Report {
+	report := Report{}
 
-	if cfg == nil || len(cfg.Proxy) == 0 {
+	if len(proxies) == 0 {
 		return report
 	}
 
 	real := 0
 
-	for _, proxy := range cfg.Proxy {
-		if !isSentinelProxy(proxy) {
+	for _, proxy := range proxies {
+		if !Is(proxy) {
 			real++
 
 			continue
 		}
 
-		if name, ok := proxy["name"].(string); ok && name != "" && len(report.Remarks) < maxReportedRemarks {
+		name, ok := proxy["name"].(string)
+		if !ok || name == "" {
+			continue
+		}
+
+		report.Names = append(report.Names, name)
+
+		if len(report.Remarks) < maxReportedRemarks {
 			report.Remarks = append(report.Remarks, name)
 		}
 	}
 
-	report.OnlySentinels = real == 0 && len(cfg.Proxy) > 0
+	report.OnlySentinels = real == 0
 
 	return report
-}
-
-func filterSentinels(cfg *config.RawConfig, profileDir string) error {
-	if len(cfg.Proxy) == 0 {
-		return nil
-	}
-
-	if profileShowsZeroHosts(profileDir) {
-		return nil
-	}
-
-	dropped := map[string]bool{}
-	kept := make([]map[string]any, 0, len(cfg.Proxy))
-
-	for _, proxy := range cfg.Proxy {
-		if !isSentinelProxy(proxy) {
-			kept = append(kept, proxy)
-
-			continue
-		}
-
-		if name, ok := proxy["name"].(string); ok {
-			dropped[name] = true
-		}
-	}
-
-	if len(dropped) == 0 {
-		return nil
-	}
-
-	cfg.Proxy = kept
-
-	for _, group := range cfg.ProxyGroup {
-		names, ok := group["proxies"].([]any)
-		if !ok {
-			continue
-		}
-
-		filtered := make([]any, 0, len(names))
-
-		for _, raw := range names {
-			if name, ok := raw.(string); ok && dropped[name] {
-				continue
-			}
-
-			filtered = append(filtered, raw)
-		}
-
-		if len(filtered) == 0 {
-			filtered = append(filtered, "DIRECT")
-		}
-
-		group["proxies"] = filtered
-	}
-
-	return nil
-}
-
-func profileShowsZeroHosts(profileDir string) bool {
-	if profileDir == "" {
-		return false
-	}
-
-	return readPanelInfo(profileDir).ShowZeroHosts
 }

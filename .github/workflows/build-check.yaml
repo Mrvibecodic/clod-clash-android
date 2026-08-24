@@ -73,10 +73,11 @@ jobs:
       #     echo keystore.password="$SIGNING_STORE_PASSWORD" > signing.properties
       #     echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
       #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
-      # Разбор заголовков панели живёт в Go, и проверяется он тоже на Go —
-      # самым первым шагом: пакет `native/config/panel` не зависит ни от ядра,
-      # ни от Android, собирается из одной стандартной библиотеки за секунду,
-      # и ждать ради него Gradle с NDK незачем.
+      # Разбор заголовков панели и распознавание узлов-заглушек живут в Go, и
+      # проверяются они тоже на Go — самым первым шагом: пакеты
+      # `native/config/panel` и `native/config/sentinel` не зависят ни от ядра,
+      # ни от Android, собираются из одной стандартной библиотеки за секунду,
+      # и ждать ради них Gradle с NDK незачем.
       #
       # Именно этот пакет, а не `native/config` целиком: соседи по каталогу
       # тянут `native/app`, а тот зовёт mihomo-функции из файла с тегами
@@ -85,7 +86,7 @@ jobs:
         id: go-tests
         if: success()
         working-directory: core/src/main/golang
-        run: go test ./native/config/panel/...
+        run: go test ./native/config/panel/... ./native/config/sentinel/...
 
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная

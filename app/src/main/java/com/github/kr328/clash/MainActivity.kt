@@ -15,6 +15,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.intent
@@ -114,6 +115,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     when (it) {
                         Event.ActivityStart -> {
                             stopRequestedAt = null
+                            startRequestedAt = null
 
                             design.fetch()
 
@@ -135,6 +137,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         Event.ClashStop -> {
                             stopRequestedAt = null
+                            startRequestedAt = null
 
                             offlineDelays = emptyMap()
 
@@ -154,6 +157,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         Event.ClashStart -> {
                             stopRequestedAt = null
+                            startRequestedAt = null
 
                             design.fetch()
 
@@ -169,6 +173,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         Event.ServiceRecreated -> {
                             stopRequestedAt = null
+                            startRequestedAt = null
 
                             design.fetch()
                         }
@@ -423,6 +428,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                         design.fetchSession()
 
                         ProfileUpdates.prune()
+
+                        design.verifyRunning()
                     }
                 }
             }
@@ -734,11 +741,20 @@ class MainActivity : BaseActivity<MainDesign>() {
         private const val HEALTH_STALE_MS = 300_000L
 
         private const val STOP_FEEDBACK_TIMEOUT_MS = 8_000L
+
+        private const val START_FEEDBACK_TIMEOUT_MS = 45_000L
+
+        private const val RUNNING_PROBE_INTERVAL_MS = 5_000L
+
+        private const val RUNNING_PROBE_MISSES = 2
     }
 
     private var sessionStartedAt: Long = 0
     private var sessionStartedElapsed: Long = 0
     private var stopRequestedAt: Long? = null
+    private var startRequestedAt: Long? = null
+    private var runningProbeAt: Long = 0
+    private var runningProbeMisses: Int = 0
 
     private suspend fun addProfile() {
         val result = startActivityForResult(
@@ -758,6 +774,35 @@ class MainActivity : BaseActivity<MainDesign>() {
             ToastDuration.Long,
             detail = result.data?.getStringExtra(Intents.EXTRA_NAME),
         )
+    }
+
+    private fun watchStart() {
+        val target = design ?: return
+
+        val now = SystemClock.elapsedRealtime()
+
+        startRequestedAt = now
+
+        launch {
+            delay(START_FEEDBACK_TIMEOUT_MS)
+
+            if (startRequestedAt != now)
+                return@launch
+
+            startRequestedAt = null
+
+            if (clashRunning)
+                return@launch
+
+            val running = withContext(Dispatchers.IO) {
+                StatusClient(this@MainActivity).isRunning()
+            }
+
+            if (running)
+                Remote.broadcasts.clashRunning = true
+
+            target.setClashRunning(running)
+        }
     }
 
     private fun requestStopClash() {
@@ -801,6 +846,39 @@ class MainActivity : BaseActivity<MainDesign>() {
                 nowElapsed = SystemClock.elapsedRealtime(),
             ),
         )
+    }
+
+    private suspend fun MainDesign.verifyRunning() {
+        if (!clashRunning)
+            return
+
+        val now = SystemClock.elapsedRealtime()
+
+        if (now - runningProbeAt < RUNNING_PROBE_INTERVAL_MS)
+            return
+
+        runningProbeAt = now
+
+        val running = withContext(Dispatchers.IO) {
+            StatusClient(this@MainActivity).isRunning()
+        }
+
+        if (running) {
+            runningProbeMisses = 0
+
+            return
+        }
+
+        runningProbeMisses++
+
+        if (runningProbeMisses < RUNNING_PROBE_MISSES)
+            return
+
+        runningProbeMisses = 0
+
+        Remote.broadcasts.clashRunning = false
+
+        fetch()
     }
 
     private suspend fun MainDesign.fetchTraffic() {
@@ -940,6 +1018,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         setConnecting()
+
+        watchStart()
 
         val vpnRequest = startClashService()
 
