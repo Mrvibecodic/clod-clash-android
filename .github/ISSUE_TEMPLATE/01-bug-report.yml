@@ -1,4 +1,4 @@
-name: "[English] Bug Report"
+name: "Bug Report"
 description: "Create a report to help us debug bugs"
 title: "[BUG] "
 labels: ["bug"]
@@ -10,7 +10,7 @@ body:
 
         NOTE: Be sure to put a clear and concise title **AFTER** `[BUG]` in the text box above.
 
-        NOTE: We do not provide any services such as proxies, DO NOT feedback any problems not caused by this application here.
+        NOTE: We do not sell or run any proxy service. Questions about the subscription itself go to whoever issued you the link.
 
         <!-- template -->
   - type: textarea
@@ -58,14 +58,14 @@ body:
 
         Example:
         ```
-        - Version: 2.5.4-premium
-        - APK filename: cfa-2.5.4-premium-arm64-v8a-release.apk
-        - Distribution Channel: Google Play
+        - Version: 0.1.17
+        - APK filename: clodclash-arm64-v8a.apk
+        - Installed from: GitHub release
         ```
       value: |
         - Version:
         - APK filename:
-        - Distribution Channel:
+        - Installed from:
     validations:
       required: true
   - type: textarea
@@ -91,7 +91,7 @@ body:
       description: |
         Please paste or upload the log file here.
 
-        TIPS: Please use the `Logcat` in application or `adb logcat`. `adb logcat` would be better.
+        TIPS: Use the log screen in the application or `adb logcat`. `adb logcat` would be better.
     validations:
       required: true
   - type: textarea

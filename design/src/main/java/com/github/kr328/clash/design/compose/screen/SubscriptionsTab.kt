@@ -102,6 +102,25 @@ internal fun SubscriptionState.label(): String = stringResource(
 )
 
 @Composable
+internal fun expiryLeft(expire: Long, now: Long): String? {
+    if (expire <= 0 || expire <= now) return null
+
+    val days = ((expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
+
+    return if (days > 0) {
+        stringResource(R.string.clod_sub_days, days)
+    } else {
+        stringResource(R.string.clod_sub_last_day)
+    }
+}
+
+@Composable
+internal fun expiryDate(expire: Long, now: Long): String = stringResource(
+    if (expire in 1 until now) R.string.clod_sub_expired_at else R.string.clod_sub_until,
+    DateFormat.getDateFormat(LocalContext.current).format(Date(expire)),
+)
+
+@Composable
 fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -332,16 +351,9 @@ private fun SubscriptionCard(
                         modifier = Modifier.weight(1f),
                     )
                     if (profile.expire > 0) {
-                        val days = ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
                         Text(
-                            text = if (days >= 0) {
-                                stringResource(R.string.clod_sub_days, days)
-                            } else {
-                                stringResource(
-                                    R.string.clod_sub_until,
-                                    DateFormat.getDateFormat(context).format(Date(profile.expire)),
-                                )
-                            },
+                            text = expiryLeft(profile.expire, now)
+                                ?: expiryDate(profile.expire, now),
                             style = MaterialTheme.typography.bodyMedium,
                             color = status.color(),
                             fontWeight = FontWeight.Medium,
@@ -402,13 +414,8 @@ fun ActiveSubscriptionCard(
                     modifier = Modifier.weight(1f),
                 )
                 if (profile.expire > 0) {
-                    val days = ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
                     StatusBadge(
-                        text = if (days >= 0) {
-                            stringResource(R.string.clod_sub_days, days)
-                        } else {
-                            status.label()
-                        },
+                        text = expiryLeft(profile.expire, now) ?: status.label(),
                         color = status.color(),
                     )
                 }
@@ -431,10 +438,7 @@ fun ActiveSubscriptionCard(
                 )
                 if (profile.expire > 0) {
                     Text(
-                        text = stringResource(
-                            R.string.clod_sub_until,
-                            DateFormat.getDateFormat(context).format(Date(profile.expire)),
-                        ),
+                        text = expiryDate(profile.expire, now),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

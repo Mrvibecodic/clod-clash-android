@@ -76,9 +76,9 @@
     <string name="ok">OK</string>
     <string name="cancel">Отмена</string>
 
-    <string name="clash_logcat">Clash Logcat</string>
+    <string name="clash_logcat">Журнал ядра</string>
     <string name="history">История</string>
-    <string name="logcat">Logcat</string>
+    <string name="logcat">Журнал</string>
 
     <string name="delete_all_logs">Удалить все логи</string>
     <string name="delete_all_logs_warn">Вся история будет ПОТЕРЯНА</string>
@@ -90,7 +90,7 @@
     <string name="override">Переопределение</string>
 
     <string name="auto_restart">Автоматический перезапуск</string>
-    <string name="allow_clash_auto_restart">Разрешить Clash автоматически перезапускаться</string>
+    <string name="allow_clash_auto_restart">Разрешить туннелю перезапускаться автоматически</string>
 
     <string name="route_system_traffic">Маршрутизировать системный трафик</string>
     <string name="routing_via_vpn_service">Автоматически маршрутизировать весь системный трафик через VPN</string>
@@ -107,7 +107,7 @@
     <string name="system_proxy_summary">Дополнительно запустить HTTP прокси, помимо VPN</string>
     <string name="access_control_mode">Режим контроля доступа</string>
 
-    <string name="options_unavailable">Настройки недоступны, пока Clash не будет остановлен</string>
+    <string name="options_unavailable">Настройки недоступны, пока туннель не остановлен</string>
 
     <string name="general">Основные</string>
     <string name="dns">DNS</string>
@@ -127,7 +127,7 @@
     <string name="_new">Новый</string>
 
     <string name="strategy">Стратегия</string>
-    <string name="listen">Ожидать</string>
+    <string name="listen">Адрес прослушивания</string>
     <string name="append_system_dns">Добавить системный DNS</string>
     <string name="use_hosts">Использовать Hosts</string>
     <string name="enhanced_mode">Расширенный режим</string>
@@ -175,7 +175,7 @@
 
     <string name="clash_meta_for_android">Clod Clash</string>
 
-    <string name="document">Документ</string>
+    <string name="document">Документация</string>
     <string name="sources">Исходный код</string>
     <string name="clash_meta_core">Ядро Clash Meta</string>
 
@@ -223,7 +223,8 @@
     <string name="invalid_log_file">Недопустимый лог файл</string>
     <string name="unable_to_start_vpn">Не удалось запустить компонент VPN</string>
 
-    <string name="clash_meta_wiki">Clash Meta Wiki</string>
+    <string name="clod_docs">Документация Clod Clash</string>
+    <string name="clod_docs_url">https://mrvibecodic.github.io/clod-clash-android/ru/docs</string>
 
     <string name="meta_features">Функции ядра</string>
     <string name="unified_delay">Унифицированная задержка</string>
@@ -235,21 +236,21 @@
     <string name="force_domain">Принудительный перехват доменов</string>
     <string name="skip_domain">Исключения перехвата доменов</string>
 
-    <string name="geox_files" >Geo Files</string>
-    <string name="import_geoip_file">Import GeoIP Database</string>
+    <string name="geox_files" >Файлы geo</string>
+    <string name="import_geoip_file">Загрузить базу GeoIP</string>
     <string name="press_to_import">Нажмите, чтобы выбрать файл</string>
-    <string name="import_geosite_file">Import GeoSite Database</string>
-    <string name="import_country_file">Import Country Database</string>
-    <string name="geofile_import_failed">Import failed</string>
-    <string name="geofile_unknown_db_format">Unknown Database format</string>
-    <string name="geofile_unknown_db_format_message">Only %1$s are supported</string>
-    <string name="geofile_imported">%1$s imported</string>
-    <string name="external_control_activity">External Control</string>
+    <string name="import_geosite_file">Загрузить базу GeoSite</string>
+    <string name="import_country_file">Загрузить базу стран</string>
+    <string name="geofile_import_failed">Не удалось загрузить</string>
+    <string name="geofile_unknown_db_format">Неизвестный формат базы</string>
+    <string name="geofile_unknown_db_format_message">Поддерживаются только %1$s</string>
+    <string name="geofile_imported">%1$s загружен</string>
+    <string name="external_control_activity">Внешнее управление</string>
     <string name="external_control_started">Clod Clash включён</string>
     <string name="external_control_stopped">Clod Clash выключен</string>
-    <string name="force_dns_mapping">Force DNS Mapping</string>
-    <string name="parse_pure_ip">Parse Pure IP</string>
-    <string name="override_destination">Override Destination</string>
+    <string name="force_dns_mapping">Принудительное сопоставление DNS</string>
+    <string name="parse_pure_ip">Разбирать чистый IP</string>
+    <string name="override_destination">Подменять назначение</string>
     <string name="import_from_qr_no_permission">Доступ к камере ограничен. Разрешите его в настройках.</string>
     <string name="import_from_qr_exception">Произошла не обрабатываемая системная ошибка.</string>
     <string name="clod_tab_home">Главная</string>
@@ -274,7 +275,10 @@
     <string name="clod_sub_expired">Истекла</string>
     <string name="clod_sub_unlimited">безлимит</string>
     <string name="clod_sub_days">%1$d дн</string>
+    <string name="clod_delay_ms">%1$d мс</string>
     <string name="clod_sub_until">до %1$s</string>
+    <string name="clod_sub_expired_at">истекла %1$s</string>
+    <string name="clod_sub_last_day">меньше суток</string>
     <string name="clod_quota_traffic">Трафик</string>
     <string name="clod_quota_expiry">Срок действия</string>
     <string name="clod_quota_left">осталось %1$s</string>
@@ -305,7 +309,7 @@
     <string name="clod_settings_app_title">Внешний вид и поведение</string>
     <string name="clod_settings_app_subtitle">Тема, автозапуск, значок</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, системный прокси</string>
-    <string name="clod_settings_override_subtitle">Применяется поверх конфигурации подписки</string>
+    <string name="clod_settings_override_subtitle">Применяется поверх конфигурации любой подписки</string>
     <string name="clod_settings_meta_subtitle">Sniffer, источники geodata, TLS</string>
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
@@ -380,7 +384,7 @@
     <string name="sniff_quic_override_destination">Подменять адрес назначения для QUIC</string>
     <string name="skip_src_address">Пропускать адреса источника</string>
     <string name="skip_dst_address">Пропускать адреса назначения</string>
-    <string name="import_asn_file">Загрузить файл ASN</string>
+    <string name="import_asn_file">Загрузить базу ASN</string>
     <string name="clod_hwid_title">Опознавать это устройство</string>
     <string name="clod_hwid_summary">Панели, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
     <string name="clod_sub_notify_title">Напоминания о подписке</string>

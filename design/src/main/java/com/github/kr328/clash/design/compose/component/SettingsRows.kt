@@ -126,7 +126,8 @@ fun SelectRow(
         AlertDialog(
             onDismissRequest = { picking = false },
             title = { Text(title) },
-            confirmButton = {
+            confirmButton = {},
+            dismissButton = {
                 TextButton(onClick = { picking = false }) {
                     Text(stringResource(R.string.cancel))
                 }

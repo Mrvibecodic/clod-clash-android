@@ -607,12 +607,7 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
     val used = profile.upload + profile.download
 
     val label = status.label()
-    val days = if (profile.expire > 0) {
-        ((profile.expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
-    } else {
-        -1
-    }
-    val daysText = if (days >= 0) stringResource(R.string.clod_sub_days, days) else null
+    val daysText = expiryLeft(profile.expire, now)
     val trafficText = when {
         profile.total > 0 -> Formatter.formatShortFileSize(context, used) + " / " +
             Formatter.formatShortFileSize(context, profile.total)
@@ -746,17 +741,13 @@ private fun QuotaCards(item: SubscriptionItem) {
         }
         if (profile.expire > 0) {
             val leftMillis = (profile.expire - now).coerceAtLeast(0)
-            val days = (leftMillis / TimeUnit.DAYS.toMillis(1)).toInt()
 
             QuotaCard(
                 label = stringResource(R.string.clod_quota_expiry),
-                value = stringResource(R.string.clod_sub_days, days),
+                value = expiryLeft(profile.expire, now)
+                    ?: stringResource(R.string.clod_sub_expired),
                 progress = (leftMillis.toFloat() / TimeUnit.DAYS.toMillis(30)).coerceIn(0f, 1f),
-                note = stringResource(
-                    R.string.clod_sub_until,
-                    android.text.format.DateFormat.getDateFormat(context)
-                        .format(java.util.Date(profile.expire)),
-                ),
+                note = expiryDate(profile.expire, now),
                 modifier = Modifier.weight(1f),
             )
         }

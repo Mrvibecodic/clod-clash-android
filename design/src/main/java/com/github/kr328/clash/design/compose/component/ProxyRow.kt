@@ -90,7 +90,7 @@ fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
         val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
 
         color = delayColor(delay)
-        label = if (unknown) "—" else "$delay ms"
+        label = if (unknown) "—" else stringResource(R.string.clod_delay_ms, delay)
     }
 
     Box(
@@ -169,7 +169,7 @@ fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "$delay ms",
+            text = stringResource(R.string.clod_delay_ms, delay),
             color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,

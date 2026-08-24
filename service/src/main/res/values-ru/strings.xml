@@ -1,7 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
     <string name="clash_notification_content" translatable="false">"%1$s↑\t%2$s↓"</string>
 
-    <string name="clash_service_status_channel">Статус Clash</string>
+    <string name="clash_service_status_channel">Состояние туннеля</string>
     <string name="profile_service_status">Статус сервиса профиля</string>
     <string name="profile_process_status">Статус обработки профиля</string>
     <string name="profile_process_result">Результат обработки профиля</string>

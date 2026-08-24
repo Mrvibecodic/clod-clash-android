@@ -49,8 +49,8 @@ fun HelpScreen(
 
             SectionHeader(stringResource(R.string.document))
             LinkRow(
-                title = stringResource(R.string.clash_meta_wiki),
-                url = stringResource(R.string.clash_meta_wiki_url),
+                title = stringResource(R.string.clod_docs),
+                url = stringResource(R.string.clod_docs_url),
                 onAction = onAction,
             )
 

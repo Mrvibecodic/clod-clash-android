@@ -78,7 +78,7 @@
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
 
-    <string name="clash_logcat">Clash Logcat</string>
+    <string name="clash_logcat">Core log</string>
     <string name="history">History</string>
     <string name="logcat">Logcat</string>
 
@@ -92,7 +92,7 @@
     <string name="override">Override</string>
 
     <string name="auto_restart">Auto Restart</string>
-    <string name="allow_clash_auto_restart">Allow clash auto restart</string>
+    <string name="allow_clash_auto_restart">Allow the tunnel to restart automatically</string>
 
     <string name="route_system_traffic">Route System Traffic</string>
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
@@ -111,7 +111,7 @@
     <string name="system_proxy_summary">Attach http proxy to VpnService</string>
     <string name="access_control_mode">Access Control Mode</string>
 
-    <string name="options_unavailable">Options Unavailable until Clash Stopped</string>
+    <string name="options_unavailable">Options unavailable until the tunnel is stopped</string>
 
     <string name="general">General</string>
     <string name="dns">DNS</string>
@@ -189,7 +189,7 @@
 
     <string name="clash_meta_for_android">Clod Clash</string>
 
-    <string name="document">Document</string>
+    <string name="document">Documentation</string>
     <string name="sources">Sources</string>
     <string name="clash_meta_core">Clash Meta Core</string>
     <string name="meta_github_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android</string>
@@ -245,8 +245,8 @@
     <string name="invalid_log_file">Invalid log file</string>
     <string name="unable_to_start_vpn">Unable to start VPN component</string>
 
-    <string name="clash_meta_wiki">Clash Meta Wiki</string>
-    <string name="clash_meta_wiki_url" translatable="false">https://wiki.metacubex.one</string>
+    <string name="clod_docs">Clod Clash documentation</string>
+    <string name="clod_docs_url">https://mrvibecodic.github.io/clod-clash-android/en/docs</string>
 
     <string name="meta_features">Core Features</string>
     <string name="unified_delay">Unified Delay</string>
@@ -290,12 +290,12 @@
     <string name="import_from_qr_no_permission">Camera access is restricted. Please enable it in Settings.</string>
     <string name="import_from_qr_exception">An unhandled system exception occurred.</string>
 
-    <string name="shortcut_toggle_short">Toggle Clash</string>
-    <string name="shortcut_toggle_long">Toggle Clash service on/off</string>
-    <string name="shortcut_start_short">Start Clash</string>
-    <string name="shortcut_start_long">Start Clash service</string>
-    <string name="shortcut_stop_short">Stop Clash</string>
-    <string name="shortcut_stop_long">Stop Clash service</string>
+    <string name="shortcut_toggle_short">Toggle</string>
+    <string name="shortcut_toggle_long">Turn the VPN on or off</string>
+    <string name="shortcut_start_short">Connect</string>
+    <string name="shortcut_start_long">Turn the VPN on</string>
+    <string name="shortcut_stop_short">Disconnect</string>
+    <string name="shortcut_stop_long">Turn the VPN off</string>
     <string name="clod_tab_home">Home</string>
     <string name="clod_tab_servers">Servers</string>
     <string name="clod_tab_subscriptions">Subscriptions</string>
@@ -318,7 +318,10 @@
     <string name="clod_sub_expired">Expired</string>
     <string name="clod_sub_unlimited">Unlimited</string>
     <string name="clod_sub_days">%1$d d</string>
+    <string name="clod_delay_ms">%1$d ms</string>
     <string name="clod_sub_until">until %1$s</string>
+    <string name="clod_sub_expired_at">expired %1$s</string>
+    <string name="clod_sub_last_day">less than a day</string>
     <string name="clod_quota_traffic">Traffic</string>
     <string name="clod_quota_expiry">Expires in</string>
     <string name="clod_quota_left">%1$s left</string>
@@ -338,7 +341,7 @@
     <string name="clod_settings_app_title">Look and behavior</string>
     <string name="clod_settings_app_subtitle">Theme, auto restart, icon</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, system proxy</string>
-    <string name="clod_settings_override_subtitle">Applied on top of the subscription config</string>
+    <string name="clod_settings_override_subtitle">Applied on top of any subscription config</string>
     <string name="clod_settings_meta_subtitle">Sniffer, geodata sources, TLS</string>
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>

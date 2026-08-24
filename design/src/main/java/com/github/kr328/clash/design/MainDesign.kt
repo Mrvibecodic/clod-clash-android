@@ -1,6 +1,7 @@
 package com.github.kr328.clash.design
 
 import android.content.Context
+import android.text.format.Formatter
 import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,8 +9,8 @@ import androidx.compose.runtime.setValue
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.Traffic
 import com.github.kr328.clash.core.model.TunnelState
-import com.github.kr328.clash.core.util.trafficDownload
-import com.github.kr328.clash.core.util.trafficUpload
+import com.github.kr328.clash.core.util.bytesDownload
+import com.github.kr328.clash.core.util.bytesUpload
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
@@ -241,8 +242,8 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
     suspend fun setTraffic(value: Traffic) {
         withContext(Dispatchers.Main) {
             state = state.copy(
-                downloaded = value.trafficDownload(),
-                uploaded = value.trafficUpload(),
+                downloaded = Formatter.formatShortFileSize(context, value.bytesDownload()),
+                uploaded = Formatter.formatShortFileSize(context, value.bytesUpload()),
             )
         }
     }

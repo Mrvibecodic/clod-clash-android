@@ -1,11 +1,11 @@
-A Graphical user interface of Clash.Meta for Android.
+Clod Clash is an Android client for a subscription link issued by your provider.
 
 <h3>Features</h3>
 <ul>
-<li>Local HTTP/HTTPS/SOCKS server</li>
-<li>VMess, Shadowsocks, Trojan, Snell protocol support for remote connections</li>
-<li>Built-in DNS server that aims to minimize DNS pollution attack impact, supports DoH/DoT upstream and fake IP</li>
-<li>Rules based off domains, GEOIP, IPCIDR or Process to forward packets to different nodes</li>
-<li>Remote groups allow users to implement powerful rules. Supports automatic fallback, load balancing or auto select node based off latency</li>
-<li>Remote providers, allowing users to get node lists remotely instead of hardcoding in config</li>
+<li>One-tap connection: paste the subscription link, the rest is pulled from it</li>
+<li>Servers, groups and latency checks with favourites and search</li>
+<li>Subscription status: traffic left, expiry date and reminders</li>
+<li>Per-app routing: send every app through the tunnel or pick them one by one</li>
+<li>Automatic subscription updates on a schedule</li>
+<li>Quick settings tile, home screen widget and launcher shortcuts</li>
 </ul>
