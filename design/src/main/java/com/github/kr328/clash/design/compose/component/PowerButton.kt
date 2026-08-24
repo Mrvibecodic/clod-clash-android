@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,16 +75,30 @@ fun PowerButton(
     )
 
     val animated = status != ConnectionStatus.Disconnected
-    val infinite = rememberInfiniteTransition(label = "powerGlow")
-    val glow by infinite.animateFloat(
-        initialValue = if (animated) 0.25f else 0f,
-        targetValue = if (animated) 0.55f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "powerGlowAlpha",
-    )
+    val glow = if (animated) {
+        val infinite = rememberInfiniteTransition(label = "powerGlow")
+
+        infinite.animateFloat(
+            initialValue = 0.25f,
+            targetValue = 0.55f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "powerGlowAlpha",
+        ).value
+    } else {
+        0f
+    }
+
+    val faceBrush = remember(animatedAccent) {
+        Brush.radialGradient(
+            colors = listOf(
+                lerp(animatedAccent, Color.White, 0.45f),
+                animatedAccent,
+            ),
+        )
+    }
 
     Box(
         modifier = modifier
@@ -101,14 +116,7 @@ fun PowerButton(
                 )
             }
             .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        lerp(animatedAccent, Color.White, 0.45f),
-                        animatedAccent,
-                    ),
-                ),
-            )
+            .background(faceBrush)
             .clickable(enabled = enabled, role = Role.Button) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 

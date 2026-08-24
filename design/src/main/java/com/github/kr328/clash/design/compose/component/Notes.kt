@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,7 +66,7 @@ private fun parseNotes(raw: String): List<NoteLine> {
 
 @Composable
 fun ReleaseNotes(raw: String, modifier: Modifier = Modifier) {
-    val lines = parseNotes(raw)
+    val lines = remember(raw) { parseNotes(raw) }
 
     Column(modifier = modifier) {
         lines.forEachIndexed { index, line ->

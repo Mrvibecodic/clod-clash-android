@@ -227,7 +227,8 @@ private fun ResetRow(enabled: Boolean, onAction: (AppSettingsAction) -> Unit) {
         },
         subtitleMaxLines = 3,
         icon = painterResource(R.drawable.ic_baseline_restore),
-        onClick = { if (enabled) confirming = true },
+        enabled = enabled,
+        onClick = { confirming = true },
     )
 
     if (confirming) {

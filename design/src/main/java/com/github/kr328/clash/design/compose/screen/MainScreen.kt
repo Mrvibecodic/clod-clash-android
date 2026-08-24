@@ -51,6 +51,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
@@ -894,7 +895,9 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                             ),
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .size(32.dp),
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_chevron_down),

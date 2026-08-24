@@ -8,6 +8,7 @@ object SystemLogcat {
         "Go",
         "DEBUG",
         "AndroidRuntime",
+        "ClodClash",
         "ClashMetaForAndroid",
         "LwIP",
     )

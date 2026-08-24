@@ -160,7 +160,9 @@ class ProfileReceiver : BroadcastReceiver() {
         private fun cancelAlarm(context: Context, imported: Imported) {
             val manager = context.getSystemService<AlarmManager>() ?: return
 
-            manager.cancel(pendingIntentOf(context, imported))
+            existingPendingIntentOf(context, imported)?.let {
+                manager.cancel(it)
+            }
 
             legacyPendingIntentOf(context, imported)?.let {
                 manager.cancel(it)
@@ -182,6 +184,19 @@ class ProfileReceiver : BroadcastReceiver() {
                 imported.uuid.hashCode(),
                 intent,
                 pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
+            )
+        }
+
+        private fun existingPendingIntentOf(context: Context, imported: Imported): PendingIntent? {
+            val intent = Intent(Intents.ACTION_PROFILE_REQUEST_UPDATE)
+                .setComponent(ProfileReceiver::class.componentName)
+                .setUUID(imported.uuid)
+
+            return PendingIntent.getBroadcast(
+                context,
+                imported.uuid.hashCode(),
+                intent,
+                pendingIntentFlags(PendingIntent.FLAG_NO_CREATE)
             )
         }
 

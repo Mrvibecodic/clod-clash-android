@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.TextInputContent
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
+import com.github.kr328.clash.design.compose.theme.appDarkTheme
 import com.github.kr328.clash.design.util.Validator
 import com.github.kr328.clash.design.util.ValidatorAcceptAll
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -36,7 +37,7 @@ suspend fun Context.requestModelTextInput(
 
         val view = ComposeView(this).apply {
             setContent {
-                ClodClashTheme {
+                ClodClashTheme(darkTheme = appDarkTheme()) {
                     TextInputContent(
                         initial = initial ?: "",
                         isValid = validator,

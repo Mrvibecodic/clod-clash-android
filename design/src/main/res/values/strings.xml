@@ -239,6 +239,8 @@
     <string name="update_all">Update All</string>
 
     <string name="close">Close</string>
+    <string name="clod_back">Back</string>
+    <string name="clod_sub_menu">Subscription actions</string>
 
     <string name="invalid_log_file">Invalid log file</string>
     <string name="unable_to_start_vpn">Unable to start VPN component</string>

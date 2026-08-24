@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import com.github.kr328.clash.design.compose.component.ProgressContent
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
+import com.github.kr328.clash.design.compose.theme.appDarkTheme
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,7 +32,7 @@ suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.()
 
     val view = ComposeView(this).apply {
         setContent {
-            ClodClashTheme {
+            ClodClashTheme(darkTheme = appDarkTheme()) {
                 ProgressContent(
                     indeterminate = indeterminate,
                     progress = current,

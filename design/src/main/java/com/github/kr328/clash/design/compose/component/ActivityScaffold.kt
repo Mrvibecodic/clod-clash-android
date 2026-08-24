@@ -43,7 +43,7 @@ fun ActivityScaffold(
                     IconButton(onClick = onBack) {
                         Icon(
                             painter = painterResource(R.drawable.ic_baseline_arrow_back),
-                            contentDescription = stringResource(R.string.close),
+                            contentDescription = stringResource(R.string.clod_back),
                         )
                     }
                 },

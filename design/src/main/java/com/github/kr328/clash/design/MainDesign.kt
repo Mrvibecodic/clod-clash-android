@@ -327,7 +327,15 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
 
     suspend fun setProfiles(profiles: List<SubscriptionItem>) {
         withContext(Dispatchers.Main) {
-            state = state.copy(subscriptions = state.subscriptions.copy(profiles = profiles))
+            val group = state.subscriptions.selectedGroup
+                ?.takeIf { selected -> profiles.any { it.group == selected } }
+
+            state = state.copy(
+                subscriptions = state.subscriptions.copy(
+                    profiles = profiles,
+                    selectedGroup = group,
+                ),
+            )
         }
     }
 

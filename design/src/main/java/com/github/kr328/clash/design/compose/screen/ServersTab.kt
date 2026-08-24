@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -150,28 +151,30 @@ fun ServersTab(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 8.dp,
-                bottom = 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(items = proxies, key = { it.name }) { proxy ->
-                ProxyRow(
-                    title = proxy.title,
-                    subtitle = descriptions[proxy.name]?.takeIf { it.isNotBlank() }
-                        ?: proxy.subtitle,
-                    delay = proxy.delay,
-                    marksOnly = active?.panel?.disablePing == true,
-                    selected = proxy.name == group.now,
-                    favorite = proxy.name in state.favorites,
-                    onClick = { onAction(MainAction.SelectProxy(proxy.name)) },
-                    onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
-                )
+        key(state.selected) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 8.dp,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(items = proxies, key = { it.name }) { proxy ->
+                    ProxyRow(
+                        title = proxy.title,
+                        subtitle = descriptions[proxy.name]?.takeIf { it.isNotBlank() }
+                            ?: proxy.subtitle,
+                        delay = proxy.delay,
+                        marksOnly = active?.panel?.disablePing == true,
+                        selected = proxy.name == group.now,
+                        favorite = proxy.name in state.favorites,
+                        onClick = { onAction(MainAction.SelectProxy(proxy.name)) },
+                        onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
+                    )
+                }
             }
         }
     }

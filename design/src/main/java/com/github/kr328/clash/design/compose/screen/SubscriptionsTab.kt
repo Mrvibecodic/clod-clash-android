@@ -61,6 +61,7 @@ import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
+import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.service.model.Profile
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -295,7 +296,7 @@ private fun SubscriptionCard(
                         IconButton(onClick = { menuOpen = true }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_baseline_more_vert),
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.clod_sub_menu),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -355,7 +356,7 @@ private fun SubscriptionCard(
                             text = expiryLeft(profile.expire, now)
                                 ?: expiryDate(profile.expire, now),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = status.color(),
+                            color = status.color().statusText(),
                             fontWeight = FontWeight.Medium,
                         )
                     }
@@ -571,7 +572,12 @@ internal fun StatusBadge(text: String, color: Color) {
             .background(color.statusContainer())
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
-        Text(text = text, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Text(
+            text = text,
+            color = color.statusText(),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 

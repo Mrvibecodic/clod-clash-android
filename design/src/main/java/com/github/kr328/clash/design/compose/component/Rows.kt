@@ -103,11 +103,12 @@ fun ActionRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     subtitleMaxLines: Int = 1,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,

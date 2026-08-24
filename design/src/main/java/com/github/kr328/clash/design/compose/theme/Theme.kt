@@ -11,10 +11,14 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import com.github.kr328.clash.design.model.DarkMode
+import com.github.kr328.clash.design.store.UiStore
 
 private val LightColors: ColorScheme = lightColorScheme(
     primary = LightPrimary,
@@ -98,6 +102,7 @@ data class ClodExtraColors(
     val statusConnecting: Color,
     val statusStopped: Color,
     val brandGradient: Brush,
+    val dark: Boolean,
 )
 
 private val BrandGradient = Brush.linearGradient(listOf(BrandGradientStart, BrandGradientEnd))
@@ -107,6 +112,7 @@ private val LightExtraColors = ClodExtraColors(
     statusConnecting = LightStatusConnecting,
     statusStopped = LightStatusStopped,
     brandGradient = BrandGradient,
+    dark = false,
 )
 
 private val DarkExtraColors = ClodExtraColors(
@@ -114,6 +120,7 @@ private val DarkExtraColors = ClodExtraColors(
     statusConnecting = DarkStatusConnecting,
     statusStopped = DarkStatusStopped,
     brandGradient = BrandGradient,
+    dark = true,
 )
 
 private val LocalClodExtraColors = staticCompositionLocalOf { LightExtraColors }
@@ -125,7 +132,28 @@ object ClodTheme {
 
 private const val STATUS_CONTAINER_ALPHA = 0.14f
 
+private const val STATUS_TEXT_DARKEN = 0.28f
+
 fun Color.statusContainer(): Color = copy(alpha = STATUS_CONTAINER_ALPHA)
+
+@Composable
+fun Color.statusText(): Color = if (ClodTheme.extraColors.dark) {
+    this
+} else {
+    lerp(this, Color.Black, STATUS_TEXT_DARKEN)
+}
+
+@Composable
+fun appDarkTheme(): Boolean {
+    val context = LocalContext.current
+    val mode = remember(context) { UiStore(context).darkMode }
+
+    return when (mode) {
+        DarkMode.Auto -> isSystemInDarkTheme()
+        DarkMode.ForceLight -> false
+        DarkMode.ForceDark -> true
+    }
+}
 
 @Composable
 fun ClodClashTheme(
