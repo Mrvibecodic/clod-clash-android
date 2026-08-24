@@ -13,6 +13,8 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/tun"
+
+	"github.com/metacubex/mihomo/log"
 )
 
 var rTunLock sync.Mutex
@@ -85,6 +87,8 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 
 	closer, err := tun.Start(f, s, g, p, d)
 	if err != nil {
+		log.Errorln("Start tun: %s", err.Error())
+
 		remote.close()
 
 		return 1

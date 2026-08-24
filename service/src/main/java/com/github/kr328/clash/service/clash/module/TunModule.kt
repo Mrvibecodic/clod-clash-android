@@ -5,7 +5,9 @@ import android.net.VpnService
 import android.os.Build
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.core.util.parseInetSocketAddress
+import com.github.kr328.clash.service.R
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
@@ -55,15 +57,19 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
     }
 
     fun attach(device: TunDevice) {
-        Clash.startTun(
-            fd = device.fd,
-            stack = device.stack,
-            gateway = device.gateway,
-            portal = device.portal,
-            dns = device.dns,
-            markSocket = vpn::protect,
-            querySocketUid = this::queryUid
-        )
+        try {
+            Clash.startTun(
+                fd = device.fd,
+                stack = device.stack,
+                gateway = device.gateway,
+                portal = device.portal,
+                dns = device.dns,
+                markSocket = vpn::protect,
+                querySocketUid = this::queryUid
+            )
+        } catch (e: Exception) {
+            throw ClashException(service.getString(R.string.clod_tun_start_failed))
+        }
     }
 
     suspend fun close() {
