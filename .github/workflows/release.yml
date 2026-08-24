@@ -24,8 +24,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Тег должен совпадать с versionName в build.gradle.kts
+      - name: Тег, схема versionCode и рост версии
         id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           TAG_REF="${GITHUB_REF_NAME:-${GITHUB_REF##*/}}"
@@ -36,6 +39,60 @@ jobs:
           if [[ "$TAG_REF" != "$EXPECTED_TAG" ]]; then
             echo "::error::Тег $TAG_REF не совпадает с build.gradle.kts (ожидался $EXPECTED_TAG)"
             exit 1
+          fi
+
+          BASE="${VERSION_NAME%%-*}"
+          SUFFIX=""
+          [[ "$VERSION_NAME" == *-* ]] && SUFFIX="${VERSION_NAME#*-}"
+
+          if [[ ! "$BASE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::versionName $VERSION_NAME не разбирается как major.minor.patch[-суффикс]"
+            exit 1
+          fi
+          MAJOR="${BASH_REMATCH[1]}"; MINOR="${BASH_REMATCH[2]}"; PATCH="${BASH_REMATCH[3]}"
+
+          case "$SUFFIX" in
+            '')            RANK=99 ;;
+            alpha.[1-9]|alpha.1[0-9]|alpha.20)  RANK="${SUFFIX#alpha.}" ;;
+            beta.[1-9]|beta.1[0-9]|beta.20)     RANK=$(( 30 + ${SUFFIX#beta.} )) ;;
+            rc.[1-9]|rc.1[0-9]|rc.20)           RANK=$(( 60 + ${SUFFIX#rc.} )) ;;
+            *)
+              echo "::error::Суффикс версии '$SUFFIX' не поддержан. Разрешены alpha.N, beta.N, rc.N (N от 1 до 20)"
+              exit 1 ;;
+          esac
+
+          EXPECTED_CODE=$(( ((MAJOR * 100 + MINOR) * 100 + PATCH) * 100 + RANK ))
+
+          if [[ "$VERSION_CODE" != "$EXPECTED_CODE" ]]; then
+            echo "::error::versionCode $VERSION_CODE не соответствует versionName $VERSION_NAME (ожидался $EXPECTED_CODE)."
+            echo "::error::Схема: ((major*100 + minor)*100 + patch)*100 + ранг, где ранг = 99 у обычной версии, N у alpha.N, 30+N у beta.N, 60+N у rc.N. Так предварительная сборка всегда МЕНЬШЕ своего финала, и финал до неё доезжает."
+            exit 1
+          fi
+
+          manifest_code() {
+            local tag="$1" id
+            id=$(gh api "repos/$REPO/releases/tags/$tag" \
+              --jq '.assets[] | select(.name == "latest.json") | .id' 2>/dev/null || true)
+            if [[ ! "$id" =~ ^[0-9]+$ ]]; then
+              echo 0
+              return
+            fi
+            gh api -H "Accept: application/octet-stream" \
+              "repos/$REPO/releases/assets/$id" 2>/dev/null | jq -r '.versionCode // 0'
+          }
+
+          PREV_RELEASE=$(manifest_code updater)
+          PREV_PRE=$(manifest_code updater-prerelease)
+          PREV=$PREV_RELEASE
+          (( PREV_PRE > PREV )) && PREV=$PREV_PRE
+
+          if (( PREV == 0 )); then
+            echo "Прошлых манифестов нет — проверять рост не с чем"
+          elif (( VERSION_CODE <= PREV )); then
+            echo "::error::versionCode $VERSION_CODE не больше выпущенного ранее ($PREV). Такое обновление не примет ни один установленный клиент."
+            exit 1
+          else
+            echo "Рост версии в порядке: $PREV -> $VERSION_CODE"
           fi
 
           echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"

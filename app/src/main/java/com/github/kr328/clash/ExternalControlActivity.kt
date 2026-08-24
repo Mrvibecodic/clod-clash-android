@@ -18,9 +18,12 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import java.util.*
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.util.withAppLocale
 
-class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
+open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
+    protected open fun controlAllowed(): Boolean = UiStore(this).allowExternalControl
+
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base.withAppLocale())
     }
@@ -58,23 +61,33 @@ class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
                 return
             }
 
-            Intents.ACTION_TOGGLE_CLASH -> if (isClashRunning()) {
+            Intents.ACTION_TOGGLE_CLASH -> if (!controlAllowed()) {
+                refuseControl()
+            } else if (isClashRunning()) {
                 stopClash()
             } else {
                 startClash()
             }
 
-            Intents.ACTION_START_CLASH -> if (isClashRunning()) {
+            Intents.ACTION_START_CLASH -> if (!controlAllowed()) {
+                refuseControl()
+            } else if (isClashRunning()) {
                 Toast.makeText(this, R.string.external_control_started, Toast.LENGTH_LONG).show()
             } else {
                 startClash()
             }
 
-            Intents.ACTION_STOP_CLASH -> if (isClashRunning()) {
+            Intents.ACTION_STOP_CLASH -> if (!controlAllowed()) {
+                refuseControl()
+            } else if (isClashRunning()) {
                 stopClash()
             }
         }
         return finish()
+    }
+
+    private fun refuseControl() {
+        Toast.makeText(this, R.string.clod_external_control_refused, Toast.LENGTH_LONG).show()
     }
 
     private fun isClashRunning(): Boolean {

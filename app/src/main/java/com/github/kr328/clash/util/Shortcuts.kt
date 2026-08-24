@@ -5,8 +5,8 @@ import android.content.Intent
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.github.kr328.clash.ExternalControlActivity
 import com.github.kr328.clash.R
+import com.github.kr328.clash.ShortcutControlActivity
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.design.R as DesignR
 
@@ -27,7 +27,7 @@ fun Context.applyDynamicShortcuts(hide: Boolean) {
         .setIcon(IconCompat.createWithResource(this, R.drawable.ic_toggle_all))
         .setIntent(
             Intent(Intents.ACTION_TOGGLE_CLASH)
-                .setClassName(this, ExternalControlActivity::class.java.name)
+                .setClassName(this, ShortcutControlActivity::class.java.name)
                 .addFlags(flags)
         )
         .setRank(0)
@@ -39,7 +39,7 @@ fun Context.applyDynamicShortcuts(hide: Boolean) {
         .setIcon(IconCompat.createWithResource(this, R.drawable.ic_toggle_on))
         .setIntent(
             Intent(Intents.ACTION_START_CLASH)
-                .setClassName(this, ExternalControlActivity::class.java.name)
+                .setClassName(this, ShortcutControlActivity::class.java.name)
                 .addFlags(flags)
         )
         .setRank(1)
@@ -51,11 +51,15 @@ fun Context.applyDynamicShortcuts(hide: Boolean) {
         .setIcon(IconCompat.createWithResource(this, R.drawable.ic_toggle_off))
         .setIntent(
             Intent(Intents.ACTION_STOP_CLASH)
-                .setClassName(this, ExternalControlActivity::class.java.name)
+                .setClassName(this, ShortcutControlActivity::class.java.name)
                 .addFlags(flags)
         )
         .setRank(2)
         .build()
 
-    ShortcutManagerCompat.setDynamicShortcuts(this, listOf(toggle, start, stop))
+    val shortcuts = listOf(toggle, start, stop)
+
+    ShortcutManagerCompat.setDynamicShortcuts(this, shortcuts)
+
+    runCatching { ShortcutManagerCompat.updateShortcuts(this, shortcuts) }
 }

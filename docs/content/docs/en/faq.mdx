@@ -58,3 +58,10 @@ and "Language" (follow system, English, Russian).
 
 The 1×1 widget is added like any widget from the home screen, the tile from Android's
 quick-settings editor. Both toggle the tunnel without opening the app.
+
+## Automation: Tasker and friends
+
+The client understands the external commands "start", "stop" and "toggle". They are
+forbidden by default — otherwise any installed app could switch the VPN off without asking.
+One switch allows them: **More → Application → "Allow external control"**. The app's own
+shortcuts, the tile and the widget do not depend on this setting and always work.

@@ -71,6 +71,13 @@
         </activity-alias>
 
         <activity
+            android:name=".ShortcutControlActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/clod_shortcut_control_activity"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+        <activity
             android:name=".ExternalControlActivity"
             android:excludeFromRecents="true"
             android:exported="true"

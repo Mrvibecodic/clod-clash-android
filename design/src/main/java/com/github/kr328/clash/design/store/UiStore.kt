@@ -58,6 +58,11 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
+    var allowExternalControl: Boolean by store.boolean(
+        key = "allow_external_control",
+        defaultValue = false,
+    )
+
     var reliabilityAsked: Boolean by store.boolean(
         key = "reliability_asked",
         defaultValue = false,
@@ -109,6 +114,7 @@ class UiStore(context: Context) {
             "show_group_icons",
             "hide_app_icon",
             "hide_from_recents",
+            "allow_external_control",
             "proxy_sort",
             "proxy_last_group",
             "access_control_sort",

@@ -40,6 +40,7 @@ data class AppSettingsState(
     val hideAppIcon: Boolean = false,
     val canHideAppIcon: Boolean = true,
     val hideFromRecents: Boolean = false,
+    val allowExternalControl: Boolean = false,
     val dynamicNotification: Boolean = false,
     val notificationEditable: Boolean = true,
     val enableHwid: Boolean = true,
@@ -58,6 +59,7 @@ sealed interface AppSettingsAction {
     data class SetShowGroupIcons(val enabled: Boolean) : AppSettingsAction
     data class SetHideAppIcon(val enabled: Boolean) : AppSettingsAction
     data class SetHideFromRecents(val enabled: Boolean) : AppSettingsAction
+    data class SetAllowExternalControl(val enabled: Boolean) : AppSettingsAction
     data class SetDynamicNotification(val enabled: Boolean) : AppSettingsAction
     data class SetEnableHwid(val enabled: Boolean) : AppSettingsAction
     data class SetSubNotifications(val enabled: Boolean) : AppSettingsAction
@@ -139,6 +141,13 @@ fun AppSettingsScreen(
                 icon = painterResource(R.drawable.ic_baseline_stack),
                 checked = state.hideFromRecents,
                 onCheckedChange = { onAction(AppSettingsAction.SetHideFromRecents(it)) },
+            )
+            SwitchRow(
+                title = stringResource(R.string.clod_external_control_title),
+                subtitle = stringResource(R.string.clod_external_control_summary),
+                icon = painterResource(R.drawable.ic_baseline_extension),
+                checked = state.allowExternalControl,
+                onCheckedChange = { onAction(AppSettingsAction.SetAllowExternalControl(it)) },
             )
 
             SectionHeader(stringResource(R.string.service))

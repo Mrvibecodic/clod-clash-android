@@ -53,6 +53,7 @@ class AppSettingsDesign(
             hideAppIcon = uiStore.hideAppIcon,
             canHideAppIcon = canHideAppIcon,
             hideFromRecents = uiStore.hideFromRecents,
+            allowExternalControl = uiStore.allowExternalControl,
             dynamicNotification = srvStore.dynamicNotification,
             notificationEditable = !running,
             enableHwid = srvStore.enableHwid,
@@ -98,6 +99,7 @@ class AppSettingsDesign(
             showGroupIcons = uiStore.showGroupIcons,
             hideAppIcon = false,
             hideFromRecents = uiStore.hideFromRecents,
+            allowExternalControl = uiStore.allowExternalControl,
             dynamicNotification = srvStore.dynamicNotification,
             enableHwid = srvStore.enableHwid,
             subNotifications = srvStore.enableSubNotifications,
@@ -201,6 +203,11 @@ class AppSettingsDesign(
                 state = state.copy(hideFromRecents = action.enabled)
 
                 requests.trySend(Request.ReCreateAllActivities)
+            }
+            is AppSettingsAction.SetAllowExternalControl -> {
+                uiStore.allowExternalControl = action.enabled
+
+                state = state.copy(allowExternalControl = action.enabled)
             }
             is AppSettingsAction.SetEnableHwid -> {
                 srvStore.enableHwid = action.enabled
