@@ -1167,7 +1167,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         setRoutingDataUpdating(true)
 
         try {
-            val geo = GeoData.update(this@MainActivity, activeLocalProxyPort())
+            val running = clashRunning
+
+            val geo = GeoData.update(this@MainActivity, activeLocalProxyPort(), running)
 
             val providers = runCatching {
                 updatableProviders().forEach {
@@ -1175,22 +1177,39 @@ class MainActivity : BaseActivity<MainDesign>() {
                 }
             }
 
-            geo.fold(
-                onSuccess = {
-                    if (providers.isSuccess) {
-                        showToast(DesignR.string.clod_geo_updated, ToastDuration.Short)
-                    } else {
-                        Log.w("Update providers: ${providers.exceptionOrNull()}")
+            if (providers.isFailure) {
+                Log.w("Update providers: ${providers.exceptionOrNull()}")
+            }
 
-                        showToast(DesignR.string.clod_geo_update_failed, ToastDuration.Long)
-                    }
-                },
-                onFailure = {
-                    Log.w("Update geo data: $it", it)
+            val reconnect = if (clashRunning) {
+                getString(DesignR.string.clod_geo_after_reconnect)
+            } else {
+                null
+            }
 
-                    showToast(DesignR.string.clod_geo_update_failed, ToastDuration.Long)
-                },
-            )
+            when {
+                geo.updated.isEmpty() -> showToast(
+                    DesignR.string.clod_geo_update_failed,
+                    ToastDuration.Long,
+                    detail = geo.failed.joinToString(", ").ifEmpty { null },
+                )
+                geo.failed.isNotEmpty() -> showToast(
+                    DesignR.string.clod_geo_update_partial,
+                    ToastDuration.Long,
+                    detail = listOfNotNull(geo.failed.joinToString(", ").ifEmpty { null }, reconnect)
+                        .joinToString(" · ").ifEmpty { null },
+                )
+                providers.isFailure -> showToast(
+                    DesignR.string.clod_geo_providers_failed,
+                    ToastDuration.Long,
+                    detail = reconnect,
+                )
+                reconnect != null -> showToast(
+                    DesignR.string.clod_geo_updated_reconnect,
+                    ToastDuration.Long,
+                )
+                else -> showToast(DesignR.string.clod_geo_updated, ToastDuration.Short)
+            }
 
             loadRoutingData()
         } finally {

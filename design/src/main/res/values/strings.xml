@@ -283,6 +283,7 @@
     <string name="geofile_unknown_db_format">Unknown Database format</string>
     <string name="geofile_unknown_db_format_message">Only %1$s are supported</string>
     <string name="geofile_imported">%1$s imported</string>
+    <string name="geofile_after_reconnect">The core will use it after reconnecting</string>
     <string name="external_control_activity">External Control</string>
     <string name="external_control_started">Clod Clash is on</string>
     <string name="external_control_stopped">Clod Clash is off</string>
@@ -390,7 +391,11 @@
     <string name="clod_geo_subtitle">Country, site and network lists</string>
     <string name="clod_geo_hint">The core decides what goes through the tunnel by these lists. They can be updated separately from the app; the new lists take effect on the next connection.</string>
     <string name="clod_geo_updated">Routing data updated</string>
-    <string name="clod_geo_update_failed">Could not download routing data</string>
+    <string name="clod_geo_update_failed">Could not update routing data</string>
+    <string name="clod_geo_update_partial">Some routing lists were not updated</string>
+    <string name="clod_geo_updated_reconnect">Lists downloaded, the core will use them after reconnecting</string>
+    <string name="clod_geo_providers_failed">Lists updated, providers were not</string>
+    <string name="clod_geo_after_reconnect">The core will use the new lists after reconnecting</string>
     <string name="clod_geo_missing">Not downloaded</string>
     <string name="clod_group_index">Group \u00b7 %1$d of %2$d</string>
     <plurals name="clod_nodes_count">

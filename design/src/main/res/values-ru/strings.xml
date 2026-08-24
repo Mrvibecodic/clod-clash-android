@@ -249,6 +249,7 @@
     <string name="geofile_unknown_db_format">Неизвестный формат базы</string>
     <string name="geofile_unknown_db_format_message">Поддерживаются только %1$s</string>
     <string name="geofile_imported">%1$s загружен</string>
+    <string name="geofile_after_reconnect">Ядро возьмёт его после переподключения</string>
     <string name="external_control_activity">Внешнее управление</string>
     <string name="external_control_started">Clod Clash включён</string>
     <string name="external_control_stopped">Clod Clash выключен</string>
@@ -358,7 +359,11 @@
     <string name="clod_geo_subtitle">Списки стран, сайтов и сетей</string>
     <string name="clod_geo_hint">По этим спискам ядро решает, что пускать через туннель. Их можно обновить отдельно от приложения; новые списки применятся при следующем подключении.</string>
     <string name="clod_geo_updated">Данные маршрутизации обновлены</string>
-    <string name="clod_geo_update_failed">Не удалось скачать данные маршрутизации</string>
+    <string name="clod_geo_update_failed">Не удалось обновить данные маршрутизации</string>
+    <string name="clod_geo_update_partial">Обновились не все списки маршрутизации</string>
+    <string name="clod_geo_updated_reconnect">Списки скачаны, ядро возьмёт их после переподключения</string>
+    <string name="clod_geo_providers_failed">Списки обновлены, а провайдеры — нет</string>
+    <string name="clod_geo_after_reconnect">Ядро возьмёт новые списки после переподключения</string>
     <string name="clod_geo_missing">Не скачан</string>
     <string name="clod_group_index">Группа \u00b7 %1$d из %2$d</string>
     <plurals name="clod_nodes_count">
