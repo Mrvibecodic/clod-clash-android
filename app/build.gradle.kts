@@ -112,14 +112,13 @@ task("downloadGeoFiles") {
     }
 }
 
-afterEvaluate {
-    val downloadGeoFilesTask = tasks["downloadGeoFiles"]
-
-    tasks.forEach {
-        if (it.name.startsWith("assemble")) {
-            it.dependsOn(downloadGeoFilesTask)
-        }
-    }
+tasks.matching {
+    it.name.startsWith("assemble") ||
+        it.name.startsWith("bundle") ||
+        it.name.startsWith("lint") ||
+        it.name.contains("Assets")
+}.configureEach {
+    dependsOn("downloadGeoFiles")
 }
 
 tasks.getByName("clean", type = Delete::class) {
