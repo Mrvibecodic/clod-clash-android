@@ -45,26 +45,26 @@ object GeoData {
     suspend fun update(context: Context, mixedPort: Int?): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                GeoAssets.awaitReady(context)
+                GeoAssets.writeGuarded(context) {
+                    context.clashDir.mkdirs()
 
-                context.clashDir.mkdirs()
+                    FILES.forEach { (name, url) ->
+                        val target = File(context.clashDir, name)
+                        val temp = File(context.clashDir, "$name.download")
 
-                FILES.forEach { (name, url) ->
-                    val target = File(context.clashDir, name)
-                    val temp = File(context.clashDir, "$name.download")
+                        try {
+                            val bytes = fetch(url, null)
+                                ?: fetch(url, mixedPort)
+                                ?: error("не удалось скачать $name")
 
-                    try {
-                        val bytes = fetch(url, null)
-                            ?: fetch(url, mixedPort)
-                            ?: error("не удалось скачать $name")
+                            temp.writeBytes(bytes)
 
-                        temp.writeBytes(bytes)
-
-                        if (!temp.renameTo(target)) {
-                            temp.copyTo(target, overwrite = true)
+                            if (!temp.renameTo(target)) {
+                                temp.copyTo(target, overwrite = true)
+                            }
+                        } finally {
+                            temp.delete()
                         }
-                    } finally {
-                        temp.delete()
                     }
                 }
             }

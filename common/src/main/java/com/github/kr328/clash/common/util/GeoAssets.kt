@@ -1,19 +1,27 @@
 package com.github.kr328.clash.common.util
 
 import android.content.Context
+import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
+import java.nio.channels.FileLock
 import java.util.concurrent.atomic.AtomicBoolean
 
 object GeoAssets {
     private const val TAG = "GeoAssets"
+
+    private const val LOCK_TIMEOUT = 15_000L
+    private const val LOCK_INTERVAL = 100L
+    private const val READY_TIMEOUT = 60_000L
 
     private val names = listOf(
         "geoip.metadb",
@@ -31,57 +39,91 @@ object GeoAssets {
             return
         }
 
-        val application = context.applicationContext
+        try {
+            val application = context.applicationContext
 
-        scope.launch {
-            try {
-                extractLocked(application)
-            } catch (e: Exception) {
-                Log.w("$TAG: $e", e)
-            } finally {
-                ready.complete(Unit)
+            scope.launch {
+                try {
+                    guarded(application) { extractAll(application) }
+                } catch (e: Throwable) {
+                    Log.w("$TAG: $e", e)
+                } finally {
+                    ready.complete(Unit)
+                }
             }
+        } catch (e: Throwable) {
+            Log.w("$TAG: $e", e)
+
+            ready.complete(Unit)
         }
     }
 
     suspend fun awaitReady(context: Context) {
         extract(context)
 
-        ready.await()
+        if (withTimeoutOrNull(READY_TIMEOUT) { ready.await() } == null) {
+            Log.w("$TAG: waiting for assets timed out")
+        }
     }
 
-    private fun extractLocked(context: Context) {
+    suspend fun <T> writeGuarded(context: Context, block: () -> T): T = withContext(Dispatchers.IO) {
+        awaitReady(context)
+
+        guarded(context.applicationContext, block)
+    }
+
+    private fun <T> guarded(context: Context, block: () -> T): T {
         val handle = try {
             RandomAccessFile(File(context.filesDir, "geo.lock"), "rw")
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.w("$TAG: $e", e)
 
             null
-        }
+        } ?: return block()
 
-        if (handle == null) {
-            extractAll(context)
-
-            return
-        }
-
-        handle.use { file ->
-            val lock = try {
-                file.channel.lock()
-            } catch (e: Exception) {
-                Log.w("$TAG: $e", e)
-
-                null
-            }
+        return handle.use { file ->
+            val lock = acquire(file)
 
             try {
-                extractAll(context)
+                block()
             } finally {
                 try {
                     lock?.release()
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     Log.w("$TAG: $e", e)
                 }
+            }
+        }
+    }
+
+    private fun acquire(file: RandomAccessFile): FileLock? {
+        val deadline = SystemClock.elapsedRealtime() + LOCK_TIMEOUT
+
+        while (true) {
+            val lock = try {
+                file.channel.tryLock()
+            } catch (e: Throwable) {
+                Log.w("$TAG: $e", e)
+
+                return null
+            }
+
+            if (lock != null) {
+                return lock
+            }
+
+            if (SystemClock.elapsedRealtime() >= deadline) {
+                Log.w("$TAG: lock is busy")
+
+                return null
+            }
+
+            try {
+                Thread.sleep(LOCK_INTERVAL)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+
+                return null
             }
         }
     }
@@ -112,7 +154,7 @@ object GeoAssets {
                 if (!temp.renameTo(target)) {
                     Log.w("$TAG: unable to replace $name")
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.w("$TAG: $name: $e", e)
             } finally {
                 temp.delete()

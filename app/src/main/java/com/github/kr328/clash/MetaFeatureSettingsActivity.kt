@@ -4,6 +4,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
@@ -126,7 +127,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             )
             MetaFeatureSettingsDesign.Request.ImportASN -> GeoImportTarget(
                 fileName = "ASN.mmdb",
-                extensions = listOf(".mmdb", ".metadb", ".db"),
+                extensions = listOf(".mmdb"),
                 obsolete = emptyList(),
             )
             else -> null
@@ -179,7 +180,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             return
         }
 
-        val imported = withContext(Dispatchers.IO) {
+        val imported = GeoAssets.writeGuarded(this) {
             val destination = File(clashDir, target.fileName)
             val temp = File(clashDir, "${target.fileName}.importing")
 
@@ -195,7 +196,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                 } ?: false
 
                 if (!opened || !temp.renameTo(destination)) {
-                    return@withContext false
+                    return@writeGuarded false
                 }
 
                 target.obsolete.forEach { File(clashDir, it).delete() }

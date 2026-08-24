@@ -416,7 +416,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
 
                         MainDesign.Request.LoadRoutingData ->
-                            design.loadRoutingData()
+                            launch { design.loadRoutingData() }
 
                         MainDesign.Request.UpdateRoutingData ->
                             launch { design.updateRoutingData() }
