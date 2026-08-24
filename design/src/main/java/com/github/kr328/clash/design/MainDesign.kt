@@ -70,7 +70,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object DismissNotifications : Request
         data object ReliabilityAllowBattery : Request
         data object ReliabilityOpenVpnSettings : Request
-        data object ReliabilityConnect : Request
         data object ReliabilityDismiss : Request
     }
 
@@ -88,7 +87,6 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.DismissNotifications -> request(Request.DismissNotifications)
             MainAction.ReliabilityAllowBattery -> request(Request.ReliabilityAllowBattery)
             MainAction.ReliabilityOpenVpnSettings -> request(Request.ReliabilityOpenVpnSettings)
-            MainAction.ReliabilityConnect -> request(Request.ReliabilityConnect)
             MainAction.ReliabilityDismiss -> request(Request.ReliabilityDismiss)
             MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
@@ -201,6 +199,14 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             state = state.copy(
                 status = if (running) ConnectionStatus.Connected else ConnectionStatus.Disconnected,
             )
+        }
+    }
+
+    suspend fun setDisconnecting() {
+        withContext(Dispatchers.Main) {
+            if (state.status == ConnectionStatus.Connected) {
+                state = state.copy(status = ConnectionStatus.Disconnecting)
+            }
         }
     }
 

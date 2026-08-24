@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
+import android.os.SystemClock
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.log.Log
@@ -24,6 +25,7 @@ import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
+import java.util.concurrent.atomic.AtomicBoolean
 
 class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.Default) {
     private val self: TunService
@@ -36,6 +38,17 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     private var reason: String? = null
 
     private var sessionStartedAt: Long = 0
+
+    private val stopNotified = AtomicBoolean(false)
+
+    private fun notifyStopped() {
+        if (!stopNotified.compareAndSet(false, true))
+            return
+
+        StatusProvider.serviceRunning = false
+
+        sendClashStopped(reason)
+    }
 
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
@@ -84,7 +97,15 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             reason = e.message
         } finally {
             withContext(NonCancellable) {
+                val startedAt = SystemClock.elapsedRealtime()
+
                 tun.close()
+
+                TunModule.requestStop()
+
+                Log.i("Tunnel closed in ${SystemClock.elapsedRealtime() - startedAt} ms")
+
+                notifyStopped()
 
                 stopSelf()
             }
@@ -112,6 +133,14 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (stopNotified.get()) {
+            stopSelf()
+
+            sendClashStopped(null)
+
+            return super.onStartCommand(intent, flags, startId)
+        }
+
         sendClashStarted()
 
         return super.onStartCommand(intent, flags, startId)
@@ -124,17 +153,20 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onDestroy() {
+        val startedAt = SystemClock.elapsedRealtime()
+
         TunModule.requestStop()
 
-        StatusProvider.serviceRunning = false
+        notifyStopped()
 
         ServiceStore(this).clearSessionStarted(sessionStartedAt)
 
-        sendClashStopped(reason)
-
         cancelAndJoinBlocking()
 
-        Log.i("TunService destroyed: ${reason ?: "successfully"}")
+        Log.i(
+            "TunService destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms: " +
+                (reason ?: "successfully")
+        )
 
         super.onDestroy()
     }

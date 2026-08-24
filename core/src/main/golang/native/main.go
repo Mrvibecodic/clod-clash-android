@@ -43,8 +43,10 @@ func reset() {
 	tunnel.ResetStatistic()
 	tunnel.CloseAllConnections()
 
-	runtime.GC()
-	debug.FreeOSMemory()
+	go func() {
+		runtime.GC()
+		debug.FreeOSMemory()
+	}()
 }
 
 //export forceGc

@@ -220,7 +220,6 @@ sealed interface MainAction {
     data object DismissNotifications : MainAction
     data object ReliabilityAllowBattery : MainAction
     data object ReliabilityOpenVpnSettings : MainAction
-    data object ReliabilityConnect : MainAction
     data object ReliabilityDismiss : MainAction
 }
 
@@ -441,7 +440,8 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
         }
     }
 
-    val connected = state.status == ConnectionStatus.Connected
+    val connected = state.status == ConnectionStatus.Connected ||
+        state.status == ConnectionStatus.Disconnecting
     val expansion by animateFloatAsState(
         targetValue = if (connected) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessLow),
@@ -649,6 +649,7 @@ private fun StatusPill(status: ConnectionStatus) {
         ConnectionStatus.Disconnected -> MaterialTheme.colorScheme.onSurfaceVariant
         ConnectionStatus.Connecting -> ClodTheme.extraColors.statusConnecting
         ConnectionStatus.Connected -> ClodTheme.extraColors.statusConnected
+        ConnectionStatus.Disconnecting -> ClodTheme.extraColors.statusConnecting
     }
     val container = if (status == ConnectionStatus.Disconnected) {
         MaterialTheme.colorScheme.surfaceVariant
@@ -676,6 +677,7 @@ private fun StatusPill(status: ConnectionStatus) {
                     ConnectionStatus.Disconnected -> R.string.clod_status_disconnected
                     ConnectionStatus.Connecting -> R.string.clod_status_connecting
                     ConnectionStatus.Connected -> R.string.clod_status_connected
+                    ConnectionStatus.Disconnecting -> R.string.clod_status_disconnecting
                 },
             ),
             style = MaterialTheme.typography.labelLarge,

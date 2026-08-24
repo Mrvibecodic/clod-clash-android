@@ -1,7 +1,10 @@
 package com.github.kr328.clash
 
+import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.lifecycleScope
+import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
@@ -34,8 +37,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                         AddProfileDesign.Request.ScanQr -> scanLauncher.launch(null)
                         AddProfileDesign.Request.OtherWays ->
                             startActivity(NewProfileActivity::class.intent)
-
-                        AddProfileDesign.Request.Finish -> finish()
                     }
                 }
             }
@@ -82,7 +83,14 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                 withProfile { setActive(profile) }
             }
 
-            setDone(profile, queryPanelInfo(uuid)?.title.orEmpty())
+            val title = queryPanelInfo(uuid)?.title?.takeIf { it.isNotBlank() } ?: profile.name
+
+            setResult(
+                Activity.RESULT_OK,
+                Intent().putExtra(Intents.EXTRA_NAME, title),
+            )
+
+            finish()
         } catch (e: Exception) {
             withProfile { release(uuid) }
 

@@ -303,6 +303,7 @@
     <string name="clod_status_disconnected">Disconnected</string>
     <string name="clod_status_connected">Connected</string>
     <string name="clod_status_connecting">Connecting\u2026</string>
+    <string name="clod_status_disconnecting">Disconnecting\u2026</string>
     <string name="clod_tap_to_connect">Tap to connect</string>
     <string name="clod_traffic_downloaded">Downloaded</string>
     <string name="clod_traffic_uploaded">Uploaded</string>
@@ -311,8 +312,6 @@
     <string name="clod_sub_other_ways">Other ways to import</string>
     <string name="clod_sub_fetching">Fetching subscription\u2026</string>
     <string name="clod_sub_added">Subscription added</string>
-    <string name="clod_sub_done">Done</string>
-    <string name="clod_sub_interval">updated every %1$d h</string>
     <string name="clod_sub_active">Active</string>
     <string name="clod_sub_expiring">Expiring</string>
     <string name="clod_sub_exhausted">Out of traffic</string>
@@ -471,10 +470,10 @@
     <string name="clod_reliability_always_on_enabled">Enabled</string>
     <string name="clod_reliability_always_on_disabled">Not enabled · “Always-on VPN” in system settings</string>
     <string name="clod_reliability_always_on_unknown">Checked after the first connection</string>
-    <string name="clod_reliability_connect_anyway">Connect anyway</string>
+    <string name="clod_reliability_later">Later</string>
     <string name="clod_reliability_setup">Set up</string>
     <string name="clod_reliability_open_settings">Open settings</string>
-    <string name="clod_reliability_connect">Connect</string>
+    <string name="clod_reliability_ready">Done</string>
     <string name="clod_reliability_no_settings">The required settings screen is not available on this device</string>
     <string name="clod_notify_blocked">Notifications are blocked in system settings. While the block holds, the app cannot show the tunnel state or subscription reminders.</string>
     <string name="clod_notify_open_settings">Open settings</string>

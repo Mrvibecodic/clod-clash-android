@@ -2,6 +2,7 @@ package com.github.kr328.clash.service
 
 import android.content.Intent
 import android.os.Binder
+import android.os.SystemClock
 import android.os.IBinder
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
@@ -14,6 +15,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ClashService : BaseService() {
     private val self: ClashService
@@ -22,6 +24,17 @@ class ClashService : BaseService() {
     private var reason: String? = null
 
     private var sessionStartedAt: Long = 0
+
+    private val stopNotified = AtomicBoolean(false)
+
+    private fun notifyStopped() {
+        if (!stopNotified.compareAndSet(false, true))
+            return
+
+        StatusProvider.serviceRunning = false
+
+        sendClashStopped(reason)
+    }
 
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
@@ -63,6 +76,8 @@ class ClashService : BaseService() {
             reason = e.message
         } finally {
             withContext(NonCancellable) {
+                notifyStopped()
+
                 stopSelf()
             }
         }
@@ -85,6 +100,14 @@ class ClashService : BaseService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (stopNotified.get()) {
+            stopSelf()
+
+            sendClashStopped(null)
+
+            return START_NOT_STICKY
+        }
+
         sendClashStarted()
 
         return START_STICKY
@@ -95,15 +118,18 @@ class ClashService : BaseService() {
     }
 
     override fun onDestroy() {
-        StatusProvider.serviceRunning = false
+        val startedAt = SystemClock.elapsedRealtime()
+
+        notifyStopped()
 
         ServiceStore(this).clearSessionStarted(sessionStartedAt)
 
-        sendClashStopped(reason)
-
         cancelAndJoinBlocking()
 
-        Log.i("ClashService destroyed: ${reason ?: "successfully"}")
+        Log.i(
+            "ClashService destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms: " +
+                (reason ?: "successfully")
+        )
 
         super.onDestroy()
     }

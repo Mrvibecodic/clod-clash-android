@@ -1,5 +1,6 @@
 package com.github.kr328.clash
 
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -12,7 +13,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
@@ -55,6 +58,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -109,6 +113,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                 events.onReceive {
                     when (it) {
                         Event.ActivityStart -> {
+                            stopRequestedAt = null
+
                             design.fetch()
 
                             design.fetchReliability()
@@ -128,6 +134,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         Event.ClashStop -> {
+                            stopRequestedAt = null
+
                             offlineDelays = emptyMap()
 
                             design.fetch()
@@ -145,13 +153,25 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         Event.ClashStart -> {
+                            stopRequestedAt = null
+
                             design.fetch()
+
+                            if (!uiStore.reliabilityAsked) {
+                                uiStore.reliabilityAsked = true
+
+                                launch { design.askReliability() }
+                            }
 
                             if (UpdatePrompt.shouldCheckInBackground(this@MainActivity)) {
                                 launch { design.checkUpdate(manual = false) }
                             }
                         }
-                        Event.ServiceRecreated,
+                        Event.ServiceRecreated -> {
+                            stopRequestedAt = null
+
+                            design.fetch()
+                        }
                         Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
                         else -> Unit
                     }
@@ -160,7 +180,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     when (request) {
                         MainDesign.Request.ToggleStatus -> {
                             if (clashRunning)
-                                stopClashService()
+                                requestStopClash()
                             else
                                 design.startClash()
                         }
@@ -244,8 +264,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.setUpdate(null)
                         }
-                        MainDesign.Request.NewProfile ->
-                            startActivity(AddProfileActivity::class.intent)
+                        MainDesign.Request.NewProfile -> launch { addProfile() }
                         MainDesign.Request.UpdateAllProfiles -> {
                             launch {
                                 var targets = emptyList<UUID>()
@@ -352,17 +371,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         MainDesign.Request.ReliabilityOpenVpnSettings ->
                             openVpnSettings()
-                        MainDesign.Request.ReliabilityConnect -> {
-                            design.setReliability(
-                                batteryIgnored = isBatteryIgnored(),
-                                alwaysOn = alwaysOnState(),
-                                prompt = false,
-                            )
-
-                            if (!clashRunning) {
-                                design.startClash()
-                            }
-                        }
                         MainDesign.Request.ReliabilityDismiss ->
                             design.setReliability(
                                 batteryIgnored = isBatteryIgnored(),
@@ -724,10 +732,65 @@ class MainActivity : BaseActivity<MainDesign>() {
         private val DELAYS_SERIALIZER = MapSerializer(String.serializer(), Int.serializer())
 
         private const val HEALTH_STALE_MS = 300_000L
+
+        private const val STOP_FEEDBACK_TIMEOUT_MS = 8_000L
     }
 
     private var sessionStartedAt: Long = 0
     private var sessionStartedElapsed: Long = 0
+    private var stopRequestedAt: Long? = null
+
+    private suspend fun addProfile() {
+        val result = startActivityForResult(
+            ActivityResultContracts.StartActivityForResult(),
+            AddProfileActivity::class.intent,
+        )
+
+        if (result.resultCode != Activity.RESULT_OK)
+            return
+
+        val target = design ?: return
+
+        target.selectTab(MainTab.Home)
+
+        target.showToast(
+            DesignR.string.clod_sub_added,
+            ToastDuration.Long,
+            detail = result.data?.getStringExtra(Intents.EXTRA_NAME),
+        )
+    }
+
+    private fun requestStopClash() {
+        val target = design ?: return
+
+        val now = SystemClock.elapsedRealtime()
+
+        stopRequestedAt?.let {
+            if (now - it < STOP_FEEDBACK_TIMEOUT_MS)
+                return
+        }
+
+        stopRequestedAt = now
+
+        stopClashService()
+
+        launch {
+            target.setDisconnecting()
+
+            delay(STOP_FEEDBACK_TIMEOUT_MS)
+
+            if (stopRequestedAt != now)
+                return@launch
+
+            stopRequestedAt = null
+
+            val running = withContext(Dispatchers.IO) {
+                StatusClient(this@MainActivity).isRunning()
+            }
+
+            target.setClashRunning(running)
+        }
+    }
 
     private suspend fun MainDesign.fetchSession() {
         setSessionSeconds(
@@ -795,6 +858,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         setReliability(batteryIgnored = isBatteryIgnored(), alwaysOn = alwaysOnState())
     }
 
+    private suspend fun MainDesign.askReliability() {
+        setReliability(
+            batteryIgnored = isBatteryIgnored(),
+            alwaysOn = alwaysOnState(),
+            prompt = true,
+        )
+    }
+
     private fun startSettings(vararg intents: Intent): Boolean {
         for (intent in intents) {
             if (intent.resolveActivity(packageManager) == null)
@@ -851,18 +922,6 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.startClash() {
         if (shouldAskNotifications()) {
             setNotificationPrompt(true)
-
-            return
-        }
-
-        if (!uiStore.reliabilityAsked) {
-            uiStore.reliabilityAsked = true
-
-            setReliability(
-                batteryIgnored = isBatteryIgnored(),
-                alwaysOn = alwaysOnState(),
-                prompt = true,
-            )
 
             return
         }

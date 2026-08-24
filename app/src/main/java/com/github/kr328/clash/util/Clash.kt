@@ -9,7 +9,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.ClashService
 import com.github.kr328.clash.service.TunService
-import com.github.kr328.clash.service.util.sendBroadcastSelf
+import com.github.kr328.clash.service.util.sendControlBroadcastSelf
 
 fun Context.startClashService(): Intent? {
     val startTun = UiStore(this).enableVpn
@@ -28,5 +28,5 @@ fun Context.startClashService(): Intent? {
 }
 
 fun Context.stopClashService() {
-    sendBroadcastSelf(Intent(Intents.ACTION_CLASH_REQUEST_STOP))
+    sendControlBroadcastSelf(Intent(Intents.ACTION_CLASH_REQUEST_STOP))
 }

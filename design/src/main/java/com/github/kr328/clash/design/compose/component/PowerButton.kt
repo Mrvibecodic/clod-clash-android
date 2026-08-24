@@ -44,6 +44,7 @@ enum class ConnectionStatus {
     Disconnected,
     Connecting,
     Connected,
+    Disconnecting,
 }
 
 @Composable
@@ -63,6 +64,7 @@ fun PowerButton(
         ConnectionStatus.Disconnected -> extra.statusStopped
         ConnectionStatus.Connecting -> extra.statusConnecting
         ConnectionStatus.Connected -> extra.statusConnected
+        ConnectionStatus.Disconnecting -> extra.statusConnecting
     }
     val animatedAccent by animateColorAsState(accent, label = "powerAccent")
     val animatedDiameter by animateDpAsState(
@@ -118,7 +120,9 @@ fun PowerButton(
             Icon(
                 painter = painterResource(R.drawable.ic_power),
                 contentDescription = stringResource(
-                    if (status == ConnectionStatus.Connected) {
+                    if (status == ConnectionStatus.Connected ||
+                        status == ConnectionStatus.Disconnecting
+                    ) {
                         R.string.clod_action_disconnect
                     } else {
                         R.string.clod_action_connect

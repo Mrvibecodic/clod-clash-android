@@ -14,7 +14,7 @@ class CloseModule(service: Service) : Module<CloseModule.RequestClose>(service) 
 
         broadcasts.receive()
 
-        Log.d("User request close")
+        Log.i("User request close")
 
         return enqueueEvent(RequestClose)
     }

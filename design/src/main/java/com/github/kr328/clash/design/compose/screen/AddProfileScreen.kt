@@ -1,8 +1,5 @@
 package com.github.kr328.clash.design.compose.screen
 
-import android.text.format.DateFormat
-import android.text.format.Formatter
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,8 +17,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Icon
@@ -35,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -43,15 +37,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
-import com.github.kr328.clash.design.compose.theme.ClodTheme
-import com.github.kr328.clash.service.model.Profile
-import java.util.Date
-import java.util.concurrent.TimeUnit
 
 enum class AddProfileStep {
     Input,
     Fetching,
-    Done,
 }
 
 @Immutable
@@ -62,8 +51,6 @@ data class AddProfileState(
     val progress: Float = 0f,
     val error: String? = null,
     val secure: Boolean = false,
-    val result: Profile? = null,
-    val resultTitle: String = "",
 )
 
 sealed interface AddProfileAction {
@@ -72,7 +59,6 @@ sealed interface AddProfileAction {
     data object Submit : AddProfileAction
     data object ScanQr : AddProfileAction
     data object OtherWays : AddProfileAction
-    data object Finish : AddProfileAction
 }
 
 @Composable
@@ -99,7 +85,6 @@ fun AddProfileScreen(
         when (state.step) {
             AddProfileStep.Input -> InputStep(state, onAction)
             AddProfileStep.Fetching -> FetchingStep(state)
-            AddProfileStep.Done -> DoneStep(state, onAction)
         }
     }
 }
@@ -205,85 +190,3 @@ private fun FetchingStep(state: AddProfileState) {
     }
 }
 
-@Composable
-private fun DoneStep(state: AddProfileState, onAction: (AddProfileAction) -> Unit) {
-    val context = LocalContext.current
-    val profile = state.result
-
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = state.resultTitle.ifBlank { profile?.name.orEmpty() },
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(10.dp))
-            if (profile != null && profile.interval > 0) {
-                Fact(
-                    stringResource(
-                        R.string.clod_sub_interval,
-                        TimeUnit.MILLISECONDS.toHours(profile.interval).toInt(),
-                    ),
-                )
-            }
-            if (profile != null && (profile.total > 0 || profile.expire > 0)) {
-                Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                    if (profile.total > 0) {
-                        val used = profile.upload + profile.download
-                        Fact(
-                            Formatter.formatShortFileSize(context, used) + " / " +
-                                Formatter.formatShortFileSize(context, profile.total),
-                        )
-                    }
-                    if (profile.expire > 0) {
-                        Fact(
-                            stringResource(
-                                R.string.clod_sub_until,
-                                DateFormat.getDateFormat(context).format(Date(profile.expire)),
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    Spacer(Modifier.height(16.dp))
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            painter = painterResource(R.drawable.ic_outline_check_circle),
-            contentDescription = null,
-            tint = ClodTheme.extraColors.statusConnected,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = stringResource(R.string.clod_sub_added),
-            style = MaterialTheme.typography.bodyMedium,
-            color = ClodTheme.extraColors.statusConnected,
-        )
-    }
-
-    Spacer(Modifier.height(24.dp))
-    Button(
-        onClick = { onAction(AddProfileAction.Finish) },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Text(stringResource(R.string.clod_sub_done))
-    }
-}
-
-@Composable
-private fun Fact(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}

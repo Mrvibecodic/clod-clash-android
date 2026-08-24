@@ -60,8 +60,10 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
             return PendingIntent.getBroadcast(
                 service,
                 R.id.nf_clash_status,
-                Intent(Intents.ACTION_CLASH_REQUEST_STOP).setPackage(service.packageName),
-                pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
+                Intent(Intents.ACTION_CLASH_REQUEST_STOP)
+                    .setPackage(service.packageName)
+                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND),
+                pendingIntentFlags(PendingIntent.FLAG_CANCEL_CURRENT)
             )
         }
 

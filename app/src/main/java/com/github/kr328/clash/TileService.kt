@@ -41,6 +41,10 @@ class TileService : TileService() {
             }
             Tile.STATE_ACTIVE -> {
                 stopClashService()
+
+                tile.state = Tile.STATE_UNAVAILABLE
+
+                tile.updateTile()
             }
         }
     }

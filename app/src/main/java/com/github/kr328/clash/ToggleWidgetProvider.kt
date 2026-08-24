@@ -167,9 +167,10 @@ class ToggleWidgetProvider : AppWidgetProvider() {
             R.id.widget_button,
             PendingIntent.getBroadcast(
                 context,
-                0,
+                R.id.widget_button,
                 Intent(context, ToggleWidgetProvider::class.java)
-                    .setAction(ACTION_WIDGET_TOGGLE),
+                    .setAction(ACTION_WIDGET_TOGGLE)
+                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND),
                 pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
             ),
         )
@@ -188,6 +189,7 @@ class ToggleWidgetProvider : AppWidgetProvider() {
             context.sendBroadcast(
                 Intent(context, ToggleWidgetProvider::class.java)
                     .setAction(ACTION_WIDGET_WAIT)
+                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             )
         }
     }

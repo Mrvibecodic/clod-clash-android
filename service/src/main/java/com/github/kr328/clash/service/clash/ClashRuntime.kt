@@ -1,5 +1,6 @@
 package com.github.kr328.clash.service.clash
 
+import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.clash.module.Module
@@ -48,10 +49,12 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                         cancel()
                     } finally {
                         withContext(NonCancellable) {
+                            val startedAt = SystemClock.elapsedRealtime()
+
                             Clash.reset()
                             Clash.clearOverride(Clash.OverrideSlot.Session)
 
-                            Log.d("ClashRuntime: destroyed")
+                            Log.i("ClashRuntime: destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms")
                         }
                     }
                 }

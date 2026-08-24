@@ -153,8 +153,8 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
             ) {
                 when {
                     !state.batteryIgnored -> {
-                        TextButton(onClick = { onAction(MainAction.ReliabilityConnect) }) {
-                            Text(stringResource(R.string.clod_reliability_connect_anyway))
+                        TextButton(onClick = { onAction(MainAction.ReliabilityDismiss) }) {
+                            Text(stringResource(R.string.clod_reliability_later))
                         }
                         Spacer(Modifier.width(8.dp))
                         Button(onClick = { onAction(MainAction.ReliabilityAllowBattery) }) {
@@ -162,8 +162,8 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
                         }
                     }
                     state.alwaysOn != true -> {
-                        TextButton(onClick = { onAction(MainAction.ReliabilityConnect) }) {
-                            Text(stringResource(R.string.clod_reliability_connect_anyway))
+                        TextButton(onClick = { onAction(MainAction.ReliabilityDismiss) }) {
+                            Text(stringResource(R.string.clod_reliability_later))
                         }
                         Spacer(Modifier.width(8.dp))
                         Button(onClick = { onAction(MainAction.ReliabilityOpenVpnSettings) }) {
@@ -171,8 +171,8 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
                         }
                     }
                     else -> {
-                        Button(onClick = { onAction(MainAction.ReliabilityConnect) }) {
-                            Text(stringResource(R.string.clod_reliability_connect))
+                        Button(onClick = { onAction(MainAction.ReliabilityDismiss) }) {
+                            Text(stringResource(R.string.clod_reliability_ready))
                         }
                     }
                 }

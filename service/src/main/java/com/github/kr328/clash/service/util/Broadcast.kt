@@ -13,6 +13,10 @@ fun Context.sendBroadcastSelf(intent: Intent) {
     )
 }
 
+fun Context.sendControlBroadcastSelf(intent: Intent) {
+    sendBroadcastSelf(intent.addFlags(Intent.FLAG_RECEIVER_FOREGROUND))
+}
+
 fun Context.sendProfileChanged(uuid: UUID) {
     val intent = Intent(Intents.ACTION_PROFILE_CHANGED)
         .putExtra(Intents.EXTRA_UUID, uuid.toString())
@@ -49,15 +53,15 @@ fun Context.sendOverrideChanged() {
 }
 
 fun Context.sendServiceRecreated() {
-    sendBroadcastSelf(Intent(Intents.ACTION_SERVICE_RECREATED))
+    sendControlBroadcastSelf(Intent(Intents.ACTION_SERVICE_RECREATED))
 }
 
 fun Context.sendClashStarted() {
-    sendBroadcastSelf(Intent(Intents.ACTION_CLASH_STARTED))
+    sendControlBroadcastSelf(Intent(Intents.ACTION_CLASH_STARTED))
 }
 
 fun Context.sendClashStopped(reason: String?) {
-    sendBroadcastSelf(
+    sendControlBroadcastSelf(
         Intent(Intents.ACTION_CLASH_STOPPED).putExtra(
             Intents.EXTRA_STOP_REASON,
             reason

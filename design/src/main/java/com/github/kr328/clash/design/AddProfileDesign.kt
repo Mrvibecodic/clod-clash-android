@@ -10,7 +10,6 @@ import com.github.kr328.clash.design.compose.screen.AddProfileAction
 import com.github.kr328.clash.design.compose.screen.AddProfileScreen
 import com.github.kr328.clash.design.compose.screen.AddProfileState
 import com.github.kr328.clash.design.compose.screen.AddProfileStep
-import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -19,7 +18,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
         data class Submit(val url: String, val secure: Boolean) : Request
         data object ScanQr : Request
         data object OtherWays : Request
-        data object Finish : Request
     }
 
     private var state by mutableStateOf(AddProfileState())
@@ -35,7 +33,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
             AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url, state.secure))
             AddProfileAction.ScanQr -> requests.trySend(Request.ScanQr)
             AddProfileAction.OtherWays -> requests.trySend(Request.OtherWays)
-            AddProfileAction.Finish -> requests.trySend(Request.Finish)
         }
     }
 
@@ -67,12 +64,6 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
 
         withContext(Dispatchers.Main) {
             state = state.copy(progressText = text, progress = progress)
-        }
-    }
-
-    suspend fun setDone(profile: Profile, title: String) {
-        withContext(Dispatchers.Main) {
-            state = state.copy(step = AddProfileStep.Done, result = profile, resultTitle = title)
         }
     }
 

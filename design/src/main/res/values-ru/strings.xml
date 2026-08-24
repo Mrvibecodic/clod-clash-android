@@ -259,6 +259,7 @@
     <string name="clod_status_disconnected">Отключено</string>
     <string name="clod_status_connected">Подключено</string>
     <string name="clod_status_connecting">Подключение\u2026</string>
+    <string name="clod_status_disconnecting">Отключение\u2026</string>
     <string name="clod_tap_to_connect">Нажмите, чтобы подключиться</string>
     <string name="clod_traffic_downloaded">Скачано</string>
     <string name="clod_traffic_uploaded">Отправлено</string>
@@ -267,8 +268,6 @@
     <string name="clod_sub_other_ways">Другие способы импорта</string>
     <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
     <string name="clod_sub_added">Подписка успешно добавлена</string>
-    <string name="clod_sub_done">Готово</string>
-    <string name="clod_sub_interval">обновление раз в %1$d ч</string>
     <string name="clod_sub_active">Активна</string>
     <string name="clod_sub_expiring">Истекает</string>
     <string name="clod_sub_exhausted">Трафик кончился</string>
@@ -463,10 +462,10 @@
     <string name="clod_reliability_always_on_enabled">Включено</string>
     <string name="clod_reliability_always_on_disabled">Не включено · в системе — «Постоянный VPN»</string>
     <string name="clod_reliability_always_on_unknown">Проверится после первого подключения</string>
-    <string name="clod_reliability_connect_anyway">Подключить так</string>
+    <string name="clod_reliability_later">Позже</string>
     <string name="clod_reliability_setup">Настроить</string>
     <string name="clod_reliability_open_settings">Открыть настройки</string>
-    <string name="clod_reliability_connect">Подключить</string>
+    <string name="clod_reliability_ready">Готово</string>
     <string name="clod_reliability_no_settings">На этом устройстве нужный экран настроек недоступен</string>
     <string name="clod_notify_blocked">Уведомления запрещены в системе. Пока запрет держится, приложение не покажет ни состояние туннеля, ни напоминания о подписке.</string>
     <string name="clod_notify_open_settings">Открыть настройки</string>
