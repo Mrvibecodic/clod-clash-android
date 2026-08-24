@@ -47,8 +47,7 @@ class LogcatDesign(
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
-    suspend fun patchMessages(messages: List<LogMessage>, removed: Int, appended: Int) {
+    suspend fun patchMessages(messages: List<LogMessage>, removed: Int) {
         withContext(Dispatchers.Main) {
             state = state.copy(
                 messages = messages,

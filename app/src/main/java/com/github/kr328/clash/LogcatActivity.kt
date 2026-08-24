@@ -57,7 +57,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
         setContentDesign(design)
 
-        design.patchMessages(messages, 0, messages.size)
+        design.patchMessages(messages, 0)
 
         while (isActive) {
             when (design.requests.receive()) {
@@ -128,7 +128,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                     ticker.onReceive {
                         val snapshot = logcat.snapshot(initial) ?: return@onReceive
 
-                        design.patchMessages(snapshot.messages, snapshot.removed, snapshot.appended)
+                        design.patchMessages(snapshot.messages, snapshot.removed)
 
                         initial = false
                     }

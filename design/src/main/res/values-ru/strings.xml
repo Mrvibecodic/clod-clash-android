@@ -214,8 +214,6 @@
     <string name="save">Сохранить</string>
 
     <string name="rule">Правило</string>
-    <string name="http">HTTP</string>
-    <string name="format_update_provider_failure">Обновление %1$s: %2$s</string>
     <string name="update_all">Обновить всё</string>
 
     <string name="close">Закрыть</string>

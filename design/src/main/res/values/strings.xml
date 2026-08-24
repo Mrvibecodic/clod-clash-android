@@ -236,8 +236,6 @@
     <string name="save">Save</string>
 
     <string name="rule">Rule</string>
-    <string name="http">HTTP</string>
-    <string name="format_update_provider_failure">Update %1$s: %2$s</string>
     <string name="update_all">Update All</string>
 
     <string name="close">Close</string>

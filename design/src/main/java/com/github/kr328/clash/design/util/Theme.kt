@@ -15,9 +15,3 @@ fun Context.resolveThemedBoolean(@AttrRes resId: Int): Boolean {
         theme.resolveAttribute(resId, this, true)
     }.data != 0
 }
-
-fun Context.resolveThemedResourceId(@AttrRes resId: Int): Int {
-    return TypedValue().apply {
-        theme.resolveAttribute(resId, this, true)
-    }.resourceId
-}
