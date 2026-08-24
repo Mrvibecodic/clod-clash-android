@@ -2,6 +2,7 @@ package com.github.kr328.clash.util
 
 import android.content.Context
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.update.Updater
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,8 @@ object GeoData {
     private const val READ_TIMEOUT = 60_000
 
     suspend fun query(context: Context): List<GeoFileState> = withContext(Dispatchers.IO) {
+        GeoAssets.awaitReady(context)
+
         FILES.keys.map { name ->
             val file = File(context.clashDir, name)
 
@@ -42,6 +45,8 @@ object GeoData {
     suspend fun update(context: Context, mixedPort: Int?): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                GeoAssets.awaitReady(context)
+
                 context.clashDir.mkdirs()
 
                 FILES.forEach { (name, url) ->

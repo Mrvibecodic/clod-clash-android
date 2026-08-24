@@ -3,6 +3,7 @@ package com.github.kr328.clash.service
 import android.content.Context
 import android.net.Uri
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.service.data.Imported
@@ -265,6 +266,8 @@ object ProfileProcessor {
         var cb = callback
 
         context.applyDeviceInfo()
+
+        GeoAssets.awaitReady(context)
 
         Clash.fetchAndValid(dir, source, force) {
             if (it.action == FetchStatus.Action.SubscriptionInfo) {

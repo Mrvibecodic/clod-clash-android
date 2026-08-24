@@ -1,9 +1,9 @@
 package com.github.kr328.clash
 
-import android.database.Cursor
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.result.contract.ActivityResultContracts
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
@@ -103,61 +103,120 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         }
     }
 
-    private val validDatabaseExtensions = listOf(
-        ".metadb", ".db", ".dat", ".mmdb"
+    private data class GeoImportTarget(
+        val fileName: String,
+        val extensions: List<String>,
+        val obsolete: List<String>,
     )
 
-    private suspend fun importGeoFile(uri: Uri?, importType: MetaFeatureSettingsDesign.Request) {
-        val cursor: Cursor? = uri?.let {
-            contentResolver.query(it, null, null, null, null, null)
+    private fun geoImportTarget(
+        importType: MetaFeatureSettingsDesign.Request,
+    ): GeoImportTarget? {
+        return when (importType) {
+            MetaFeatureSettingsDesign.Request.ImportGeoIp,
+            MetaFeatureSettingsDesign.Request.ImportCountry -> GeoImportTarget(
+                fileName = "geoip.metadb",
+                extensions = listOf(".metadb", ".db", ".mmdb"),
+                obsolete = listOf("geoip.db", "country.mmdb"),
+            )
+            MetaFeatureSettingsDesign.Request.ImportGeoSite -> GeoImportTarget(
+                fileName = "geosite.dat",
+                extensions = listOf(".dat"),
+                obsolete = emptyList(),
+            )
+            MetaFeatureSettingsDesign.Request.ImportASN -> GeoImportTarget(
+                fileName = "ASN.mmdb",
+                extensions = listOf(".mmdb", ".metadb", ".db"),
+                obsolete = emptyList(),
+            )
+            else -> null
         }
-        cursor?.use {
-            if (it.moveToFirst()) {
-                val columnIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                val displayName: String =
-                    if (columnIndex != -1) it.getString(columnIndex) else "";
-                val ext = "." + displayName.substringAfterLast(".")
+    }
 
-                if (!validDatabaseExtensions.contains(ext)) {
-                    design?.showToast(
-                        message = getString(R.string.geofile_unknown_db_format),
-                        duration = ToastDuration.Long,
-                        detail = getString(
-                            R.string.geofile_unknown_db_format_message,
-                            validDatabaseExtensions.joinToString("/"),
-                        ),
-                    )
+    private suspend fun importGeoFile(uri: Uri?, importType: MetaFeatureSettingsDesign.Request) {
+        val target = geoImportTarget(importType) ?: return
 
-                    return
-                }
-                val outputFileName = when (importType) {
-                    MetaFeatureSettingsDesign.Request.ImportGeoIp ->
-                        "geoip$ext"
-                    MetaFeatureSettingsDesign.Request.ImportGeoSite ->
-                        "geosite$ext"
-                    MetaFeatureSettingsDesign.Request.ImportCountry ->
-                        "country$ext"
-                    MetaFeatureSettingsDesign.Request.ImportASN ->
-                        "ASN$ext"
-                    else -> ""
-                }
+        if (uri == null) {
+            return
+        }
 
-                withContext(Dispatchers.IO) {
-                    val outputFile = File(clashDir, outputFileName);
-                    contentResolver.openInputStream(uri).use { ins ->
-                        FileOutputStream(outputFile).use { outs ->
-                            ins?.copyTo(outs)
-                        }
+        val displayName = withContext(Dispatchers.IO) {
+            try {
+                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (!cursor.moveToFirst()) {
+                        return@use null
                     }
-                }
-                design?.showToast(
-                    getString(R.string.geofile_imported, displayName),
-                    ToastDuration.Long,
-                )
 
-                return
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+
+                    if (index >= 0) cursor.getString(index) else null
+                }
+            } catch (e: Exception) {
+                Log.w("Import geo file: $e", e)
+
+                null
             }
         }
-        design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
+
+        if (displayName.isNullOrBlank()) {
+            design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
+
+            return
+        }
+
+        val extension = "." + displayName.substringAfterLast('.', "")
+
+        if (extension !in target.extensions) {
+            design?.showToast(
+                message = getString(R.string.geofile_unknown_db_format),
+                duration = ToastDuration.Long,
+                detail = getString(
+                    R.string.geofile_unknown_db_format_message,
+                    target.extensions.joinToString("/"),
+                ),
+            )
+
+            return
+        }
+
+        val imported = withContext(Dispatchers.IO) {
+            val destination = File(clashDir, target.fileName)
+            val temp = File(clashDir, "${target.fileName}.importing")
+
+            try {
+                clashDir.mkdirs()
+
+                val opened = contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(temp).use { output ->
+                        input.copyTo(output)
+                    }
+
+                    true
+                } ?: false
+
+                if (!opened || !temp.renameTo(destination)) {
+                    return@withContext false
+                }
+
+                target.obsolete.forEach { File(clashDir, it).delete() }
+
+                true
+            } catch (e: Exception) {
+                Log.w("Import geo file: $e", e)
+
+                false
+            } finally {
+                temp.delete()
+            }
+        }
+
+        if (imported) {
+            design?.showToast(
+                getString(R.string.geofile_imported, displayName),
+                ToastDuration.Long,
+            )
+        } else {
+            design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
+        }
     }
 }

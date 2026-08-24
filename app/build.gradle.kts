@@ -1,6 +1,8 @@
+import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 
 plugins {
     kotlin("android")
@@ -47,25 +49,66 @@ tasks.getByName("clean", type = Delete::class) {
 
 val geoFilesDownloadDir = "src/main/assets"
 
-task("downloadGeoFiles") {
+val geoFilesConnectTimeout = 30_000
 
-    val geoFilesUrls = mapOf(
-        "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" to "geoip.metadb",
-        "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" to "geosite.dat",
-        "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb" to "ASN.mmdb",
-        "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/BundleMRS.7z" to "BundleMRS.7z",
-    )
+val geoFilesReadTimeout = 120_000
+
+val geoFilesUrls = mapOf(
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" to "geoip.metadb",
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" to "geosite.dat",
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb" to "ASN.mmdb",
+    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/BundleMRS.7z" to "BundleMRS.7z",
+)
+
+val geoFilesChecksums = layout.buildDirectory.file("geo/geo-sha256.txt")
+
+task("downloadGeoFiles") {
+    inputs.property("sources", geoFilesUrls.keys.sorted())
+
+    outputs.files(geoFilesUrls.values.map { file("$geoFilesDownloadDir/$it") })
+    outputs.file(geoFilesChecksums)
 
     doLast {
+        val checksums = StringBuilder()
+
         geoFilesUrls.forEach { (downloadUrl, outputFileName) ->
-            val url = URL(downloadUrl)
             val outputPath = file("$geoFilesDownloadDir/$outputFileName")
+
             outputPath.parentFile.mkdirs()
-            url.openStream().use { input ->
-                Files.copy(input, outputPath.toPath(), StandardCopyOption.REPLACE_EXISTING)
-                println("$outputFileName downloaded to $outputPath")
+
+            val connection = URL(downloadUrl).openConnection() as HttpURLConnection
+
+            connection.connectTimeout = geoFilesConnectTimeout
+            connection.readTimeout = geoFilesReadTimeout
+            connection.instanceFollowRedirects = true
+
+            try {
+                if (connection.responseCode !in 200..299) {
+                    throw GradleException("$outputFileName: HTTP ${connection.responseCode}")
+                }
+
+                connection.inputStream.use { input ->
+                    Files.copy(input, outputPath.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                }
+            } finally {
+                connection.disconnect()
             }
+
+            val checksum = MessageDigest.getInstance("SHA-256")
+                .digest(outputPath.readBytes())
+                .joinToString("") { "%02x".format(it) }
+
+            checksums.appendLine("$checksum  $outputFileName")
+
+            println("$outputFileName downloaded to $outputPath")
         }
+
+        val report = geoFilesChecksums.get().asFile
+
+        report.parentFile.mkdirs()
+        report.writeText(checksums.toString())
+
+        println(checksums.toString().trimEnd())
     }
 }
 
