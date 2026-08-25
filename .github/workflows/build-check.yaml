@@ -125,6 +125,16 @@ jobs:
         if: success()
         run: ./gradlew --no-daemon app:assembleStandardDebug -Pclod.abi=arm64-v8a
 
+      # 32-разрядная сборка Go не проверялась ни разу до пуша тега, хотя в дереве
+      # лежит патч тулчейна специально под неё: поломка всплывала уже после того,
+      # как черновик релиза создан. Гоняем только Go-библиотеку под armeabi-v7a,
+      # без CMake, JNI и упаковки APK.
+      - name: Build Go for armeabi-v7a
+        if: success()
+        run: >-
+          ./gradlew --no-daemon -Pclod.abi=armeabi-v7a
+          core:externalGolangBuildStandardDebugArmeabiV7a
+
       # Один артефакт вместо четырёх: сборка идёт по одной ABI (-Pclod.abi=arm64-v8a),
       # flavor схлопнут в standard, тип debug. Прежние четыре шага указывали на
       # apk/alpha/release/* — этого каталога после ребрендинга не существует,
