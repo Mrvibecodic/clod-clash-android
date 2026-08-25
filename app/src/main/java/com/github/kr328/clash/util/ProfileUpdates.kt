@@ -8,7 +8,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 object ProfileUpdates {
-    private val TIMEOUT = TimeUnit.SECONDS.toMillis(90)
+    val TIMEOUT = TimeUnit.SECONDS.toMillis(90)
 
     private val deadlines = MutableStateFlow<Map<UUID, Long>>(emptyMap())
 

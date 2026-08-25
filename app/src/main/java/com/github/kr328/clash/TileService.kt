@@ -1,5 +1,6 @@
 package com.github.kr328.clash
 
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import androidx.annotation.RequiresApi
 import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
+import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
@@ -37,7 +39,24 @@ class TileService : TileService() {
 
         when (tile.state) {
             Tile.STATE_INACTIVE -> {
-                startClashService()
+                if (startClashService() != null) {
+                    val intent = WidgetToggleActivity::class.intent
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        startActivityAndCollapse(
+                            PendingIntent.getActivity(
+                                this,
+                                0,
+                                intent,
+                                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                            ),
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        startActivityAndCollapse(intent)
+                    }
+                }
             }
             Tile.STATE_ACTIVE -> {
                 stopClashService()

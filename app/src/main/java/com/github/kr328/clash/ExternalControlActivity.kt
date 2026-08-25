@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import com.github.kr328.clash.common.constants.Intents
@@ -16,6 +17,7 @@ import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,26 +42,38 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
             val uri = intent.data ?: return finish()
             val url = uri.getQueryParameter("url") ?: return finish()
 
+            if (Uri.parse(url).scheme?.lowercase(Locale.ROOT) !in listOf("http", "https")) {
+                return finish()
+            }
+
             launch {
-                val uuid = withProfile {
-                    val type = when (uri.getQueryParameter("type")?.lowercase(Locale.getDefault())) {
-                        "url" -> Profile.Type.Url
-                        "file" -> Profile.Type.File
-                        else -> Profile.Type.Url
+                withContext(NonCancellable) {
+                    val uuid = withProfile {
+                        val type = when (uri.getQueryParameter("type")?.lowercase(Locale.getDefault())) {
+                            "url" -> Profile.Type.Url
+                            "file" -> Profile.Type.File
+                            else -> Profile.Type.Url
+                        }
+                        val name = uri.getQueryParameter("name") ?: getString(R.string.new_profile)
+
+                        val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
+                        val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
+                        val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
+
+                        create(type, name).also {
+                            patch(it, name, url, intervalMs, null)
+                        }
                     }
-                    val name = uri.getQueryParameter("name") ?: getString(R.string.new_profile)
 
-                    val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
-                    val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
-                    val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
+                    val opened = !isFinishing && !isDestroyed && runCatching {
+                        startActivity(PropertiesActivity::class.intent.setUUID(uuid))
+                    }.isSuccess
 
-                    create(type, name).also {
-                        patch(it, name, url, intervalMs, null)
+                    if (!opened) {
+                        withProfile { release(uuid) }
                     }
                 }
-                if (isFinishing || isDestroyed) return@launch
 
-                startActivity(PropertiesActivity::class.intent.setUUID(uuid))
                 finish()
             }
 

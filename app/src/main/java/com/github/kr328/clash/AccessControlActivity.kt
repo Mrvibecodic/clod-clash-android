@@ -7,6 +7,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import androidx.core.content.getSystemService
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.design.AccessControlDesign
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
@@ -19,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 class AccessControlActivity : BaseActivity<AccessControlDesign>() {
     override suspend fun main() {
@@ -37,10 +39,14 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 service.accessControlPackages = selected
                 if (clashRunning && changed) {
                     stopClashService()
-                    while (clashRunning) {
-                        delay(200)
+                    withTimeoutOrNull(10_000) {
+                        while (clashRunning) {
+                            delay(200)
+                        }
                     }
-                    startClashService()
+                    if (startClashService() != null) {
+                        Log.w("Access control: VPN permission required, service not restarted")
+                    }
                 }
             }
         }

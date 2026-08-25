@@ -8,6 +8,7 @@ import com.github.kr328.clash.common.log.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -28,6 +29,8 @@ object Updater {
     private const val READ_TIMEOUT = 30_000
     private const val BUFFER_SIZE = 64 * 1024
     private const val PROGRESS_STEP = 256 * 1024
+    private const val MANIFEST_MAX_BYTES = 1L * 1024 * 1024
+    private const val APK_MAX_BYTES = 200L * 1024 * 1024
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -41,8 +44,13 @@ object Updater {
     suspend fun check(context: Context, prerelease: Boolean, mixedPort: Int?): Result<Available?> =
         withContext(Dispatchers.IO) {
             val release = load(MANIFEST_RELEASE, mixedPort)
+            val current = currentVersionCode(context)
             val manifest = if (prerelease) {
-                val preview = load(MANIFEST_PRERELEASE, mixedPort).getOrNull()
+                val preview = if (release.getOrNull()?.let { it.versionCode > current } == true) {
+                    null
+                } else {
+                    load(MANIFEST_PRERELEASE, mixedPort).getOrNull()
+                }
 
                 listOfNotNull(release.getOrNull(), preview).maxByOrNull { it.versionCode }
                     ?: return@withContext Result.failure(
@@ -52,7 +60,7 @@ object Updater {
                 release.getOrElse { return@withContext Result.failure(it) }
             }
 
-            if (manifest.versionCode <= currentVersionCode(context)) {
+            if (manifest.versionCode <= current) {
                 return@withContext Result.success(null)
             }
 
@@ -63,10 +71,21 @@ object Updater {
                 )
             }
 
+            if (!isHttps(platform.url)) {
+                return@withContext Result.failure(IOException("адрес обновления не https"))
+            }
+
             Result.success(Available(manifest, platform))
         }
 
+    private fun isHttps(url: String): Boolean =
+        runCatching { URL(url).protocol.equals("https", ignoreCase = true) }.getOrDefault(false)
+
     private fun load(url: String, mixedPort: Int?): Result<UpdateManifest> {
+        if (!isHttps(url)) {
+            return Result.failure(IOException("адрес манифеста не https"))
+        }
+
         val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8)
             ?: return Result.failure(IOException("манифест недоступен"))
 
@@ -96,6 +115,10 @@ object Updater {
                 error("файл подписан другим ключом — установка поверх невозможна")
             }
 
+            if (!matchesManifest(context, target, available.manifest)) {
+                error("пакет или версия файла не совпадают с манифестом")
+            }
+
             target
         }.onFailure {
             Log.w("$TAG: загрузка не удалась", it)
@@ -112,6 +135,18 @@ object Updater {
             @Suppress("DEPRECATION")
             info.versionCode.toLong()
         }
+    }
+
+    private fun matchesManifest(context: Context, apk: File, manifest: UpdateManifest): Boolean {
+        val info = context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0) ?: return false
+        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            info.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            info.versionCode.toLong()
+        }
+
+        return info.packageName == context.packageName && versionCode == manifest.versionCode
     }
 
     private fun hasSameSignature(context: Context, apk: File): Boolean {
@@ -153,6 +188,8 @@ object Updater {
         }
     }
 
+    private class LimitExceededException(message: String) : IOException(message)
+
     private fun <T : Any> request(
         url: String,
         mixedPort: Int?,
@@ -178,16 +215,42 @@ object Updater {
                 }
             }.onFailure {
                 Log.d("$TAG: $url через $proxy не удалось: ${it.message}")
-            }.getOrNull()
+            }
 
-            if (result != null) return result
+            if (result.exceptionOrNull() is LimitExceededException) return null
+
+            result.getOrNull()?.let { return it }
         }
 
         return null
     }
 
     private fun fetch(url: String, mixedPort: Int?): ByteArray? =
-        request(url, mixedPort) { connection -> connection.inputStream.use { it.readBytes() } }
+        request(url, mixedPort) { connection ->
+            val total = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
+
+            if (total > MANIFEST_MAX_BYTES) {
+                throw LimitExceededException("манифест больше $MANIFEST_MAX_BYTES байт")
+            }
+
+            connection.inputStream.use { input ->
+                val bytes = ByteArrayOutputStream()
+                val buffer = ByteArray(BUFFER_SIZE)
+
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read < 0) break
+
+                    if (bytes.size() + read > MANIFEST_MAX_BYTES) {
+                        throw LimitExceededException("манифест больше $MANIFEST_MAX_BYTES байт")
+                    }
+
+                    bytes.write(buffer, 0, read)
+                }
+
+                bytes.toByteArray()
+            }
+        }
 
     private fun downloadTo(
         url: String,
@@ -196,6 +259,11 @@ object Updater {
         onProgress: (Long, Long) -> Unit,
     ): String? = request(url, mixedPort) { connection ->
         val total = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
+
+        if (total > APK_MAX_BYTES) {
+            throw LimitExceededException("файл больше $APK_MAX_BYTES байт")
+        }
+
         val digest = MessageDigest.getInstance("SHA-256")
         val buffer = ByteArray(BUFFER_SIZE)
         var received = 0L
@@ -212,6 +280,10 @@ object Updater {
 
                     received += read
 
+                    if (received > APK_MAX_BYTES) {
+                        throw LimitExceededException("файл больше $APK_MAX_BYTES байт")
+                    }
+
                     if (received - lastReported >= PROGRESS_STEP) {
                         lastReported = received
 
@@ -221,6 +293,10 @@ object Updater {
 
                 output.flush()
             }
+        }
+
+        if (total > 0 && received != total) {
+            error("получено $received байт из $total")
         }
 
         onProgress(received, total)

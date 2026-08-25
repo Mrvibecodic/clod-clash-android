@@ -69,7 +69,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                                     Intent(Intent.ACTION_VIEW).setDataAndType(
                                         client.buildDocumentUri(it.file.id),
                                         "text/plain"
-                                    ).grantPermissions()
+                                    ).grantPermissions(write = false)
                                 )
                             }
                             is FilesDesign.Request.DeleteFile -> {

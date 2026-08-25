@@ -17,6 +17,7 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.util.withProfile
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -151,11 +152,27 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         ) ?: return
 
         val backup = try {
-            val content = withContext(Dispatchers.IO) {
-                contentResolver.openInputStream(input)?.use { it.readBytes().decodeToString() }
-            } ?: return
+            withContext(Dispatchers.IO) {
+                val content = contentResolver.openInputStream(input)?.use { stream ->
+                    val bytes = ByteArrayOutputStream()
+                    val buffer = ByteArray(8192)
 
-            backupJson.decodeFromString(Backup.serializer(), content)
+                    while (true) {
+                        val read = stream.read(buffer)
+                        if (read < 0) break
+
+                        if (bytes.size() + read > BACKUP_MAX_BYTES) {
+                            throw IllegalArgumentException("backup exceeds $BACKUP_MAX_BYTES bytes")
+                        }
+
+                        bytes.write(buffer, 0, read)
+                    }
+
+                    bytes.toByteArray().decodeToString()
+                } ?: return@withContext null
+
+                backupJson.decodeFromString(Backup.serializer(), content)
+            } ?: return
         } catch (e: Exception) {
             Log.w("Read subscriptions backup: $e", e)
 
@@ -309,6 +326,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
     private companion object {
         private const val BACKUP_VERSION = 1
+        private const val BACKUP_MAX_BYTES = 1024 * 1024
         private const val BACKUP_FILE_NAME = "clodclash-subscriptions.json"
     }
 }

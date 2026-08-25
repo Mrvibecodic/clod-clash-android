@@ -15,6 +15,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    androidResources {
+        localeFilters += listOf("en", "ru")
+    }
 }
 
 dependencies {

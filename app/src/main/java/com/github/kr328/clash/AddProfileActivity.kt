@@ -104,7 +104,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         }
     }
 
-    private fun normalizeSource(input: String): String? {
+    private fun normalizeSource(input: String, unwrap: Boolean = true): String? {
         val trimmed = input.trim()
 
         if (trimmed.isEmpty()) return null
@@ -113,8 +113,11 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
 
         return when (uri.scheme?.lowercase()) {
             "http", "https" -> trimmed
-            "clash", "clashmeta", "clodclash" ->
-                uri.getQueryParameter("url")?.takeIf { it.isNotBlank() }
+            "clash", "clashmeta", "clodclash" -> if (unwrap) {
+                uri.getQueryParameter("url")?.let { normalizeSource(it, unwrap = false) }
+            } else {
+                null
+            }
 
             else -> null
         }

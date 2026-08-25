@@ -57,6 +57,7 @@ import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -96,6 +97,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         ProfileUpdates.prune()
 
+        if (ProfileUpdates.running.value.isNotEmpty()) {
+            schedulePrune()
+        }
+
         launch {
             ProfileUpdates.running.collect { design.setUpdatingProfiles(it.keys) }
         }
@@ -116,6 +121,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
                             startRequestedAt = null
 
+                            ProfileUpdates.prune()
+
                             design.fetch()
 
                             design.showAddedProfile()
@@ -133,7 +140,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             ) {
                                 awaitingInstallPermission = false
 
-                                launch { design.startUpdate() }
+                                design.launchUpdate()
                             }
                         }
                         Event.ClashStop -> {
@@ -163,8 +170,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                             design.fetch()
 
                             if (!uiStore.reliabilityAsked) {
-                                uiStore.reliabilityAsked = true
-
                                 launch { design.askReliability() }
                             }
 
@@ -262,7 +267,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         MainDesign.Request.CheckUpdate ->
                             launch { design.checkUpdate(manual = true) }
 
-                        MainDesign.Request.UpdateNow -> launch { design.startUpdate() }
+                        MainDesign.Request.UpdateNow -> design.launchUpdate()
                         MainDesign.Request.UpdateSkip -> {
                             pendingUpdate?.let { UpdatePrompt.skip(this@MainActivity, it.manifest.versionCode) }
 
@@ -292,6 +297,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     }
 
                                     ProfileUpdates.start(targets)
+                                    schedulePrune()
 
                                     withProfile { targets.forEach { update(it) } }
                                 } catch (e: CancellationException) {
@@ -326,7 +332,17 @@ class MainActivity : BaseActivity<MainDesign>() {
                             launch {
                                 val uuid = request.profile.uuid
 
+                                if (!request.profile.imported) {
+                                    design.showToast(
+                                        DesignR.string.clod_sub_draft,
+                                        ToastDuration.Long,
+                                    )
+
+                                    return@launch
+                                }
+
                                 ProfileUpdates.start(listOf(uuid))
+                                schedulePrune()
 
                                 try {
                                     withProfile { update(uuid) }
@@ -372,20 +388,29 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         MainDesign.Request.DismissNotifications ->
                             design.setNotificationPrompt(false)
-                        MainDesign.Request.ReliabilityAllowBattery ->
+                        MainDesign.Request.ReliabilityAllowBattery -> {
+                            uiStore.reliabilityAsked = true
+
                             launch {
                                 requestBatteryException()
 
                                 design.fetchReliability()
                             }
-                        MainDesign.Request.ReliabilityOpenVpnSettings ->
+                        }
+                        MainDesign.Request.ReliabilityOpenVpnSettings -> {
+                            uiStore.reliabilityAsked = true
+
                             openVpnSettings()
-                        MainDesign.Request.ReliabilityDismiss ->
+                        }
+                        MainDesign.Request.ReliabilityDismiss -> {
+                            uiStore.reliabilityAsked = true
+
                             design.setReliability(
                                 batteryIgnored = isBatteryIgnored(),
                                 alwaysOn = alwaysOnState(),
                                 prompt = false,
                             )
+                        }
                         is MainDesign.Request.SetSubscriptionGroup -> {
                             patchSubscriptionGroup(request.profile.uuid, request.group)
 
@@ -622,7 +647,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }
-        offlineGroups = panel?.groups.orEmpty()
+        offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }
         proxyGroupNames = offlineGroups.map { it.name }
         healthCheckedGroups = emptyList()
 
@@ -660,7 +685,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             index = index,
             now = offlineSelections[group.name].orEmpty(),
             selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
-            proxies = group.proxies.map { name ->
+            proxies = group.proxies.distinct().map { name ->
                 Proxy(
                     name = name,
                     title = name,
@@ -1070,6 +1095,14 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var awaitingInstallPermission: Boolean = false
 
+    private var updateJob: Job? = null
+
+    private fun MainDesign.launchUpdate() {
+        if (updateJob?.isActive == true) return
+
+        updateJob = launch { startUpdate() }
+    }
+
     private suspend fun MainDesign.checkUpdate(manual: Boolean) {
         setUpdateChecking(true)
 
@@ -1160,10 +1193,26 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
+    private fun schedulePrune() {
+        launch {
+            delay(ProfileUpdates.TIMEOUT)
+
+            ProfileUpdates.prune()
+        }
+    }
+
     private fun openExternalUrl(url: String) {
+        val uri = Uri.parse(url)
+
+        if (uri.scheme?.lowercase() !in listOf("http", "https")) {
+            launch { design?.showToast(DesignR.string.invalid_url, ToastDuration.Long) }
+
+            return
+        }
+
         try {
             startActivity(
-                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                Intent(Intent.ACTION_VIEW, uri)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         } catch (e: Exception) {
