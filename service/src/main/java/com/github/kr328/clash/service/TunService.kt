@@ -40,6 +40,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private var sessionStartedAt: Long = 0
 
+    private var rejected = false
+
     private val stopNotified = AtomicBoolean(false)
 
     private fun notifyStopped() {
@@ -116,8 +118,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     override fun onCreate() {
         super.onCreate()
 
-        if (StatusProvider.serviceRunning)
+        if (StatusProvider.serviceRunning) {
+            rejected = true
+
             return stopSelf()
+        }
 
         StatusProvider.serviceRunning = true
 
@@ -134,6 +139,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (rejected) {
+            stopSelf()
+
+            return super.onStartCommand(intent, flags, startId)
+        }
+
         if (stopNotified.get()) {
             stopSelf()
 
@@ -156,6 +167,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onDestroy() {
+        if (rejected) {
+            super.onDestroy()
+
+            return
+        }
+
         val startedAt = SystemClock.elapsedRealtime()
 
         TunModule.requestStop()
@@ -277,7 +294,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                         ProxyInfo.buildDirectProxy(
                             it.address.hostAddress,
                             it.port,
-                            HTTP_PROXY_BLACK_LIST + if (store.bypassPrivateNetwork) HTTP_PROXY_LOCAL_LIST else emptyList()
+                            HTTP_PROXY_BLACK_LIST + HTTP_PROXY_LOOPBACK_LIST + if (store.bypassPrivateNetwork) HTTP_PROXY_LOCAL_LIST else emptyList()
                         )
                     )
                 }
@@ -313,10 +330,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         private const val NET_ANY = "0.0.0.0"
         private const val NET_ANY6 = "::"
 
-        private val HTTP_PROXY_LOCAL_LIST: List<String> = listOf(
+        private val HTTP_PROXY_LOOPBACK_LIST: List<String> = listOf(
             "localhost",
             "*.local",
-            "127.*",
+            "127.*"
+        )
+        private val HTTP_PROXY_LOCAL_LIST: List<String> = listOf(
             "10.*",
             "172.16.*",
             "172.17.*",

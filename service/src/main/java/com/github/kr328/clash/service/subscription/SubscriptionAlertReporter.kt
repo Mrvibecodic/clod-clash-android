@@ -20,6 +20,7 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -98,7 +99,15 @@ private fun Context.writeState(uuid: UUID, value: Map<String, Long>) {
         if (value.isEmpty()) {
             file.delete()
         } else {
-            file.writeText(json.encodeToString(stateSerializer, value))
+            val temporary = File(file.path + ".tmp")
+
+            temporary.writeText(json.encodeToString(stateSerializer, value))
+
+            if (!temporary.renameTo(file)) {
+                temporary.delete()
+
+                throw IOException("rename $temporary")
+            }
         }
     } catch (e: Exception) {
         Log.w("Write $STATE_FILE of $uuid: $e", e)

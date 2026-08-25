@@ -38,6 +38,8 @@ object ProfileProcessor {
 
     private const val MIGRATION_FILE = "migration.json"
 
+    private const val ALERTS_FILE = "alerts.json"
+
     private val migrationJson = Json { ignoreUnknownKeys = true }
 
     private val profileLock = Mutex()
@@ -71,8 +73,12 @@ object ProfileProcessor {
 
                 profileLock.withLock {
                     if (PendingDao().queryByUUID(snapshot.uuid) == snapshot) {
-                        context.importedDir.resolve(snapshot.uuid.toString()).deleteRecursively()
-                        context.processingDir.copyRecursively(context.importedDir.resolve(snapshot.uuid.toString()))
+                        val target = context.importedDir.resolve(snapshot.uuid.toString())
+
+                        keepAlerts(target, context.processingDir)
+
+                        target.deleteRecursively()
+                        context.processingDir.copyRecursively(target)
 
                         val old = ImportedDao().queryByUUID(snapshot.uuid)
                         val updateInterval = subscriptionInfo?.subUpdateInterval
@@ -200,6 +206,8 @@ object ProfileProcessor {
         profileLock.withLock {
             val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock
 
+            keepAlerts(profileDir, probe)
+
             profileDir.deleteRecursively()
             probe.copyRecursively(profileDir, overwrite = true)
 
@@ -234,6 +242,16 @@ object ProfileProcessor {
         val hops: Int = 0,
         val previous: List<String> = emptyList(),
     )
+
+    private fun keepAlerts(from: File, to: File) {
+        val alerts = from.resolve(ALERTS_FILE).takeIf { it.isFile } ?: return
+
+        try {
+            alerts.copyTo(to.resolve(ALERTS_FILE), overwrite = true)
+        } catch (e: Exception) {
+            Log.w("Keep $ALERTS_FILE of ${from.name}: $e", e)
+        }
+    }
 
     private fun readMigration(file: File): MigrationState {
         if (!file.isFile) return MigrationState()

@@ -26,13 +26,11 @@ import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import kotlinx.coroutines.*
 import kotlinx.coroutines.CancellationException
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 
 class ProfileWorker : BaseService() {
-    private val service: ProfileWorker
-        get() = this
-
-    private val jobs = mutableListOf<Job>()
+    private val jobs = ConcurrentLinkedQueue<Job>()
 
     override fun onCreate() {
         super.onCreate()
@@ -45,7 +43,7 @@ class ProfileWorker : BaseService() {
             delay(TimeUnit.SECONDS.toMillis(10))
 
             while (true) {
-                jobs.removeFirstOrNull()?.join() ?: break
+                jobs.poll()?.join() ?: break
             }
 
             stopSelf()
@@ -70,15 +68,6 @@ class ProfileWorker : BaseService() {
 
                     jobs.add(job)
                 }
-            }
-            Intents.ACTION_PROFILE_SCHEDULE_UPDATES -> {
-                val job = launch {
-                    ProfileReceiver.rescheduleAll(service)
-
-                    delay(TimeUnit.SECONDS.toMillis(30))
-                }
-
-                jobs.add(job)
             }
         }
 

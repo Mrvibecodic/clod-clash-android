@@ -6,6 +6,8 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Bundle
 import com.github.kr328.clash.common.Global
+import com.github.kr328.clash.common.log.Log
+import java.io.IOException
 
 class StatusProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
@@ -72,11 +74,15 @@ class StatusProvider : ContentProvider() {
         var shouldStartClashOnBoot: Boolean
             get() = Global.application.filesDir.resolve(CLASH_SERVICE_RUNNING_FILE).exists()
             set(value) {
-                Global.application.filesDir.resolve(CLASH_SERVICE_RUNNING_FILE).apply {
-                    if (value)
-                        createNewFile()
-                    else
-                        delete()
+                try {
+                    Global.application.filesDir.resolve(CLASH_SERVICE_RUNNING_FILE).apply {
+                        if (value)
+                            createNewFile()
+                        else
+                            delete()
+                    }
+                } catch (e: IOException) {
+                    Log.w("Update $CLASH_SERVICE_RUNNING_FILE failed", e)
                 }
             }
         var currentProfile: String? = null

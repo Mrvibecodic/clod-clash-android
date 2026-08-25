@@ -25,6 +25,8 @@ class ClashService : BaseService() {
 
     private var sessionStartedAt: Long = 0
 
+    private var rejected = false
+
     private val stopNotified = AtomicBoolean(false)
 
     private fun notifyStopped() {
@@ -86,8 +88,11 @@ class ClashService : BaseService() {
     override fun onCreate() {
         super.onCreate()
 
-        if (StatusProvider.serviceRunning)
+        if (StatusProvider.serviceRunning) {
+            rejected = true
+
             return stopSelf()
+        }
 
         StatusProvider.serviceRunning = true
 
@@ -100,6 +105,12 @@ class ClashService : BaseService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (rejected) {
+            stopSelf()
+
+            return START_NOT_STICKY
+        }
+
         if (stopNotified.get()) {
             stopSelf()
 
@@ -118,6 +129,12 @@ class ClashService : BaseService() {
     }
 
     override fun onDestroy() {
+        if (rejected) {
+            super.onDestroy()
+
+            return
+        }
+
         val startedAt = SystemClock.elapsedRealtime()
 
         notifyStopped()

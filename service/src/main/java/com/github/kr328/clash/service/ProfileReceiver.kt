@@ -37,10 +37,7 @@ class ProfileReceiver : BroadcastReceiver() {
                     try {
                         reset()
 
-                        val service = Intent(Intents.ACTION_PROFILE_SCHEDULE_UPDATES)
-                            .setComponent(ProfileWorker::class.componentName)
-
-                        context.startForegroundServiceCompat(service)
+                        rescheduleAll(context)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {

@@ -23,9 +23,9 @@ import kotlinx.coroutines.withContext
 import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
 
-class NetworkObserveModule(service: Service) : Module<Network>(service) {
+class NetworkObserveModule(service: Service) : Module<Network?>(service) {
     private val connectivity = service.getSystemService<ConnectivityManager>()!!
-    private val networks: Channel<Network> = Channel(Channel.UNLIMITED)
+    private val networks: Channel<Network?> = Channel(Channel.CONFLATED)
     private val request = NetworkRequest.Builder().apply {
         addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
         addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -103,8 +103,6 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             Log.i("NetworkObserve onLosing network=$network")
             networkInfos[network]?.losingMs = System.currentTimeMillis() + maxMsToLive
             notifyDnsChange()
-
-            networks.trySend(network)
         }
 
         override fun onLost(network: Network) {
@@ -112,11 +110,13 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
             networkInfos.remove(network)
             notifyDnsChange()
 
+            val preferred = preferredNetwork()
+
             if (network == currentNetwork) {
-                preferredNetwork()?.let(::onNetworkMaybeChanged)
+                preferred?.let(::onNetworkMaybeChanged)
             }
 
-            networks.trySend(network)
+            networks.trySend(preferred)
         }
 
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
@@ -363,7 +363,7 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
     companion object {
         private const val RESET_THROTTLE_MS = 5_000L
 
-        private const val RECOVER_DELAY_MS = 5_000L
+        private const val RECOVER_DELAY_MS = 7_000L
 
         private const val PROBE_TICK_MS = 300_000L
 
