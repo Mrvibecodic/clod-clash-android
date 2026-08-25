@@ -70,3 +70,4 @@ google-services.json
 /release.keystore
 *.keystore
 *.jks
+/core/src/main/cpp/version.h

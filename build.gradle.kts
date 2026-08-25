@@ -175,13 +175,13 @@ task("clean", type = Delete::class) {
 }
 
 tasks.wrapper {
-    distributionType = Wrapper.DistributionType.ALL
+    distributionType = Wrapper.DistributionType.BIN
 
     doLast {
         val sha256 = URL("$distributionUrl.sha256").openStream()
             .use { it.reader().readText().trim() }
 
         file("gradle/wrapper/gradle-wrapper.properties")
-            .appendText("distributionSha256Sum=$sha256")
+            .appendText("\ndistributionSha256Sum=$sha256\n")
     }
 }

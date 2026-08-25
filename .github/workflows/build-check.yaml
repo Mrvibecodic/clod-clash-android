@@ -86,7 +86,7 @@ jobs:
         id: go-tests
         if: success()
         working-directory: core/src/main/golang
-        run: go test ./native/config/panel/... ./native/config/sentinel/...
+        run: go test ./native/config/panel/... ./native/config/sentinel/... ./native/chanx/...
 
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная

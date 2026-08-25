@@ -103,9 +103,9 @@ jobs:
           for apk in app/build/outputs/apk/standard/release/*.apk; do
             tmp=$(mktemp -d); unzip -q -o "$apk" 'lib/*' -d "$tmp" || true
             while IFS= read -r so; do
-              align=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | tail -1)
-              if [[ "$align" != "0x4000" && "$align" != "0x10000" ]]; then
-                echo "::error::$(basename "$apk") :: ${so#$tmp/} выравнен на $align, нужно 0x4000"
+              bad=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | grep -vE '^0x(4000|10000)$' || true)
+              if [[ -n "$bad" ]]; then
+                echo "::error::$(basename "$apk") :: ${so#$tmp/} выравнен на $(echo "$bad" | paste -sd, -), нужно 0x4000"
                 fail=1
               fi
             done < <(find "$tmp/lib/arm64-v8a" "$tmp/lib/x86_64" -name '*.so' 2>/dev/null)
