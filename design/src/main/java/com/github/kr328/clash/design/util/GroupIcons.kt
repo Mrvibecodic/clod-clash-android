@@ -34,6 +34,9 @@ object GroupIcons {
 
     private val retryAfter = ConcurrentHashMap<String, Long>()
 
+    @Volatile
+    private var agent: String? = null
+
     fun load(context: Context, url: String): ImageBitmap? {
         memory[url]?.let { return it }
 
@@ -46,7 +49,7 @@ object GroupIcons {
 
             if ((retryAfter[url] ?: 0L) > now) return null
 
-            if (!download(url, file)) {
+            if (!download(url, file, userAgent(context))) {
                 retryAfter[url] = now + RETRY_DELAY_MILLIS
 
                 return null
@@ -98,7 +101,23 @@ object GroupIcons {
         }.getOrNull()
     }
 
-    private fun download(url: String, target: File): Boolean {
+    private fun userAgent(context: Context): String {
+        agent?.let { return it }
+
+        val version = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty()
+
+        val value = "ClodClash/$version (Android)"
+
+        if (version.isNotEmpty()) {
+            agent = value
+        }
+
+        return value
+    }
+
+    private fun download(url: String, target: File, agent: String): Boolean {
         val parsed = runCatching { URL(url) }.getOrNull() ?: return false
 
         if (!parsed.protocol.equals("https", ignoreCase = true)) return false
@@ -112,6 +131,7 @@ object GroupIcons {
             connection.readTimeout = TIMEOUT_MILLIS
             connection.instanceFollowRedirects = true
             connection.setRequestProperty("Accept", "image/*")
+            connection.setRequestProperty("User-Agent", agent)
 
             connection.use { open ->
                 if (open.responseCode !in 200..299) return false

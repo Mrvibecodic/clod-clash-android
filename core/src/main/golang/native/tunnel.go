@@ -126,7 +126,7 @@ func queryProviders() *C.char {
 //export updateProvider
 func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_string) {
 	go func(pType, name string) {
-		C.complete(completable, marshalString(tunnel.UpdateProvider(pType, name)))
+		C.complete(completable, marshalError(tunnel.UpdateProvider(pType, name)))
 
 		C.release_object(completable)
 	}(C.GoString(pType), C.GoString(name))

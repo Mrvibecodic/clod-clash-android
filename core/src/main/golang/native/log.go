@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"cfa/native/app"
+	"cfa/native/redact"
 
 	"github.com/metacubex/mihomo/log"
 )
@@ -25,7 +26,7 @@ func init() {
 		defer log.UnSubscribe(sub)
 
 		for msg := range sub {
-			cPayload := C.CString(msg.Payload)
+			cPayload := C.CString(redact.Text(msg.Payload))
 
 			switch msg.LogLevel {
 			case log.INFO:
@@ -56,7 +57,7 @@ func subscribeLogcat(remote unsafe.Pointer) {
 
 			rMsg := &message{
 				Level:   msg.LogLevel.String(),
-				Message: msg.Payload,
+				Message: redact.Text(msg.Payload),
 				Time:    time.Now().UnixNano() / 1000 / 1000,
 			}
 

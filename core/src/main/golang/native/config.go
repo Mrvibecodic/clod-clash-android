@@ -30,7 +30,7 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
 
 		err := config.FetchAndValid(path, url, force != 0, cb.reportStatus)
 
-		C.fetch_complete(callback, marshalString(err))
+		C.fetch_complete(callback, marshalError(err))
 
 		C.release_object(callback)
 
@@ -46,7 +46,7 @@ func setSecureChannel(enabled C.int) {
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
 	go func(path string) {
-		C.complete(completable, marshalString(config.Load(path)))
+		C.complete(completable, marshalError(config.Load(path)))
 
 		C.release_object(completable)
 

@@ -42,10 +42,14 @@ type fetchHeader struct {
 	Raw                   map[string][]string
 }
 
-func subscriptionHeaders() http.Header {
+func subscriptionHeaders(device bool) http.Header {
 	header := http.Header{
 		"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"},
 		"Accept":     {"*/*"},
+	}
+
+	if !device {
+		return header
 	}
 
 	for name, value := range app.DeviceHeaders() {
@@ -55,11 +59,15 @@ func subscriptionHeaders() http.Header {
 	return header
 }
 
-func openUrl(ctx context.Context, url string) (io.ReadCloser, fetchHeader, error) {
-	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(), nil)
+func openUrl(ctx context.Context, url string, device bool) (io.ReadCloser, fetchHeader, error) {
+	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(device), nil)
 
 	if err != nil {
 		return nil, fetchHeader{}, err
+	}
+
+	if device && response.Request != nil {
+		warnOnForeignRedirect(url, response.Request.URL)
 	}
 
 	return response.Body, fetchHeader{
@@ -75,7 +83,7 @@ func openContent(url string) (io.ReadCloser, error) {
 
 func fetchConfig(url *U.URL, file string) (fetchHeader, error) {
 	if !SecureChannel() || (url.Scheme != "http" && url.Scheme != "https") {
-		return fetch(url, file)
+		return fetch(url, file, true)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -91,7 +99,33 @@ func fetchConfig(url *U.URL, file string) (fetchHeader, error) {
 	return header, writeFile(file, reader)
 }
 
-func fetch(url *U.URL, file string) (fetchHeader, error) {
+func hostOf(url *U.URL) string {
+	host := url.Hostname()
+	port := url.Port()
+
+	if port == "" || (url.Scheme == "http" && port == "80") || (url.Scheme == "https" && port == "443") {
+		return host
+	}
+
+	return host + ":" + port
+}
+
+func warnOnForeignRedirect(requested string, final *U.URL) {
+	if final == nil {
+		return
+	}
+
+	source, err := U.Parse(requested)
+	if err != nil {
+		return
+	}
+
+	if !strings.EqualFold(hostOf(final), hostOf(source)) {
+		log.Warnln("Subscription redirected from %s to %s, device headers followed the redirect", source.Host, final.Host)
+	}
+}
+
+func fetch(url *U.URL, file string, device bool) (fetchHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -101,7 +135,7 @@ func fetch(url *U.URL, file string) (fetchHeader, error) {
 
 	switch url.Scheme {
 	case "http", "https":
-		reader, header, err = openUrl(ctx, url.String())
+		reader, header, err = openUrl(ctx, url.String(), device)
 	case "content":
 		reader, err = openContent(url.String())
 	default:
@@ -348,7 +382,7 @@ func FetchAndValid(
 			}
 		}
 
-		_, _ = fetch(url, ps)
+		_, _ = fetch(url, ps, false)
 	})
 
 	bytes, _ := json.Marshal(&Status{

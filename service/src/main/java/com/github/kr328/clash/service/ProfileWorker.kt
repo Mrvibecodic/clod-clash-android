@@ -13,6 +13,7 @@ import com.github.kr328.clash.common.compat.startForegroundCompat
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.id.UndefinedIds
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.common.log.Log
@@ -212,7 +213,7 @@ class ProfileWorker : BaseService() {
         if (ServiceStore(this).notifyProfileErrors) {
             val id = uuid.hashCode()
 
-            val content = getString(R.string.format_update_failure, name, reason)
+            val content = getString(R.string.format_update_failure, name, Redact.text(reason))
 
             val notification = resultBuilder(id, uuid, ERROR_CHANNEL)
                 .setContentTitle(getString(R.string.update_failure))

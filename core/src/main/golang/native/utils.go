@@ -5,6 +5,8 @@ import "C"
 import (
 	"encoding/json"
 	"reflect"
+
+	"cfa/native/redact"
 )
 
 func marshalJson(obj any) *C.char {
@@ -16,14 +18,20 @@ func marshalJson(obj any) *C.char {
 	return C.CString(string(res))
 }
 
+func marshalError(err error) *C.char {
+	if err == nil {
+		return nil
+	}
+
+	return C.CString(redact.Text(err.Error()))
+}
+
 func marshalString(obj any) *C.char {
 	if obj == nil {
 		return nil
 	}
 
 	switch o := obj.(type) {
-	case error:
-		return C.CString(o.Error())
 	case string:
 		return C.CString(o)
 	}
