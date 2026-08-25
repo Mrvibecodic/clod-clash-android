@@ -4,18 +4,20 @@ import java.util.*
 
 data class LogFile(val fileName: String, val date: Date) {
     companion object {
-        private val REGEX_FILE = Regex("clash-(\\d+).log")
+        private val REGEX_FILE = Regex("clash-(\\d+)\\.log")
         private const val FORMAT_FILE_NAME = "clash-%d.log"
 
         fun parseFromFileName(fileName: String): LogFile? {
             return REGEX_FILE.matchEntire(fileName)?.run {
-                LogFile(fileName, Date(groupValues[1].toLong()))
+                val time = groupValues[1].toLongOrNull() ?: return null
+
+                LogFile(fileName, Date(time))
             }
         }
 
         fun generate(): LogFile {
             val current = Date()
-            val fileName = FORMAT_FILE_NAME.format(current.time)
+            val fileName = String.format(Locale.ROOT, FORMAT_FILE_NAME, current.time)
 
             return LogFile(fileName, current)
         }

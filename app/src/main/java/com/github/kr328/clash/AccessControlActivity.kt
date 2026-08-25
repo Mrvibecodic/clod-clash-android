@@ -107,8 +107,16 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                             val clipboard = getSystemService<ClipboardManager>()
                             val data = clipboard?.primaryClip
 
-                            if (data != null && data.itemCount > 0) {
-                                val packages = data.getItemAt(0).text.split("\n").toSet()
+                            val text = data?.takeIf { it.itemCount > 0 }
+                                ?.getItemAt(0)
+                                ?.text
+                                ?.toString()
+
+                            if (!text.isNullOrBlank()) {
+                                val packages = text.split("\n")
+                                    .map { line -> line.trim() }
+                                    .filter { line -> line.isNotEmpty() }
+                                    .toSet()
                                 val all = design.apps.map(AppInfo::packageName).intersect(packages)
 
                                 selected.clear()

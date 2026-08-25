@@ -65,9 +65,13 @@ abstract class Module<E>(val service: Service) {
         } finally {
             withContext(NonCancellable) {
                 receivers.forEach {
-                    it.onReceive(null, null)
+                    runCatching {
+                        it.onReceive(null, null)
 
-                    service.unregisterReceiver(it)
+                        service.unregisterReceiver(it)
+                    }.onFailure { error ->
+                        Log.w("$moduleName: $error", error)
+                    }
                 }
 
                 Log.d("$moduleName: destroyed")

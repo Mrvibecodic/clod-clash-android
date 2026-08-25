@@ -18,7 +18,7 @@ class ServiceStore(context: Context) {
 
     var activeProfile: UUID? by store.typedString(
         key = "active_profile",
-        from = { if (it.isBlank()) null else UUID.fromString(it) },
+        from = { if (it.isBlank()) null else runCatching { UUID.fromString(it) }.getOrNull() },
         to = { it?.toString() ?: "" }
     )
 

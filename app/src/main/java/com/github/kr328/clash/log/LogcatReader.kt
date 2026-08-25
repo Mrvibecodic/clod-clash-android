@@ -23,10 +23,12 @@ class LogcatReader(context: Context, file: LogFile) : AutoCloseable {
             .map { it.split(":", limit = 3) }
             .map {
                 val time = it[0].toLongOrNull()?.let { Date(it) } ?: lastTime
-                val logMessage = if (it[0].toLongOrNull() != null) {
+                val level = it.getOrNull(1)
+                    ?.let { name -> LogMessage.Level.entries.firstOrNull { l -> l.name == name } }
+                val logMessage = if (it[0].toLongOrNull() != null && level != null && it.size >= 3) {
                     LogMessage(
                         time = time,
-                        level = LogMessage.Level.valueOf(it[1]),
+                        level = level,
                         message = it[2]
                     )
                 } else {

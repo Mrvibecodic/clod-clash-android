@@ -47,7 +47,9 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
     private suspend fun mainLocalFile(file: LogFile) {
         val messages = try {
-            LogcatReader(this, file).readAll()
+            withContext(Dispatchers.IO) {
+                LogcatReader(this@LogcatActivity, file).use { it.readAll() }
+            }
         } catch (e: Exception) {
             Log.e("Fail to read log file ${file.fileName}: ${e.message}")
             return showInvalid()

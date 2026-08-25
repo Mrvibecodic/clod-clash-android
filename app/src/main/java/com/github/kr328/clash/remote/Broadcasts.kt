@@ -22,6 +22,7 @@ class Broadcasts(private val context: Application) {
         fun onProfileLoaded()
     }
 
+    @Volatile
     var clashRunning: Boolean = false
 
     private var registered = false

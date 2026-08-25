@@ -45,26 +45,33 @@ object ApkInstaller {
 
         val sessionId = installer.createSession(params)
 
-        installer.openSession(sessionId).use { session ->
-            session.openWrite("base.apk", 0, apk.length()).use { output ->
-                apk.inputStream().use { it.copyTo(output) }
-                session.fsync(output)
+        try {
+            installer.openSession(sessionId).use { session ->
+                session.openWrite("base.apk", 0, apk.length()).use { output ->
+                    apk.inputStream().use { it.copyTo(output) }
+                    session.fsync(output)
+                }
+
+                var flags = PendingIntent.FLAG_UPDATE_CURRENT
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    flags = flags or PendingIntent.FLAG_MUTABLE
+                }
+
+                val status = PendingIntent.getBroadcast(
+                    context,
+                    sessionId,
+                    Intent("${context.packageName}.$ACTION_INSTALL_STATUS")
+                        .setPackage(context.packageName)
+                        .setClass(context, ResultReceiver::class.java),
+                    flags,
+                )
+
+                session.commit(status.intentSender)
             }
+        } catch (e: Throwable) {
+            runCatching { installer.abandonSession(sessionId) }
 
-            var flags = PendingIntent.FLAG_UPDATE_CURRENT
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                flags = flags or PendingIntent.FLAG_MUTABLE
-            }
-
-            val status = PendingIntent.getBroadcast(
-                context,
-                sessionId,
-                Intent("${context.packageName}.$ACTION_INSTALL_STATUS")
-                    .setPackage(context.packageName),
-                flags,
-            )
-
-            session.commit(status.intentSender)
+            throw e
         }
     }
 

@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,8 +44,12 @@ fun TextInputContent(
     LaunchedEffect(Unit) {
         onChanged(value.text, !invalid)
 
-        focusRequester.requestFocus()
-        keyboard?.show()
+        withFrameNanos { }
+
+        runCatching {
+            focusRequester.requestFocus()
+            keyboard?.show()
+        }
     }
 
     OutlinedTextField(

@@ -24,7 +24,7 @@ object ApplicationObserver {
         }
 
     val createdActivities: Set<Activity>
-        get() = _createdActivities
+        get() = synchronized(activityObserver) { _createdActivities.toSet() }
 
     private val activityObserver = object : Application.ActivityLifecycleCallbacks {
         @Synchronized
@@ -39,11 +39,13 @@ object ApplicationObserver {
             appVisible = _visibleActivities.isNotEmpty()
         }
 
+        @Synchronized
         override fun onActivityStarted(activity: Activity) {
             _visibleActivities.add(activity)
             appVisible = true
         }
 
+        @Synchronized
         override fun onActivityStopped(activity: Activity) {
             _visibleActivities.remove(activity)
             appVisible = _visibleActivities.isNotEmpty()
@@ -66,7 +68,7 @@ object ApplicationObserver {
 fun Context.verifyApk(): Boolean {
     return try {
         val info = applicationInfo
-        val sources = info.splitSourceDirs ?: arrayOf(info.sourceDir) ?: return false
+        val sources = info.splitSourceDirs ?: arrayOf(info.sourceDir)
 
         val regexNativeLibrary = Regex("lib/(\\S+)/libclash.so")
         val availableAbi = Build.SUPPORTED_ABIS.toSet()
