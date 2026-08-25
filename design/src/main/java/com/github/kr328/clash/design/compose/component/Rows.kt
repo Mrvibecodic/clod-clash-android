@@ -22,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
+import java.util.Locale
 
 @Composable
 fun SelectorRow(
@@ -56,7 +57,7 @@ fun SelectorRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = label.uppercase(),
+                    text = label.uppercase(Locale.getDefault()),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -88,7 +89,7 @@ fun SelectorRow(
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     Text(
-        text = title.uppercase(),
+        text = title.uppercase(Locale.getDefault()),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),

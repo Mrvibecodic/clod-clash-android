@@ -2,12 +2,28 @@ package com.github.kr328.clash.design.util
 
 import android.content.Context
 import com.github.kr328.clash.common.compat.preferredLocale
+import java.text.Collator
 import java.text.SimpleDateFormat
 import java.util.*
 
 private const val DATE_DATE_ONLY = "yyyy-MM-dd"
 private const val DATE_TIME_ONLY = "HH:mm:ss.SSS"
 private const val DATE_ALL = "$DATE_DATE_ONLY $DATE_TIME_ONLY"
+
+private val collators = ThreadLocal<Pair<Locale, Collator>>()
+
+fun localeCollator(): Collator {
+    val locale = Locale.getDefault()
+    val cached = collators.get()
+
+    if (cached != null && cached.first == locale) return cached.second
+
+    val collator = Collator.getInstance(locale)
+
+    collators.set(locale to collator)
+
+    return collator
+}
 
 @JvmOverloads
 fun Date.format(
@@ -29,19 +45,29 @@ fun Date.format(
 }
 
 fun Long.toBytesString(): String {
+    val locale = Locale.getDefault()
+
     return when {
         this > 1024.0 * 1024 * 1024 * 1024 * 1024 * 1024 ->
-            String.format("%.2f EiB", (this.toDouble() / 1024 / 1024 / 1024 / 1024 / 1024 / 1024))
+            String.format(
+                locale,
+                "%.2f EiB",
+                (this.toDouble() / 1024 / 1024 / 1024 / 1024 / 1024 / 1024),
+            )
         this > 1024.0 * 1024 * 1024 * 1024 * 1024 ->
-            String.format("%.2f PiB", (this.toDouble() / 1024 / 1024 / 1024 / 1024 / 1024))
+            String.format(
+                locale,
+                "%.2f PiB",
+                (this.toDouble() / 1024 / 1024 / 1024 / 1024 / 1024),
+            )
         this > 1024.0 * 1024 * 1024 * 1024 ->
-            String.format("%.2f TiB", (this.toDouble() / 1024 / 1024 / 1024 / 1024))
+            String.format(locale, "%.2f TiB", (this.toDouble() / 1024 / 1024 / 1024 / 1024))
         this > 1024 * 1024 * 1024 ->
-            String.format("%.2f GiB", (this.toDouble() / 1024 / 1024 / 1024))
+            String.format(locale, "%.2f GiB", (this.toDouble() / 1024 / 1024 / 1024))
         this > 1024 * 1024 ->
-            String.format("%.2f MiB", (this.toDouble() / 1024 / 1024))
+            String.format(locale, "%.2f MiB", (this.toDouble() / 1024 / 1024))
         this > 1024 ->
-            String.format("%.2f KiB", (this.toDouble() / 1024))
+            String.format(locale, "%.2f KiB", (this.toDouble() / 1024))
         else ->
             "$this Bytes"
     }

@@ -51,6 +51,12 @@ private val NoServersReason.isDeviceRelated: Boolean
 private const val HWID_LIMIT_REACHED = "limit"
 private const val HWID_NOT_SUPPORTED = "not-supported"
 
+fun Profile.usedTraffic(): Long {
+    val sum = upload.coerceAtLeast(0) + download.coerceAtLeast(0)
+
+    return if (sum < 0) Long.MAX_VALUE else sum
+}
+
 fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.currentTimeMillis()): NoServersReason? {
     when (panel?.hwidState) {
         HWID_LIMIT_REACHED -> return NoServersReason.DeviceLimit
@@ -62,7 +68,7 @@ fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.cur
     if (profile != null) {
         if (profile.expire in 1 until now) return NoServersReason.Expired
 
-        val used = profile.upload + profile.download
+        val used = profile.usedTraffic()
 
         if (profile.total > 0 && used >= profile.total) return NoServersReason.Traffic
     }

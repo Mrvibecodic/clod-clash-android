@@ -80,12 +80,10 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
     var shown by remember { mutableStateOf<Notice?>(null) }
     var detail by remember { mutableStateOf<String?>(null) }
 
-    if (notice != null) {
-        shown = notice
-    }
-
     LaunchedEffect(notice?.id) {
         val active = notice ?: return@LaunchedEffect
+
+        shown = active
 
         delay(if (active.longDuration) NOTICE_LONG_MILLIS else NOTICE_SHORT_MILLIS)
 
@@ -98,7 +96,7 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
         exit = fadeOut() + slideOutVertically { it / 2 },
         modifier = modifier,
     ) {
-        val message = shown ?: return@AnimatedVisibility
+        val message = shown ?: notice ?: return@AnimatedVisibility
 
         Surface(
             shape = RoundedCornerShape(14.dp),

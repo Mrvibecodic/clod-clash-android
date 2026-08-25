@@ -1,6 +1,7 @@
 package com.github.kr328.clash.core.util
 
 import com.github.kr328.clash.core.model.Traffic
+import java.util.Locale
 
 fun Traffic.bytesUpload(): Long {
     return scaleTraffic(this ushr 32)
@@ -26,21 +27,23 @@ fun Traffic.trafficTotal(): String {
 }
 
 private fun trafficString(scaled: Long): String {
+    val locale = Locale.getDefault()
+
     return when {
         scaled > 1024 * 1024 * 1024 * 100L -> {
             val data = scaled / 1024 / 1024 / 1024
 
-            String.format("%.2f GiB", data.toFloat() / 100)
+            String.format(locale, "%.2f GiB", data.toFloat() / 100)
         }
         scaled > 1024 * 1024 * 100L -> {
             val data = scaled / 1024 / 1024
 
-            String.format("%.2f MiB", data.toFloat() / 100)
+            String.format(locale, "%.2f MiB", data.toFloat() / 100)
         }
         scaled > 1024 * 100L -> {
             val data = scaled / 1024
 
-            String.format("%.2f KiB", data.toFloat() / 100)
+            String.format(locale, "%.2f KiB", data.toFloat() / 100)
         }
         else -> {
             "$scaled Bytes"

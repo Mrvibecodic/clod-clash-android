@@ -109,7 +109,11 @@ private fun LogRow(message: LogMessage, onCopy: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = {}, onLongClick = onCopy)
+            .combinedClickable(
+                onClick = {},
+                onLongClickLabel = stringResource(android.R.string.copy),
+                onLongClick = onCopy,
+            )
             .padding(horizontal = 18.dp, vertical = 8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {

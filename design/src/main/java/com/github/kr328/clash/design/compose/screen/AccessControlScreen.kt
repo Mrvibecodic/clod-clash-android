@@ -58,6 +58,7 @@ import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.rememberDrawablePainter
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
+import java.util.Locale
 
 @Immutable
 data class AccessControlState(
@@ -357,7 +358,7 @@ private fun MenuSection(title: String) {
         color = MaterialTheme.colorScheme.outlineVariant,
     )
     Text(
-        text = title.uppercase(),
+        text = title.uppercase(Locale.getDefault()),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),

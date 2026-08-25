@@ -44,7 +44,7 @@ object GroupIcons {
 
         val file = cacheFile(context, url)
 
-        val bitmap = decode(file) ?: run {
+        val bitmap = decodeScaled(file) ?: run {
             val now = System.currentTimeMillis()
 
             if ((retryAfter[url] ?: 0L) > now) return null
@@ -57,7 +57,7 @@ object GroupIcons {
 
             retryAfter.remove(url)
 
-            decode(file).also { decoded ->
+            decodeScaled(file).also { decoded ->
                 if (decoded == null) {
                     broken.add(url)
 
@@ -80,7 +80,15 @@ object GroupIcons {
         return File(File(context.cacheDir, DIRECTORY).apply { mkdirs() }, digest)
     }
 
-    private fun decode(file: File): ImageBitmap? {
+    fun loadLocal(file: File): ImageBitmap? {
+        val key = file.absolutePath
+
+        memory[key]?.let { return it }
+
+        return decodeScaled(file)?.also { memory[key] = it }
+    }
+
+    fun decodeScaled(file: File): ImageBitmap? {
         if (!file.exists() || file.length() == 0L) return null
 
         return runCatching {

@@ -59,11 +59,12 @@ import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
+import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
+import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.service.model.Profile
-import java.text.Collator
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -75,7 +76,7 @@ internal enum class SubscriptionState {
 }
 
 internal fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
-    val used = profile.upload + profile.download
+    val used = profile.usedTraffic()
     return when {
         profile.expire in 1 until now -> SubscriptionState.Expired
         profile.total > 0 && used >= profile.total -> SubscriptionState.Exhausted
@@ -158,10 +159,12 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             return@Column
         }
 
-        val collator = remember { Collator.getInstance() }
-        val groups = state.profiles.mapNotNull { it.group }
-            .distinct()
-            .sortedWith(collator)
+        val counts = remember(state.profiles) {
+            state.profiles.mapNotNull { it.group }.groupingBy { it }.eachCount()
+        }
+        val groups = remember(counts) {
+            counts.keys.sortedWith(localeCollator())
+        }
         if (groups.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -181,7 +184,7 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
                     },
                 )
                 groups.forEach { group ->
-                    val count = state.profiles.count { it.group == group }
+                    val count = counts[group] ?: 0
                     FilterChip(
                         selected = state.selectedGroup == group,
                         onClick = { onAction(MainAction.SelectSubscriptionGroup(group)) },
@@ -191,8 +194,10 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             }
         }
 
-        val visible = state.profiles.filter {
-            state.selectedGroup == null || it.group == state.selectedGroup
+        val visible = remember(state.profiles, state.selectedGroup) {
+            state.profiles.filter {
+                state.selectedGroup == null || it.group == state.selectedGroup
+            }
         }
 
         LazyColumn(
@@ -223,7 +228,7 @@ private fun SubscriptionCard(
     val context = LocalContext.current
     val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
-    val used = profile.upload + profile.download
+    val used = profile.usedTraffic()
     var menuOpen by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
@@ -421,7 +426,7 @@ fun ActiveSubscriptionCard(
     if (profile.total <= 0L && profile.expire <= 0L) return
 
     val context = LocalContext.current
-    val used = profile.upload + profile.download
+    val used = profile.usedTraffic()
     val panel = item.panel
 
     Card(

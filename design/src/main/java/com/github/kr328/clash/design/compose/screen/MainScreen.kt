@@ -1,7 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
 import android.content.res.Configuration
-import android.graphics.BitmapFactory
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -67,7 +66,10 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -78,7 +80,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -101,12 +102,18 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
+import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.model.providerLinks
+import com.github.kr328.clash.design.util.GroupIcons
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
@@ -289,6 +296,8 @@ fun MainScreen(
 
 @Composable
 private fun MainContent(state: MainScreenState, onAction: (MainAction) -> Unit) {
+    val tabStates = rememberSaveableStateHolder()
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter,
@@ -316,11 +325,14 @@ private fun MainContent(state: MainScreenState, onAction: (MainAction) -> Unit) 
                     },
                     label = "MainTab",
                 ) { tab ->
-                    when (tab) {
-                        MainTab.Servers -> ServersTab(state.servers, state.active, onAction)
-                        MainTab.Subscriptions -> SubscriptionsTab(state.subscriptions, onAction)
-                        MainTab.More -> MoreTab(state, onAction)
-                        else -> HomeTab(state, onAction)
+                    tabStates.SaveableStateProvider(tab.name) {
+                        when (tab) {
+                            MainTab.Servers -> ServersTab(state.servers, state.active, onAction)
+                            MainTab.Subscriptions ->
+                                SubscriptionsTab(state.subscriptions, onAction)
+                            MainTab.More -> MoreTab(state, onAction)
+                            else -> HomeTab(state, onAction)
+                        }
                     }
                 }
             }
@@ -605,7 +617,7 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
     val profile = item.profile
     val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
-    val used = profile.upload + profile.download
+    val used = profile.usedTraffic()
 
     val label = status.label()
     val daysText = expiryLeft(profile.expire, now)
@@ -722,7 +734,7 @@ private fun QuotaCards(item: SubscriptionItem) {
     if (profile.total <= 0L && profile.expire <= 0L) return
 
     val context = LocalContext.current
-    val used = profile.upload + profile.download
+    val used = profile.usedTraffic()
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         if (profile.total > 0) {
@@ -771,7 +783,7 @@ private fun QuotaCard(
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
             Text(
-                text = label.uppercase(),
+                text = label.uppercase(Locale.getDefault()),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -841,8 +853,8 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
         }
 
         if (notice.isNotBlank()) {
-            var expanded by remember(notice) { mutableStateOf(false) }
-            var truncated by remember(notice) { mutableStateOf(false) }
+            var expanded by rememberSaveable(notice) { mutableStateOf(false) }
+            var truncated by rememberSaveable(notice) { mutableStateOf(false) }
             val rotation by animateFloatAsState(
                 targetValue = if (expanded) 180f else 0f,
                 label = "noticeChevron",
@@ -1113,8 +1125,12 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 }
 
 @Composable
-private fun rememberProviderLogo(path: String?): ImageBitmap? = remember(path) {
-    if (path.isNullOrBlank()) return@remember null
+private fun rememberProviderLogo(path: String?): ImageBitmap? {
+    val target = path?.takeIf { it.isNotBlank() }
 
-    runCatching { BitmapFactory.decodeFile(path)?.asImageBitmap() }.getOrNull()
+    return produceState<ImageBitmap?>(initialValue = null, target) {
+        value = target?.let {
+            withContext(Dispatchers.IO) { GroupIcons.loadLocal(File(it)) }
+        }
+    }.value
 }

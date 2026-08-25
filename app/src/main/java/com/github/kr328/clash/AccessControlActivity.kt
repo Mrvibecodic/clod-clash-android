@@ -142,13 +142,15 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         }
     }
 
-    private suspend fun loadApps(selected: Set<String>): List<AppInfo> =
-        withContext(Dispatchers.IO) {
+    private suspend fun loadApps(selected: Set<String>): List<AppInfo> {
+        val chosen = selected.toSet()
+
+        return withContext(Dispatchers.IO) {
             val reverse = uiStore.accessControlReverse
             val sort = uiStore.accessControlSort
             val systemApp = uiStore.accessControlSystemApp
 
-            val base = compareByDescending<AppInfo> { it.packageName in selected }
+            val base = compareByDescending<AppInfo> { it.packageName in chosen }
             val comparator = if (reverse) base.thenDescending(sort) else base.then(sort)
 
             val pm = packageManager
@@ -173,6 +175,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 .sortedWith(comparator)
                 .toList()
         }
+    }
 
     private val PackageInfo.isSystemApp: Boolean
         get() {

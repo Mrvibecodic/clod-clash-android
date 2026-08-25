@@ -15,6 +15,16 @@ class UiStore(context: Context) {
 
     private val store = Store(preferences.asStoreProvider())
 
+    private val appContext = context.applicationContext
+
+    private val hideAppIconDefault: Boolean by lazy {
+        appContext.packageManager.getComponentEnabledSetting(appContext.mainActivityAlias)
+            .let { state ->
+                state != PackageManager.COMPONENT_ENABLED_STATE_ENABLED &&
+                        state != PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
+            }
+    }
+
     fun reset() {
         val editor = preferences.edit()
 
@@ -39,14 +49,9 @@ class UiStore(context: Context) {
         values = DarkMode.values()
     )
 
-    var hideAppIcon: Boolean by store.boolean(
-        key = "hide_app_icon",
-        defaultValue = context.packageManager.getComponentEnabledSetting(context.mainActivityAlias)
-            .let { state ->
-                state != PackageManager.COMPONENT_ENABLED_STATE_ENABLED &&
-                        state != PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
-            },
-    )
+    var hideAppIcon: Boolean
+        get() = store.provider.getBoolean(HIDE_APP_ICON, hideAppIconDefault)
+        set(value) = store.provider.setBoolean(HIDE_APP_ICON, value)
 
     var hideFromRecents: Boolean by store.boolean(
         key = "hide_from_recents",
@@ -107,11 +112,13 @@ class UiStore(context: Context) {
     companion object {
         private const val PREFERENCE_NAME = "ui"
 
+        private const val HIDE_APP_ICON = "hide_app_icon"
+
         private val SETTING_KEYS = listOf(
             "enable_vpn",
             "dark_mode",
             "show_group_icons",
-            "hide_app_icon",
+            HIDE_APP_ICON,
             "hide_from_recents",
             "allow_external_control",
             "proxy_sort",
