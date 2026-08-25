@@ -14,8 +14,10 @@ import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.store.UiStore
@@ -33,34 +35,43 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
 
-        when(intent.action) {
-            Intent.ACTION_VIEW -> {
-                val uri = intent.data ?: return finish()
-                val url = uri.getQueryParameter("url") ?: return finish()
+        if (intent.action == Intent.ACTION_VIEW) {
+            val uri = intent.data ?: return finish()
+            val url = uri.getQueryParameter("url") ?: return finish()
 
-                launch {
-                    val uuid = withProfile {
-                        val type = when (uri.getQueryParameter("type")?.lowercase(Locale.getDefault())) {
-                            "url" -> Profile.Type.Url
-                            "file" -> Profile.Type.File
-                            else -> Profile.Type.Url
-                        }
-                        val name = uri.getQueryParameter("name") ?: getString(R.string.new_profile)
-
-                        val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
-                        val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
-                        val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
-
-                        create(type, name).also {
-                            patch(it, name, url, intervalMs, null)
-                        }
+            launch {
+                val uuid = withProfile {
+                    val type = when (uri.getQueryParameter("type")?.lowercase(Locale.getDefault())) {
+                        "url" -> Profile.Type.Url
+                        "file" -> Profile.Type.File
+                        else -> Profile.Type.Url
                     }
-                    startActivity(PropertiesActivity::class.intent.setUUID(uuid))
-                    finish()
+                    val name = uri.getQueryParameter("name") ?: getString(R.string.new_profile)
+
+                    val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
+                    val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
+                    val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
+
+                    create(type, name).also {
+                        patch(it, name, url, intervalMs, null)
+                    }
                 }
-                return
+                startActivity(PropertiesActivity::class.intent.setUUID(uuid))
+                finish()
             }
 
+            return
+        }
+
+        launch {
+            handleControl()
+
+            finish()
+        }
+    }
+
+    private suspend fun handleControl() {
+        when (intent.action) {
             Intents.ACTION_TOGGLE_CLASH -> if (!controlAllowed()) {
                 refuseControl()
             } else if (isClashRunning()) {
@@ -85,18 +96,19 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
                 Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()
             }
         }
-        return finish()
     }
 
     private fun refuseControl() {
         Toast.makeText(this, R.string.clod_external_control_refused, Toast.LENGTH_LONG).show()
     }
 
-    private fun isClashRunning(): Boolean {
-        return StatusClient(this).isRunning()
+    private suspend fun isClashRunning(): Boolean = withContext(Dispatchers.IO) {
+        StatusClient(this@ExternalControlActivity).isRunning()
     }
 
     private fun startClash() {
+        if (isFinishing || isDestroyed) return
+
         val vpnRequest = startClashService()
         if (vpnRequest != null) {
             startActivity(MainActivity::class.intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

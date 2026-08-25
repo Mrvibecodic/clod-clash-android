@@ -31,7 +31,8 @@ class FilesProvider : DocumentsProvider() {
             Root.COLUMN_ICON,
             Root.COLUMN_TITLE,
             Root.COLUMN_SUMMARY,
-            Root.COLUMN_DOCUMENT_ID
+            Root.COLUMN_DOCUMENT_ID,
+            Root.COLUMN_MIME_TYPES
         )
 
         private val FLAG_VIRTUAL: Int =
@@ -47,18 +48,17 @@ class FilesProvider : DocumentsProvider() {
         mode: String?,
         signal: CancellationSignal?
     ): ParcelFileDescriptor {
-        val m = ParcelFileDescriptor.parseMode(mode)
+        val m = mode ?: "rw"
 
         return runBlocking {
             val path = Paths.resolve(documentId ?: "/")
 
-            val document = picker.pick(path, mode?.requestWrite ?: true)
+            val document = picker.pick(path, m.requestWrite)
 
-            require(document is FileDocument) {
+            if (document !is FileDocument)
                 throw FileNotFoundException("invalid path $documentId")
-            }
 
-            ParcelFileDescriptor.open(document.file, m)
+            ParcelFileDescriptor.open(document.file, ParcelFileDescriptor.parseMode(m))
         }
     }
 
@@ -73,9 +73,8 @@ class FilesProvider : DocumentsProvider() {
 
             val document = picker.pick(path, true)
 
-            require(document is FileDocument) {
+            if (document !is FileDocument)
                 throw FileNotFoundException("invalid path $documentId")
-            }
 
             document.file.deleteRecursively()
         }
@@ -95,17 +94,16 @@ class FilesProvider : DocumentsProvider() {
 
             val document = picker.pick(path, true)
 
-            require(document is FileDocument) {
+            if (document !is FileDocument)
                 throw IllegalArgumentException("unable to rename $document")
-            }
 
             val parent = document.file.parentFile
 
-            require(parent != null) {
+            if (parent == null)
                 throw IllegalArgumentException("unable to rename $document")
-            }
 
-            document.file.renameTo(parent.resolve(name))
+            if (!document.file.renameTo(parent.resolve(name)))
+                throw IllegalArgumentException("unable to rename $document")
 
             path.copy(relative = path.relative.dropLast(1) + name).toString()
         }
@@ -165,7 +163,7 @@ class FilesProvider : DocumentsProvider() {
                 add(Root.COLUMN_TITLE, context!!.getString(R.string.clash_meta_for_android))
                 add(Root.COLUMN_SUMMARY, context!!.getString(R.string.profiles_and_providers))
                 add(Root.COLUMN_DOCUMENT_ID, "/")
-                add(Root.COLUMN_MIME_TYPES, D.MIME_TYPE_DIR)
+                add(Root.COLUMN_MIME_TYPES, "*/*")
             }
         }
     }

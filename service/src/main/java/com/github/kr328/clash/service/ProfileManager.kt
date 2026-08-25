@@ -17,7 +17,6 @@ import com.github.kr328.clash.service.util.sendProfileChanged
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import java.util.*
 
@@ -163,9 +162,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
     }
 
     override suspend fun queryAll(): List<Profile> {
-        val uuids = withContext(Dispatchers.IO) {
-            (ImportedDao().queryAllUUIDs() + PendingDao().queryAllUUIDs()).distinct()
-        }
+        val uuids = (ImportedDao().queryAllUUIDs() + PendingDao().queryAllUUIDs()).distinct()
 
         return uuids.mapNotNull { resolveProfile(it) }
     }

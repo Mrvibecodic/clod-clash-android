@@ -71,7 +71,7 @@ suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
 
     createAlertChannel()
 
-    outcome.alerts.forEach { notifyAlert(it, name) }
+    outcome.alerts.forEach { notifyAlert(uuid, it, name) }
 }
 
 private fun Context.stateFile(uuid: UUID): File =
@@ -116,7 +116,7 @@ private fun Context.createAlertChannel() {
     )
 }
 
-private fun Context.notifyAlert(alert: SubscriptionAlert, name: String) {
+private fun Context.notifyAlert(uuid: UUID, alert: SubscriptionAlert, name: String) {
     val id = when (alert) {
         is SubscriptionAlert.Expired, is SubscriptionAlert.ExpiresIn -> R.id.nf_subscription_expire
         is SubscriptionAlert.TrafficUsed -> R.id.nf_subscription_traffic
@@ -149,5 +149,5 @@ private fun Context.notifyAlert(alert: SubscriptionAlert, name: String) {
         .setAutoCancel(true)
         .build()
 
-    NotificationManagerCompat.from(this).notify(id, notification)
+    NotificationManagerCompat.from(this).notify(uuid.toString(), id, notification)
 }

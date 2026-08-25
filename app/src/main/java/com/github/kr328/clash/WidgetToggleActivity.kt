@@ -9,8 +9,14 @@ import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.util.withAppLocale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class WidgetToggleActivity : Activity() {
+class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base.withAppLocale())
     }
@@ -20,11 +26,23 @@ class WidgetToggleActivity : Activity() {
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
 
-        if (StatusClient(this).isRunning()) {
-            return finish()
-        }
+        launch {
+            val running = withContext(Dispatchers.IO) {
+                StatusClient(this@WidgetToggleActivity).isRunning()
+            }
 
-        start()
+            if (running || isFinishing || isDestroyed) {
+                return@launch finish()
+            }
+
+            start()
+        }
+    }
+
+    override fun onDestroy() {
+        cancel()
+
+        super.onDestroy()
     }
 
     private fun start() {

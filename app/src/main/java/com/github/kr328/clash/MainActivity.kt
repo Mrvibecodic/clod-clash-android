@@ -1030,9 +1030,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         watchStart()
 
-        val vpnRequest = startClashService()
-
         try {
+            val vpnRequest = startClashService()
+
             if (vpnRequest != null) {
                 val result = startActivityForResult(
                     ActivityResultContracts.StartActivityForResult(),
@@ -1045,6 +1045,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                     setClashRunning(clashRunning)
                 }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             setClashRunning(clashRunning)
             design?.showToast(DesignR.string.unable_to_start_vpn, ToastDuration.Long)
@@ -1179,11 +1181,15 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun updatableProviders(): List<Provider> = runCatching {
+    private suspend fun updatableProviders(): List<Provider> = try {
         withClash { queryProviders() }
             .filter { it.vehicleType != Provider.VehicleType.Inline }
             .sorted()
-    }.getOrDefault(emptyList())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyList()
+    }
 
     private suspend fun MainDesign.loadRoutingData() {
         setRoutingData(
@@ -1202,14 +1208,18 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             val geo = GeoData.update(this@MainActivity, activeLocalProxyPort(), running)
 
-            val providers = runCatching {
-                updatableProviders().forEach {
-                    withClash { updateProvider(it.type, it.name) }
-                }
-            }
+            var providersFailed = false
 
-            if (providers.isFailure) {
-                Log.w("Update providers: ${providers.exceptionOrNull()}")
+            updatableProviders().forEach {
+                try {
+                    withClash { updateProvider(it.type, it.name) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    providersFailed = true
+
+                    Log.w("Update provider ${it.name}: $e", e)
+                }
             }
 
             val reconnect = if (clashRunning) {
@@ -1230,7 +1240,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     detail = listOfNotNull(geo.failed.joinToString(", ").ifEmpty { null }, reconnect)
                         .joinToString(" · ").ifEmpty { null },
                 )
-                providers.isFailure -> showToast(
+                providersFailed -> showToast(
                     DesignR.string.clod_geo_providers_failed,
                     ToastDuration.Long,
                     detail = reconnect,

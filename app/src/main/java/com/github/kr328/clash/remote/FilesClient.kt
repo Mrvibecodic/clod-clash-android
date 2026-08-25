@@ -89,6 +89,7 @@ class FilesClient(private val context: Context) {
             DC.Document.COLUMN_SIZE,
             DC.Document.COLUMN_LAST_MODIFIED,
             DC.Document.COLUMN_MIME_TYPE,
+            DC.Document.COLUMN_FLAGS,
         )
     }
 }

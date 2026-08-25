@@ -3,6 +3,7 @@
 
     <string name="clash_service_status_channel">Tunnel status</string>
     <string name="clod_tun_start_failed">Could not bring the tunnel up. Try connecting again</string>
+    <string name="clod_tun_revoked">VPN permission revoked: another app took over the tunnel</string>
     <string name="profile_service_status">Profile Service Status</string>
     <string name="profile_process_status">Profile Processing Status</string>
     <string name="profile_process_result">Profile Process Result</string>

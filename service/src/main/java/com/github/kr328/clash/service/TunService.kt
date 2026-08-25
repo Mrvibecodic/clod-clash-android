@@ -35,6 +35,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         super.attachBaseContext(base.withStoredLocale())
     }
 
+    @Volatile
     private var reason: String? = null
 
     private var sessionStartedAt: Long = 0
@@ -148,6 +149,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     override fun onRevoke() {
         Log.i("TunService revoked")
+
+        reason = getString(R.string.clod_tun_revoked)
 
         stopSelf()
     }
