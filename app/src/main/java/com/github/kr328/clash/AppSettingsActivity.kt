@@ -17,11 +17,14 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.util.withProfile
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import com.github.kr328.clash.design.compose.screen.MIN_INTERVAL_MINUTES
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
+import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
@@ -174,17 +177,25 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         var restored = 0
 
         for (item in wanted) {
-            if (item.source in known) continue
+            val source = item.source.trim()
+
+            if (!ValidatorHttpUrl(source) || source in known) continue
+
+            val interval = if (item.interval > 0) {
+                maxOf(item.interval, TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES))
+            } else {
+                0L
+            }
 
             val uuid = withProfile {
-                create(Profile.Type.Url, item.name, item.source, secure = item.secure)
+                create(Profile.Type.Url, item.name, source, secure = item.secure)
             }
 
             var committed = false
 
             try {
-                if (item.interval > 0) {
-                    withProfile { patch(uuid, item.name, item.source, item.interval, null) }
+                if (interval > 0) {
+                    withProfile { patch(uuid, item.name, source, interval, null) }
                 }
 
                 withProfile { commit(uuid) }
