@@ -1204,7 +1204,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     private fun openExternalUrl(url: String) {
         val uri = Uri.parse(url)
 
-        if (uri.scheme?.lowercase() !in listOf("http", "https", "tg", "mailto")) {
+        if (uri.scheme?.lowercase() !in listOf("https", "tg", "mailto")) {
             launch { design?.showToast(DesignR.string.invalid_url, ToastDuration.Long) }
 
             return
