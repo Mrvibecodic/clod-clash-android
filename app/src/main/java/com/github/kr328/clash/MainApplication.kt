@@ -53,8 +53,4 @@ class MainApplication : Application() {
             PackageManager.DONT_KILL_APP,
         )
     }
-
-    fun finalize() {
-        Global.destroy()
-    }
 }

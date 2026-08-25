@@ -12,7 +12,7 @@ data class Proxy(
     val subtitle: String,
     val type: String,
     val delay: Int,
-    var isGroup: Boolean,
+    val isGroup: Boolean,
     val icon: String = "",
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {

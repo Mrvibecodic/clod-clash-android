@@ -84,11 +84,6 @@ class UiStore(context: Context) {
         values = ProxySort.values()
     )
 
-    var proxyLastGroup: String by store.string(
-        key = "proxy_last_group",
-        defaultValue = ""
-    )
-
     var accessControlSort: AppInfoSort by store.enum(
         key = "access_control_sort",
         defaultValue = AppInfoSort.Label,

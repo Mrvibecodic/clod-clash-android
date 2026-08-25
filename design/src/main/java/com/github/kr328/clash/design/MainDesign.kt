@@ -52,7 +52,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data class ReloadGroup(val index: Int) : Request
         data class SelectProxy(val index: Int, val name: String) : Request
         data class ToggleFavorite(val name: String) : Request
-        data class UrlTest(val index: Int) : Request
+        data object UrlTest : Request
         data class PatchMode(val mode: TunnelState.Mode) : Request
 
         data class OpenUrl(val url: String) : Request
@@ -115,7 +115,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
                 request(Request.SetPrerelease(action.enabled))
             }
             MainAction.UpdateRoutingData -> request(Request.UpdateRoutingData)
-            MainAction.TestDelays -> request(Request.UrlTest(state.servers.selected))
+            MainAction.TestDelays -> request(Request.UrlTest)
             is MainAction.ToggleFavorite -> request(Request.ToggleFavorite(action.name))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))

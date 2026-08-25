@@ -14,10 +14,4 @@ object Log {
 
     fun d(message: String, throwable: Throwable? = null) =
         android.util.Log.d(TAG, message, throwable)
-
-    fun v(message: String, throwable: Throwable? = null) =
-        android.util.Log.v(TAG, message, throwable)
-
-    fun f(message: String, throwable: Throwable) =
-        android.util.Log.wtf(message, throwable)
 }
