@@ -151,7 +151,7 @@ jobs:
         if: ${{ success() }}
         with:
           name: clodclash-merged-manifest-debug
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
           path: |
             app/build/intermediates/merged_manifests/standardDebug/**/AndroidManifest.xml
