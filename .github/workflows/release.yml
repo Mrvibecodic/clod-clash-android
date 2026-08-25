@@ -210,12 +210,21 @@ jobs:
         run: |
           set -euo pipefail
           READELF=$(find "$ANDROID_HOME/ndk" -name 'llvm-readelf' -print -quit)
+          [[ -n "$READELF" && -x "$READELF" ]] || { echo "::error::llvm-readelf не найден в $ANDROID_HOME/ndk"; exit 1; }
           echo "readelf: $READELF"
           fail=0
+          checked=0
           for apk in app/build/outputs/apk/standard/release/*.apk; do
-            tmp=$(mktemp -d); unzip -q -o "$apk" 'lib/*' -d "$tmp" || true
+            tmp=$(mktemp -d)
+            unzip -q -o "$apk" 'lib/*' -d "$tmp"
             while IFS= read -r so; do
-              bad=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | grep -vE '^0x(4000|10000)$' || true)
+              if ! aligns=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u); then
+                echo "::error::$(basename "$apk") :: ${so#$tmp/}: readelf не смог прочитать файл"
+                fail=1
+                continue
+              fi
+              checked=$((checked + 1))
+              bad=$(echo "$aligns" | grep -vE '^0x(4000|10000)$' || [[ $? -eq 1 ]])
               if [[ -n "$bad" ]]; then
                 echo "::error::$(basename "$apk") :: ${so#$tmp/} выравнен на $(echo "$bad" | paste -sd, -), нужно 0x4000 или 0x10000"
                 fail=1
@@ -223,6 +232,8 @@ jobs:
             done < <(find "$tmp/lib/arm64-v8a" "$tmp/lib/x86_64" -name '*.so' 2>/dev/null)
             rm -rf "$tmp"
           done
+          echo "проверено .so: $checked"
+          [[ $checked -gt 0 ]] || { echo "::error::Ни одной библиотеки .so не проверено"; exit 1; }
           [[ $fail -eq 0 ]] || exit 1
 
       - name: Переименовать APK и посчитать SHA-256

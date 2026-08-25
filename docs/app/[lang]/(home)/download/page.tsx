@@ -56,7 +56,7 @@ const copy = {
     linksTitle: 'Постоянные ссылки',
     linksLead:
       'В адресе нет номера версии: GitHub сам отдаёт файл из последнего обычного релиза. ' +
-      'Предварительные и ночные сборки под эту ссылку не попадают.',
+      'Предварительные сборки под эту ссылку не попадают.',
     updatesTitle: 'Обновления',
     updatesLead:
       'Приложение проверяет обновления само и показывает список изменений. ' +
@@ -114,7 +114,7 @@ const copy = {
     linksTitle: 'Permanent links',
     linksLead:
       'The address carries no version number: GitHub serves the file from the latest regular ' +
-      'release. Pre-release and nightly builds are never picked up by it.',
+      'release. Pre-release builds are never picked up by it.',
     updatesTitle: 'Updates',
     updatesLead:
       'The app checks for updates on its own and shows the changelog. ' +
