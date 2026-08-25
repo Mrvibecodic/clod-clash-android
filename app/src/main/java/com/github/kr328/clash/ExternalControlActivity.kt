@@ -42,7 +42,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
             val uri = intent.data ?: return finish()
             val url = uri.getQueryParameter("url") ?: return finish()
 
-            if (Uri.parse(url).scheme?.lowercase(Locale.ROOT) !in listOf("http", "https")) {
+            if (Uri.parse(url).scheme?.lowercase(Locale.ROOT) != "https") {
                 return finish()
             }
 

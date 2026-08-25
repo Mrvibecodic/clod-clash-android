@@ -17,7 +17,7 @@ val ValidatorNotBlank: Validator = {
 }
 
 val ValidatorHttpUrl: Validator = {
-    it.startsWith("https://", ignoreCase = true) || it.startsWith("http://", ignoreCase = true)
+    it.startsWith("https://", ignoreCase = true)
 }
 
 val ValidatorAutoUpdateInterval: Validator = {

@@ -23,7 +23,7 @@ class ValidatorTest {
     @Test
     fun `адрес подписки только http и https`() {
         assertTrue(ValidatorHttpUrl("https://panel.example.com/sub"))
-        assertTrue(ValidatorHttpUrl("http://panel.example.com/sub"))
+        assertFalse(ValidatorHttpUrl("http://panel.example.com/sub"))
 
         assertTrue(ValidatorHttpUrl("HTTPS://panel.example.com/sub"))
 

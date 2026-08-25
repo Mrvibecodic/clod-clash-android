@@ -368,7 +368,7 @@ object ProfileProcessor {
 
             source.isEmpty() && type != Profile.Type.File -> throw IllegalArgumentException("Invalid url")
 
-            source.isNotEmpty() && scheme != "https" && scheme != "http" && scheme != "content" -> throw IllegalArgumentException(
+            source.isNotEmpty() && scheme != "https" && scheme != "content" -> throw IllegalArgumentException(
                 "Unsupported url $source"
             )
 

@@ -112,7 +112,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         val uri = runCatching { Uri.parse(trimmed) }.getOrNull() ?: return null
 
         return when (uri.scheme?.lowercase()) {
-            "http", "https" -> trimmed
+            "https" -> trimmed
             "clash", "clashmeta", "clodclash" -> if (unwrap) {
                 uri.getQueryParameter("url")?.let { normalizeSource(it, unwrap = false) }
             } else {
