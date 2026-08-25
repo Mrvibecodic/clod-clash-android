@@ -56,8 +56,9 @@ object Updater {
 
             val platform = manifest.platformFor(Build.SUPPORTED_ABIS.toList())
             if (platform == null) {
-                Log.w("$TAG: в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}")
-                return@withContext Result.success(null)
+                return@withContext Result.failure(
+                    IOException("в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}"),
+                )
             }
 
             Result.success(Available(manifest, platform))

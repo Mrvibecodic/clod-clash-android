@@ -335,6 +335,7 @@
     <string name="clod_about_subtitle">%1$s · проверить обновление</string>
     <string name="clod_update_check">Проверить обновление</string>
     <string name="clod_update_none">Установлена последняя версия</string>
+    <string name="clod_update_check_failed">Не удалось проверить обновления</string>
     <string name="clod_update_permission">Разрешите приложению установку, чтобы оно могло обновить себя. Система откроет свой экран — включите там переключатель.</string>
     <string name="clod_mode">Режим</string>
     <string name="clod_mode_locked">%s · задан вашим сервисом</string>
@@ -440,6 +441,8 @@
     <string name="clod_no_servers_provider_title">Серверы недоступны</string>
     <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
     <string name="clod_open_settings">Настройки</string>
+    <string name="clod_shortcut_disabled">Значок приложения скрыт в настройках</string>
+    <string name="clod_sub_delete_message">Удалить подписку «%1$s»? Её настройки и скачанная конфигурация будут стёрты, отмены нет.</string>
     <string name="shortcut_toggle_short">Переключить</string>
     <string name="shortcut_toggle_long">Включить или выключить VPN</string>
     <string name="shortcut_start_short">Подключиться</string>

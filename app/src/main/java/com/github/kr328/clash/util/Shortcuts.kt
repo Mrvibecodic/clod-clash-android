@@ -10,9 +10,19 @@ import com.github.kr328.clash.ShortcutControlActivity
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.design.R as DesignR
 
+private val SHORTCUT_IDS = listOf("toggle_clash", "start_clash", "stop_clash")
+
 fun Context.applyDynamicShortcuts(hide: Boolean) {
     if (hide) {
         ShortcutManagerCompat.removeAllDynamicShortcuts(this)
+
+        runCatching {
+            ShortcutManagerCompat.disableShortcuts(
+                this,
+                SHORTCUT_IDS,
+                getString(DesignR.string.clod_shortcut_disabled),
+            )
+        }
 
         return
     }
@@ -60,6 +70,8 @@ fun Context.applyDynamicShortcuts(hide: Boolean) {
     val shortcuts = listOf(toggle, start, stop)
 
     ShortcutManagerCompat.setDynamicShortcuts(this, shortcuts)
+
+    runCatching { ShortcutManagerCompat.enableShortcuts(this, shortcuts) }
 
     runCatching { ShortcutManagerCompat.updateShortcuts(this, shortcuts) }
 }

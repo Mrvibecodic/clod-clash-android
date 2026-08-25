@@ -295,6 +295,8 @@
     <string name="import_from_qr_no_permission">Camera access is restricted. Please enable it in Settings.</string>
     <string name="import_from_qr_exception">An unhandled system exception occurred.</string>
 
+    <string name="clod_shortcut_disabled">The app icon is hidden in settings</string>
+    <string name="clod_sub_delete_message">Delete subscription \"%1$s\"? Its settings and downloaded configuration will be removed, there is no undo.</string>
     <string name="shortcut_toggle_short">Toggle</string>
     <string name="shortcut_toggle_long">Turn the VPN on or off</string>
     <string name="shortcut_start_short">Connect</string>
@@ -367,6 +369,7 @@
     <string name="clod_about_subtitle">%1$s · check for updates</string>
     <string name="clod_update_check">Check for updates</string>
     <string name="clod_update_none">You are on the latest version</string>
+    <string name="clod_update_check_failed">Could not check for updates</string>
     <string name="clod_update_permission">Allow installation so the app can update itself. The system will open its own screen — turn the switch on there.</string>
     <string name="clod_mode">Mode</string>
     <string name="clod_mode_locked">%s · set by your provider</string>

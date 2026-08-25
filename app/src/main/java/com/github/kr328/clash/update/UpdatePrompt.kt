@@ -20,7 +20,15 @@ object UpdatePrompt {
         return System.currentTimeMillis() - store.lastUpdateCheck >= interval
     }
 
-    suspend fun check(context: Context, manual: Boolean, mixedPort: Int?): Updater.Available? {
+    sealed interface Outcome {
+        data class Ready(val available: Updater.Available) : Outcome
+
+        data object UpToDate : Outcome
+
+        data class Failed(val reason: String?) : Outcome
+    }
+
+    suspend fun check(context: Context, manual: Boolean, mixedPort: Int?): Outcome {
         val store = AppStore(context)
 
         val checked = try {
@@ -36,11 +44,15 @@ object UpdatePrompt {
         store.lastUpdateCheck = System.currentTimeMillis()
         store.lastUpdateCheckFailed = result.isFailure
 
-        val available = result.getOrNull() ?: return null
+        result.exceptionOrNull()?.let { return Outcome.Failed(it.message) }
 
-        if (!manual && available.manifest.versionCode == store.skippedVersionCode) return null
+        val available = result.getOrNull() ?: return Outcome.UpToDate
 
-        return available
+        if (!manual && available.manifest.versionCode == store.skippedVersionCode) {
+            return Outcome.UpToDate
+        }
+
+        return Outcome.Ready(available)
     }
 
     fun skip(context: Context, versionCode: Long) {

@@ -1058,20 +1058,36 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.checkUpdate(manual: Boolean) {
         setUpdateChecking(true)
 
-        val available = try {
+        val outcome = try {
             UpdatePrompt.check(this@MainActivity, manual, activeLocalProxyPort())
         } finally {
             setUpdateChecking(false)
         }
 
-        if (available == null) {
-            pendingUpdate = null
+        val available = when (outcome) {
+            is UpdatePrompt.Outcome.Ready -> outcome.available
+            UpdatePrompt.Outcome.UpToDate -> {
+                pendingUpdate = null
 
-            if (manual) {
-                showToast(DesignR.string.clod_update_none, ToastDuration.Short)
+                if (manual) {
+                    showToast(DesignR.string.clod_update_none, ToastDuration.Short)
+                }
+
+                return
             }
+            is UpdatePrompt.Outcome.Failed -> {
+                pendingUpdate = null
 
-            return
+                if (manual) {
+                    showToast(
+                        DesignR.string.clod_update_check_failed,
+                        ToastDuration.Long,
+                        detail = outcome.reason,
+                    )
+                }
+
+                return
+            }
         }
 
         pendingUpdate = available

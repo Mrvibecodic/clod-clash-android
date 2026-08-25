@@ -226,6 +226,30 @@ private fun SubscriptionCard(
     val used = profile.upload + profile.download
     var menuOpen by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+
+    if (deleting) {
+        AlertDialog(
+            onDismissRequest = { deleting = false },
+            title = { Text(stringResource(R.string.delete)) },
+            text = { Text(stringResource(R.string.clod_sub_delete_message, profile.name)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleting = false
+                        onAction(MainAction.DeleteProfile(profile))
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleting = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 
     if (picking) {
         GroupPicker(
@@ -333,7 +357,7 @@ private fun SubscriptionCard(
                                 text = { Text(stringResource(R.string.delete)) },
                                 onClick = {
                                     menuOpen = false
-                                    onAction(MainAction.DeleteProfile(profile))
+                                    deleting = true
                                 },
                             )
                         }
