@@ -6,6 +6,7 @@ import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.util.logsDir
 import java.io.BufferedWriter
 import java.io.FileWriter
+import java.util.Locale
 
 class LogcatWriter(context: Context) : AutoCloseable {
     private val file = LogFile.generate()
@@ -16,7 +17,9 @@ class LogcatWriter(context: Context) : AutoCloseable {
     }
 
     fun appendMessage(message: LogMessage) {
-        writer.appendLine(FORMAT.format(message.time.time, message.level.name, message.message))
+        writer.appendLine(
+            String.format(Locale.ROOT, FORMAT, message.time.time, message.level.name, message.message),
+        )
     }
 
     companion object {

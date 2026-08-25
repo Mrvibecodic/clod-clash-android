@@ -158,9 +158,10 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             return@Column
         }
 
+        val collator = remember { Collator.getInstance() }
         val groups = state.profiles.mapNotNull { it.group }
             .distinct()
-            .sortedWith(Collator.getInstance())
+            .sortedWith(collator)
         if (groups.isNotEmpty()) {
             Row(
                 modifier = Modifier

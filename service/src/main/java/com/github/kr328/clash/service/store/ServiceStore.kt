@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.store
 
 import android.content.Context
 import android.os.SystemClock
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
 import com.github.kr328.clash.service.PreferenceProvider
@@ -18,7 +19,15 @@ class ServiceStore(context: Context) {
 
     var activeProfile: UUID? by store.typedString(
         key = "active_profile",
-        from = { if (it.isBlank()) null else runCatching { UUID.fromString(it) }.getOrNull() },
+        from = {
+            if (it.isBlank()) {
+                null
+            } else {
+                runCatching { UUID.fromString(it) }
+                    .onFailure { error -> Log.w("Active profile: $error", error) }
+                    .getOrNull()
+            }
+        },
         to = { it?.toString() ?: "" }
     )
 

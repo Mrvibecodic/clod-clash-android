@@ -77,7 +77,7 @@ class UiStore(context: Context) {
     }
 
     fun clearFavorites(profile: UUID) {
-        store.provider.setStringSet(favoritesKey(profile), emptySet())
+        preferences.edit().remove(favoritesKey(profile)).apply()
     }
 
     private fun favoritesKey(profile: UUID): String = "favorites_$profile"

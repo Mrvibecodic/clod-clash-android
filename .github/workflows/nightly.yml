@@ -97,7 +97,7 @@ jobs:
       - name: Проверка выравнивания 16 KB
         run: |
           set -euo pipefail
-          READELF=$(find "$ANDROID_HOME/ndk" -name 'llvm-readelf' | head -1)
+          READELF=$(find "$ANDROID_HOME/ndk" -name 'llvm-readelf' -print -quit)
           echo "readelf: $READELF"
           fail=0
           for apk in app/build/outputs/apk/standard/release/*.apk; do
@@ -105,7 +105,7 @@ jobs:
             while IFS= read -r so; do
               bad=$("$READELF" -l "$so" | awk '/LOAD/ {print $NF}' | sort -u | grep -vE '^0x(4000|10000)$' || true)
               if [[ -n "$bad" ]]; then
-                echo "::error::$(basename "$apk") :: ${so#$tmp/} выравнен на $(echo "$bad" | paste -sd, -), нужно 0x4000"
+                echo "::error::$(basename "$apk") :: ${so#$tmp/} выравнен на $(echo "$bad" | paste -sd, -), нужно 0x4000 или 0x10000"
                 fail=1
               fi
             done < <(find "$tmp/lib/arm64-v8a" "$tmp/lib/x86_64" -name '*.so' 2>/dev/null)

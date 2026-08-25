@@ -534,9 +534,9 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.runHealthCheck(manual: Boolean) {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
-        if (healthChecking) return
-
         lastHealthCheckAt = SystemClock.elapsedRealtime()
+
+        if (healthChecking) return
 
         if (offlineGroups.isNotEmpty()) {
             healthChecking = true
@@ -1109,14 +1109,16 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         result.fold(
             onSuccess = { apk ->
-                runCatching {
+                try {
                     withContext(Dispatchers.IO) {
                         ApkInstaller.install(this@MainActivity, apk)
                     }
-                }.onFailure {
-                    Log.w("Install update: $it", it)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w("Install update: $e", e)
 
-                    showExceptionToast(it.message ?: it.toString())
+                    showExceptionToast(e.message ?: e.toString())
                 }
             },
             onFailure = {

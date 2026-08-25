@@ -6,11 +6,15 @@ import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import java.io.File
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
 
 object ApplicationObserver {
-    private val _createdActivities: MutableSet<Activity> = mutableSetOf()
-    private val _visibleActivities: MutableSet<Activity> = mutableSetOf()
+    private val _createdActivities: MutableSet<Activity> =
+        Collections.newSetFromMap(ConcurrentHashMap())
+    private val _visibleActivities: MutableSet<Activity> =
+        Collections.newSetFromMap(ConcurrentHashMap())
 
     private var visibleChanged: (Boolean) -> Unit = {}
 
@@ -24,28 +28,24 @@ object ApplicationObserver {
         }
 
     val createdActivities: Set<Activity>
-        get() = synchronized(activityObserver) { _createdActivities.toSet() }
+        get() = _createdActivities.toSet()
 
     private val activityObserver = object : Application.ActivityLifecycleCallbacks {
-        @Synchronized
         override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
             _createdActivities.add(activity)
         }
 
-        @Synchronized
         override fun onActivityDestroyed(activity: Activity) {
             _createdActivities.remove(activity)
             _visibleActivities.remove(activity)
             appVisible = _visibleActivities.isNotEmpty()
         }
 
-        @Synchronized
         override fun onActivityStarted(activity: Activity) {
             _visibleActivities.add(activity)
             appVisible = true
         }
 
-        @Synchronized
         override fun onActivityStopped(activity: Activity) {
             _visibleActivities.remove(activity)
             appVisible = _visibleActivities.isNotEmpty()

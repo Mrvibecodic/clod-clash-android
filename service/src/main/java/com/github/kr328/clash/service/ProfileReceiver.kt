@@ -122,7 +122,7 @@ class ProfileReceiver : BroadcastReceiver() {
                 .resolve("config.yaml")
                 .lastModified()
 
-            if (last <= 0L)
+            if (last < 0)
                 return
 
             val interval = (imported.interval - (current - last)).coerceAtLeast(0)
