@@ -4,6 +4,7 @@ import com.android.build.gradle.AppExtension
 import com.android.build.gradle.BaseExtension
 import java.net.URL
 import java.util.*
+import org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension
 
 buildscript {
     repositories {
@@ -166,6 +167,20 @@ subprojects {
         compileOptions {
             sourceCompatibility = JavaVersion.VERSION_21
             targetCompatibility = JavaVersion.VERSION_21
+        }
+    }
+
+    val composeReports: Boolean = project.findProperty("clod.composeReports")?.toString()
+        ?.let { it.isBlank() || it.toBoolean() } == true
+
+    if (composeReports) {
+        plugins.withId("org.jetbrains.kotlin.plugin.compose") {
+            val destination = layout.buildDirectory.dir("compose-reports")
+
+            extensions.configure<ComposeCompilerGradlePluginExtension> {
+                metricsDestination.set(destination)
+                reportsDestination.set(destination)
+            }
         }
     }
 }

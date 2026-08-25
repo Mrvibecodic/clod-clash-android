@@ -11,9 +11,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  ABIS: 'arm64-v8a armeabi-v7a x86_64'
-
 jobs:
   check_version:
     name: Сверка версии

@@ -13,6 +13,9 @@ on:
       - 'docs/**'
       - '**.md'
 
+permissions:
+  contents: read
+
 jobs:
   BuildDebug:
     runs-on: ubuntu-latest
@@ -63,16 +66,6 @@ jobs:
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
 
-      # - name: Signing properties
-      #   env:
-      #     SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-      #     SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-      #     SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-      #   run: |
-      #     touch signing.properties
-      #     echo keystore.password="$SIGNING_STORE_PASSWORD" > signing.properties
-      #     echo key.alias="$SIGNING_KEY_ALIAS" >> signing.properties
-      #     echo key.password="$SIGNING_KEY_PASSWORD" >> signing.properties
       # Разбор заголовков панели и распознавание узлов-заглушек живут в Go, и
       # проверяются они тоже на Go — самым первым шагом: пакеты
       # `native/config/panel` и `native/config/sentinel` не зависят ни от ядра,

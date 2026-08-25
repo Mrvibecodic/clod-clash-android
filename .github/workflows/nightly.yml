@@ -3,7 +3,8 @@ name: Nightly
 on:
   workflow_dispatch:
 
-permissions: write-all
+permissions:
+  contents: write
 
 concurrency:
   group: nightly

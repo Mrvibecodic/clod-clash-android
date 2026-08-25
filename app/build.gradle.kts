@@ -43,10 +43,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
 }
 
-tasks.getByName("clean", type = Delete::class) {
-    delete(file("release"))
-}
-
 val geoFilesDownloadDir = "src/main/assets"
 
 val geoFilesConnectTimeout = 30_000
