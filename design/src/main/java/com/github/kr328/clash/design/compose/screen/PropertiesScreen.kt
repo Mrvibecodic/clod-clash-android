@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
+import com.github.kr328.clash.design.util.ValidatorHttpUrl
+import com.github.kr328.clash.design.util.ValidatorNotBlank
 
 @Immutable
 data class FetchProgress(
@@ -51,12 +54,7 @@ data class PropertiesState(
     val confirmingExit: Boolean = false,
 )
 
-fun isHttpUrl(value: String): Boolean =
-    value.startsWith("http://", ignoreCase = true) ||
-        value.startsWith("https://", ignoreCase = true)
-
-fun isValidInterval(minutes: String): Boolean =
-    minutes.isBlank() || (minutes.toLongOrNull() ?: 0) >= MIN_INTERVAL_MINUTES
+fun isHttpUrl(value: String): Boolean = ValidatorHttpUrl(value)
 
 const val MIN_INTERVAL_MINUTES = 15L
 
@@ -115,7 +113,7 @@ fun PropertiesScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                val nameBlank = state.name.isBlank()
+                val nameBlank = !ValidatorNotBlank(state.name)
 
                 OutlinedTextField(
                     value = state.name,
@@ -137,7 +135,7 @@ fun PropertiesScreen(
                 Spacer(Modifier.height(12.dp))
 
                 val urlBroken = state.urlEditable && state.url.isNotBlank() &&
-                    !isHttpUrl(state.url)
+                    !ValidatorHttpUrl(state.url)
 
                 OutlinedTextField(
                     value = state.url,
@@ -161,7 +159,7 @@ fun PropertiesScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                val intervalBroken = !isValidInterval(state.intervalMinutes)
+                val intervalBroken = !ValidatorAutoUpdateInterval(state.intervalMinutes)
 
                 OutlinedTextField(
                     value = state.intervalMinutes,

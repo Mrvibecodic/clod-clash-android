@@ -74,7 +74,14 @@ fun TextRow(
             onConfirm = {
                 editing = false
 
-                onValue(if (blankIsNull && text.isBlank()) null else text)
+                onValue(
+                    when {
+                        text.isNotBlank() -> text
+                        value == "" -> ""
+                        blankIsNull -> null
+                        else -> text
+                    },
+                )
             },
         )
     }

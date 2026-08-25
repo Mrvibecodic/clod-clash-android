@@ -19,6 +19,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ReleaseNotes
@@ -42,7 +43,11 @@ fun UpdateDialog(
     AlertDialog(
         onDismissRequest = { if (!state.downloading) onAction(MainAction.UpdateLater) },
         title = {
-            Text(stringResource(R.string.clod_update_available, state.version))
+            Text(
+                text = stringResource(R.string.clod_update_available, state.version.take(32)),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         },
         text = {
             Column(

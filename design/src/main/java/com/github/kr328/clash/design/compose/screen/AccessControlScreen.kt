@@ -48,6 +48,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
@@ -214,8 +215,18 @@ fun AccessControlScreen(
                         )
 
                         if (state.mode == MODE_ACCEPT_ALL) {
+                            val included = (state.includeFromProfile - state.excludeFromProfile).size
+
                             Text(
-                                text = stringResource(R.string.clod_access_control_all_hint),
+                                text = if (included > 0) {
+                                    pluralStringResource(
+                                        R.plurals.clod_access_control_sub_include_hint,
+                                        included,
+                                        included,
+                                    )
+                                } else {
+                                    stringResource(R.string.clod_access_control_all_hint)
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(

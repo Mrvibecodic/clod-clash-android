@@ -274,6 +274,7 @@
     <string name="clod_sub_other_ways">Другие способы импорта</string>
     <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
     <string name="clod_sub_added">Подписка успешно добавлена</string>
+    <string name="clod_sub_draft">Не загружена</string>
     <string name="clod_sub_active">Активна</string>
     <string name="clod_sub_expiring">Истекает</string>
     <string name="clod_sub_exhausted">Трафик кончился</string>
@@ -309,6 +310,7 @@
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
+    <string name="clod_no_files">Файлов пока нет</string>
     <string name="clod_section_settings">Приложение</string>
     <string name="clod_section_support">Помощь</string>
     <string name="clod_settings_app_title">Внешний вид и поведение</string>
@@ -319,6 +321,12 @@
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
     <string name="clod_access_control_all_hint">Через туннель идут все приложения — отметки ниже ни на что не влияют, пока не выбран другой режим.</string>
+    <plurals name="clod_access_control_sub_include_hint">
+        <item quantity="one">Подписка ограничила туннель %d приложением — отметки ниже ни на что не влияют, пока не выбран другой режим.</item>
+        <item quantity="few">Подписка ограничила туннель %d приложениями — отметки ниже ни на что не влияют, пока не выбран другой режим.</item>
+        <item quantity="many">Подписка ограничила туннель %d приложениями — отметки ниже ни на что не влияют, пока не выбран другой режим.</item>
+        <item quantity="other">Подписка ограничила туннель %d приложениями — отметки ниже ни на что не влияют, пока не выбран другой режим.</item>
+    </plurals>
     <string name="clod_servers_offline">Без подключения: задержки меряются напрямую, а выбранный сервер применится, когда подключитесь.</string>
     <string name="clod_select_offline">Запомнили. Применится при подключении.</string>
     <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>

@@ -319,6 +319,7 @@
     <string name="clod_sub_other_ways">Other ways to import</string>
     <string name="clod_sub_fetching">Fetching subscription\u2026</string>
     <string name="clod_sub_added">Subscription added</string>
+    <string name="clod_sub_draft">Not loaded</string>
     <string name="clod_sub_active">Active</string>
     <string name="clod_sub_expiring">Expiring</string>
     <string name="clod_sub_exhausted">Out of traffic</string>
@@ -343,6 +344,7 @@
     <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_no_logs">No saved logs yet</string>
+    <string name="clod_no_files">No files yet</string>
     <string name="clod_section_settings">App</string>
     <string name="clod_section_support">Help</string>
     <string name="clod_settings_app_title">Look and behavior</string>
@@ -353,6 +355,10 @@
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode.</string>
+    <plurals name="clod_access_control_sub_include_hint">
+        <item quantity="one">The subscription limited the tunnel to %d app — the checkboxes below change nothing until you pick another mode.</item>
+        <item quantity="other">The subscription limited the tunnel to %d apps — the checkboxes below change nothing until you pick another mode.</item>
+    </plurals>
     <string name="clod_servers_offline">Not connected: delays are measured directly, and the server you pick is applied once you connect.</string>
     <string name="clod_select_offline">Saved. It will be applied when you connect.</string>
     <string name="clod_select_not_selectable">The core picks the node in this group automatically.</string>

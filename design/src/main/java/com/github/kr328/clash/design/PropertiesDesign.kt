@@ -10,8 +10,9 @@ import com.github.kr328.clash.design.compose.screen.FetchProgress
 import com.github.kr328.clash.design.compose.screen.PropertiesAction
 import com.github.kr328.clash.design.compose.screen.PropertiesScreen
 import com.github.kr328.clash.design.compose.screen.PropertiesState
-import com.github.kr328.clash.design.compose.screen.isHttpUrl
-import com.github.kr328.clash.design.compose.screen.isValidInterval
+import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
+import com.github.kr328.clash.design.util.ValidatorHttpUrl
+import com.github.kr328.clash.design.util.ValidatorNotBlank
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -58,9 +59,9 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         get() = state.processing != null
 
     val draftValid: Boolean
-        get() = state.name.isNotBlank() &&
-            (!state.urlEditable || isHttpUrl(state.url)) &&
-            isValidInterval(state.intervalMinutes)
+        get() = ValidatorNotBlank(state.name) &&
+            (!state.urlEditable || ValidatorHttpUrl(state.url)) &&
+            ValidatorAutoUpdateInterval(state.intervalMinutes)
 
     private fun onAction(action: PropertiesAction) {
         when (action) {

@@ -69,6 +69,7 @@ import java.util.Date
 import java.util.concurrent.TimeUnit
 
 internal enum class SubscriptionState {
+    Draft,
     Active,
     Expiring,
     Exhausted,
@@ -78,6 +79,7 @@ internal enum class SubscriptionState {
 internal fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
     val used = profile.usedTraffic()
     return when {
+        !profile.imported -> SubscriptionState.Draft
         profile.expire in 1 until now -> SubscriptionState.Expired
         profile.total > 0 && used >= profile.total -> SubscriptionState.Exhausted
         profile.expire > 0 &&
@@ -89,6 +91,7 @@ internal fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
 
 @Composable
 internal fun SubscriptionState.color(): Color = when (this) {
+    SubscriptionState.Draft -> ClodTheme.extraColors.statusStopped
     SubscriptionState.Active -> ClodTheme.extraColors.statusConnected
     SubscriptionState.Expiring -> ClodTheme.extraColors.statusConnecting
     SubscriptionState.Exhausted, SubscriptionState.Expired -> MaterialTheme.colorScheme.error
@@ -97,6 +100,7 @@ internal fun SubscriptionState.color(): Color = when (this) {
 @Composable
 internal fun SubscriptionState.label(): String = stringResource(
     when (this) {
+        SubscriptionState.Draft -> R.string.clod_sub_draft
         SubscriptionState.Active -> R.string.clod_sub_active
         SubscriptionState.Expiring -> R.string.clod_sub_expiring
         SubscriptionState.Exhausted -> R.string.clod_sub_exhausted

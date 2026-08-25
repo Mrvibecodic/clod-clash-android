@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
 @Immutable
 data class FilesState(
     val files: List<File> = emptyList(),
+    val loaded: Boolean = false,
     val inBaseDir: Boolean = true,
     val configurationEditable: Boolean = false,
     val currentTime: Long = 0,
@@ -84,6 +86,20 @@ fun FilesScreen(
         },
     ) { padding ->
         LazyColumn(contentPadding = padding) {
+            if (state.loaded && state.files.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.clod_no_files),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 32.dp),
+                    )
+                }
+            }
+
             items(state.files, key = { it.id }) { file ->
                 FileRow(
                     file = file,

@@ -31,7 +31,7 @@ private fun parseNotes(raw: String): List<NoteLine> {
         paragraph.setLength(0)
     }
 
-    raw.lines().forEach { line ->
+    raw.take(16_000).lines().take(200).forEach { line ->
         val trimmed = line.trim()
 
         when {

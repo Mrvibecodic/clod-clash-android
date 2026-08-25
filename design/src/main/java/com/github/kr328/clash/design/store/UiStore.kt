@@ -126,6 +126,8 @@ class UiStore(context: Context) {
             "access_control_sort",
             "access_control_reverse",
             "access_control_system_app",
+            "notifications_asked",
+            "reliability_asked",
         )
 
         val Context.mainActivityAlias: ComponentName

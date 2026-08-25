@@ -101,6 +101,9 @@ data class ClodExtraColors(
     val statusConnected: Color,
     val statusConnecting: Color,
     val statusStopped: Color,
+    val delayFast: Color,
+    val delayMedium: Color,
+    val delaySlow: Color,
     val brandGradient: Brush,
     val dark: Boolean,
 )
@@ -111,6 +114,9 @@ private val LightExtraColors = ClodExtraColors(
     statusConnected = LightStatusConnected,
     statusConnecting = LightStatusConnecting,
     statusStopped = LightStatusStopped,
+    delayFast = LightDelayFast,
+    delayMedium = LightDelayMedium,
+    delaySlow = LightDelaySlow,
     brandGradient = BrandGradient,
     dark = false,
 )
@@ -119,6 +125,9 @@ private val DarkExtraColors = ClodExtraColors(
     statusConnected = DarkStatusConnected,
     statusConnecting = DarkStatusConnecting,
     statusStopped = DarkStatusStopped,
+    delayFast = DarkDelayFast,
+    delayMedium = DarkDelayMedium,
+    delaySlow = DarkDelaySlow,
     brandGradient = BrandGradient,
     dark = true,
 )

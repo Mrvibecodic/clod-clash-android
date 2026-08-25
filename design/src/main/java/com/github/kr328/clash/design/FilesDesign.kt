@@ -66,7 +66,7 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
 
     suspend fun swapFiles(files: List<File>, currentInBaseDir: Boolean) {
         withContext(Dispatchers.Main) {
-            state = state.copy(files = files, inBaseDir = currentInBaseDir)
+            state = state.copy(files = files, loaded = true, inBaseDir = currentInBaseDir)
         }
     }
 

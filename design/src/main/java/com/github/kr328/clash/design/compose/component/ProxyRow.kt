@@ -37,10 +37,8 @@ import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodRowCorner
 import com.github.kr328.clash.design.compose.theme.ClodTheme
-import com.github.kr328.clash.design.compose.theme.DelayPillFast
-import com.github.kr328.clash.design.compose.theme.DelayPillMedium
-import com.github.kr328.clash.design.compose.theme.DelayPillSlow
 import com.github.kr328.clash.design.compose.theme.statusContainer
+import com.github.kr328.clash.design.compose.theme.statusText
 
 fun splitFlag(title: String): Pair<String?, String> {
     var i = 0
@@ -115,18 +113,19 @@ fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
 fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
     if (marksOnly && delay > 0) {
         val failed = delay >= DELAY_UNKNOWN
+        val color = if (failed) ClodTheme.extraColors.delaySlow else ClodTheme.extraColors.delayFast
 
         Box(
             modifier = modifier
                 .widthIn(min = 52.dp)
                 .clip(RoundedCornerShape(50))
-                .background(if (failed) DelayPillSlow else DelayPillFast)
+                .background(color.statusContainer())
                 .padding(horizontal = 10.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = if (failed) "✕" else "✓",
-                color = Color.White,
+                color = color.statusText(),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -158,22 +157,22 @@ fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
     }
 
     val color = when {
-        delay < 200 -> DelayPillFast
-        delay < 400 -> DelayPillMedium
-        else -> DelayPillSlow
+        delay < 200 -> ClodTheme.extraColors.delayFast
+        delay < 400 -> ClodTheme.extraColors.delayMedium
+        else -> ClodTheme.extraColors.delaySlow
     }
 
     Box(
         modifier = modifier
             .widthIn(min = 52.dp)
             .clip(RoundedCornerShape(50))
-            .background(color)
+            .background(color.statusContainer())
             .padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = stringResource(R.string.clod_delay_ms, delay),
-            color = Color.White,
+            color = color.statusText(),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
         )
