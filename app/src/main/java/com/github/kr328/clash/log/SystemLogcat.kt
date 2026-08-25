@@ -9,7 +9,6 @@ object SystemLogcat {
         "DEBUG",
         "AndroidRuntime",
         "ClodClash",
-        "ClashMetaForAndroid",
         "LwIP",
     )
 
