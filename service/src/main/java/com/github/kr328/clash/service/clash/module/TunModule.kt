@@ -4,6 +4,7 @@ import android.net.ConnectivityManager
 import android.net.VpnService
 import android.os.Build
 import androidx.core.content.getSystemService
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.core.util.parseInetSocketAddress
@@ -68,6 +69,8 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
                 querySocketUid = this::queryUid
             )
         } catch (e: Exception) {
+            Log.e("Start tun failed", e)
+
             throw ClashException(service.getString(R.string.clod_tun_start_failed))
         }
     }

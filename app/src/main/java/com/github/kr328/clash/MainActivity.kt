@@ -13,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
@@ -118,6 +117,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             startRequestedAt = null
 
                             design.fetch()
+
+                            design.showAddedProfile()
 
                             design.fetchReliability()
 
@@ -774,14 +775,26 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (result.resultCode != Activity.RESULT_OK)
             return
 
-        val target = design ?: return
+        design?.showAddedProfile()
+    }
 
-        target.selectTab(MainTab.Home)
+    private suspend fun MainDesign.showAddedProfile() {
+        val store = AppStore(this@MainActivity)
 
-        target.showToast(
+        if (!store.addedProfilePending) return
+
+        store.addedProfilePending = false
+
+        val name = store.addedProfileName
+
+        store.addedProfileName = ""
+
+        selectTab(MainTab.Home)
+
+        showToast(
             DesignR.string.clod_sub_added,
             ToastDuration.Long,
-            detail = result.data?.getStringExtra(Intents.EXTRA_NAME),
+            detail = name.takeIf { it.isNotBlank() },
         )
     }
 

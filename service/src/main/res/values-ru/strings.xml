@@ -3,7 +3,7 @@
 
     <string name="clash_service_status_channel">Состояние туннеля</string>
     <string name="clod_tun_start_failed">Не удалось поднять туннель. Попробуйте подключиться ещё раз</string>
-    <string name="clod_tun_revoked">Разрешение VPN отозвано: туннель забрал другой клиент</string>
+    <string name="clod_tun_revoked">Разрешение VPN отозвано системой или другим приложением</string>
     <string name="profile_service_status">Статус сервиса профиля</string>
     <string name="profile_process_status">Статус обработки профиля</string>
     <string name="profile_process_result">Результат обработки профиля</string>

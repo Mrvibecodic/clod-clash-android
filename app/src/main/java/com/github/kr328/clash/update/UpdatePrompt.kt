@@ -41,8 +41,12 @@ object UpdatePrompt {
 
         val result = checked.onFailure { Log.w("UpdatePrompt: проверка не удалась", it) }
 
+        val unsupportedAbi = result.exceptionOrNull() is Updater.UnsupportedAbiException
+
         store.lastUpdateCheck = System.currentTimeMillis()
-        store.lastUpdateCheckFailed = result.isFailure
+        store.lastUpdateCheckFailed = result.isFailure && !unsupportedAbi
+
+        if (!manual && unsupportedAbi) return Outcome.UpToDate
 
         result.exceptionOrNull()?.let { return Outcome.Failed(it.message) }
 

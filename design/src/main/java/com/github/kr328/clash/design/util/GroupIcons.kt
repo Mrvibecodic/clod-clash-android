@@ -34,6 +34,8 @@ object GroupIcons {
 
     private val retryAfter = ConcurrentHashMap<String, Long>()
 
+    private val localKeys = ConcurrentHashMap<String, String>()
+
     @Volatile
     private var agent: String? = null
 
@@ -81,7 +83,10 @@ object GroupIcons {
     }
 
     fun loadLocal(file: File): ImageBitmap? {
-        val key = file.absolutePath
+        val path = file.absolutePath
+        val key = path + "|" + file.lastModified() + "|" + file.length()
+
+        localKeys.put(path, key)?.takeIf { it != key }?.let { memory.remove(it) }
 
         memory[key]?.let { return it }
 

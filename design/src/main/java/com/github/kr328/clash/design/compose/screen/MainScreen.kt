@@ -565,6 +565,7 @@ private fun MainHeader(
 ) {
     val profileName = active?.title
     val logoPath = active?.logoPath
+    val logoVersion = active?.profile?.updatedAt ?: 0L
 
     Row(
         modifier = Modifier
@@ -572,7 +573,7 @@ private fun MainHeader(
             .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val logo = rememberProviderLogo(logoPath)
+        val logo = rememberProviderLogo(logoPath, logoVersion)
 
         if (logo != null) {
             Image(
@@ -1125,10 +1126,10 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 }
 
 @Composable
-private fun rememberProviderLogo(path: String?): ImageBitmap? {
+private fun rememberProviderLogo(path: String?, version: Long): ImageBitmap? {
     val target = path?.takeIf { it.isNotBlank() }
 
-    return produceState<ImageBitmap?>(initialValue = null, target) {
+    return produceState<ImageBitmap?>(initialValue = null, target, version) {
         value = target?.let {
             withContext(Dispatchers.IO) { GroupIcons.loadLocal(File(it)) }
         }

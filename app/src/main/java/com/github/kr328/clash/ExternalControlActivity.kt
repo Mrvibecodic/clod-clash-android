@@ -16,6 +16,7 @@ import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -56,6 +57,8 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
                         patch(it, name, url, intervalMs, null)
                     }
                 }
+                if (isFinishing || isDestroyed) return@launch
+
                 startActivity(PropertiesActivity::class.intent.setUUID(uuid))
                 finish()
             }
@@ -66,11 +69,21 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
         launch {
             handleControl()
 
+            if (isFinishing || isDestroyed) return@launch
+
             finish()
         }
     }
 
+    override fun onDestroy() {
+        cancel()
+
+        super.onDestroy()
+    }
+
     private suspend fun handleControl() {
+        if (isFinishing || isDestroyed) return
+
         when (intent.action) {
             Intents.ACTION_TOGGLE_CLASH -> if (!controlAllowed()) {
                 refuseControl()
@@ -83,6 +96,8 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
             Intents.ACTION_START_CLASH -> if (!controlAllowed()) {
                 refuseControl()
             } else if (isClashRunning()) {
+                if (isFinishing || isDestroyed) return
+
                 Toast.makeText(this, R.string.external_control_started, Toast.LENGTH_LONG).show()
             } else {
                 startClash()
@@ -93,12 +108,16 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
             } else if (isClashRunning()) {
                 stopClash()
             } else {
+                if (isFinishing || isDestroyed) return
+
                 Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()
             }
         }
     }
 
     private fun refuseControl() {
+        if (isFinishing || isDestroyed) return
+
         Toast.makeText(this, R.string.clod_external_control_refused, Toast.LENGTH_LONG).show()
     }
 
@@ -119,6 +138,8 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
     }
 
     private fun stopClash() {
+        if (isFinishing || isDestroyed) return
+
         ToggleWidgetProvider.notifyWait(this)
         stopClashService()
         Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()

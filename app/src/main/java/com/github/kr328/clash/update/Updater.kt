@@ -31,6 +31,8 @@ object Updater {
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    class UnsupportedAbiException(message: String) : IOException(message)
+
     data class Available(
         val manifest: UpdateManifest,
         val platform: UpdateManifest.Platform,
@@ -57,7 +59,7 @@ object Updater {
             val platform = manifest.platformFor(Build.SUPPORTED_ABIS.toList())
             if (platform == null) {
                 return@withContext Result.failure(
-                    IOException("в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}"),
+                    UnsupportedAbiException("в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}"),
                 )
             }
 

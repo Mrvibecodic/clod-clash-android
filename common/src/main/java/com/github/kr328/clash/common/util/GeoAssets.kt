@@ -14,7 +14,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
 import java.nio.channels.FileLock
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 
 object GeoAssets {
     private const val TAG = "GeoAssets"
@@ -33,6 +35,7 @@ object GeoAssets {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val started = AtomicBoolean(false)
     private val ready = CompletableDeferred<Unit>()
+    private val local = ReentrantLock()
 
     fun extract(context: Context) {
         if (!started.compareAndSet(false, true)) {
@@ -73,6 +76,30 @@ object GeoAssets {
     }
 
     private fun <T> guarded(context: Context, block: () -> T): T {
+        val deadline = SystemClock.elapsedRealtime() + LOCK_TIMEOUT
+
+        val held = try {
+            local.tryLock(LOCK_TIMEOUT, TimeUnit.MILLISECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+
+            false
+        }
+
+        if (!held) {
+            Log.w("$TAG: local lock is busy")
+        }
+
+        try {
+            return fileGuarded(context, deadline, block)
+        } finally {
+            if (held) {
+                local.unlock()
+            }
+        }
+    }
+
+    private fun <T> fileGuarded(context: Context, deadline: Long, block: () -> T): T {
         val handle = try {
             RandomAccessFile(File(context.filesDir, "geo.lock"), "rw")
         } catch (e: Throwable) {
@@ -82,7 +109,7 @@ object GeoAssets {
         } ?: return block()
 
         return handle.use { file ->
-            val lock = acquire(file)
+            val lock = acquire(file, deadline)
 
             try {
                 block()
@@ -96,9 +123,7 @@ object GeoAssets {
         }
     }
 
-    private fun acquire(file: RandomAccessFile): FileLock? {
-        val deadline = SystemClock.elapsedRealtime() + LOCK_TIMEOUT
-
+    private fun acquire(file: RandomAccessFile, deadline: Long): FileLock? {
         while (true) {
             val lock = try {
                 file.channel.tryLock()

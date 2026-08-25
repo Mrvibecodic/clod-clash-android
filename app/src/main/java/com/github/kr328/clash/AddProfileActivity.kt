@@ -10,6 +10,7 @@ import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withProfile
 import io.github.g00fy2.quickie.QRResult
@@ -84,6 +85,11 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
             }
 
             val title = queryPanelInfo(uuid)?.title?.takeIf { it.isNotBlank() } ?: profile.name
+
+            AppStore(this@AddProfileActivity).apply {
+                addedProfileName = title
+                addedProfilePending = true
+            }
 
             setResult(
                 Activity.RESULT_OK,

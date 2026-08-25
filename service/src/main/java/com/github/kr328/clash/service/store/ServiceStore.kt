@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.store
 
 import android.content.Context
 import android.os.SystemClock
+import androidx.core.content.edit
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
@@ -11,20 +12,22 @@ import com.github.kr328.clash.service.util.KEY_APP_LOCALE
 import java.util.*
 
 class ServiceStore(context: Context) {
-    private val store = Store(
-        PreferenceProvider
-            .createSharedPreferencesFromContext(context)
-            .asStoreProvider()
-    )
+    private val preferences = PreferenceProvider.createSharedPreferencesFromContext(context)
+
+    private val store = Store(preferences.asStoreProvider())
 
     var activeProfile: UUID? by store.typedString(
-        key = "active_profile",
-        from = {
-            if (it.isBlank()) {
+        key = KEY_ACTIVE_PROFILE,
+        from = { value ->
+            if (value.isBlank()) {
                 null
             } else {
-                runCatching { UUID.fromString(it) }
-                    .onFailure { error -> Log.w("Active profile: $error", error) }
+                runCatching { UUID.fromString(value) }
+                    .onFailure {
+                        Log.w("Active profile: invalid value \"$value\" dropped")
+
+                        preferences.edit { remove(KEY_ACTIVE_PROFILE) }
+                    }
                     .getOrNull()
             }
         },
@@ -166,5 +169,9 @@ class ServiceStore(context: Context) {
 
         clashStartedAt = 0L
         clashStartedElapsed = 0L
+    }
+
+    companion object {
+        private const val KEY_ACTIVE_PROFILE = "active_profile"
     }
 }

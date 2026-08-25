@@ -41,6 +41,16 @@ class AppStore(context: Context) {
         defaultValue = 0,
     )
 
+    var addedProfilePending: Boolean by store.boolean(
+        key = "added_profile_pending",
+        defaultValue = false,
+    )
+
+    var addedProfileName: String by store.string(
+        key = "added_profile_name",
+        defaultValue = "",
+    )
+
     companion object {
         private const val FILE_NAME = "app"
     }
