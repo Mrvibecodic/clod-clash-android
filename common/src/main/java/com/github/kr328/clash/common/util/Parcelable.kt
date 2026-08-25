@@ -3,6 +3,7 @@ package com.github.kr328.clash.common.util
 import android.os.Binder
 import android.os.Parcel
 import android.os.Parcelable
+import com.github.kr328.clash.common.log.Log
 
 private class SliceParcelableListBpBinder(val list: List<Parcelable>, val flags: Int) : Binder() {
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, tFlags: Int): Boolean {
@@ -47,7 +48,7 @@ fun <T : Parcelable> Parcelable.Creator<T>.createListFromParcelSlice(
 ): List<T> {
     val total = parcel.readInt()
     val remote = parcel.readStrongBinder()
-    val result = ArrayList<T>(total)
+    val result = ArrayList<T>(total.coerceIn(0, chunk))
 
     var offset = 0
 
@@ -66,6 +67,8 @@ fun <T : Parcelable> Parcelable.Creator<T>.createListFromParcelSlice(
                     flags
                 )
             ) {
+                Log.w("Slice list transaction failed at $offset of $total")
+
                 break
             }
 
@@ -77,8 +80,11 @@ fun <T : Parcelable> Parcelable.Creator<T>.createListFromParcelSlice(
 
             offset += size
 
-            if (size == 0)
+            if (size == 0) {
+                Log.w("Slice list truncated at $offset of $total")
+
                 break
+            }
         } finally {
             data.recycle()
             reply.recycle()

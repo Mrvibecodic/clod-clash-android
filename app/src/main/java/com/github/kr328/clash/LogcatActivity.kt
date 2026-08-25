@@ -21,6 +21,8 @@ import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.log.LogcatFilter
 import com.github.kr328.clash.log.LogcatReader
 import com.github.kr328.clash.util.logsDir
+import com.github.kr328.clash.util.unbindServiceSilent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -50,6 +52,8 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
             withContext(Dispatchers.IO) {
                 LogcatReader(this@LogcatActivity, file).use { it.readAll() }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("Fail to read log file ${file.fileName}: ${e.message}")
             return showInvalid()
@@ -140,26 +144,33 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
     }
 
     override fun onDestroy() {
-        conn?.apply(this::unbindService)
+        conn?.apply(this::unbindServiceSilent)
 
         super.onDestroy()
     }
 
     private suspend fun bindLogcatService(): LogcatService {
         return suspendCoroutine { ctx ->
-            bindService(LogcatService::class.intent, object : ServiceConnection {
+            var resumed = false
+
+            val connection = object : ServiceConnection {
                 override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                     val srv = service!!.queryLocalInterface("") as LogcatService
 
-                    ctx.resume(srv)
+                    if (!resumed) {
+                        resumed = true
 
-                    conn = this
+                        ctx.resume(srv)
+                    }
                 }
 
                 override fun onServiceDisconnected(name: ComponentName?) {
-                    conn = null
                 }
-            }, Context.BIND_AUTO_CREATE)
+            }
+
+            conn = connection
+
+            bindService(LogcatService::class.intent, connection, Context.BIND_AUTO_CREATE)
         }
     }
 
@@ -192,5 +203,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
     private fun showInvalid() {
         Toast.makeText(this, R.string.invalid_log_file, Toast.LENGTH_LONG).show()
+
+        finish()
     }
 }

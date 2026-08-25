@@ -25,6 +25,7 @@ import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.unwrap
 import com.github.kr328.clash.util.logsDir
+import com.github.kr328.clash.util.unbindServiceSilent
 import com.github.kr328.clash.util.withAppLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -63,7 +64,7 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
     override fun onDestroy() {
         cancel()
 
-        unbindService(connection)
+        unbindServiceSilent(connection)
 
         stopForeground(true)
 
@@ -101,8 +102,16 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                 LogcatWriter(this@LogcatService).use {
                     val observer = object : ILogObserver {
+                        private var overflowed = false
+
                         override fun newItem(log: LogMessage) {
-                            channel.trySend(log)
+                            if (channel.trySend(log).isSuccess) {
+                                overflowed = false
+                            } else if (!overflowed) {
+                                overflowed = true
+
+                                Log.w("Logcat buffer overflow, messages dropped")
+                            }
                         }
                     }
 

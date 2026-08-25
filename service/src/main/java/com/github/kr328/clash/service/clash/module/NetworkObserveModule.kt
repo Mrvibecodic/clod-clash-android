@@ -139,7 +139,7 @@ class NetworkObserveModule(service: Service) : Module<Network>(service) {
 
             true
         } catch (e: Exception) {
-            Log.w("NetworkObserve register failed", e)
+            Log.e("NetworkObserve register failed", e)
 
             false
         }
