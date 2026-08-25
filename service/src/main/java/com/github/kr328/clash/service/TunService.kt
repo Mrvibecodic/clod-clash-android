@@ -263,7 +263,13 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             }
 
             if (Build.VERSION.SDK_INT >= 29 && store.systemProxy) {
-                listenHttp()?.let {
+                val http = listenHttp()
+
+                if (http == null) {
+                    Log.w("System proxy requested but http listener is unavailable")
+                }
+
+                http?.let {
                     setHttpProxy(
                         ProxyInfo.buildDirectProxy(
                             it.address.hostAddress,

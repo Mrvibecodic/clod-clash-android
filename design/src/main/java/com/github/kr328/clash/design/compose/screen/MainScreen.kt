@@ -519,7 +519,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
         }
 
         state.servers.groups.getOrNull(state.servers.selected)?.let { group ->
-            val current = group.proxies.firstOrNull { it.name == group.now }
+            val current = remember(group) { group.proxies.firstOrNull { it.name == group.now } }
 
             SelectorRow(
                 label = stringResource(

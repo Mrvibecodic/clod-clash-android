@@ -29,11 +29,11 @@ class MainApplication : Application() {
 
         GeoAssets.extract(this)
 
-        restoreLauncherIconOnTelevision()
-
         Log.d("Process $processName started")
 
         if (processName == packageName) {
+            restoreLauncherIconOnTelevision()
+
             Remote.launch()
         } else {
             sendServiceRecreated()

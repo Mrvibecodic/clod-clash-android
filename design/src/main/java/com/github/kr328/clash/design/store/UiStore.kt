@@ -76,6 +76,10 @@ class UiStore(context: Context) {
         store.provider.setStringSet(favoritesKey(profile), favorites)
     }
 
+    fun clearFavorites(profile: UUID) {
+        store.provider.setStringSet(favoritesKey(profile), emptySet())
+    }
+
     private fun favoritesKey(profile: UUID): String = "favorites_$profile"
 
     var proxySort: ProxySort by store.enum(

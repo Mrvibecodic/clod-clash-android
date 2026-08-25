@@ -342,8 +342,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                             startActivity(
                                 PropertiesActivity::class.intent.setUUID(request.profile.uuid),
                             )
-                        is MainDesign.Request.DeleteProfile ->
+                        is MainDesign.Request.DeleteProfile -> {
                             withProfile { delete(request.profile.uuid) }
+
+                            uiStore.clearFavorites(request.profile.uuid)
+                        }
                         MainDesign.Request.AllowNotifications -> {
                             design.setNotificationPrompt(false)
 

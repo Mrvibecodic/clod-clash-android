@@ -63,6 +63,7 @@ import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.service.model.Profile
+import java.text.Collator
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -157,7 +158,9 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
             return@Column
         }
 
-        val groups = state.profiles.mapNotNull { it.group }.distinct().sorted()
+        val groups = state.profiles.mapNotNull { it.group }
+            .distinct()
+            .sortedWith(Collator.getInstance())
         if (groups.isNotEmpty()) {
             Row(
                 modifier = Modifier

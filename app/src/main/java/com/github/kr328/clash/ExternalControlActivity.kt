@@ -81,6 +81,8 @@ open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
                 refuseControl()
             } else if (isClashRunning()) {
                 stopClash()
+            } else {
+                Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()
             }
         }
         return finish()
