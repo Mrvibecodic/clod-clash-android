@@ -141,6 +141,21 @@ jobs:
           path: |
             app/build/outputs/apk/standard/debug/*.apk
 
+      # Слитый манифест: разрешения, uses-feature и exported-компоненты
+      # приезжают из библиотек (сканер QR, стартовый провайдер AndroidX),
+      # и в дереве их не видно. Локальных сборок APK нет — итог виден
+      # только здесь. AGP 8.x кладёт файл в подкаталог задачи
+      # processStandardDebugMainManifest, отсюда `**`.
+      - name: Upload Merged Manifest (debug)
+        uses: actions/upload-artifact@v7
+        if: ${{ success() }}
+        with:
+          name: clodclash-merged-manifest-debug
+          if-no-files-found: warn
+          retention-days: 7
+          path: |
+            app/build/intermediates/merged_manifests/standardDebug/**/AndroidManifest.xml
+
       # R8 запускается только в релизной сборке, а этот воркфлоу собирал один
       # debug — поэтому сломанная минификация всплывала лишь при выпуске версии
       # (22.08 так вылезли метаданные Kotlin 2.4). Гоняем не весь
@@ -166,9 +181,10 @@ jobs:
             exit 1
           fi
 
-      # Мост JNI зовётся из C по именам и держится только на -dontobfuscate
-      # в app/proguard-rules.pro. Уедут правила — APK соберётся, но ядро не
-      # стартует; в dex это видно сразу.
+      # Мост JNI зовётся из C по именам и держится на @Keep у классов моста
+      # и правилах модуля, а не на -dontobfuscate в app/proguard-rules.pro.
+      # Уедут аннотации или правила — APK соберётся, но ядро не стартует;
+      # в dex это видно сразу.
       - name: Check JNI bridge in dex
         if: success()
         run: |
