@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -304,10 +303,6 @@ func FetchAndValid(
 		applyHeaders(&info, header.Raw, url.String())
 		info.LogoFile = fetchLogo(path, info.LogoURL)
 		writePanelInfo(path, info)
-
-		if err := deviceRefused(info); err != nil {
-			return err
-		}
 	}
 
 	defer runtime.GC()
@@ -400,22 +395,6 @@ func FetchAndValid(
 	}
 
 	DestroyProviders(cfg)
-
-	return nil
-}
-
-var (
-	ErrHwidLimitReached = errors.New("clod-device-limit")
-	ErrHwidNotSupported = errors.New("clod-device-not-identified")
-)
-
-func deviceRefused(info PanelInfo) error {
-	switch info.HwidState {
-	case HwidLimitReached:
-		return ErrHwidLimitReached
-	case HwidNotSupported:
-		return ErrHwidNotSupported
-	}
 
 	return nil
 }

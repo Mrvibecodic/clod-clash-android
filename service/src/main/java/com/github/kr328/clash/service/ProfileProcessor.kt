@@ -318,23 +318,9 @@ object ProfileProcessor {
 
                 Log.w("Report fetch status: $e", e)
             }
-        }.await(context)
+        }.await()
 
         return subscriptionInfo
-    }
-
-    private suspend fun CompletableDeferred<Unit>.await(context: Context) {
-        try {
-            await()
-        } catch (e: Exception) {
-            val message = when (e.message) {
-                "clod-device-limit" -> context.getString(R.string.clod_fetch_hwid_limit)
-                "clod-device-not-identified" -> context.getString(R.string.clod_fetch_hwid_not_supported)
-                else -> throw e
-            }
-
-            throw IllegalStateException(message, e)
-        }
     }
 
     suspend fun delete(context: Context, uuid: UUID) {
