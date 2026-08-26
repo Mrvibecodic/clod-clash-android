@@ -619,8 +619,16 @@ class MainActivity : BaseActivity<MainDesign>() {
         setProxyTesting(true)
 
         try {
+            val first = proxyGroupNames.getOrNull(selectedGroup)
+
+            if (first != null) {
+                withClash { healthCheck(first) }
+
+                reloadProxyGroup(selectedGroup)
+            }
+
             coroutineScope {
-                proxyGroupNames.forEach { group ->
+                proxyGroupNames.filter { it != first }.forEach { group ->
                     launch { withClash { healthCheck(group) } }
                 }
             }

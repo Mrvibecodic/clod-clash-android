@@ -37,7 +37,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     private data class NetworkInfo(
         @Volatile var losingMs: Long = 0,
-        @Volatile var dnsList: List<InetAddress> = emptyList()
+        @Volatile var dnsList: List<InetAddress> = emptyList(),
+        @Volatile var capabilities: NetworkCapabilities? = null,
     ) {
         fun isAvailable(): Boolean = losingMs < System.currentTimeMillis()
     }
@@ -88,13 +89,17 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             network: Network,
             networkCapabilities: NetworkCapabilities,
         ) {
+            networkInfos[network]?.capabilities = networkCapabilities
+
             if (!networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
                 return
             }
 
             onNetworkMaybeChanged(network)
 
-            if (network == currentNetwork) {
+            if (network == currentNetwork && !currentValidatedSeen) {
+                currentValidatedSeen = true
+
                 networkReady.trySend(Unit)
             }
         }
@@ -161,7 +166,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
     }
 
     private fun networkToInt(entry: Map.Entry<Network, NetworkInfo>): Int {
-        val capabilities = connectivity.getNetworkCapabilities(entry.key)
+        val capabilities = entry.value.capabilities ?: connectivity.getNetworkCapabilities(entry.key)
         return when {
             capabilities == null -> 100
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> 90
@@ -224,12 +229,6 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
 
-        if (isCurrentNetworkValidated()) {
-            currentValidatedSeen = true
-
-            Clash.notifyNetworkReady()
-        }
-
         if (isInteractive() || store.keepAwake) {
             Clash.probeCurrentNodes()
 
@@ -260,14 +259,6 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
     private fun isInteractive(): Boolean =
         service.getSystemService<PowerManager>()?.isInteractive ?: true
 
-    private fun isCurrentNetworkValidated(): Boolean {
-        val network = currentNetwork ?: return false
-
-        val capabilities = connectivity.getNetworkCapabilities(network) ?: return false
-
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-    }
-
     private fun preferredNetwork(): Network? =
         networkInfos.asSequence().minByOrNull { networkToInt(it) }?.key
 
@@ -290,7 +281,11 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
     }
 
     override suspend fun run() {
-        register()
+        var attempt = 0
+
+        while (!register() && ++attempt < REGISTER_ATTEMPTS) {
+            delay(REGISTER_RETRY_MS)
+        }
 
         val screenOn = receiveBroadcast(false, Channel.CONFLATED) {
             addAction(Intent.ACTION_SCREEN_ON)
@@ -313,9 +308,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                         networkReady.onReceive {
                             Clash.notifyNetworkReady()
 
-                            if (!currentValidatedSeen) {
-                                currentValidatedSeen = true
-
+                            if (SystemClock.elapsedRealtime() - lastResetAt >= RESET_THROTTLE_MS) {
                                 if (isInteractive() || store.keepAwake) {
                                     Clash.probeCurrentNodes()
 
@@ -368,5 +361,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         private const val PROBE_TICK_MS = 300_000L
 
         private const val IDLE_TICKS_PER_PROBE = 3
+
+        private const val REGISTER_ATTEMPTS = 3
+
+        private const val REGISTER_RETRY_MS = 2_000L
     }
 }
