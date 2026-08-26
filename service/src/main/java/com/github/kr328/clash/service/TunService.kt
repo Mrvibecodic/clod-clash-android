@@ -16,10 +16,8 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
-import com.github.kr328.clash.service.model.DiagnosticsSessionAccess
 import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.model.TunPrefs
-import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.parseCIDR
@@ -46,7 +44,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
-        val diagnosticsAccess = DiagnosticsSessionAccess.from(DiagnosticsCredentialStore(self).read())
 
         val close = install(CloseModule(self))
         val tun = install(TunModule(self))
@@ -54,7 +51,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         // До загрузки конфига: ядро открывает сокеты уже при его применении
         tun.attachSocketCallbacks()
 
-        val config = install(ConfigurationModule(self, diagnosticsAccess.controller))
+        val config = install(ConfigurationModule(self))
         val network = install(NetworkObserveModule(self))
 
         if (store.dynamicNotification)
@@ -65,7 +62,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         val apps = install(AppListCacheModule(self, notifyChanges = true))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
-        install(DiagnosticsModule(self, diagnosticsAccess.diagnostics))
+        install(DiagnosticsModule(self))
 
         var opened = false
         var profile: UUID? = null

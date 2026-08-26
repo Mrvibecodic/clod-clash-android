@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	mihomoConfig "github.com/metacubex/mihomo/config"
+	"github.com/metacubex/mihomo/hub/route"
 )
 
 var errExternalControllerSecretBlank = errors.New("external controller secret is blank")
@@ -17,6 +18,8 @@ type externalControllerAccess struct {
 }
 
 var currentExternalControllerAccess atomic.Pointer[externalControllerAccess]
+
+var applyExternalControllerSecret = route.SetSecret
 
 func init() {
 	if err := RotateExternalControllerSecret(); err != nil {
@@ -29,6 +32,7 @@ func SetExternalControllerSecret(secret string) error {
 		return errExternalControllerSecretBlank
 	}
 	currentExternalControllerAccess.Store(&externalControllerAccess{secret: secret})
+	applyExternalControllerSecret(secret)
 	return nil
 }
 

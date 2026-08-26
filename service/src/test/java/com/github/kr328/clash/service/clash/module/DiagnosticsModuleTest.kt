@@ -4,10 +4,38 @@ import com.github.kr328.clash.common.model.DiagnosticsMode
 import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.core.DiagnosticsRuntimeState
 import com.github.kr328.clash.core.DiagnosticsStatus
+import com.github.kr328.clash.core.model.ExternalControllerAccess
+import com.github.kr328.clash.service.store.DiagnosticsCredential
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class DiagnosticsModuleTest {
+    @Test
+    fun diagnosticsSessionUsesTheCredentialReadForEachEnable() {
+        val first = requireNotNull(
+            DiagnosticsCredential.create("first", "first-password", "first-controller", 19091),
+        )
+        val second = requireNotNull(
+            DiagnosticsCredential.create("second", "second-password", "second-controller", 19092),
+        )
+
+        val firstSession = requireNotNull(resolveDiagnosticsSession("https://example.com", first))
+        val secondSession = requireNotNull(resolveDiagnosticsSession("https://example.com", second))
+
+        assertEquals("first:first-password", firstSession.access.tunnelAuth)
+        assertEquals("second:second-password", secondSession.access.tunnelAuth)
+        assertEquals(19092, secondSession.access.remotePort)
+        assertEquals(
+            "second-controller",
+            (secondSession.controller as ExternalControllerAccess.Diagnostics).secret,
+        )
+    }
+
+    @Test
+    fun diagnosticsSessionRejectsMissingCredential() {
+        assertEquals(null, resolveDiagnosticsSession("https://example.com", null))
+    }
+
     @Test
     fun diagnosticsModeParsingFailsClosed() {
         assertEquals(DiagnosticsMode.ENABLED, parseDiagnosticsMode(DiagnosticsMode.ENABLED.name))
