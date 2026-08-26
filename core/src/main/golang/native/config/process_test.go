@@ -19,6 +19,21 @@ func useControllerSecret(t *testing.T, secret string) {
 	})
 }
 
+func TestSetExternalControllerSecretUpdatesRunningController(t *testing.T) {
+	previousApply := applyExternalControllerSecret
+	t.Cleanup(func() { applyExternalControllerSecret = previousApply })
+
+	var applied string
+	applyExternalControllerSecret = func(secret string) { applied = secret }
+
+	if err := SetExternalControllerSecret("live-controller-secret"); err != nil {
+		t.Fatal(err)
+	}
+	if applied != "live-controller-secret" {
+		t.Fatal("running controller did not receive the updated secret")
+	}
+}
+
 func TestPatchExternalControllerUsesLoopbackAndAuthentication(t *testing.T) {
 	useControllerSecret(t, "test-controller-secret")
 	cfg := mihomoConfig.DefaultRawConfig()

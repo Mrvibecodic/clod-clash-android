@@ -15,8 +15,6 @@ import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.TunPrefs
-import com.github.kr328.clash.service.model.DiagnosticsSessionAccess
-import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
@@ -57,11 +55,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private val runtime = clashRuntime {
         val store = ServiceStore(self)
-        val diagnosticsAccess = DiagnosticsSessionAccess.from(DiagnosticsCredentialStore(self).read())
 
         val close = install(CloseModule(self))
         val tun = install(TunModule(self))
-        val config = install(ConfigurationModule(self, diagnosticsAccess.controller))
+        val config = install(ConfigurationModule(self))
         val network = install(NetworkObserveModule(self))
 
         if (store.dynamicNotification)
@@ -74,7 +71,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         install(SuspendModule(self))
         try {
             tun.open()
-            install(DiagnosticsModule(self, diagnosticsAccess.diagnostics))
+            install(DiagnosticsModule(self))
 
             while (isActive) {
                 val quit = select<Boolean> {
