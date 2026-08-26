@@ -207,7 +207,12 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.fetch()
                         }
-                        Event.ProfileLoaded, Event.ProfileChanged -> design.fetch()
+                        Event.ProfileLoaded -> {
+                            healthCheckedGroups = emptyList()
+
+                            design.fetch()
+                        }
+                        Event.ProfileChanged -> design.fetch()
                         else -> Unit
                     }
                 }
@@ -543,6 +548,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var healthChecking = false
 
+    private var healthCheckRequested = false
+
     private var lastHealthCheckAt = 0L
 
     private var offlineDelays: Map<String, Int> = emptyMap()
@@ -589,7 +596,11 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         lastHealthCheckAt = SystemClock.elapsedRealtime()
 
-        if (healthChecking) return
+        if (healthChecking) {
+            healthCheckRequested = true
+
+            return
+        }
 
         if (offlineGroups.isNotEmpty()) {
             healthChecking = true
@@ -631,6 +642,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             healthChecking = false
 
             setProxyTesting(false)
+        }
+
+        if (healthCheckRequested) {
+            healthCheckRequested = false
+
+            runHealthCheck(manual = false)
         }
     }
 
