@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/dlclark/regexp2"
@@ -105,20 +106,64 @@ func patchProfile(cfg *config.RawConfig, _ string) error {
 func patchDns(cfg *config.RawConfig, _ string) error {
 	if !cfg.DNS.Enable {
 		cfg.DNS = config.DefaultRawConfig().DNS
-		cfg.DNS.Enable = true
 		cfg.DNS.NameServer = defaultNameServers
 		cfg.DNS.EnhancedMode = C.DNSFakeIP
 		cfg.DNS.FakeIPRange = defaultFakeIPRange
 		cfg.DNS.FakeIPFilter = defaultFakeIPFilter
 
 		cfg.ClashForAndroid.AppendSystemDNS = true
+
+		for _, slot := range []OverrideSlot{OverrideSlotPersist, OverrideSlotSession} {
+			applyOwnDns(cfg, ReadOverride(slot))
+		}
+
+		cfg.DNS.Enable = true
 	}
 
-	if cfg.ClashForAndroid.AppendSystemDNS {
-		cfg.DNS.NameServer = append(cfg.DNS.NameServer, "system://")
+	if cfg.ClashForAndroid.AppendSystemDNS && !slices.ContainsFunc(cfg.DNS.NameServer, isSystemNameServer) {
+		cfg.DNS.NameServer = append(cfg.DNS.NameServer, systemNameServer)
 	}
 
 	return nil
+}
+
+const systemNameServer = "system://"
+
+func isSystemNameServer(server string) bool {
+	return server == systemNameServer || server == "system"
+}
+
+func applyOwnDns(cfg *config.RawConfig, override string) {
+	var keys struct {
+		DNS json.RawMessage `json:"dns"`
+		App json.RawMessage `json:"clash-for-android"`
+	}
+
+	if err := json.Unmarshal([]byte(override), &keys); err != nil {
+		return
+	}
+
+	var mode struct {
+		Enable *bool `json:"enable"`
+	}
+
+	if len(keys.DNS) > 0 {
+		if err := json.Unmarshal(keys.DNS, &mode); err != nil || mode.Enable != nil {
+			return
+		}
+	}
+
+	if len(keys.App) > 0 {
+		if err := json.Unmarshal(keys.App, &cfg.ClashForAndroid); err != nil {
+			log.Warnln("Apply own app override: %s", err.Error())
+		}
+	}
+
+	if len(keys.DNS) > 0 {
+		if err := json.Unmarshal(keys.DNS, &cfg.DNS); err != nil {
+			log.Warnln("Apply own dns override: %s", err.Error())
+		}
+	}
 }
 
 func patchTun(cfg *config.RawConfig, profileDir string) error {
