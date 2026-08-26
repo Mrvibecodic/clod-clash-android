@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.kr328.clash.common.compat.isTelevision
+import com.github.kr328.clash.common.model.DiagnosticsLogEvent
 import com.github.kr328.clash.common.model.DiagnosticsMode
 import com.github.kr328.clash.design.compose.screen.AppSettingsAction
 import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
@@ -22,6 +23,7 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceSettings
+import com.github.kr328.clash.service.util.DiagnosticsEventJournal
 import com.github.kr328.clash.service.util.sendDiagnosticsChanged
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +54,7 @@ class AppSettingsDesign(
 
     private val darkModes = DarkMode.entries
     private val credentials = DiagnosticsCredentialStore(context)
+    private val diagnosticsEvents = DiagnosticsEventJournal(context)
 
     private val languageTags = listOf("", "en", "ru")
 
@@ -134,7 +137,11 @@ class AppSettingsDesign(
                     AppSettingsPrefs.read(this)
                 }
 
-                credentials.clear()
+                if (credentials.clear()) {
+                    diagnosticsEvents.append(DiagnosticsLogEvent.SettingsResetCredentialsCleared)
+                } else {
+                    diagnosticsEvents.append(DiagnosticsLogEvent.CredentialDeleteFailed)
+                }
                 context.sendDiagnosticsChanged(DiagnosticsMode.DISABLED)
 
                 withContext(Dispatchers.Main) {

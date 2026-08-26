@@ -59,6 +59,11 @@
             android:authorities="${applicationId}.settings"
             android:exported="false"
             android:process=":background" />
+        <provider
+            android:name=".DiagnosticsPreferenceProvider"
+            android:authorities="${applicationId}.diagnostics.settings"
+            android:exported="false"
+            android:process=":background" />
 
         <service
             android:name="androidx.work.impl.background.systemjob.SystemJobService"

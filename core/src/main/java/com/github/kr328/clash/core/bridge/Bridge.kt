@@ -19,6 +19,7 @@ object Bridge {
     )
     external fun nativeStopDiagnostics()
     external fun nativeQueryDiagnostics(): String
+    external fun nativeRecordDiagnosticsEvent(code: Int)
     external fun nativeUseLocalControllerAccess(): Int
     external fun nativeUseDiagnosticsControllerAccess(secret: String): Int
     external fun nativeForceGc()

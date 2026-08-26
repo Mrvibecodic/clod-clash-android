@@ -85,6 +85,13 @@ func queryDiagnostics() (result *C.char) {
 	return C.CString(diagnosticsQuery())
 }
 
+//export recordDiagnosticsEvent
+func recordDiagnosticsEvent(code C.int) {
+	defer guard("recordDiagnosticsEvent", func() {})()
+
+	diagnosticsRecordEvent(int(code))
+}
+
 //export forceGc
 func forceGc() {
 	defer guard("forceGc", func() {})()
