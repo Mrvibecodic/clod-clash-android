@@ -26,6 +26,7 @@ import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
 import com.github.kr328.clash.util.ApplicationObserver
+import com.github.kr328.clash.util.serviceUnavailableHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.util.*
