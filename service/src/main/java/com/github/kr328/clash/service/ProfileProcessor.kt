@@ -13,6 +13,7 @@ import com.github.kr328.clash.service.data.PendingDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.directoryLastModified
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.migrationDir
 import com.github.kr328.clash.service.util.pendingDir
@@ -350,6 +351,31 @@ object ProfileProcessor {
                 ProfileSwap.staleOf(imported).deleteRecursively()
 
                 context.sendProfileChanged(uuid)
+            }
+        }
+    }
+
+    suspend fun releaseStale(context: Context, maxAge: Long) {
+        withContext(NonCancellable) {
+            profileLock.withLock {
+                val now = System.currentTimeMillis()
+
+                for (uuid in PendingDao().queryAllUUIDs()) {
+                    val pending = PendingDao().queryByUUID(uuid) ?: continue
+                    val dir = context.pendingDir.resolve(uuid.toString())
+                    val touched = maxOf(pending.createdAt, dir.directoryLastModified ?: 0L)
+
+                    if (now - touched < maxAge) continue
+
+                    PendingDao().remove(uuid)
+                    dir.deleteRecursively()
+
+                    Log.w("Stale draft $uuid released")
+
+                    if (!ImportedDao().exists(uuid)) {
+                        context.sendProfileChanged(uuid)
+                    }
+                }
             }
         }
     }

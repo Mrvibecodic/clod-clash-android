@@ -16,6 +16,10 @@ import java.util.concurrent.TimeUnit
 class Service(private val context: Application, val crashed: () -> Unit) {
     val remote = Resource<IRemoteService>()
 
+    @Volatile
+    var boundSince: Long = 0
+        private set
+
     private val connection = object : ServiceConnection {
         private var lastCrashed: Long = -1
 
@@ -39,6 +43,8 @@ class Service(private val context: Application, val crashed: () -> Unit) {
 
     fun bind() {
         try {
+            boundSince = System.currentTimeMillis()
+
             if (!context.bindService(RemoteService::class.intent, connection, Context.BIND_AUTO_CREATE)) {
                 Log.w("RemoteService bind refused")
 
@@ -54,6 +60,8 @@ class Service(private val context: Application, val crashed: () -> Unit) {
     }
 
     fun unbind() {
+        boundSince = 0
+
         context.unbindServiceSilent(connection)
 
         remote.set(null)

@@ -21,6 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.FileNotFoundException
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class ProfileManager(private val context: Context) : IProfileManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
@@ -32,6 +33,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 Database.database
 
                 ProfileProcessor.repair(context)
+                ProfileProcessor.releaseStale(context, STALE_PENDING_MS)
 
                 ProfileReceiver.rescheduleAll(context)
             } catch (e: CancellationException) {
@@ -138,6 +140,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 total = 0,
                 download = 0,
                 expire = 0,
+                createdAt = System.currentTimeMillis(),
                 ageSecretKey = ageSecretKey,
             )
 
@@ -250,5 +253,9 @@ class ProfileManager(private val context: Context) : IProfileManager,
         } else {
             ProfileReceiver.scheduleNext(context, imported)
         }
+    }
+
+    private companion object {
+        val STALE_PENDING_MS = TimeUnit.HOURS.toMillis(6)
     }
 }

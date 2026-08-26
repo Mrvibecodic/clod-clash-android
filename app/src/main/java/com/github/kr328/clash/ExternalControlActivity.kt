@@ -17,6 +17,7 @@ import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.plus
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -25,8 +26,9 @@ import java.util.*
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.util.withAppLocale
+import com.github.kr328.clash.util.serviceUnavailableHandler
 
-open class ExternalControlActivity : Activity(), CoroutineScope by MainScope() {
+open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() + serviceUnavailableHandler) {
     protected open fun controlAllowed(): Boolean = UiStore(this).allowExternalControl
 
     override fun attachBaseContext(base: Context) {

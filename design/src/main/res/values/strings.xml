@@ -243,6 +243,7 @@
     <string name="clod_shortcut_control_activity">Clod Clash shortcut</string>
     <string name="clod_external_control_title">Allow external control</string>
     <string name="clod_external_control_summary">Let other apps turn the tunnel on and off — for automation such as Tasker. Own shortcuts, the quick tile and the widget work regardless.</string>
+    <string name="clod_service_unavailable">The background service is not responding</string>
     <string name="clod_external_control_refused">External control is off. Turn it on in settings, App.</string>
     <string name="clod_sub_menu">Subscription actions</string>
 

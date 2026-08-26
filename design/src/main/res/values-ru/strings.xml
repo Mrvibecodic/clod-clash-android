@@ -221,6 +221,7 @@
     <string name="clod_shortcut_control_activity">Ярлык Clod Clash</string>
     <string name="clod_external_control_title">Разрешить внешнее управление</string>
     <string name="clod_external_control_summary">Другие приложения смогут включать и выключать туннель — для автоматизации вроде Tasker. Свои ярлыки, плитка в шторке и виджет работают в любом случае.</string>
+    <string name="clod_service_unavailable">Фоновая служба не отвечает</string>
     <string name="clod_external_control_refused">Внешнее управление выключено. Включите его в настройках, раздел «Приложение».</string>
     <string name="clod_sub_menu">Действия с подпиской</string>
 

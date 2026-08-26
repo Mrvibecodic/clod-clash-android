@@ -35,7 +35,7 @@ import kotlin.coroutines.suspendCoroutine
 import com.github.kr328.clash.design.R
 
 abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
-    CoroutineScope by MainScope(),
+    CoroutineScope by (MainScope() + serviceUnavailableHandler),
     Broadcasts.Observer {
 
     protected val uiStore by lazy { UiStore(this) }
