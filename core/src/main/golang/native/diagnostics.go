@@ -14,7 +14,6 @@ import (
 
 	chisel "github.com/jpillora/chisel/client"
 	"github.com/metacubex/mihomo/listener/inner"
-	"github.com/metacubex/mihomo/log"
 )
 
 const (
@@ -47,14 +46,21 @@ type diagnosticsStatus struct {
 }
 
 type diagnosticsProbeTracker struct {
-	lastState diagnosticsRuntimeState
-	failures  int
+	lastState    diagnosticsRuntimeState
+	failures     int
+	published    diagnosticsRuntimeState
+	hasPublished bool
 }
 
 func (tracker *diagnosticsProbeTracker) Observe(state diagnosticsRuntimeState) *diagnosticsRuntimeState {
 	if state == diagnosticsRuntimeReady {
 		tracker.lastState = state
 		tracker.failures = 0
+		if tracker.hasPublished && tracker.published == state {
+			return nil
+		}
+		tracker.published = state
+		tracker.hasPublished = true
 		return &state
 	}
 	if state != tracker.lastState {
@@ -63,6 +69,11 @@ func (tracker *diagnosticsProbeTracker) Observe(state diagnosticsRuntimeState) *
 	}
 	tracker.failures++
 	if state == diagnosticsRuntimeAccessDenied || state == diagnosticsRuntimeConfigurationErr || tracker.failures >= diagnosticsProbeFailures {
+		if tracker.hasPublished && tracker.published == state {
+			return nil
+		}
+		tracker.published = state
+		tracker.hasPublished = true
 		return &state
 	}
 	return nil
@@ -98,14 +109,6 @@ func newDiagnosticsHTTPClient(dialContext func(context.Context, string, string) 
 }
 
 var diagnosticsHTTPClient = newDiagnosticsHTTPClient(dialDiagnosticsTunnel)
-
-func diagnosticsInfo(message string) {
-	log.Infoln("[APP] [Diagnostics] %s", message)
-}
-
-func diagnosticsWarning(message string) {
-	log.Warnln("[APP] [Diagnostics] %s", message)
-}
 
 func diagnosticsSetState(state diagnosticsRuntimeState) {
 	diagnostics.Lock()
@@ -192,21 +195,30 @@ func newDiagnosticsClient(configuration chisel.Config) (*chisel.Client, error) {
 }
 
 func diagnosticsStart(endpoint, auth, controllerSecret string, remotePort int) {
+	diagnosticsRecordEvent(diagnosticsEventNativeStartRequested)
 	if strings.TrimSpace(controllerSecret) == "" {
 		diagnosticsSetState(diagnosticsRuntimeConfigurationErr)
-		diagnosticsWarning("Запуск отклонён: конфигурация недоступна")
+		diagnosticsRecordEvent(diagnosticsEventNativeStartRejectedControllerSecret)
 		return
 	}
 	configuration, err := newDiagnosticsConfiguration(endpoint, auth, remotePort)
 	if err != nil {
 		diagnosticsSetState(diagnosticsRuntimeConfigurationErr)
-		diagnosticsWarning("Запуск отклонён: конфигурация недоступна")
+		switch {
+		case errors.Is(err, errDiagnosticsAuthMissing):
+			diagnosticsRecordEvent(diagnosticsEventNativeStartRejectedAuth)
+		case errors.Is(err, errDiagnosticsRemotePortInvalid):
+			diagnosticsRecordEvent(diagnosticsEventNativeStartRejectedRemotePort)
+		default:
+			diagnosticsRecordEvent(diagnosticsEventNativeStartRejectedEndpoint)
+		}
 		return
 	}
 
 	diagnostics.Lock()
 	if diagnostics.client != nil {
 		diagnostics.Unlock()
+		diagnosticsRecordEvent(diagnosticsEventNativeStartIgnoredAlreadyRunning)
 		return
 	}
 
@@ -214,21 +226,23 @@ func diagnosticsStart(endpoint, auth, controllerSecret string, remotePort int) {
 	if err != nil {
 		diagnostics.state = diagnosticsRuntimeConfigurationErr
 		diagnostics.Unlock()
-		diagnosticsWarning("Не удалось создать клиент")
+		diagnosticsRecordEvent(diagnosticsEventNativeClientCreateFailed)
 		return
 	}
+	diagnosticsRecordEvent(diagnosticsEventNativeClientCreated)
 	if err = client.Start(context.Background()); err != nil {
 		_ = client.Close()
 		diagnostics.state = diagnosticsRuntimeUnreachable
 		diagnostics.Unlock()
-		diagnosticsWarning("Не удалось запустить клиент")
+		diagnosticsRecordEvent(diagnosticsEventNativeTransportStartFailed)
 		return
 	}
 
 	diagnostics.client = client
 	diagnostics.state = diagnosticsRuntimeConnecting
 	diagnostics.Unlock()
-	diagnosticsInfo("Канал запущен")
+	diagnosticsRecordEvent(diagnosticsEventNativeTransportWorkerStarted)
+	diagnosticsRecordEvent(diagnosticsEventNativeProbeStarted)
 
 	go diagnosticsWait(client)
 	go diagnosticsProbe(client, configuration.Server, controllerSecret)
@@ -249,6 +263,16 @@ func diagnosticsProbe(client *chisel.Client, endpoint, controllerSecret string) 
 			diagnostics.state = *published
 		}
 		diagnostics.Unlock()
+		if published != nil {
+			switch *published {
+			case diagnosticsRuntimeReady:
+				diagnosticsRecordEvent(diagnosticsEventNativeProbeReady)
+			case diagnosticsRuntimeAccessDenied:
+				diagnosticsRecordEvent(diagnosticsEventNativeProbeAccessDenied)
+			case diagnosticsRuntimeUnreachable, diagnosticsRuntimeConfigurationErr:
+				diagnosticsRecordEvent(diagnosticsEventNativeProbeUnreachable)
+			}
+		}
 
 		time.Sleep(diagnosticsProbeInterval)
 	}
@@ -267,13 +291,14 @@ func diagnosticsWait(client *chisel.Client) {
 	diagnostics.Unlock()
 
 	if waitErr != nil {
-		diagnosticsWarning("Канал остановлен из-за внутренней ошибки")
+		diagnosticsRecordEvent(diagnosticsEventNativeTransportStoppedUnexpected)
 	} else {
-		diagnosticsWarning("Канал остановлен")
+		diagnosticsRecordEvent(diagnosticsEventNativeTransportStoppedExpected)
 	}
 }
 
 func diagnosticsStop() {
+	diagnosticsRecordEvent(diagnosticsEventNativeStopRequested)
 	diagnostics.Lock()
 	client := diagnostics.client
 	diagnostics.client = nil
@@ -282,7 +307,9 @@ func diagnosticsStop() {
 
 	if client != nil {
 		_ = client.Close()
-		diagnosticsInfo("Канал выключен")
+		diagnosticsRecordEvent(diagnosticsEventNativeStopCompleted)
+	} else {
+		diagnosticsRecordEvent(diagnosticsEventNativeStopNoop)
 	}
 }
 

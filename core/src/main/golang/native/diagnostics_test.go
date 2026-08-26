@@ -79,6 +79,9 @@ func TestDiagnosticsProbeTrackerPublishesTypedStates(t *testing.T) {
 	if state := tracker.Observe(diagnosticsRuntimeReady); state == nil || *state != diagnosticsRuntimeReady {
 		t.Fatalf("ready state = %v", state)
 	}
+	if state := tracker.Observe(diagnosticsRuntimeReady); state != nil {
+		t.Fatalf("duplicate ready state was published: %v", *state)
+	}
 	if state := tracker.Observe(diagnosticsRuntimeAccessDenied); state == nil || *state != diagnosticsRuntimeAccessDenied {
 		t.Fatalf("access denied state = %v", state)
 	}
@@ -205,28 +208,40 @@ func TestDiagnosticsStatusReportsFailureWithoutInternalDetails(t *testing.T) {
 	}
 }
 
-func TestDiagnosticsLogAppearsInCoreLogStream(t *testing.T) {
+func TestDiagnosticsEventUsesInfoLevelAndFixedPayload(t *testing.T) {
 	subscriber := log.Subscribe()
 	defer log.UnSubscribe(subscriber)
 
-	diagnosticsInfo("Запуск канала")
+	diagnosticsRecordEvent(diagnosticsEventNativeProbeReady)
 
-	awaitDiagnosticsLog(t, subscriber, "[APP] [Diagnostics] Запуск канала")
-}
-
-func awaitDiagnosticsLog(t *testing.T, subscriber <-chan log.Event, want string) string {
-	t.Helper()
 	timer := time.NewTimer(time.Second)
 	defer timer.Stop()
-
 	for {
 		select {
 		case message := <-subscriber:
-			if strings.Contains(message.Payload, want) {
-				return message.Payload
+			if strings.Contains(message.Payload, "event=native_probe_ready") {
+				if message.LogLevel != log.INFO {
+					t.Fatalf("diagnostics event level = %s", message.LogLevel)
+				}
+				if message.Payload != "[APP] [Diagnostics] event=native_probe_ready result=success" {
+					t.Fatalf("diagnostics event payload = %q", message.Payload)
+				}
+				return
 			}
 		case <-timer.C:
-			t.Fatalf("diagnostics log %q was not published", want)
+			t.Fatal("typed diagnostics event was not published")
+		}
+	}
+}
+
+func TestDiagnosticsEventRegistryIsCompleteAndContainsNoConnectionData(t *testing.T) {
+	for code := 1; code <= 66; code++ {
+		payload, ok := diagnosticsEventPayloads[code]
+		if !ok {
+			t.Fatalf("diagnostics event code %d is missing", code)
+		}
+		if strings.Contains(payload, "://") || strings.Contains(payload, "Bearer ") || strings.Contains(payload, "@") {
+			t.Fatalf("diagnostics event %d contains connection data: %q", code, payload)
 		}
 	}
 }

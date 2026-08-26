@@ -1,5 +1,6 @@
 package com.github.kr328.clash.core
 
+import com.github.kr328.clash.common.model.DiagnosticsLogEvent
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.core.model.*
 import com.github.kr328.clash.core.util.parseInetSocketAddress
@@ -61,6 +62,10 @@ object Clash {
 
     fun queryDiagnostics(): DiagnosticsStatus {
         return CoreJson.decodeFromString(DiagnosticsStatus.serializer(), Bridge.nativeQueryDiagnostics())
+    }
+
+    fun recordDiagnosticsEvent(event: DiagnosticsLogEvent) {
+        Bridge.nativeRecordDiagnosticsEvent(event.code)
     }
 
     fun configureExternalController(access: ExternalControllerAccess) {

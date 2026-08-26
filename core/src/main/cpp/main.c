@@ -65,6 +65,15 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryDiagnostics(JNIEnv *en
     return new_string(response);
 }
 
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeRecordDiagnosticsEvent(JNIEnv *env,
+                                                                            jobject thiz,
+                                                                            jint code) {
+    TRACE_METHOD();
+
+    recordDiagnosticsEvent((int) code);
+}
+
 JNIEXPORT jint JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeUseLocalControllerAccess(JNIEnv *env,
                                                                               jobject thiz) {

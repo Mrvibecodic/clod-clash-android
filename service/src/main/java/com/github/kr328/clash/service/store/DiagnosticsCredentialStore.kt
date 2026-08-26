@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import com.github.kr328.clash.core.model.DiagnosticsAccess
+import com.github.kr328.clash.service.DiagnosticsPreferenceProvider
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -63,18 +64,36 @@ data class DiagnosticsCredential private constructor(
 private fun String.isDiagnosticsCredentialComponent(): Boolean =
     isNotEmpty() && all { it.code in 0x21..0x7e }
 
+enum class DiagnosticsCredentialReadStatus {
+    Missing,
+    Success,
+    InvalidDiscarded,
+}
+
+data class DiagnosticsCredentialReadResult(
+    val status: DiagnosticsCredentialReadStatus,
+    val credential: DiagnosticsCredential?,
+)
+
 /** Device-bound, private storage for diagnostics access. */
 class DiagnosticsCredentialStore(context: Context) {
-    private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+    private val preferences = DiagnosticsPreferenceProvider.createSharedPreferencesFromContext(context)
 
     /** Returns only a successfully decrypted and validated credential; invalid state fails closed. */
-    fun read(): DiagnosticsCredential? {
+    fun read(): DiagnosticsCredential? = readResult().credential
+
+    fun readResult(): DiagnosticsCredentialReadResult {
         val encodedCiphertext = preferences.getString(CIPHERTEXT, null)
         val encodedIv = preferences.getString(IV, null)
-        if (encodedCiphertext == null && encodedIv == null) return null
-        if (encodedCiphertext == null || encodedIv == null) return discardInvalidCredential()
+        if (encodedCiphertext == null && encodedIv == null) {
+            return DiagnosticsCredentialReadResult(DiagnosticsCredentialReadStatus.Missing, null)
+        }
+        if (encodedCiphertext == null || encodedIv == null) {
+            discardInvalidCredential()
+            return DiagnosticsCredentialReadResult(DiagnosticsCredentialReadStatus.InvalidDiscarded, null)
+        }
 
-        return runCatching {
+        val credential = runCatching {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(
                 Cipher.DECRYPT_MODE,
@@ -86,13 +105,14 @@ class DiagnosticsCredentialStore(context: Context) {
             DiagnosticsCredential.decode(plaintext) ?: error("invalid diagnostics credential")
         }.getOrElse {
             discardInvalidCredential()
+            return DiagnosticsCredentialReadResult(DiagnosticsCredentialReadStatus.InvalidDiscarded, null)
         }
+        return DiagnosticsCredentialReadResult(DiagnosticsCredentialReadStatus.Success, credential)
     }
 
-    private fun discardInvalidCredential(): DiagnosticsCredential? {
+    private fun discardInvalidCredential() {
         runCatching { keyStore.deleteEntry(KEY_ALIAS) }
         preferences.edit().clear().commit()
-        return null
     }
 
     fun save(credential: DiagnosticsCredential): Boolean {
@@ -124,7 +144,6 @@ class DiagnosticsCredentialStore(context: Context) {
     }
 
     private companion object {
-        const val PREFERENCES = "diagnostics_credentials"
         const val CIPHERTEXT = "ciphertext"
         const val IV = "iv"
         const val ANDROID_KEY_STORE = "AndroidKeyStore"

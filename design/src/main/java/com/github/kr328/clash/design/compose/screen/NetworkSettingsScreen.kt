@@ -68,6 +68,7 @@ sealed interface NetworkSettingsAction {
     data class SetResetConnections(val enabled: Boolean) : NetworkSettingsAction
     data class SetKeepAwake(val enabled: Boolean) : NetworkSettingsAction
     data object EnableDiagnostics : NetworkSettingsAction
+    data object CancelDiagnosticsEnable : NetworkSettingsAction
     data object DisableDiagnostics : NetworkSettingsAction
     data object OpenDiagnostics : NetworkSettingsAction
 }
@@ -229,7 +230,10 @@ fun NetworkSettingsScreen(
 
     if (diagnosticsWarning) {
         AlertDialog(
-            onDismissRequest = { diagnosticsWarning = false },
+            onDismissRequest = {
+                diagnosticsWarning = false
+                onAction(NetworkSettingsAction.CancelDiagnosticsEnable)
+            },
             title = { Text(stringResource(R.string.diagnostics_access_warning_title)) },
             text = { Text(stringResource(R.string.diagnostics_access_warning)) },
             confirmButton = {
@@ -241,7 +245,10 @@ fun NetworkSettingsScreen(
                 }
             },
             dismissButton = {
-                Button(onClick = { diagnosticsWarning = false }) {
+                Button(onClick = {
+                    diagnosticsWarning = false
+                    onAction(NetworkSettingsAction.CancelDiagnosticsEnable)
+                }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
