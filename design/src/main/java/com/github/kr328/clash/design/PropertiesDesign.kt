@@ -78,14 +78,12 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         }
     }
 
-    suspend fun withProcessing(executeTask: suspend (suspend (FetchStatus) -> Unit) -> Unit) {
-        try {
-            setProgress(FetchProgress(context.getString(R.string.initializing)))
+    suspend fun setImporting(status: FetchStatus?) {
+        setProgress(status?.toProgress() ?: FetchProgress(context.getString(R.string.initializing)))
+    }
 
-            executeTask { setProgress(it.toProgress()) }
-        } finally {
-            setProgress(null)
-        }
+    suspend fun clearImporting() {
+        setProgress(null)
     }
 
     private suspend fun setProgress(progress: FetchProgress?) {

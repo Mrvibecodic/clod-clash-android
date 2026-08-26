@@ -20,7 +20,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,7 +95,7 @@ fun SelectRow(
     icon: Painter? = null,
     enabled: Boolean = true,
 ) {
-    var picking by remember { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
 
     Row(
         modifier = modifier

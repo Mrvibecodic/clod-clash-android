@@ -88,8 +88,12 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         }
     }
 
+    protected var restored: Bundle? = null
+        private set
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        restored = savedInstanceState
         applyDayNight()
         syncAppLocale()
 

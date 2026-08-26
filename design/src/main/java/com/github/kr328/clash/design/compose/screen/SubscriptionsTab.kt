@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -233,9 +234,9 @@ private fun SubscriptionCard(
     val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
-    var menuOpen by remember { mutableStateOf(false) }
-    var picking by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf(false) }
+    var menuOpen by rememberSaveable { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
+    var deleting by rememberSaveable { mutableStateOf(false) }
 
     if (deleting) {
         AlertDialog(
@@ -541,7 +542,7 @@ private fun GroupPicker(
     onDismiss: () -> Unit,
     onPick: (String?) -> Unit,
 ) {
-    var fresh by remember { mutableStateOf("") }
+    var fresh by rememberSaveable { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,

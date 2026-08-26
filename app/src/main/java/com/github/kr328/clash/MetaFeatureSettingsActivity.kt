@@ -1,12 +1,15 @@
 package com.github.kr328.clash
 
 import android.net.Uri
+import android.os.Bundle
 import android.provider.OpenableColumns
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.BundleCompat
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.util.clashDir
@@ -21,11 +24,19 @@ import com.github.kr328.clash.design.R
 
 class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
     private var reload = false
+    private var rereading = false
+    private var configuration: ConfigurationOverride? = null
 
     override suspend fun main() {
-        val configuration = withClash { queryOverride(Clash.OverrideSlot.Persist) }
+        val configuration = restored
+            ?.let { BundleCompat.getParcelable(it, "override", ConfigurationOverride::class.java) }
+            ?: withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
-        var writeBack = true
+        this.configuration = configuration
+
+        reload = restored?.getBoolean("reload") ?: false
+
+        var writeBack = !reload
 
         defer {
             if (writeBack) {
@@ -46,7 +57,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             select<Unit> {
                 events.onReceive {
                     if (it == Event.ActivityStart && reload) {
-                        reload = false
+                        rereading = true
 
                         recreate()
                     }
@@ -101,6 +112,16 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        outState.putBoolean("reload", reload && !rereading)
+
+        if (!reload) {
+            configuration?.let { outState.putParcelable("override", it) }
         }
     }
 

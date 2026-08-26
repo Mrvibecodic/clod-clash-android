@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.github.kr328.clash.common.util.grantPermissions
@@ -24,6 +25,8 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 class FilesActivity : BaseActivity<FilesDesign>() {
+    private var stack: Stack<String>? = null
+
     override suspend fun main() {
         val uuid = intent.uuid ?: return finish()
         val profile = withProfile { queryByUUID(uuid) } ?: return finish()
@@ -32,6 +35,10 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         val design = FilesDesign(this)
         val client = FilesClient(this)
         val stack = Stack<String>()
+
+        restored?.getStringArrayList("stack")?.forEach { stack.push(it) }
+
+        this.stack = stack
 
         design.configurationEditable = profile.type != Profile.Type.Url
         design.fetch(client, stack, root)
@@ -120,6 +127,12 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        stack?.let { outState.putStringArrayList("stack", ArrayList(it)) }
     }
 
     override fun onBackPressed() {

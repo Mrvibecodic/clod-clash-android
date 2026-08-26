@@ -41,6 +41,11 @@ class AppStore(context: Context) {
         defaultValue = 0,
     )
 
+    var awaitingInstallPermission: Boolean by store.boolean(
+        key = "awaiting_install_permission",
+        defaultValue = false,
+    )
+
     var addedProfilePending: Boolean by store.boolean(
         key = "added_profile_pending",
         defaultValue = false,

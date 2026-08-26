@@ -944,7 +944,7 @@ fun modeLabel(mode: TunnelState.Mode): String = stringResource(
 
 @Composable
 private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainAction) -> Unit) {
-    var picking by remember { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
 
     ActionRow(
         title = stringResource(R.string.clod_mode),

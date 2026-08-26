@@ -5,6 +5,7 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.design.compose.screen.AccessControlAction
 import com.github.kr328.clash.design.compose.screen.AccessControlScreen
 import com.github.kr328.clash.design.compose.screen.AccessControlState
@@ -13,6 +14,7 @@ import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AccessControlDesign(
@@ -118,10 +120,20 @@ class AccessControlDesign(
     }
 
     private fun syncSelected() {
-        state = state.copy(selected = selected.toSet())
+        val snapshot = selected.toSet()
+
+        state = state.copy(selected = snapshot)
+
+        Global.launch(writer) {
+            srvStore.accessControlPackages = snapshot
+        }
     }
 
     fun request(request: Request) {
         requests.trySend(request)
+    }
+
+    private companion object {
+        val writer = Dispatchers.IO.limitedParallelism(1)
     }
 }

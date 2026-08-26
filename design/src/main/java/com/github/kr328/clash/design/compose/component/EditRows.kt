@@ -15,7 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +38,7 @@ fun TextRow(
     valid: (String) -> Boolean = { true },
     enabled: Boolean = true,
 ) {
-    var editing by remember { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf(false) }
 
     val shown = when {
         value == null -> placeholder
@@ -55,7 +55,7 @@ fun TextRow(
     )
 
     if (editing) {
-        var text by remember { mutableStateOf(value.orEmpty()) }
+        var text by rememberSaveable { mutableStateOf(value.orEmpty()) }
 
         EditDialog(
             title = title,
@@ -95,7 +95,7 @@ fun LinesRow(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    var editing by remember { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf(false) }
 
     val shown = when {
         values == null -> stringResource(R.string.dont_modify)
@@ -112,7 +112,7 @@ fun LinesRow(
     )
 
     if (editing) {
-        var text by remember { mutableStateOf(values.orEmpty().joinToString("\n")) }
+        var text by rememberSaveable { mutableStateOf(values.orEmpty().joinToString("\n")) }
 
         EditDialog(
             title = title,
@@ -143,7 +143,7 @@ fun PairsRow(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    var editing by remember { mutableStateOf(false) }
+    var editing by rememberSaveable { mutableStateOf(false) }
 
     val shown = when {
         values == null -> stringResource(R.string.dont_modify)
@@ -160,7 +160,7 @@ fun PairsRow(
     )
 
     if (editing) {
-        var text by remember {
+        var text by rememberSaveable {
             mutableStateOf(values.orEmpty().entries.joinToString("\n") { "${it.key} = ${it.value}" })
         }
 

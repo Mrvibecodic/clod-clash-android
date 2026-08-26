@@ -6,11 +6,13 @@ import android.content.ClipboardManager
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.os.Bundle
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.design.AccessControlDesign
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
+import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.util.startClashService
@@ -23,20 +25,33 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 class AccessControlActivity : BaseActivity<AccessControlDesign>() {
+    private var initial: Set<String>? = null
+    private var initialMode: AccessControlMode? = null
+    private var current: MutableSet<String>? = null
+
     override suspend fun main() {
         val service = ServiceStore(this)
 
-        val selected = withContext(Dispatchers.IO) {
-            service.accessControlPackages.toMutableSet()
-        }
+        val bundle = restored
 
-        val mode = withContext(Dispatchers.IO) { service.accessControlMode }
+        val selected = bundle?.getStringArray("selected")?.toMutableSet()
+            ?: withContext(Dispatchers.IO) { service.accessControlPackages.toMutableSet() }
+        val initial = bundle?.getStringArray("initial")?.toSet() ?: selected.toSet()
+        val initialMode = bundle?.getString("initialMode")
+            ?.let { name -> AccessControlMode.entries.firstOrNull { it.name == name } }
+            ?: withContext(Dispatchers.IO) { service.accessControlMode }
+
+        this.initial = initial
+        this.initialMode = initialMode
+        this.current = selected
 
         defer {
             withContext(Dispatchers.IO) {
-                val changed = selected != service.accessControlPackages ||
-                    mode != service.accessControlMode
-                service.accessControlPackages = selected
+                val changed = initial != selected ||
+                    initialMode != service.accessControlMode
+                if (changed) {
+                    service.accessControlPackages = selected.toSet()
+                }
                 if (clashRunning && changed) {
                     stopClashService()
                     withTimeoutOrNull(10_000) {
@@ -146,6 +161,14 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        initial?.let { outState.putStringArray("initial", it.toTypedArray()) }
+        current?.let { outState.putStringArray("selected", it.toTypedArray()) }
+        initialMode?.let { outState.putString("initialMode", it.name) }
     }
 
     private suspend fun loadApps(selected: Set<String>): List<AppInfo> {

@@ -29,9 +29,11 @@ import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
+import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.applyDynamicShortcuts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 
 class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
@@ -50,6 +52,19 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         )
 
         setContentDesign(design)
+
+        launch {
+            ProfileImports.batch.collect { state ->
+                if (state is ProfileImports.BatchState.Done) {
+                    ProfileImports.resetBatch()
+
+                    design.showToast(
+                        getString(DesignR.string.clod_backup_restored, state.restored, state.total),
+                        ToastDuration.Long,
+                    )
+                }
+            }
+        }
 
         while (isActive) {
             select<Unit> {
@@ -191,54 +206,25 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         val known = withProfile { queryAll() }.map { it.source }.toSet()
 
-        var restored = 0
-
-        for (item in wanted) {
+        val items = wanted.mapNotNull { item ->
             val source = item.source.trim()
 
-            if (!ValidatorHttpUrl(source) || source in known) continue
+            if (!ValidatorHttpUrl(source) || source in known) return@mapNotNull null
 
-            val interval = if (item.interval > 0) {
-                maxOf(item.interval, TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES))
-            } else {
-                0L
-            }
-
-            val uuid = withProfile {
-                create(Profile.Type.Url, item.name, source, secure = item.secure)
-            }
-
-            var committed = false
-
-            try {
-                if (interval > 0) {
-                    withProfile { patch(uuid, item.name, source, interval, null) }
-                }
-
-                withProfile { commit(uuid) }
-
-                committed = true
-
-                val profile = withProfile { queryByUUID(uuid) } ?: throw IllegalStateException()
-
-                if (item.active && withProfile { queryActive() } == null) {
-                    withProfile { setActive(profile) }
-                }
-
-                restored += 1
-            } catch (e: Exception) {
-                Log.w("Restore subscription: $e", e)
-
-                if (!committed) {
-                    withProfile { release(uuid) }
-                }
-            }
+            ProfileImports.Item(
+                name = item.name,
+                source = source,
+                interval = if (item.interval > 0) {
+                    maxOf(item.interval, TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES))
+                } else {
+                    0L
+                },
+                secure = item.secure,
+                active = item.active,
+            )
         }
 
-        design.showToast(
-            getString(DesignR.string.clod_backup_restored, restored, wanted.size),
-            ToastDuration.Long,
-        )
+        ProfileImports.startBatch(items, wanted.size)
     }
 
     override var autoRestart: Boolean

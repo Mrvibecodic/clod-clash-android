@@ -7,12 +7,13 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import android.os.Bundle
-import android.os.PersistableBundle
+import android.content.Context
 import android.os.SystemClock
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
@@ -43,11 +44,15 @@ import com.github.kr328.clash.service.util.SessionClock
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
 import com.github.kr328.clash.design.compose.screen.MainTab
+import com.github.kr328.clash.design.compose.screen.MainScreenState
+import com.github.kr328.clash.design.compose.screen.ServersState
+import com.github.kr328.clash.design.compose.screen.SubScreen
+import com.github.kr328.clash.design.compose.screen.SubscriptionsState
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.update.ApkInstaller
 import com.github.kr328.clash.update.UpdatePrompt
-import com.github.kr328.clash.update.Updater
+import com.github.kr328.clash.update.UpdateTask
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -55,9 +60,10 @@ import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -85,14 +91,20 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     override suspend fun main() {
-        val design = MainDesign(this)
+        val design = MainDesign(this, restoredState())
 
         setContentDesign(design)
 
         design.fetch()
 
-        if (!design.hasProfiles) {
+        if (restored == null && !design.hasProfiles) {
             design.selectTab(MainTab.Subscriptions)
+        }
+
+        when (design.subScreen) {
+            SubScreen.About -> design.request(MainDesign.Request.LoadAbout)
+            SubScreen.RoutingData -> design.request(MainDesign.Request.LoadRoutingData)
+            null -> Unit
         }
 
         ProfileUpdates.prune()
@@ -107,8 +119,16 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         design.loadVersionName()
 
+        launch {
+            UpdateTask.state.collect { design.renderUpdate(it) }
+        }
+
+        launch {
+            RoutingDataUpdate.state.collect { design.renderRoutingDataUpdate(it) }
+        }
+
         if (UpdatePrompt.shouldCheckInBackground(this)) {
-            launch { design.checkUpdate(manual = false) }
+            UpdateTask.check(this, manual = false)
         }
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
@@ -135,10 +155,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 launch { design.runHealthCheck(manual = false) }
                             }
 
-                            if (awaitingInstallPermission &&
-                                ApkInstaller.canInstall(this@MainActivity)
+                            if (ApkInstaller.canInstall(this@MainActivity) &&
+                                withContext(Dispatchers.IO) {
+                                    AppStore(this@MainActivity).awaitingInstallPermission
+                                }
                             ) {
-                                awaitingInstallPermission = false
+                                withContext(Dispatchers.IO) {
+                                    AppStore(this@MainActivity).awaitingInstallPermission = false
+                                }
 
                                 design.launchUpdate()
                             }
@@ -174,7 +198,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
 
                             if (UpdatePrompt.shouldCheckInBackground(this@MainActivity)) {
-                                launch { design.checkUpdate(manual = false) }
+                                UpdateTask.check(this@MainActivity, manual = false)
                             }
                         }
                         Event.ServiceRecreated -> {
@@ -265,16 +289,19 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
                         MainDesign.Request.CheckUpdate ->
-                            launch { design.checkUpdate(manual = true) }
+                            UpdateTask.check(this@MainActivity, manual = true)
 
                         MainDesign.Request.UpdateNow -> design.launchUpdate()
                         MainDesign.Request.UpdateSkip -> {
-                            pendingUpdate?.let { UpdatePrompt.skip(this@MainActivity, it.manifest.versionCode) }
+                            UpdateTask.available?.let {
+                                withContext(Dispatchers.IO) {
+                                    UpdatePrompt.skip(this@MainActivity, it.manifest.versionCode)
+                                }
+                            }
 
-                            pendingUpdate = null
-
-                            design.setUpdate(null)
+                            UpdateTask.dismiss()
                         }
+                        MainDesign.Request.UpdateLater -> UpdateTask.dismiss()
                         MainDesign.Request.NewProfile -> launch { addProfile() }
                         MainDesign.Request.UpdateAllProfiles -> {
                             launch {
@@ -448,7 +475,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             launch { design.loadRoutingData() }
 
                         MainDesign.Request.UpdateRoutingData ->
-                            launch { design.updateRoutingData() }
+                            RoutingDataUpdate.start(this@MainActivity, clashRunning)
                     }
                 }
                 if (clashRunning && activityStarted) {
@@ -782,6 +809,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         private const val RUNNING_PROBE_INTERVAL_MS = 5_000L
 
         private const val RUNNING_PROBE_MISSES = 2
+
+        private const val KEY_TAB = "tab"
+
+        private const val KEY_SUB_SCREEN = "sub_screen"
+
+        private const val KEY_GROUP = "group"
+
+        private const val KEY_SUB_GROUP = "sub_group"
     }
 
     private var sessionStartedAt: Long = 0
@@ -1091,68 +1126,13 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private var pendingUpdate: Updater.Available? = null
-
-    private var awaitingInstallPermission: Boolean = false
-
-    private var updateJob: Job? = null
-
-    private fun MainDesign.launchUpdate() {
-        if (updateJob?.isActive == true) return
-
-        updateJob = launch { startUpdate() }
-    }
-
-    private suspend fun MainDesign.checkUpdate(manual: Boolean) {
-        setUpdateChecking(true)
-
-        val outcome = try {
-            UpdatePrompt.check(this@MainActivity, manual, activeLocalProxyPort())
-        } finally {
-            setUpdateChecking(false)
-        }
-
-        val available = when (outcome) {
-            is UpdatePrompt.Outcome.Ready -> outcome.available
-            UpdatePrompt.Outcome.UpToDate -> {
-                pendingUpdate = null
-
-                if (manual) {
-                    showToast(DesignR.string.clod_update_none, ToastDuration.Short)
-                }
-
-                return
-            }
-            is UpdatePrompt.Outcome.Failed -> {
-                pendingUpdate = null
-
-                if (manual) {
-                    showToast(
-                        DesignR.string.clod_update_check_failed,
-                        ToastDuration.Long,
-                        detail = outcome.reason,
-                    )
-                }
-
-                return
-            }
-        }
-
-        pendingUpdate = available
-
-        setUpdate(
-            UpdateState(
-                version = available.manifest.version,
-                notes = available.manifest.notes,
-            ),
-        )
-    }
-
-    private suspend fun MainDesign.startUpdate() {
-        val available = pendingUpdate ?: return
+    private suspend fun MainDesign.launchUpdate() {
+        if (UpdateTask.available == null) return
 
         if (!ApkInstaller.canInstall(this@MainActivity)) {
-            awaitingInstallPermission = true
+            withContext(Dispatchers.IO) {
+                AppStore(this@MainActivity).awaitingInstallPermission = true
+            }
 
             showToast(DesignR.string.clod_update_permission, ToastDuration.Long)
 
@@ -1161,36 +1141,53 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
-        setUpdateProgress(-1f)
+        UpdateTask.download(this@MainActivity)
+    }
 
-        val result = Updater.download(this@MainActivity, available, activeLocalProxyPort()) { received, total ->
-            if (total > 0) {
-                launch { setUpdateProgress(received.toFloat() / total) }
-            }
-        }
+    private suspend fun MainDesign.renderUpdate(state: UpdateTask.State) {
+        setUpdateChecking(state is UpdateTask.State.Checking)
 
-        setUpdate(null)
-
-        result.fold(
-            onSuccess = { apk ->
-                try {
-                    withContext(Dispatchers.IO) {
-                        ApkInstaller.install(this@MainActivity, apk)
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Log.w("Install update: $e", e)
-
-                    showExceptionToast(e.message ?: e.toString())
+        when (state) {
+            is UpdateTask.State.Available -> setUpdate(
+                UpdateState(
+                    version = state.available.manifest.version,
+                    notes = state.available.manifest.notes,
+                ),
+            )
+            is UpdateTask.State.Downloading -> setUpdate(
+                UpdateState(
+                    version = state.available.manifest.version,
+                    notes = state.available.manifest.notes,
+                    downloading = true,
+                    progress = state.progress,
+                ),
+            )
+            is UpdateTask.State.UpToDate -> {
+                if (state.manual) {
+                    showToast(DesignR.string.clod_update_none, ToastDuration.Short)
                 }
-            },
-            onFailure = {
-                Log.w("Download update: $it", it)
 
-                showExceptionToast(it.message ?: it.toString())
-            },
-        )
+                UpdateTask.dismiss()
+            }
+            is UpdateTask.State.CheckFailed -> {
+                if (state.manual) {
+                    showToast(
+                        DesignR.string.clod_update_check_failed,
+                        ToastDuration.Long,
+                        detail = state.reason,
+                    )
+                }
+
+                UpdateTask.dismiss()
+            }
+            is UpdateTask.State.Failed -> {
+                showExceptionToast(state.reason)
+
+                UpdateTask.dismiss()
+            }
+            UpdateTask.State.Idle, is UpdateTask.State.Checking, is UpdateTask.State.Ready ->
+                setUpdate(null)
+        }
     }
 
     private fun schedulePrune() {
@@ -1243,81 +1240,143 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun updatableProviders(): List<Provider> = try {
-        withClash { queryProviders() }
-            .filter { it.vehicleType != Provider.VehicleType.Inline }
-            .sorted()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        emptyList()
-    }
-
     private suspend fun MainDesign.loadRoutingData() {
+        setRoutingDataUpdating(RoutingDataUpdate.state.value is RoutingDataUpdate.State.Running)
+
         setRoutingData(
             files = GeoData.query(this@MainActivity),
-            providers = updatableProviders().map {
+            providers = RoutingDataUpdate.updatableProviders().map {
                 ProviderFileState(name = it.name, updatedAt = it.updatedAt)
             },
         )
     }
 
-    private suspend fun MainDesign.updateRoutingData() {
-        setRoutingDataUpdating(true)
+    private suspend fun MainDesign.renderRoutingDataUpdate(state: RoutingDataUpdate.State) {
+        setRoutingDataUpdating(state is RoutingDataUpdate.State.Running)
 
-        try {
-            val running = clashRunning
+        val outcome = (state as? RoutingDataUpdate.State.Done)?.outcome ?: return
 
-            val geo = GeoData.update(this@MainActivity, activeLocalProxyPort(), running)
+        val geo = outcome.geo
 
-            var providersFailed = false
+        val reconnect = if (clashRunning) {
+            getString(DesignR.string.clod_geo_after_reconnect)
+        } else {
+            null
+        }
 
-            updatableProviders().forEach {
+        when {
+            geo.updated.isEmpty() -> showToast(
+                DesignR.string.clod_geo_update_failed,
+                ToastDuration.Long,
+                detail = geo.failed.joinToString(", ").ifEmpty { null },
+            )
+            geo.failed.isNotEmpty() -> showToast(
+                DesignR.string.clod_geo_update_partial,
+                ToastDuration.Long,
+                detail = listOfNotNull(geo.failed.joinToString(", ").ifEmpty { null }, reconnect)
+                    .joinToString(" · ").ifEmpty { null },
+            )
+            outcome.providersFailed -> showToast(
+                DesignR.string.clod_geo_providers_failed,
+                ToastDuration.Long,
+                detail = reconnect,
+            )
+            reconnect != null -> showToast(
+                DesignR.string.clod_geo_updated_reconnect,
+                ToastDuration.Long,
+            )
+            else -> showToast(DesignR.string.clod_geo_updated, ToastDuration.Short)
+        }
+
+        RoutingDataUpdate.consume()
+
+        loadRoutingData()
+    }
+
+    private object RoutingDataUpdate {
+        data class Outcome(val geo: GeoData.UpdateResult, val providersFailed: Boolean)
+
+        sealed interface State {
+            data object Idle : State
+            data object Running : State
+            data class Done(val outcome: Outcome) : State
+        }
+
+        private val current = MutableStateFlow<State>(State.Idle)
+
+        val state: StateFlow<State> = current
+
+        suspend fun updatableProviders(): List<Provider> = try {
+            withClash { queryProviders() }
+                .filter { it.vehicleType != Provider.VehicleType.Inline }
+                .sorted()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+
+        fun start(context: Context, running: Boolean) {
+            if (current.value is State.Running) return
+
+            val app = context.applicationContext
+
+            current.value = State.Running
+
+            Global.launch {
                 try {
-                    withClash { updateProvider(it.type, it.name) }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    providersFailed = true
+                    val geo = GeoData.update(app, app.activeLocalProxyPort(), running)
 
-                    Log.w("Update provider ${it.name}: $e", e)
+                    var providersFailed = false
+
+                    updatableProviders().forEach {
+                        try {
+                            withClash { updateProvider(it.type, it.name) }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            providersFailed = true
+
+                            Log.w("Update provider ${it.name}: $e", e)
+                        }
+                    }
+
+                    current.value = State.Done(Outcome(geo, providersFailed))
+                } finally {
+                    if (current.value is State.Running) {
+                        current.value = State.Idle
+                    }
                 }
             }
-
-            val reconnect = if (clashRunning) {
-                getString(DesignR.string.clod_geo_after_reconnect)
-            } else {
-                null
-            }
-
-            when {
-                geo.updated.isEmpty() -> showToast(
-                    DesignR.string.clod_geo_update_failed,
-                    ToastDuration.Long,
-                    detail = geo.failed.joinToString(", ").ifEmpty { null },
-                )
-                geo.failed.isNotEmpty() -> showToast(
-                    DesignR.string.clod_geo_update_partial,
-                    ToastDuration.Long,
-                    detail = listOfNotNull(geo.failed.joinToString(", ").ifEmpty { null }, reconnect)
-                        .joinToString(" · ").ifEmpty { null },
-                )
-                providersFailed -> showToast(
-                    DesignR.string.clod_geo_providers_failed,
-                    ToastDuration.Long,
-                    detail = reconnect,
-                )
-                reconnect != null -> showToast(
-                    DesignR.string.clod_geo_updated_reconnect,
-                    ToastDuration.Long,
-                )
-                else -> showToast(DesignR.string.clod_geo_updated, ToastDuration.Short)
-            }
-
-            loadRoutingData()
-        } finally {
-            setRoutingDataUpdating(false)
         }
+
+        fun consume() {
+            if (current.value is State.Done) {
+                current.value = State.Idle
+            }
+        }
+    }
+
+    private fun restoredState(): MainScreenState {
+        val bundle = restored ?: return MainScreenState()
+
+        return MainScreenState(
+            selectedTab = bundle.getString(KEY_TAB)?.let { MainTab.valueOf(it) } ?: MainTab.Home,
+            subScreen = bundle.getString(KEY_SUB_SCREEN)?.let { SubScreen.valueOf(it) },
+            servers = ServersState(selected = bundle.getInt(KEY_GROUP)),
+            subscriptions = SubscriptionsState(selectedGroup = bundle.getString(KEY_SUB_GROUP)),
+        )
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        val design = design ?: return
+
+        outState.putString(KEY_TAB, design.selectedTab.name)
+        outState.putString(KEY_SUB_SCREEN, design.subScreen?.name)
+        outState.putInt(KEY_GROUP, design.selectedGroup)
+        outState.putString(KEY_SUB_GROUP, design.selectedSubscriptionGroup)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

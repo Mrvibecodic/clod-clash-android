@@ -3,31 +3,64 @@ package com.github.kr328.clash
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.showExceptionToast
-import com.github.kr328.clash.service.model.Profile
-import com.github.kr328.clash.store.AppStore
-import com.github.kr328.clash.util.queryPanelInfo
-import com.github.kr328.clash.util.withProfile
+import com.github.kr328.clash.util.ProfileImports
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
-import java.util.UUID
 
 class AddProfileActivity : BaseActivity<AddProfileDesign>() {
     private val scanLauncher = registerForActivityResult(ScanQRCode(), ::onScanResult)
 
+    private var token: Long = 0
+
     override suspend fun main() {
-        val design = AddProfileDesign(this)
+        token = restored?.getLong(KEY_TOKEN) ?: 0
+
+        val design = AddProfileDesign(
+            this,
+            restored?.getString(KEY_URL).orEmpty(),
+            restored?.getBoolean(KEY_SECURE) ?: false,
+        )
 
         setContentDesign(design)
+
+        launch {
+            ProfileImports.state.collect { state ->
+                if (state.token != token) return@collect
+
+                when (state) {
+                    ProfileImports.State.Idle -> Unit
+                    is ProfileImports.State.Running ->
+                        state.status?.let { design.setProgress(it) } ?: design.setFetching()
+
+                    is ProfileImports.State.Done -> {
+                        ProfileImports.consume(token)
+
+                        setResult(
+                            Activity.RESULT_OK,
+                            Intent().putExtra(Intents.EXTRA_NAME, state.name),
+                        )
+
+                        finish()
+                    }
+
+                    is ProfileImports.State.Failed -> {
+                        ProfileImports.consume(token)
+
+                        design.setError(state.message)
+                    }
+                }
+            }
+        }
 
         while (isActive) {
             select<Unit> {
@@ -44,6 +77,17 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        outState.putLong(KEY_TOKEN, token)
+
+        design?.let {
+            outState.putString(KEY_URL, it.url)
+            outState.putBoolean(KEY_SECURE, it.secure)
+        }
+    }
+
     private suspend fun AddProfileDesign.addProfile(input: String, secure: Boolean) {
         val source = normalizeSource(input)
 
@@ -53,54 +97,10 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
             return
         }
 
-        setFetching()
+        val started = ProfileImports.start(source, secure)
 
-        val uuid: UUID = withProfile {
-            create(Profile.Type.Url, getString(R.string.new_profile), source, secure = secure)
-        }
-
-        try {
-            withProfile {
-                coroutineScope {
-                    commit(uuid) { status ->
-                        launch { setProgress(status) }
-                    }
-                }
-            }
-
-            val profile = withProfile { queryByUUID(uuid) }
-
-            if (profile == null) {
-                withProfile { release(uuid) }
-
-                setError(getString(R.string.invalid_url))
-
-                return
-            }
-
-            val hasActive = withProfile { queryActive() } != null
-
-            if (!hasActive) {
-                withProfile { setActive(profile) }
-            }
-
-            val title = queryPanelInfo(uuid)?.title?.takeIf { it.isNotBlank() } ?: profile.name
-
-            AppStore(this@AddProfileActivity).apply {
-                addedProfileName = title
-                addedProfilePending = true
-            }
-
-            setResult(
-                Activity.RESULT_OK,
-                Intent().putExtra(Intents.EXTRA_NAME, title),
-            )
-
-            finish()
-        } catch (e: Exception) {
-            withProfile { release(uuid) }
-
-            setError(e.message ?: getString(R.string.invalid_url))
+        if (started != 0L) {
+            token = started
         }
     }
 
@@ -141,5 +141,11 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                     design?.showExceptionToast(getString(R.string.import_from_qr_exception))
             }
         }
+    }
+
+    companion object {
+        private const val KEY_URL = "url"
+        private const val KEY_SECURE = "secure"
+        private const val KEY_TOKEN = "token"
     }
 }

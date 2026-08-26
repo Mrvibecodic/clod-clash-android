@@ -13,14 +13,24 @@ import com.github.kr328.clash.design.compose.screen.AddProfileStep
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(context) {
+class AddProfileDesign(
+    context: Context,
+    initialUrl: String = "",
+    initialSecure: Boolean = false,
+) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
         data class Submit(val url: String, val secure: Boolean) : Request
         data object ScanQr : Request
         data object OtherWays : Request
     }
 
-    private var state by mutableStateOf(AddProfileState())
+    private var state by mutableStateOf(AddProfileState(url = initialUrl, secure = initialSecure))
+
+    val url: String
+        get() = state.url
+
+    val secure: Boolean
+        get() = state.secure
 
     override val root: View = composeRoot {
         AddProfileScreen(state = state, onAction = ::onAction)
@@ -63,7 +73,7 @@ class AddProfileDesign(context: Context) : Design<AddProfileDesign.Request>(cont
         val progress = if (status.max > 0) status.progress.toFloat() / status.max else 0f
 
         withContext(Dispatchers.Main) {
-            state = state.copy(progressText = text, progress = progress)
+            state = state.copy(step = AddProfileStep.Fetching, progressText = text, progress = progress)
         }
     }
 

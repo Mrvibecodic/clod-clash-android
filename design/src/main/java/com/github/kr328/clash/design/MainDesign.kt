@@ -30,7 +30,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
+class MainDesign(
+    context: Context,
+    initial: MainScreenState = MainScreenState(),
+) : Design<MainDesign.Request>(context) {
     sealed interface Request {
         data object ToggleStatus : Request
         data object OpenAccessControl : Request
@@ -59,6 +62,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object CheckUpdate : Request
         data object UpdateNow : Request
         data object UpdateSkip : Request
+        data object UpdateLater : Request
         data object NewProfile : Request
         data object UpdateAllProfiles : Request
         data class ActivateProfile(val profile: Profile) : Request
@@ -74,7 +78,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
         data object ReliabilityDismiss : Request
     }
 
-    private var state by mutableStateOf(MainScreenState())
+    private var state by mutableStateOf(initial)
 
     override val root: View = composeRoot(noticeInset = 80.dp) {
         MainScreen(state = state, onAction = ::onAction)
@@ -122,7 +126,7 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
             MainAction.UpdateNow -> request(Request.UpdateNow)
             MainAction.UpdateSkip -> request(Request.UpdateSkip)
-            MainAction.UpdateLater -> state = state.copy(update = null)
+            MainAction.UpdateLater -> request(Request.UpdateLater)
             is MainAction.SelectSubscriptionGroup ->
                 state = state.copy(
                     subscriptions = state.subscriptions.copy(selectedGroup = action.group),
@@ -256,6 +260,15 @@ class MainDesign(context: Context) : Design<MainDesign.Request>(context) {
 
     val selectedGroup: Int
         get() = state.servers.selected
+
+    val selectedTab: MainTab
+        get() = state.selectedTab
+
+    val subScreen: SubScreen?
+        get() = state.subScreen
+
+    val selectedSubscriptionGroup: String?
+        get() = state.subscriptions.selectedGroup
 
     suspend fun setProxyGroupNames(
         names: List<String>,
