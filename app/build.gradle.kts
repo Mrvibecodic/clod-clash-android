@@ -128,7 +128,8 @@ task("downloadGeoFiles") {
 tasks.matching {
     it.name.startsWith("assemble") ||
         it.name.startsWith("bundle") ||
-        it.name.contains("Assets")
+        it.name.contains("Assets") ||
+        it.name.contains("Lint")
 }.configureEach {
     dependsOn("downloadGeoFiles")
 }
