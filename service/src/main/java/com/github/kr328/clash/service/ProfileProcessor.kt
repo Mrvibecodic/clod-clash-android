@@ -16,6 +16,7 @@ import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.migrationDir
 import com.github.kr328.clash.service.util.pendingDir
+import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.readPanelInfo
@@ -38,8 +39,6 @@ object ProfileProcessor {
 
     private const val MIGRATION_FILE = "migration.json"
 
-    private const val ALERTS_FILE = "alerts.json"
-
     private val migrationJson = Json { ignoreUnknownKeys = true }
 
     private val profileLock = Mutex()
@@ -53,6 +52,8 @@ object ProfileProcessor {
                         PendingDao().queryByUUID(uuid) ?: throw IllegalArgumentException("profile $uuid not found")
 
                     pending.enforceFieldValid()
+
+                    repairLocked(context)
 
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
@@ -73,12 +74,11 @@ object ProfileProcessor {
 
                 profileLock.withLock {
                     if (PendingDao().queryByUUID(snapshot.uuid) == snapshot) {
-                        val target = context.importedDir.resolve(snapshot.uuid.toString())
-
-                        keepAlerts(target, context.processingDir)
-
-                        target.deleteRecursively()
-                        context.processingDir.copyRecursively(target)
+                        ProfileSwap.replace(
+                            context.importedDir.resolve(snapshot.uuid.toString()),
+                            context.processingDir,
+                            warn = { Log.w(it) },
+                        )
 
                         val old = ImportedDao().queryByUUID(snapshot.uuid)
                         val updateInterval = subscriptionInfo?.subUpdateInterval
@@ -122,6 +122,8 @@ object ProfileProcessor {
                     val imported =
                         ImportedDao().queryByUUID(uuid) ?: throw IllegalArgumentException("profile $uuid not found")
 
+                    repairLocked(context)
+
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
 
@@ -141,8 +143,11 @@ object ProfileProcessor {
                 profileLock.withLock {
                     val imported = ImportedDao().queryByUUID(snapshot.uuid)
                     if (imported != null) {
-                        context.importedDir.resolve(snapshot.uuid.toString()).deleteRecursively()
-                        context.processingDir.copyRecursively(context.importedDir.resolve(snapshot.uuid.toString()))
+                        ProfileSwap.replace(
+                            context.importedDir.resolve(snapshot.uuid.toString()),
+                            context.processingDir,
+                            warn = { Log.w(it) },
+                        )
 
                         val upload = subscriptionInfo?.subUpload
                         if (upload != null) {
@@ -206,10 +211,7 @@ object ProfileProcessor {
         profileLock.withLock {
             val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock
 
-            keepAlerts(profileDir, probe)
-
-            profileDir.deleteRecursively()
-            probe.copyRecursively(profileDir, overwrite = true)
+            ProfileSwap.replace(profileDir, probe, warn = { Log.w(it) })
 
             ImportedDao().update(
                 imported.copy(
@@ -243,13 +245,28 @@ object ProfileProcessor {
         val previous: List<String> = emptyList(),
     )
 
-    private fun keepAlerts(from: File, to: File) {
-        val alerts = from.resolve(ALERTS_FILE).takeIf { it.isFile } ?: return
+    suspend fun repair(context: Context) {
+        withContext(NonCancellable) {
+            profileLock.withLock {
+                repairLocked(context)
+            }
+        }
+    }
 
-        try {
-            alerts.copyTo(to.resolve(ALERTS_FILE), overwrite = true)
+    private fun repairLocked(context: Context) {
+        val repairs = try {
+            ProfileSwap.repair(context.importedDir)
         } catch (e: Exception) {
-            Log.w("Keep $ALERTS_FILE of ${from.name}: $e", e)
+            Log.e("Repair profile directories: $e", e)
+
+            return
+        }
+
+        for (repair in repairs) {
+            when (repair) {
+                is ProfileSwap.Repair.Restored -> Log.w("Profile ${repair.name} restored from an interrupted update")
+                is ProfileSwap.Repair.Dropped -> Log.i("Profile ${repair.name}: leftover of a finished update removed")
+            }
         }
     }
 
@@ -330,6 +347,7 @@ object ProfileProcessor {
 
                 pending.deleteRecursively()
                 imported.deleteRecursively()
+                ProfileSwap.staleOf(imported).deleteRecursively()
 
                 context.sendProfileChanged(uuid)
             }

@@ -5,6 +5,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.SelectionDao
@@ -60,6 +61,8 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadExc
                 Clash.setAgeSecretKey(active.ageSecretKey?.takeIf { it.isNotBlank() })
 
                 GeoAssets.awaitReady(service)
+
+                ProfileProcessor.repair(service)
 
                 Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
 

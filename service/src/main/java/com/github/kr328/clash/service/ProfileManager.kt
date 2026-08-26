@@ -31,6 +31,8 @@ class ProfileManager(private val context: Context) : IProfileManager,
             try {
                 Database.database
 
+                ProfileProcessor.repair(context)
+
                 ProfileReceiver.rescheduleAll(context)
             } catch (e: CancellationException) {
                 throw e
