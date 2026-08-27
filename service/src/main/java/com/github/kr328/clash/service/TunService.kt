@@ -118,6 +118,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     override fun onCreate() {
         super.onCreate()
 
+        ServiceLog.mark("TunService: create, running = ${StatusProvider.serviceRunning}")
+
         if (StatusProvider.serviceRunning) {
             rejected = true
 
@@ -139,6 +141,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        ServiceLog.mark(
+            "TunService: start command $startId, restarted by system = ${intent == null}, " +
+                "rejected = $rejected, stopped = ${stopNotified.get()}"
+        )
+
         if (rejected) {
             stopSelf()
 
@@ -161,12 +168,16 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     override fun onRevoke() {
         Log.i("TunService revoked")
 
+        ServiceLog.mark("TunService: revoked")
+
         reason = getString(R.string.clod_tun_revoked)
 
         stopSelf()
     }
 
     override fun onDestroy() {
+        ServiceLog.mark("TunService: destroy, rejected = $rejected")
+
         if (rejected) {
             super.onDestroy()
 

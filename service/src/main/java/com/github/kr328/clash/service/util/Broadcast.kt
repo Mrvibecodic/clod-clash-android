@@ -3,6 +3,7 @@ package com.github.kr328.clash.service.util
 import android.content.Context
 import android.content.Intent
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.common.constants.Permissions
 import java.util.*
 
@@ -53,14 +54,20 @@ fun Context.sendOverrideChanged() {
 }
 
 fun Context.sendServiceRecreated() {
+    ServiceLog.mark("broadcast: service recreated")
+
     sendControlBroadcastSelf(Intent(Intents.ACTION_SERVICE_RECREATED))
 }
 
 fun Context.sendClashStarted() {
+    ServiceLog.mark("broadcast: clash started")
+
     sendControlBroadcastSelf(Intent(Intents.ACTION_CLASH_STARTED))
 }
 
 fun Context.sendClashStopped(reason: String?) {
+    ServiceLog.mark("broadcast: clash stopped, with reason = ${reason != null}")
+
     sendControlBroadcastSelf(
         Intent(Intents.ACTION_CLASH_STOPPED).putExtra(
             Intents.EXTRA_STOP_REASON,

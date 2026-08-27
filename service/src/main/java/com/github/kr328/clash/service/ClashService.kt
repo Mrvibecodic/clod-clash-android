@@ -88,6 +88,8 @@ class ClashService : BaseService() {
     override fun onCreate() {
         super.onCreate()
 
+        ServiceLog.mark("ClashService: create, running = ${StatusProvider.serviceRunning}")
+
         if (StatusProvider.serviceRunning) {
             rejected = true
 
@@ -105,6 +107,11 @@ class ClashService : BaseService() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        ServiceLog.mark(
+            "ClashService: start command $startId, restarted by system = ${intent == null}, " +
+                "rejected = $rejected, stopped = ${stopNotified.get()}"
+        )
+
         if (rejected) {
             stopSelf()
 
@@ -129,6 +136,8 @@ class ClashService : BaseService() {
     }
 
     override fun onDestroy() {
+        ServiceLog.mark("ClashService: destroy, rejected = $rejected")
+
         if (rejected) {
             super.onDestroy()
 

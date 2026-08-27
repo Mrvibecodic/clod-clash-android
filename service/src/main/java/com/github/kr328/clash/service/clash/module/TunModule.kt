@@ -9,6 +9,7 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.core.util.parseInetSocketAddress
 import com.github.kr328.clash.service.R
+import com.github.kr328.clash.service.ServiceLog
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
@@ -58,6 +59,8 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
     }
 
     fun attach(device: TunDevice) {
+        ServiceLog.mark("tun: attach")
+
         try {
             Clash.startTun(
                 fd = device.fd,
@@ -83,8 +86,12 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
         private val random = SecureRandom()
 
         fun requestStop() {
+            ServiceLog.mark("tun: stop requested")
+
             Clash.stopHttp()
             Clash.stopTun()
+
+            ServiceLog.mark("tun: stopped")
         }
     }
 }

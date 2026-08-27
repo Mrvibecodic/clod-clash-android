@@ -19,6 +19,7 @@ class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
     private val store = ServiceStore(context)
     private var logReceiver: ReceiveChannel<LogMessage>? = null
+    private var markReceiver: Job? = null
 
     override fun queryTunnelState(): TunnelState {
         return Clash.queryTunnelState()
@@ -104,7 +105,22 @@ class ClashManager(private val context: Context) : IClashManager,
                 Clash.forceGc()
             }
 
+            markReceiver?.cancel()
+
+            markReceiver = null
+
             if (observer != null) {
+                markReceiver = launch {
+                    try {
+                        while (isActive) {
+                            observer.newItem(ServiceLog.events.receive())
+                        }
+                    } catch (e: CancellationException) {
+                    } catch (e: Exception) {
+                        Log.w("UI crashed", e)
+                    }
+                }
+
                 logReceiver = Clash.subscribeLogcat().also { c ->
                     launch {
                         try {

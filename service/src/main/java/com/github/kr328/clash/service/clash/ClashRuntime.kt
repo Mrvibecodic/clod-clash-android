@@ -3,6 +3,7 @@ package com.github.kr328.clash.service.clash
 import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.clash.module.Module
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -25,6 +26,8 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
             launch(Dispatchers.IO) {
                 globalLock.withLock {
                     Log.d("ClashRuntime: initialize")
+
+                    ServiceLog.mark("runtime: start")
 
                     try {
                         Clash.reset()
@@ -51,6 +54,8 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                             Clash.clearOverride(Clash.OverrideSlot.Session)
 
                             Log.i("ClashRuntime: destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms")
+
+                            ServiceLog.mark("runtime: finished")
                         }
                     }
                 }
