@@ -3,7 +3,7 @@
     <color name="color_clash_light">#4F46E5</color>
     <color name="color_clash_dark">#A7A5FF</color>
     <color name="color_system_ui_overlay">#50000000</color>
-    <color name="color_light_background">#FFFAFAFA</color>
-    <color name="color_dark_background">#FF121212</color>
-    <color name="color_dark_surface">#FF202020</color>
+    <color name="color_light_background">#FFFCF8FE</color>
+    <color name="color_dark_background">#FF0E0E12</color>
+    <color name="color_dark_surface">#FF0E0E12</color>
 </resources>
