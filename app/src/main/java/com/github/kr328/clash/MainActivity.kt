@@ -36,6 +36,7 @@ import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.applyDynamicShortcuts
 import com.github.kr328.clash.util.GeoData
+import com.github.kr328.clash.util.HealthProbes
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
@@ -542,7 +543,11 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var offlineGroups: List<PanelGroup> = emptyList()
 
-    private var healthCheckedGroups: List<String> = emptyList()
+    private var healthCheckedGroups: List<String>
+        get() = HealthProbes.checkedGroups
+        set(value) {
+            HealthProbes.checkedGroups = value
+        }
 
     private var iconGroups: Pair<UUID?, List<String>>? = null
 
@@ -550,11 +555,23 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var healthCheckRequested = false
 
-    private var lastHealthCheckAt = 0L
+    private var lastHealthCheckAt: Long
+        get() = HealthProbes.checkedAt
+        set(value) {
+            HealthProbes.checkedAt = value
+        }
 
-    private var offlineDelays: Map<String, Int> = emptyMap()
+    private var offlineDelays: Map<String, Int>
+        get() = HealthProbes.offlineDelays
+        set(value) {
+            HealthProbes.offlineDelays = value
+        }
 
-    private var offlineProfile: UUID? = null
+    private var offlineProfile: UUID?
+        get() = HealthProbes.offlineProfile
+        set(value) {
+            HealthProbes.offlineProfile = value
+        }
 
     private val offlineSelections: MutableMap<String, String> = mutableMapOf()
 
