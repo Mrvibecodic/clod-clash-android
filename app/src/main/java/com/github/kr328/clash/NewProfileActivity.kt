@@ -54,7 +54,7 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                         }
 
                         is NewProfileDesign.Request.Create -> {
-                            withProfile {
+                            withProfile(retry = false) {
                                 val name = getString(R.string.new_profile)
 
                                 val uuid: UUID? = when (val p = it.provider) {
@@ -190,7 +190,7 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
     }
 
     private suspend fun createProfileByQrCode(url: String) {
-        withProfile {
+        withProfile(retry = false) {
             launchProperties(
                 create(
                     type = Profile.Type.Url,

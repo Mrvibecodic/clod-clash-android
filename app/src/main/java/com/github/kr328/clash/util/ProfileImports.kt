@@ -66,7 +66,7 @@ object ProfileImports {
             val context = Global.application.withAppLocale()
 
             try {
-                val uuid = withProfile {
+                val uuid = withProfile(retry = false) {
                     create(Profile.Type.Url, context.getString(R.string.new_profile), source, secure = secure)
                 }
 
@@ -103,7 +103,7 @@ object ProfileImports {
 
             for (item in items) {
                 try {
-                    val uuid = withProfile {
+                    val uuid = withProfile(retry = false) {
                         create(Profile.Type.Url, item.name, item.source, secure = item.secure)
                     }
 
