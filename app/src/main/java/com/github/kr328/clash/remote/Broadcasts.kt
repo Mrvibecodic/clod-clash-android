@@ -34,7 +34,7 @@ class Broadcasts(private val context: Application) {
 
             when (intent?.action) {
                 Intents.ACTION_SERVICE_RECREATED -> {
-                    clashRunning = false
+                    refreshRunning()
 
                     receivers.forEach {
                         it.onServiceRecreated()
@@ -48,7 +48,7 @@ class Broadcasts(private val context: Application) {
                     }
                 }
                 Intents.ACTION_CLASH_STOPPED -> {
-                    clashRunning = false
+                    refreshRunning()
 
                     receivers.forEach {
                         it.onStopped(intent.getStringExtra(Intents.EXTRA_STOP_REASON))
