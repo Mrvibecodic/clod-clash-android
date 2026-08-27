@@ -16,6 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.packageName
 import com.github.kr328.clash.util.withAppLocale
@@ -43,6 +44,8 @@ class ToggleWidgetProvider : AppWidgetProvider() {
         Global.launch {
             try {
                 render(context, if (isRunning(context)) State.On else State.Off)
+            } catch (e: Exception) {
+                Log.w("Widget render: $e", e)
             } finally {
                 pending.finish()
             }
@@ -57,6 +60,8 @@ class ToggleWidgetProvider : AppWidgetProvider() {
                 Global.launch {
                     try {
                         toggle(context)
+                    } catch (e: Exception) {
+                        Log.w("Widget toggle: $e", e)
                     } finally {
                         pending.finish()
                     }

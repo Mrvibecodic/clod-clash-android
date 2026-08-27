@@ -56,6 +56,8 @@ private suspend fun <R, T> withRemote(
     while (true) {
         val remote = awaitRemote()
 
+        Remote.service.beginOperation()
+
         try {
             return withContext(context) { select(remote).block() }
         } catch (e: DeadObjectException) {
@@ -64,6 +66,8 @@ private suspend fun <R, T> withRemote(
             Remote.service.remote.reset(remote)
 
             delay(REMOTE_RETRY_DELAY_MS)
+        } finally {
+            Remote.service.endOperation()
         }
     }
 }

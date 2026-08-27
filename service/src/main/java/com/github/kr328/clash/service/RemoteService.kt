@@ -5,6 +5,8 @@ import android.os.IBinder
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.IProfileManager
+import com.github.kr328.clash.service.remote.GuardedClashManager
+import com.github.kr328.clash.service.remote.GuardedProfileManager
 import com.github.kr328.clash.service.remote.wrap
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 
@@ -21,8 +23,8 @@ class RemoteService : BaseService(), IRemoteService {
 
         clash = ClashManager(this)
         profile = ProfileManager(this)
-        clashBinder = clash?.wrap() as IClashManager?
-        profileBinder = profile?.wrap() as IProfileManager?
+        clashBinder = clash?.let { GuardedClashManager(it) }?.wrap() as IClashManager?
+        profileBinder = profile?.let { GuardedProfileManager(it) }?.wrap() as IProfileManager?
     }
 
     override fun onDestroy() {

@@ -12,6 +12,7 @@ import com.github.kr328.clash.util.ApplicationObserver
 import com.github.kr328.clash.util.verifyApk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 object Remote {
     val broadcasts: Broadcasts = Broadcasts(Global.application)
@@ -35,12 +36,16 @@ object Remote {
             }
             else {
                 Log.d("App becomes invisible")
-                service.unbind()
+                service.requestUnbind()
             }
         }
 
         Global.launch(Dispatchers.IO) {
-            verifyApp()
+            try {
+                verifyApp()
+            } catch (e: Exception) {
+                Log.w("Verify app: $e", e)
+            }
         }
     }
 
@@ -51,12 +56,14 @@ object Remote {
 
         if (store.updatedAt != updatedAt) {
             if (!context.verifyApk()) {
-                ApplicationObserver.createdActivities.forEach { it.finish() }
+                return withContext(Dispatchers.Main) {
+                    ApplicationObserver.createdActivities.forEach { it.finish() }
 
-                val intent = ApkBrokenActivity::class.intent
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    val intent = ApkBrokenActivity::class.intent
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-                return context.startActivity(intent)
+                    context.startActivity(intent)
+                }
             } else {
                 store.updatedAt = updatedAt
             }
