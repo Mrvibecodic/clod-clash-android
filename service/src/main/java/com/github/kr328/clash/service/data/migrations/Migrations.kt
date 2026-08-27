@@ -21,5 +21,3 @@ val MIGRATIONS: Array<Migration> = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
 )
-
-val LEGACY_MIGRATION = ::migrationFromLegacy

@@ -4,10 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.github.kr328.clash.common.Global
-import com.github.kr328.clash.service.data.migrations.LEGACY_MIGRATION
 import com.github.kr328.clash.service.data.migrations.MIGRATIONS
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import androidx.room.Database as DB
 
 @DB(
@@ -29,12 +26,6 @@ abstract class Database : RoomDatabase() {
                 Database::class.java,
                 "profiles"
             ).addMigrations(*MIGRATIONS).build()
-        }
-
-        init {
-            Global.launch(Dispatchers.IO) {
-                LEGACY_MIGRATION(Global.application)
-            }
         }
     }
 }

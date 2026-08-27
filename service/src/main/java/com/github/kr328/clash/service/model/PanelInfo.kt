@@ -5,12 +5,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class PanelInfo(
     val title: String = "",
-    val logoUrl: String = "",
     val logoFile: String = "",
     val announce: String = "",
     val announceUrl: String = "",
     val supportUrl: String = "",
-    val homeUrl: String = "",
     val portalUrl: String = "",
     val botUrl: String = "",
     val monitorUrl: String = "",
@@ -39,12 +37,7 @@ data class PanelInfo(
 
     val sentinels: List<String> = emptyList(),
 
-    val fallbackUrl: String = "",
-    val fallbackDomain: String = "",
-
     val descriptions: Map<String, String> = emptyMap(),
-
-    val showZeroHosts: Boolean = false,
 
     val disablePing: Boolean = false,
 
