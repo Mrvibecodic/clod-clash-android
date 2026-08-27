@@ -96,7 +96,15 @@ func Write(dir string, info Info) {
 		return
 	}
 
-	_ = os.WriteFile(panelPath(dir), bytes, 0o644)
+	tmp := panelPath(dir) + ".tmp"
+
+	if err := os.WriteFile(tmp, bytes, 0o644); err != nil {
+		return
+	}
+
+	if err := os.Rename(tmp, panelPath(dir)); err != nil {
+		_ = os.Remove(tmp)
+	}
 }
 
 func ApplyHeaders(info *Info, header map[string][]string, current string) {

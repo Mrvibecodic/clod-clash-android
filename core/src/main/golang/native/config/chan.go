@@ -165,8 +165,8 @@ func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, 
 		}
 	}
 
-	if answer.Status != 200 {
-		log.Warnln("Secure channel: relay answered with status %d", answer.Status)
+	if answer.Status < 200 || answer.Status >= 300 {
+		return nil, fetchHeader{}, fmt.Errorf("server answered with status %d", answer.Status)
 	}
 
 	log.Infoln("Subscription fetched over the secure channel")

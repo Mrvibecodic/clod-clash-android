@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io"
 	"os"
 
 	"github.com/metacubex/mihomo/constant"
@@ -26,12 +25,7 @@ func overridePersistPath() string {
 func ReadOverride(slot OverrideSlot) string {
 	switch slot {
 	case OverrideSlotPersist:
-		file, err := os.OpenFile(overridePersistPath(), os.O_RDONLY, 0600)
-		if err != nil {
-			return defaultPersistOverride
-		}
-
-		buf, err := io.ReadAll(file)
+		buf, err := os.ReadFile(overridePersistPath())
 		if err != nil {
 			return defaultPersistOverride
 		}
@@ -47,12 +41,36 @@ func ReadOverride(slot OverrideSlot) string {
 func WriteOverride(slot OverrideSlot, content string) {
 	switch slot {
 	case OverrideSlotPersist:
-		file, err := os.OpenFile(overridePersistPath(), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
+		tmp := overridePersistPath() + ".tmp"
+
+		file, err := os.OpenFile(tmp, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
 		if err != nil {
 			return
 		}
 
-		_, err = file.Write([]byte(content))
+		if _, err := file.Write([]byte(content)); err != nil {
+			_ = file.Close()
+			_ = os.Remove(tmp)
+
+			return
+		}
+
+		if err := file.Sync(); err != nil {
+			_ = file.Close()
+			_ = os.Remove(tmp)
+
+			return
+		}
+
+		if err := file.Close(); err != nil {
+			_ = os.Remove(tmp)
+
+			return
+		}
+
+		if err := os.Rename(tmp, overridePersistPath()); err != nil {
+			_ = os.Remove(tmp)
+		}
 	case OverrideSlotSession:
 		sessionOverride = content
 	}

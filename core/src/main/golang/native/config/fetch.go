@@ -69,6 +69,12 @@ func openUrl(ctx context.Context, url string, device bool) (io.ReadCloser, fetch
 		warnOnForeignRedirect(url, response.Request.URL)
 	}
 
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		_ = response.Body.Close()
+
+		return nil, fetchHeader{}, fmt.Errorf("server answered with status %d", response.StatusCode)
+	}
+
 	return response.Body, fetchHeader{
 		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
 		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
@@ -150,6 +156,8 @@ func fetch(url *U.URL, file string, device bool) (fetchHeader, error) {
 	return header, writeFile(file, reader)
 }
 
+const maxDownloadBytes = 32 << 20
+
 func writeFile(file string, reader io.Reader) error {
 	_ = os.MkdirAll(P.Dir(file), 0700)
 
@@ -160,7 +168,11 @@ func writeFile(file string, reader io.Reader) error {
 
 	defer f.Close()
 
-	_, err = io.Copy(f, reader)
+	written, err := io.Copy(f, io.LimitReader(reader, maxDownloadBytes+1))
+	if err == nil && written > maxDownloadBytes {
+		err = fmt.Errorf("response larger than %d bytes", maxDownloadBytes)
+	}
+
 	if err != nil {
 		_ = os.Remove(file)
 	}
@@ -377,7 +389,9 @@ func FetchAndValid(
 			}
 		}
 
-		_, _ = fetch(url, ps, false)
+		if _, err := fetch(url, ps, false); err != nil {
+			log.Warnln("Fetch provider %s: %s", P.Base(ps), err.Error())
+		}
 	})
 
 	bytes, _ := json.Marshal(&Status{
