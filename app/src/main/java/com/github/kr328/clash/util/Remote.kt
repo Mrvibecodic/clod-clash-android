@@ -50,6 +50,7 @@ private suspend fun awaitRemote(): IRemoteService {
 
 private suspend fun <R, T> withRemote(
     context: CoroutineContext,
+    retry: Boolean,
     select: (IRemoteService) -> R,
     block: suspend R.() -> T,
 ): T {
@@ -65,6 +66,12 @@ private suspend fun <R, T> withRemote(
 
             Remote.service.remote.reset(remote)
 
+            if (!retry) {
+                throw ServiceUnavailableException(
+                    Global.application.withAppLocale().getString(R.string.clod_service_unavailable),
+                )
+            }
+
             delay(REMOTE_RETRY_DELAY_MS)
         } finally {
             Remote.service.endOperation()
@@ -74,10 +81,12 @@ private suspend fun <R, T> withRemote(
 
 suspend fun <T> withClash(
     context: CoroutineContext = Dispatchers.IO,
+    retry: Boolean = true,
     block: suspend IClashManager.() -> T
-): T = withRemote(context, { it.clash() }, block)
+): T = withRemote(context, retry, { it.clash() }, block)
 
 suspend fun <T> withProfile(
     context: CoroutineContext = Dispatchers.IO,
+    retry: Boolean = true,
     block: suspend IProfileManager.() -> T
-): T = withRemote(context, { it.profile() }, block)
+): T = withRemote(context, retry, { it.profile() }, block)

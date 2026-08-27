@@ -22,6 +22,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
+import android.os.RemoteException
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.ProxySort
@@ -54,6 +55,7 @@ import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.update.ApkInstaller
 import com.github.kr328.clash.update.UpdatePrompt
 import com.github.kr328.clash.update.UpdateTask
+import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -135,7 +137,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
 
         while (isActive) {
-            select<Unit> {
+            try {
+                select<Unit> {
                 events.onReceive {
                     when (it) {
                         Event.ActivityStart -> {
@@ -332,7 +335,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     ProfileUpdates.start(targets)
                                     schedulePrune()
 
-                                    withProfile { targets.forEach { update(it) } }
+                                    withProfile(retry = false) { targets.forEach { update(it) } }
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
@@ -378,7 +381,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 schedulePrune()
 
                                 try {
-                                    withProfile { update(uuid) }
+                                    withProfile(retry = false) { update(uuid) }
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
@@ -393,7 +396,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 PropertiesActivity::class.intent.setUUID(request.profile.uuid),
                             )
                         is MainDesign.Request.DeleteProfile -> {
-                            withProfile { delete(request.profile.uuid) }
+                            withProfile(retry = false) { delete(request.profile.uuid) }
 
                             uiStore.clearFavorites(request.profile.uuid)
                         }
@@ -494,6 +497,21 @@ class MainActivity : BaseActivity<MainDesign>() {
                         design.verifyRunning()
                     }
                 }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ServiceUnavailableException) {
+                Log.w("Main loop: $e")
+
+                design.showToast(e.message.orEmpty(), ToastDuration.Long)
+            } catch (e: RemoteException) {
+                Log.w("Main loop: $e", e)
+
+                design.showExceptionToast(e)
+            } catch (e: IllegalStateException) {
+                Log.w("Main loop: $e", e)
+
+                design.showExceptionToast(e)
             }
         }
     }

@@ -108,7 +108,7 @@ object ProfileImports {
                     }
 
                     if (item.interval > 0) {
-                        withProfile { patch(uuid, item.name, item.source, item.interval, null) }
+                        withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval, null) }
                     }
 
                     import(uuid, item.active, null)
@@ -141,11 +141,11 @@ object ProfileImports {
             val context = Global.application.withAppLocale()
 
             try {
-                withProfile {
+                withProfile(retry = false) {
                     patch(profile.uuid, profile.name, profile.source, profile.interval, profile.ageSecretKey)
                 }
 
-                withProfile {
+                withProfile(retry = false) {
                     commit(profile.uuid) { status ->
                         state_.value = State.Running(token, status)
                     }
@@ -180,7 +180,7 @@ object ProfileImports {
         observer: IFetchObserver?,
     ): Profile {
         try {
-            withProfile {
+            withProfile(retry = false) {
                 commit(uuid, observer)
             }
 
@@ -194,7 +194,7 @@ object ProfileImports {
             return profile
         } catch (e: Exception) {
             withContext(NonCancellable) {
-                withProfile { release(uuid) }
+                withProfile(retry = false) { release(uuid) }
             }
 
             throw e

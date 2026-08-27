@@ -50,7 +50,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
 
             launch {
                 withContext(NonCancellable) {
-                    val uuid = withProfile {
+                    val uuid = withProfile(retry = false) {
                         val type = when (uri.getQueryParameter("type")?.lowercase(Locale.getDefault())) {
                             "url" -> Profile.Type.Url
                             "file" -> Profile.Type.File
@@ -72,7 +72,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                     }.isSuccess
 
                     if (!opened) {
-                        withProfile { release(uuid) }
+                        withProfile(retry = false) { release(uuid) }
                     }
                 }
 

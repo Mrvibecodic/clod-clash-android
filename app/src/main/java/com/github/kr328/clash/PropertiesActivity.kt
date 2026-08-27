@@ -71,7 +71,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         defer {
             canceled = true
 
-            withProfile { release(uuid) }
+            withProfile(retry = false) { release(uuid) }
         }
 
         while (isActive) {
@@ -83,7 +83,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
 
                             if (!canceled && profile != original && design.draftValid) {
                                 withContext(NonCancellable) {
-                                    withProfile {
+                                    withProfile(retry = false) {
                                         patch(profile.uuid, profile.name, profile.source, profile.interval, profile.ageSecretKey)
                                     }
                                 }
