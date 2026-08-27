@@ -96,11 +96,20 @@ class ClashService : BaseService() {
             return stopSelf()
         }
 
+        StaticNotificationModule.createNotificationChannel(this)
+
+        startSession()
+    }
+
+    private fun startSession() {
+        stopNotified.set(false)
+
+        reason = null
+
         StatusProvider.serviceRunning = true
 
         sessionStartedAt = ServiceStore(this).markSessionStarted()
 
-        StaticNotificationModule.createNotificationChannel(this)
         StaticNotificationModule.notifyLoadingNotification(this)
 
         runtime.launch()
@@ -119,11 +128,7 @@ class ClashService : BaseService() {
         }
 
         if (stopNotified.get()) {
-            stopSelf()
-
-            sendClashStopped(null)
-
-            return START_NOT_STICKY
+            startSession()
         }
 
         sendClashStarted()
