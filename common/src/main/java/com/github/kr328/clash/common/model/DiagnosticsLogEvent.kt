@@ -70,6 +70,10 @@ enum class DiagnosticsLogEvent(
     ServicePendingModeApplied(64, "service_pending_mode_applied"),
     UiModeCommandStoreFailed(65, "ui_mode_command_store_failed"),
     ServiceModeCommandAckFailed(66, "service_mode_command_ack_failed"),
+    NativeBootstrapRequested(67, "native_bootstrap_requested"),
+    NativeBootstrapSucceeded(68, "native_bootstrap_succeeded"),
+    NativeBootstrapAccessDenied(69, "native_bootstrap_access_denied"),
+    NativeBootstrapFailed(70, "native_bootstrap_failed"),
     ;
 
     companion object {

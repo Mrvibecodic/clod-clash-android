@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -20,7 +19,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
@@ -42,8 +40,6 @@ sealed interface DiagnosticsSettingsAction {
         val endpoint: String,
         val username: String,
         val password: String,
-        val controllerSecret: String,
-        val remotePort: Int,
     ) : DiagnosticsSettingsAction
     data object ClearDiagnosticsCredential : DiagnosticsSettingsAction
 }
@@ -57,14 +53,10 @@ fun DiagnosticsSettingsScreen(
     var endpoint by remember(state.diagnosticsEndpoint) { mutableStateOf(state.diagnosticsEndpoint) }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var controllerSecret by remember { mutableStateOf("") }
-    var remotePort by remember { mutableStateOf("") }
 
     fun clearCredentialInputs() {
         username = ""
         password = ""
-        controllerSecret = ""
-        remotePort = ""
     }
 
     ActivityScaffold(
@@ -115,27 +107,6 @@ fun DiagnosticsSettingsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp, vertical = 4.dp),
             )
-            OutlinedTextField(
-                value = controllerSecret,
-                onValueChange = { controllerSecret = it },
-                label = { Text(stringResource(R.string.diagnostics_controller_secret)) },
-                enabled = !state.vpnServiceRunning,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 4.dp),
-            )
-            OutlinedTextField(
-                value = remotePort,
-                onValueChange = { remotePort = it },
-                label = { Text(stringResource(R.string.diagnostics_remote_port)) },
-                enabled = !state.vpnServiceRunning,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 4.dp),
-            )
             if (state.diagnosticsConfigured) {
                 OutlinedButton(
                     enabled = !state.vpnServiceRunning,
@@ -154,16 +125,9 @@ fun DiagnosticsSettingsScreen(
                 enabled = !state.vpnServiceRunning &&
                     normalizeDiagnosticsEndpoint(endpoint) != null && run {
                         val allCredentialFieldsBlank = username.isBlank() &&
-                            password.isBlank() &&
-                            controllerSecret.isBlank() &&
-                            remotePort.isBlank()
+                            password.isBlank()
                         (state.diagnosticsConfigured && allCredentialFieldsBlank) ||
-                            DiagnosticsCredential.create(
-                                username,
-                                password,
-                                controllerSecret,
-                                remotePort.toIntOrNull() ?: -1,
-                            ) != null
+                            DiagnosticsCredential.create(username, password) != null
                     },
                 onClick = {
                     onAction(
@@ -171,8 +135,6 @@ fun DiagnosticsSettingsScreen(
                             endpoint = endpoint,
                             username = username,
                             password = password,
-                            controllerSecret = controllerSecret,
-                            remotePort = remotePort.toIntOrNull() ?: -1,
                         ),
                     )
                     clearCredentialInputs()

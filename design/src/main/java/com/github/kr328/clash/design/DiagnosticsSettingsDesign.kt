@@ -60,9 +60,7 @@ class DiagnosticsSettingsDesign(
                     return
                 }
                 val replacesCredentials = action.username.isNotBlank() ||
-                    action.password.isNotBlank() ||
-                    action.controllerSecret.isNotBlank() ||
-                    action.remotePort >= 0
+                    action.password.isNotBlank()
                 if (!replacesCredentials && !state.diagnosticsConfigured) {
                     recordSettingsEvent(DiagnosticsLogEvent.SettingsSaveRejectedCredentialMissing)
                     return
@@ -72,8 +70,6 @@ class DiagnosticsSettingsDesign(
                     DiagnosticsCredential.create(
                         action.username,
                         action.password,
-                        action.controllerSecret,
-                        action.remotePort,
                     ) ?: run {
                         recordSettingsEvent(DiagnosticsLogEvent.SettingsSaveRejectedCredentialIncomplete)
                         return

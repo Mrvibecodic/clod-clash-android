@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import java.io.File
@@ -45,6 +46,13 @@ data class DiagnosticsStatus(
     val state: DiagnosticsRuntimeState,
 )
 
+@kotlinx.serialization.Serializable
+data class DiagnosticsBootstrap(
+    val state: DiagnosticsRuntimeState,
+    @SerialName("controller_secret") val controllerSecret: String = "",
+    @SerialName("remote_port") val remotePort: Int = 0,
+)
+
 private const val CONTROLLER_CONFIGURATION_SUCCEEDED = 0
 private const val CONTROLLER_CONFIGURATION_ENTROPY_UNAVAILABLE = 1
 private const val CONTROLLER_CONFIGURATION_SECRET_INVALID = 2
@@ -75,6 +83,13 @@ object Clash {
             access.tunnelAuth,
             access.controllerSecret,
             access.remotePort,
+        )
+    }
+
+    fun bootstrapDiagnostics(endpoint: String, tunnelAuth: String): DiagnosticsBootstrap {
+        return CoreJson.decodeFromString(
+            DiagnosticsBootstrap.serializer(),
+            Bridge.nativeBootstrapDiagnostics(endpoint, tunnelAuth),
         )
     }
 

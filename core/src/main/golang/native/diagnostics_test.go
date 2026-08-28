@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -14,6 +15,46 @@ import (
 	"github.com/jpillora/chisel/share/settings"
 	"github.com/metacubex/mihomo/log"
 )
+
+func TestBootstrapDiagnosticsReturnsServerAssignedSession(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		username, password, ok := request.BasicAuth()
+		if !ok || username != "alice" || password != "client-password" {
+			t.Fatal("unexpected bootstrap auth")
+		}
+		if request.URL.Path != "/api/v1/session" {
+			t.Fatalf("bootstrap path = %q", request.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"remote_port":       19001,
+			"controller_secret": "support-secret",
+		})
+	}))
+	defer server.Close()
+
+	result := requestDiagnosticsBootstrap(server.Client(), server.URL, "alice:client-password")
+	if result.State != diagnosticsRuntimeReady || result.RemotePort != 19001 || result.ControllerSecret != "support-secret" {
+		t.Fatalf("unexpected bootstrap result: %#v", result)
+	}
+}
+
+func TestBootstrapDiagnosticsClassifiesAccessAndInvalidPayload(t *testing.T) {
+	denied := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer denied.Close()
+	if result := requestDiagnosticsBootstrap(denied.Client(), denied.URL, "alice:wrong"); result.State != diagnosticsRuntimeAccessDenied {
+		t.Fatalf("denied state = %s", result.State)
+	}
+
+	invalid := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"remote_port":0,"controller_secret":""}`))
+	}))
+	defer invalid.Close()
+	if result := requestDiagnosticsBootstrap(invalid.Client(), invalid.URL, "alice:password"); result.State != diagnosticsRuntimeConfigurationErr {
+		t.Fatalf("invalid payload state = %s", result.State)
+	}
+}
 
 func TestDiagnosticsProbeAuthenticatesController(t *testing.T) {
 	const secret = "controller-secret"
