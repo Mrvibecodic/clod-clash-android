@@ -6,11 +6,19 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.common.model.DiagnosticsLogEvent
+import com.github.kr328.clash.common.model.DiagnosticsMode
+import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsAction
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.service.store.DiagnosticsCredentialStore
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.normalizeDiagnosticsEndpoint
+import com.github.kr328.clash.service.util.DiagnosticsEventJournal
+import com.github.kr328.clash.service.util.sendDiagnosticsChanged
+import com.github.kr328.clash.service.util.sendDiagnosticsLogEvent
 
 class NetworkSettingsDesign(
     context: Context,
@@ -18,12 +26,16 @@ class NetworkSettingsDesign(
     private val srvStore: ServiceStore,
     running: Boolean,
     localProxyPort: Int,
+    diagnosticsState: DiagnosticsState,
 ) : Design<NetworkSettingsDesign.Request>(context) {
     sealed interface Request {
         data object Back : Request
+        data object OpenDiagnostics : Request
     }
 
     private val tunStacks = listOf("auto", "system", "gvisor", "mixed")
+    private val credentials = DiagnosticsCredentialStore(context)
+    private val diagnosticsEvents = DiagnosticsEventJournal(context)
 
     private var state by mutableStateOf(
         NetworkSettingsState(
@@ -39,6 +51,11 @@ class NetworkSettingsDesign(
             resetConnections = srvStore.resetConnectionsOnNetworkChange,
             keepAwake = srvStore.keepAwake,
             localProxyPort = localProxyPort,
+            diagnosticsEnabled = diagnosticsState != DiagnosticsState.STOPPED,
+            diagnosticsConfigured = credentials.read() != null,
+            diagnosticsEndpoint = normalizeDiagnosticsEndpoint(srvStore.diagnosticsEndpoint).orEmpty(),
+            vpnServiceRunning = running && uiStore.enableVpn,
+            diagnosticsState = diagnosticsState,
         ),
     )
 
@@ -49,6 +66,38 @@ class NetworkSettingsDesign(
     private fun onAction(action: NetworkSettingsAction) {
         when (action) {
             NetworkSettingsAction.Back -> requests.trySend(Request.Back)
+            NetworkSettingsAction.OpenDiagnostics -> {
+                recordUiEvent(DiagnosticsLogEvent.SettingsOpened)
+                requests.trySend(Request.OpenDiagnostics)
+            }
+            NetworkSettingsAction.CancelDiagnosticsEnable ->
+                recordUiEvent(DiagnosticsLogEvent.UiEnableCancelled)
+            NetworkSettingsAction.EnableDiagnostics -> {
+                when {
+                    !state.diagnosticsConfigured -> {
+                        recordUiEvent(DiagnosticsLogEvent.UiEnableRejectedNotConfigured)
+                        return
+                    }
+                    state.diagnosticsEndpoint.isBlank() -> {
+                        recordUiEvent(DiagnosticsLogEvent.UiEnableRejectedEndpointMissing)
+                        return
+                    }
+                    !state.vpnServiceRunning -> {
+                        recordUiEvent(DiagnosticsLogEvent.UiEnableRejectedVpnStopped)
+                        return
+                    }
+                    credentials.read() == null -> {
+                        recordUiEvent(DiagnosticsLogEvent.UiEnableRejectedCredentialUnavailable)
+                        return
+                    }
+                }
+                state = state.copy(diagnosticsEnabled = true)
+                context.sendDiagnosticsChanged(DiagnosticsMode.ENABLED, DiagnosticsLogEvent.UiEnableRequested)
+            }
+            NetworkSettingsAction.DisableDiagnostics -> {
+                state = state.copy(diagnosticsEnabled = false)
+                context.sendDiagnosticsChanged(DiagnosticsMode.DISABLED, DiagnosticsLogEvent.UiDisableRequested)
+            }
             is NetworkSettingsAction.SetEnableVpn -> {
                 uiStore.enableVpn = action.enabled
 
@@ -97,5 +146,24 @@ class NetworkSettingsDesign(
                 state = state.copy(tunStack = action.index)
             }
         }
+    }
+
+    private fun recordUiEvent(event: DiagnosticsLogEvent) {
+        if (state.vpnServiceRunning) context.sendDiagnosticsLogEvent(event)
+        else diagnosticsEvents.append(event)
+    }
+
+    fun updateDiagnosticsStatus(status: DiagnosticsState) {
+        state = state.copy(
+            diagnosticsEnabled = status != DiagnosticsState.STOPPED,
+            diagnosticsState = status,
+        )
+    }
+
+    fun refreshDiagnosticsAccess() {
+        state = state.copy(
+            diagnosticsConfigured = credentials.read() != null,
+            diagnosticsEndpoint = normalizeDiagnosticsEndpoint(srvStore.diagnosticsEndpoint).orEmpty(),
+        )
     }
 }

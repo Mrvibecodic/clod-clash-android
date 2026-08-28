@@ -17,7 +17,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.selects.select
 import java.util.*
 
-class ConfigurationModule(service: Service) : Module<ConfigurationModule.LoadException>(service) {
+class ConfigurationModule(
+    service: Service,
+) : Module<ConfigurationModule.LoadException>(service) {
     data class LoadException(val message: String)
 
     private val store = ServiceStore(service)

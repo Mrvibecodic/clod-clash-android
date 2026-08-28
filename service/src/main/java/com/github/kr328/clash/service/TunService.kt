@@ -69,9 +69,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         install(AppListCacheModule(self))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
-
         try {
             tun.open()
+            install(DiagnosticsModule(self))
 
             while (isActive) {
                 val quit = select<Boolean> {

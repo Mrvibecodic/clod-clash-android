@@ -20,8 +20,15 @@ object Intents {
     val ACTION_PROFILE_REQUEST_UPDATE = "$packageName.intent.action.REQUEST_UPDATE"
     val ACTION_PROFILE_LOADED = "$packageName.intent.action.PROFILE_LOADED"
     val ACTION_OVERRIDE_CHANGED = "$packageName.intent.action.OVERRIDE_CHANGED"
+    val ACTION_DIAGNOSTICS_CHANGED = "$packageName.intent.action.DIAGNOSTICS_CHANGED"
+    val ACTION_DIAGNOSTICS_LOG_EVENT = "$packageName.intent.action.DIAGNOSTICS_LOG_EVENT"
+    val ACTION_DIAGNOSTICS_STATUS = "$packageName.intent.action.DIAGNOSTICS_STATUS"
 
     const val EXTRA_STOP_REASON = "stop_reason"
+    const val EXTRA_DIAGNOSTICS_MODE = "diagnostics_mode"
+    const val EXTRA_DIAGNOSTICS_MODE_COMMAND_ID = "diagnostics_mode_command_id"
+    const val EXTRA_DIAGNOSTICS_LOG_EVENT = "diagnostics_log_event"
+    const val EXTRA_DIAGNOSTICS_STATUS = "diagnostics_status"
     const val EXTRA_UUID = "uuid"
     const val EXTRA_FAIL_REASON = "fail_reason"
 }
