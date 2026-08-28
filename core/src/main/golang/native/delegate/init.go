@@ -3,6 +3,8 @@ package delegate
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/netip"
 	"strings"
 	"syscall"
 
@@ -32,13 +34,13 @@ func Init(home, versionName, gitVersion string, platformVersion int) {
 	app.ApplyPlatformVersion(platformVersion)
 
 	process.DefaultPackageNameResolver = func(metadata *constant.Metadata) (string, error) {
-		src, dst := metadata.RawSrcAddr, metadata.RawDstAddr
+		src, dst := socketPair(metadata)
 
 		if src == nil || dst == nil {
 			return "", process.ErrInvalidNetwork
 		}
 
-		uid := app.QuerySocketUid(metadata.RawSrcAddr, metadata.RawDstAddr)
+		uid := app.QuerySocketUid(src, dst)
 		pkg := app.QueryAppByUid(uid)
 
 		log.Debugln("[PKG] %s --> %s by %d[%s]", metadata.SourceAddress(), metadata.RemoteAddress(), uid, pkg)
@@ -55,4 +57,40 @@ func Init(home, versionName, gitVersion string, platformVersion int) {
 			app.MarkSocket(int(fd))
 		})
 	}
+}
+
+// socketPair возвращает пару адресов, по которой ищется владелец соединения:
+// сокет приложения и та сторона, с которой оно разговаривает.
+//
+// Обычно её кладёт сам вход: TUN, UDP и HTTP заполняют RawSrcAddr/RawDstAddr.
+// SOCKS-вход этого не делает — NewSocket кладёт только SrcIP/SrcPort и
+// InIP/InPort, — поэтому раньше всё, что приходило на локальный порт по SOCKS,
+// уходило с ErrInvalidNetwork, даже не дойдя до опроса, и оставалось в журнале
+// и в списке соединений без имени приложения. Собираем ту же пару из полей,
+// которые заполнены всегда: сокет приложения и адрес нашего слушателя —
+// ровно то, что для этого случая передаёт HTTP-вход.
+func socketPair(metadata *constant.Metadata) (net.Addr, net.Addr) {
+	if metadata.RawSrcAddr != nil && metadata.RawDstAddr != nil {
+		return metadata.RawSrcAddr, metadata.RawDstAddr
+	}
+
+	if !metadata.SrcIP.IsValid() || metadata.SrcPort == 0 {
+		return nil, nil
+	}
+
+	if !metadata.InIP.IsValid() || metadata.InPort == 0 {
+		return nil, nil
+	}
+
+	src := netip.AddrPortFrom(metadata.SrcIP, metadata.SrcPort)
+	in := netip.AddrPortFrom(metadata.InIP, metadata.InPort)
+
+	switch metadata.NetWork {
+	case constant.TCP:
+		return net.TCPAddrFromAddrPort(src), net.TCPAddrFromAddrPort(in)
+	case constant.UDP:
+		return net.UDPAddrFromAddrPort(src), net.UDPAddrFromAddrPort(in)
+	}
+
+	return nil, nil
 }
