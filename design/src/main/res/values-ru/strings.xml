@@ -325,8 +325,6 @@
     <string name="diagnostics_endpoint">Адрес сервера</string>
     <string name="diagnostics_username">Имя пользователя</string>
     <string name="diagnostics_password">Пароль</string>
-    <string name="diagnostics_controller_secret">Секрет контроллера</string>
-    <string name="diagnostics_remote_port">Обратный порт на сервере</string>
     <string name="diagnostics_access_warning_title">Включить диагностику?</string>
     <string name="diagnostics_access_warning">Служба поддержки сможет смотреть и менять настройки VPN. Включайте диагностику только по просьбе поддержки. Доступ отключится вместе с диагностикой или VPN.</string>
     <string name="diagnostics_access_enable">Включить</string>

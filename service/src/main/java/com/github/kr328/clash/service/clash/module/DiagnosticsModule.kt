@@ -7,6 +7,7 @@ import com.github.kr328.clash.common.model.DiagnosticsMode
 import com.github.kr328.clash.common.model.DiagnosticsState
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.DiagnosticsRuntimeState
+import com.github.kr328.clash.core.DiagnosticsBootstrap
 import com.github.kr328.clash.core.DiagnosticsStatus
 import com.github.kr328.clash.core.model.DiagnosticsAccess
 import com.github.kr328.clash.core.model.ExternalControllerAccess
@@ -28,6 +29,8 @@ import kotlinx.coroutines.withContext
 private enum class DiagnosticsStatusSource {
     NATIVE,
     CONFIGURATION_ERROR,
+    ACCESS_DENIED,
+    UNREACHABLE,
 }
 
 internal data class DiagnosticsSession(
@@ -39,9 +42,10 @@ internal data class DiagnosticsSession(
 internal fun resolveDiagnosticsSession(
     endpoint: String,
     credential: DiagnosticsCredential?,
+    bootstrap: DiagnosticsBootstrap?,
 ): DiagnosticsSession? {
     val normalizedEndpoint = normalizeDiagnosticsEndpoint(endpoint) ?: return null
-    val sessionAccess = DiagnosticsSessionAccess.from(credential)
+    val sessionAccess = DiagnosticsSessionAccess.from(credential, bootstrap)
     val diagnosticsAccess = sessionAccess.diagnostics ?: return null
     return DiagnosticsSession(normalizedEndpoint, diagnosticsAccess, sessionAccess.controller)
 }
@@ -165,7 +169,29 @@ class DiagnosticsModule(
             }
             DiagnosticsCredentialReadStatus.Success -> Unit
         }
-        val session = resolveDiagnosticsSession(store.diagnosticsEndpoint, credentialRead.credential)
+        val credential = credentialRead.credential ?: run {
+            rejectSession(DiagnosticsLogEvent.ServiceSessionRejectedCredentialInvalid)
+            return
+        }
+        val bootstrap = runCatching {
+            Clash.bootstrapDiagnostics(store.diagnosticsEndpoint, credential.chiselAuth)
+        }.getOrElse {
+            statusSource = DiagnosticsStatusSource.UNREACHABLE
+            Clash.stopDiagnostics()
+            useLocalControllerAccess()
+            return
+        }
+        if (bootstrap.state != DiagnosticsRuntimeState.READY) {
+            statusSource = when (bootstrap.state) {
+                DiagnosticsRuntimeState.ACCESS_DENIED -> DiagnosticsStatusSource.ACCESS_DENIED
+                DiagnosticsRuntimeState.UNREACHABLE -> DiagnosticsStatusSource.UNREACHABLE
+                else -> DiagnosticsStatusSource.CONFIGURATION_ERROR
+            }
+            Clash.stopDiagnostics()
+            useLocalControllerAccess()
+            return
+        }
+        val session = resolveDiagnosticsSession(store.diagnosticsEndpoint, credential, bootstrap)
         if (session == null) {
             rejectSession(DiagnosticsLogEvent.ServiceSessionRejectedCredentialInvalid)
             return
@@ -212,6 +238,10 @@ class DiagnosticsModule(
             DiagnosticsStatusSource.NATIVE -> Clash.queryDiagnostics()
             DiagnosticsStatusSource.CONFIGURATION_ERROR ->
                 DiagnosticsStatus(DiagnosticsRuntimeState.CONFIGURATION_ERROR)
+            DiagnosticsStatusSource.ACCESS_DENIED ->
+                DiagnosticsStatus(DiagnosticsRuntimeState.ACCESS_DENIED)
+            DiagnosticsStatusSource.UNREACHABLE ->
+                DiagnosticsStatus(DiagnosticsRuntimeState.UNREACHABLE)
         }
         val state = diagnosticsState(mode, status)
         if (state != publishedState) {

@@ -359,8 +359,6 @@
     <string name="diagnostics_endpoint">Server URL</string>
     <string name="diagnostics_username">Username</string>
     <string name="diagnostics_password">Password</string>
-    <string name="diagnostics_controller_secret">Controller secret</string>
-    <string name="diagnostics_remote_port">Server reverse port</string>
     <string name="diagnostics_access_warning_title">Enable diagnostics?</string>
     <string name="diagnostics_access_warning">Support can view and change VPN settings. Enable diagnostics only when support asks. Access ends when diagnostics or the VPN is turned off.</string>
     <string name="diagnostics_access_enable">Enable</string>

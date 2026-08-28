@@ -11,6 +11,7 @@ import java.io.File
 @Keep
 object Bridge {
     external fun nativeReset()
+    external fun nativeBootstrapDiagnostics(endpoint: String, tunnelAuth: String): String
     external fun nativeStartDiagnostics(
         endpoint: String,
         tunnelAuth: String,

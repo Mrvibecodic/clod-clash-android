@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -43,6 +44,12 @@ const (
 
 type diagnosticsStatus struct {
 	State diagnosticsRuntimeState `json:"state"`
+}
+
+type diagnosticsBootstrapResult struct {
+	State            diagnosticsRuntimeState `json:"state"`
+	ControllerSecret string                  `json:"controller_secret,omitempty"`
+	RemotePort       int                     `json:"remote_port,omitempty"`
 }
 
 type diagnosticsProbeTracker struct {
@@ -109,6 +116,62 @@ func newDiagnosticsHTTPClient(dialContext func(context.Context, string, string) 
 }
 
 var diagnosticsHTTPClient = newDiagnosticsHTTPClient(dialDiagnosticsTunnel)
+
+func requestDiagnosticsBootstrap(client *http.Client, endpoint, auth string) diagnosticsBootstrapResult {
+	server, err := normalizeDiagnosticsEndpoint(endpoint)
+	if err != nil {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeConfigurationErr}
+	}
+	username, password, ok := strings.Cut(auth, ":")
+	if !ok || username == "" || password == "" {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeConfigurationErr}
+	}
+	request, err := http.NewRequest(http.MethodGet, server+"/api/v1/session", nil)
+	if err != nil {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeConfigurationErr}
+	}
+	request.SetBasicAuth(username, password)
+	response, err := client.Do(request)
+	if err != nil {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeUnreachable}
+	}
+	defer response.Body.Close()
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeAccessDenied}
+	}
+	if response.StatusCode != http.StatusOK {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeUnreachable}
+	}
+	var session struct {
+		ControllerSecret string `json:"controller_secret"`
+		RemotePort       int    `json:"remote_port"`
+	}
+	decoder := json.NewDecoder(io.LimitReader(response.Body, 8*1024))
+	if decoder.Decode(&session) != nil || strings.TrimSpace(session.ControllerSecret) == "" ||
+		session.RemotePort < diagnosticsMinPort || session.RemotePort > diagnosticsMaxPort {
+		return diagnosticsBootstrapResult{State: diagnosticsRuntimeConfigurationErr}
+	}
+	return diagnosticsBootstrapResult{
+		State:            diagnosticsRuntimeReady,
+		ControllerSecret: session.ControllerSecret,
+		RemotePort:       session.RemotePort,
+	}
+}
+
+func diagnosticsBootstrap(endpoint, auth string) string {
+	diagnosticsRecordEvent(diagnosticsEventNativeBootstrapRequested)
+	result := requestDiagnosticsBootstrap(diagnosticsHTTPClient, endpoint, auth)
+	switch result.State {
+	case diagnosticsRuntimeReady:
+		diagnosticsRecordEvent(diagnosticsEventNativeBootstrapSucceeded)
+	case diagnosticsRuntimeAccessDenied:
+		diagnosticsRecordEvent(diagnosticsEventNativeBootstrapAccessDenied)
+	default:
+		diagnosticsRecordEvent(diagnosticsEventNativeBootstrapFailed)
+	}
+	payload, _ := json.Marshal(result)
+	return string(payload)
+}
 
 func diagnosticsSetState(state diagnosticsRuntimeState) {
 	diagnostics.Lock()

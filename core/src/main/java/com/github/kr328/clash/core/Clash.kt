@@ -9,6 +9,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.jsonPrimitive
@@ -27,6 +28,13 @@ enum class DiagnosticsRuntimeState {
 @kotlinx.serialization.Serializable
 data class DiagnosticsStatus(
     val state: DiagnosticsRuntimeState,
+)
+
+@kotlinx.serialization.Serializable
+data class DiagnosticsBootstrap(
+    val state: DiagnosticsRuntimeState,
+    @SerialName("controller_secret") val controllerSecret: String = "",
+    @SerialName("remote_port") val remotePort: Int = 0,
 )
 
 private const val CONTROLLER_CONFIGURATION_SUCCEEDED = 0
@@ -53,6 +61,13 @@ object Clash {
             access.tunnelAuth,
             access.controllerSecret,
             access.remotePort,
+        )
+    }
+
+    fun bootstrapDiagnostics(endpoint: String, tunnelAuth: String): DiagnosticsBootstrap {
+        return CoreJson.decodeFromString(
+            DiagnosticsBootstrap.serializer(),
+            Bridge.nativeBootstrapDiagnostics(endpoint, tunnelAuth),
         )
     }
 

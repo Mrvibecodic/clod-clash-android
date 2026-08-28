@@ -1,5 +1,7 @@
 package com.github.kr328.clash.service.store
 
+import com.github.kr328.clash.core.DiagnosticsBootstrap
+import com.github.kr328.clash.core.DiagnosticsRuntimeState
 import com.github.kr328.clash.core.model.ExternalControllerAccess
 import com.github.kr328.clash.service.model.DiagnosticsSessionAccess
 import java.nio.charset.StandardCharsets
@@ -19,11 +21,10 @@ class DiagnosticsCipherTest {
             DiagnosticsCredential.create(
                 username = "operator",
                 password = "tunnel-secret",
-                controllerSecret = "controller-secret",
-                remotePort = 19091,
             ),
         )
-        val session = DiagnosticsSessionAccess.from(credential)
+        val bootstrap = DiagnosticsBootstrap(DiagnosticsRuntimeState.READY, "controller-secret", 19091)
+        val session = DiagnosticsSessionAccess.from(credential, bootstrap)
         val controller = session.controller as ExternalControllerAccess.Diagnostics
 
         assertEquals("controller-secret", controller.secret)
@@ -31,7 +32,7 @@ class DiagnosticsCipherTest {
         assertEquals("controller-secret", session.diagnostics?.controllerSecret)
         assertEquals(19091, session.diagnostics?.remotePort)
 
-        val local = DiagnosticsSessionAccess.from(null)
+        val local = DiagnosticsSessionAccess.from(null, null)
         assertTrue(local.controller === ExternalControllerAccess.LocalOnly)
         assertNull(local.diagnostics)
     }
@@ -41,31 +42,25 @@ class DiagnosticsCipherTest {
         val credential = DiagnosticsCredential.create(
             username = "operator",
             password = "tunnel:secret",
-            controllerSecret = "controller-secret",
-            remotePort = 19091,
         )
 
         requireNotNull(credential)
         assertEquals("operator:tunnel:secret", credential.chiselAuth)
-        assertEquals("controller-secret", credential.controllerSecret)
-        assertEquals(19091, credential.remotePort)
         assertEquals(credential, DiagnosticsCredential.decode(credential.encoded))
+        assertEquals(credential, DiagnosticsCredential.decode("v2\noperator\ntunnel:secret\nold-controller\n19091"))
         assertNull(DiagnosticsCredential.decode("operator:tunnel:secret"))
     }
 
     @Test
     fun `credential rejects incomplete values`() {
-        assertNull(DiagnosticsCredential.create("", "secret", "controller", 19091))
-        assertNull(DiagnosticsCredential.create("operator:name", "secret", "controller", 19091))
-        assertNull(DiagnosticsCredential.create("operator", "", "controller", 19091))
-        assertNull(DiagnosticsCredential.create("operator name", "secret", "controller", 19091))
-        assertNull(DiagnosticsCredential.create("operator", "line\nbreak", "controller", 19091))
-        assertNull(DiagnosticsCredential.create("operator", "пароль", "controller", 19091))
-        assertNull(DiagnosticsCredential.create("operator", "secret", "", 19091))
-        assertNull(DiagnosticsCredential.create("operator", "secret", "controller", 1023))
-        assertNull(DiagnosticsCredential.create("operator", "secret", "controller", 65536))
+        assertNull(DiagnosticsCredential.create("", "secret"))
+        assertNull(DiagnosticsCredential.create("operator:name", "secret"))
+        assertNull(DiagnosticsCredential.create("operator", ""))
+        assertNull(DiagnosticsCredential.create("operator name", "secret"))
+        assertNull(DiagnosticsCredential.create("operator", "line\nbreak"))
+        assertNull(DiagnosticsCredential.create("operator", "пароль"))
         assertNull(DiagnosticsCredential.decode("missing-separator"))
-        assertNull(DiagnosticsCredential.decode("v2\noperator\nsecret\ncontroller\nnot-a-port"))
+        assertNull(DiagnosticsCredential.decode("v2\noperator\nsecret"))
     }
 
     @Test

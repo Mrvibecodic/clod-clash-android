@@ -21,6 +21,19 @@ class NetworkSettingsDiagnosticsPlacementTest {
     }
 
     @Test
+    fun diagnosticsSettingsAcceptOnlyServerAndUserCredentials() {
+        val action = DiagnosticsSettingsAction.SaveDiagnosticsCredential(
+            endpoint = "https://example.com",
+            username = "alice",
+            password = "password",
+        )
+
+        assertEquals("https://example.com", action.endpoint)
+        assertEquals("alice", action.username)
+        assertEquals("password", action.password)
+    }
+
+    @Test
     fun networkSettingsOwnsToggleAndOpensCredentialScreen() {
         val state = NetworkSettingsState(
             diagnosticsEnabled = true,

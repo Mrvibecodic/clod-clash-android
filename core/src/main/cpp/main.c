@@ -49,6 +49,21 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeStartDiagnostics(JNIEnv *en
     startDiagnostics(_endpoint, _tunnel_auth, _controller_secret, remote_port);
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeBootstrapDiagnostics(JNIEnv *env, jobject thiz,
+                                                                          jstring endpoint,
+                                                                          jstring tunnel_auth) {
+    TRACE_METHOD();
+
+    if (endpoint == NULL || tunnel_auth == NULL)
+        return NULL;
+
+    scoped_string _endpoint = get_string(endpoint);
+    scoped_string _tunnel_auth = get_string(tunnel_auth);
+    scoped_string response = bootstrapDiagnostics(_endpoint, _tunnel_auth);
+    return new_string(response);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeStopDiagnostics(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();

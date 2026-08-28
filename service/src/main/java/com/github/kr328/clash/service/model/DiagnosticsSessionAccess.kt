@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.model
 
 import com.github.kr328.clash.core.model.DiagnosticsAccess
 import com.github.kr328.clash.core.model.ExternalControllerAccess
+import com.github.kr328.clash.core.DiagnosticsBootstrap
 import com.github.kr328.clash.service.store.DiagnosticsCredential
 
 internal class DiagnosticsSessionAccess private constructor(
@@ -9,16 +10,18 @@ internal class DiagnosticsSessionAccess private constructor(
     val diagnostics: DiagnosticsAccess?,
 ) {
     companion object {
-        fun from(credential: DiagnosticsCredential?): DiagnosticsSessionAccess {
-            if (credential == null) {
+        fun from(credential: DiagnosticsCredential?, bootstrap: DiagnosticsBootstrap?): DiagnosticsSessionAccess {
+            if (credential == null || bootstrap == null || bootstrap.controllerSecret.isBlank() ||
+                bootstrap.remotePort !in DiagnosticsAccess.MIN_REMOTE_PORT..DiagnosticsAccess.MAX_REMOTE_PORT
+            ) {
                 return DiagnosticsSessionAccess(ExternalControllerAccess.LocalOnly, null)
             }
             return DiagnosticsSessionAccess(
-                ExternalControllerAccess.Diagnostics(credential.controllerSecret),
+                ExternalControllerAccess.Diagnostics(bootstrap.controllerSecret),
                 DiagnosticsAccess(
                     credential.chiselAuth,
-                    credential.controllerSecret,
-                    credential.remotePort,
+                    bootstrap.controllerSecret,
+                    bootstrap.remotePort,
                 ),
             )
         }

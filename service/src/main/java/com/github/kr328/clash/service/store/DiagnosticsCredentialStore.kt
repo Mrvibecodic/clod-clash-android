@@ -4,7 +4,6 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import com.github.kr328.clash.core.model.DiagnosticsAccess
 import com.github.kr328.clash.service.DiagnosticsPreferenceProvider
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
@@ -21,42 +20,32 @@ internal fun initializeDiagnosticsEncryptionCipher(cipher: Cipher, key: SecretKe
 data class DiagnosticsCredential private constructor(
     val username: String,
     val password: String,
-    val controllerSecret: String,
-    val remotePort: Int,
 ) {
     val chiselAuth: String
         get() = "$username:$password"
 
     val encoded: String
-        get() = listOf(VERSION, username, password, controllerSecret, remotePort.toString())
+        get() = listOf(VERSION, username, password)
             .joinToString("\n")
 
     companion object {
-        private const val VERSION = "v2"
+        private const val VERSION = "v3"
 
         fun create(
             username: String,
             password: String,
-            controllerSecret: String,
-            remotePort: Int,
         ): DiagnosticsCredential? {
             if (!username.isDiagnosticsCredentialComponent() || ':' in username ||
-                !password.isDiagnosticsCredentialComponent() ||
-                !controllerSecret.isDiagnosticsCredentialComponent() ||
-                remotePort !in DiagnosticsAccess.MIN_REMOTE_PORT..DiagnosticsAccess.MAX_REMOTE_PORT
+                !password.isDiagnosticsCredentialComponent()
             ) return null
-            return DiagnosticsCredential(username, password, controllerSecret, remotePort)
+            return DiagnosticsCredential(username, password)
         }
 
         fun decode(value: String): DiagnosticsCredential? {
             val parts = value.split('\n')
-            if (parts.size != 5 || parts[0] != VERSION) return null
-            return create(
-                username = parts[1],
-                password = parts[2],
-                controllerSecret = parts[3],
-                remotePort = parts[4].toIntOrNull() ?: return null,
-            )
+            if (parts.size == 3 && parts[0] == VERSION) return create(parts[1], parts[2])
+            if (parts.size == 5 && parts[0] == "v2") return create(parts[1], parts[2])
+            return null
         }
     }
 }

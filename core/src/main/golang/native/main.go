@@ -63,6 +63,11 @@ func startDiagnostics(endpoint, tunnelAuth, controllerSecret C.c_string, remoteP
 	)
 }
 
+//export bootstrapDiagnostics
+func bootstrapDiagnostics(endpoint, tunnelAuth C.c_string) *C.char {
+	return C.CString(diagnosticsBootstrap(C.GoString(endpoint), C.GoString(tunnelAuth)))
+}
+
 //export stopDiagnostics
 func stopDiagnostics() {
 	diagnosticsStop()

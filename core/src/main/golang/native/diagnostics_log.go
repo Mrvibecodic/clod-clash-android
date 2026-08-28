@@ -22,6 +22,10 @@ const (
 	diagnosticsEventNativeStopRequested                 = 54
 	diagnosticsEventNativeStopCompleted                 = 55
 	diagnosticsEventNativeStopNoop                      = 56
+	diagnosticsEventNativeBootstrapRequested            = 67
+	diagnosticsEventNativeBootstrapSucceeded            = 68
+	diagnosticsEventNativeBootstrapAccessDenied         = 69
+	diagnosticsEventNativeBootstrapFailed               = 70
 )
 
 var diagnosticsEventPayloads = map[int]string{
@@ -91,6 +95,10 @@ var diagnosticsEventPayloads = map[int]string{
 	64: "event=service_pending_mode_applied result=success",
 	65: "event=ui_mode_command_store_failed result=failed reason=preferences_write_failed",
 	66: "event=service_mode_command_ack_failed result=failed reason=preferences_write_failed",
+	67: "event=native_bootstrap_requested result=requested",
+	68: "event=native_bootstrap_succeeded result=success",
+	69: "event=native_bootstrap_access_denied result=failed reason=access_denied",
+	70: "event=native_bootstrap_failed result=failed reason=bootstrap_failed",
 }
 
 func diagnosticsRecordEvent(code int) {

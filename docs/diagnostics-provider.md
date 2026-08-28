@@ -1,69 +1,73 @@
 # Diagnostics provider contract
 
-Clod Clash uses the official Chisel server as a transport. The Android client
-cannot enforce account isolation on that server, so a provider deployment MUST
-apply the following contract before issuing diagnostics credentials.
+Clod Clash uses the public
+[`krolbot/metacubexd-tunnel`](https://github.com/krolbot/metacubexd-tunnel)
+container for authenticated bootstrap, Chisel transport, MetaCubeXD and
+per-client controller routing.
 
-## One device, one account, one reverse port
+## Client credentials
 
 Issue every device its own:
 
-- Chisel username and password;
-- reverse TCP port in `1024..65535`;
-- Mihomo controller secret, distinct from the Chisel password.
+- username;
+- password.
 
-Do not reuse any of these values between devices. The reverse listener is
-always requested as:
+The app stores only these credentials in its Android Keystore-backed encrypted
+store. The server URL remains a separate user setting.
+
+On every diagnostics enable, the app authenticates to `GET /api/v1/session`.
+The server returns a persistent per-client reverse port and Controller secret.
+The app does not display or persist those generated values. It applies the
+Controller secret to the active loopback Mihomo controller and requests:
 
 ```text
-R:0.0.0.0:<assigned-port>:127.0.0.1:9090
+R:0.0.0.0:<server-assigned-port>:127.0.0.1:9090
 ```
 
-The Chisel server must run with `--reverse` and `--authfile`. Restrict each
-account to its assigned container listener using an anchored address regex:
+Bootstrap and Chisel use the same username/password. The server constrains the
+Chisel account to its assigned reverse listener.
 
-```json
-{
-  "device-example:[REPLACE_WITH_DEVICE_PASSWORD]": [
-    "^R:0[.]0[.]0[.]0:19091$"
-  ]
-}
+## Support access
+
+Support selects a client by username and obtains its generated Controller
+secret locally from the server runtime. MetaCubeXD connects to:
+
+```text
+https://<provider-host>/controller
 ```
 
-The regex is matched against Chisel's `Remote.UserAddr()`, which omits the
-client-side target. The app fixes that target to `127.0.0.1:9090`; the server
-ACL fixes the server-side bind address and port.
+with that Controller secret as Bearer authentication. The secret is for access
+to the selected phone's Mihomo controller; it is not the Chisel password.
 
-Never use a shared `--auth` credential, an empty allow regex, a wildcard
-reverse rule, or a host-published reverse port. Chisel and Caddy must share a
-Docker network; Caddy reaches the assigned listener by the Chisel container
-name and port. `0.0.0.0` is scoped to the Chisel container namespace,
-while the private Mihomo target remains fixed to `127.0.0.1:9090` on the phone.
-A provider route to MetaCubeXD must map only the intended device to its assigned
-container port.
+## Provider deployment
 
-## Public controller route
+Use the published image:
 
-The app verifies end-to-end readiness with an authenticated HTTPS request to
-`/controller/version`. The public route MUST therefore be path-scoped, protected
-by the provider's edge ACL and rate limit, and sent directly to the assigned
-Chisel container port:
+```text
+ghcr.io/krolbot/metacubexd-tunnel:latest
+```
+
+The container exposes one HTTP port containing:
+
+- Chisel WebSocket ingress;
+- authenticated bootstrap API;
+- MetaCubeXD UI;
+- per-client controller proxy.
+
+A reverse proxy therefore needs only one upstream:
 
 ```caddyfile
-handle_path /controller/* {
+support.example.com {
     import provider_ip_acl
     import provider_rate_limit
-    reverse_proxy metacubexd-tunnel:<assigned-port>
+    reverse_proxy metacubexd-tunnel:8080
 }
 ```
 
-Place this handler before the generic MetaCubeXD UI handler. Do not redirect the
-controller path, send it to another origin, or use a catch-all controller proxy.
-Keep Caddy's credential logging disabled: never enable `log_credentials`, and do
-not add an access-log field that records the `Authorization` request header. The
-app follows no redirects, verifies TLS, sends the controller secret only as a
-Bearer header, and exposes only ready/failed state to the UI.
+WebSocket forwarding must preserve `Sec-WebSocket-Protocol`. Do not log
+`Authorization`, the bootstrap response, usernames/passwords or Controller
+secrets.
 
-The full Mihomo controller API is available through an active route. Protect
-the provider route, disclose this access to the user, and remove the account
-and route when support access is revoked.
+The full Mihomo controller API is available while diagnostics is enabled.
+Protect the provider edge, disclose this access to the user, and remove the
+client account when support access is revoked.

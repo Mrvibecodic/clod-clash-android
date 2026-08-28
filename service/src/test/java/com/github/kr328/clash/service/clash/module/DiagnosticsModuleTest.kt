@@ -3,6 +3,7 @@ package com.github.kr328.clash.service.clash.module
 import com.github.kr328.clash.common.model.DiagnosticsLogEvent
 import com.github.kr328.clash.common.model.DiagnosticsMode
 import com.github.kr328.clash.common.model.DiagnosticsState
+import com.github.kr328.clash.core.DiagnosticsBootstrap
 import com.github.kr328.clash.core.DiagnosticsRuntimeState
 import com.github.kr328.clash.core.DiagnosticsStatus
 import com.github.kr328.clash.core.model.ExternalControllerAccess
@@ -54,14 +55,16 @@ class DiagnosticsModuleTest {
     @Test
     fun diagnosticsSessionUsesTheCredentialReadForEachEnable() {
         val first = requireNotNull(
-            DiagnosticsCredential.create("first", "first-password", "first-controller", 19091),
+            DiagnosticsCredential.create("first", "first-password"),
         )
         val second = requireNotNull(
-            DiagnosticsCredential.create("second", "second-password", "second-controller", 19092),
+            DiagnosticsCredential.create("second", "second-password"),
         )
+        val firstBootstrap = DiagnosticsBootstrap(DiagnosticsRuntimeState.READY, "first-controller", 19091)
+        val secondBootstrap = DiagnosticsBootstrap(DiagnosticsRuntimeState.READY, "second-controller", 19092)
 
-        val firstSession = requireNotNull(resolveDiagnosticsSession("https://example.com", first))
-        val secondSession = requireNotNull(resolveDiagnosticsSession("https://example.com", second))
+        val firstSession = requireNotNull(resolveDiagnosticsSession("https://example.com", first, firstBootstrap))
+        val secondSession = requireNotNull(resolveDiagnosticsSession("https://example.com", second, secondBootstrap))
 
         assertEquals("first:first-password", firstSession.access.tunnelAuth)
         assertEquals("second:second-password", secondSession.access.tunnelAuth)
@@ -74,7 +77,7 @@ class DiagnosticsModuleTest {
 
     @Test
     fun diagnosticsSessionRejectsMissingCredential() {
-        assertEquals(null, resolveDiagnosticsSession("https://example.com", null))
+        assertEquals(null, resolveDiagnosticsSession("https://example.com", null, null))
     }
 
     @Test
