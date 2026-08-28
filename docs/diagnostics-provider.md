@@ -1,7 +1,7 @@
 # Diagnostics provider contract
 
 Clod Clash uses the public
-[`krolbot/metacubexd-tunnel`](https://github.com/krolbot/metacubexd-tunnel)
+[`krolbot/mihomo-support-gateway`](https://github.com/krolbot/mihomo-support-gateway)
 container for authenticated bootstrap, Chisel transport, MetaCubeXD and
 per-client controller routing.
 
@@ -44,7 +44,7 @@ to the selected phone's Mihomo controller; it is not the Chisel password.
 Use the published image:
 
 ```text
-ghcr.io/krolbot/metacubexd-tunnel:latest
+ghcr.io/krolbot/mihomo-support-gateway:latest
 ```
 
 The container exposes one HTTP port containing:
@@ -60,7 +60,7 @@ A reverse proxy therefore needs only one upstream:
 support.example.com {
     import provider_ip_acl
     import provider_rate_limit
-    reverse_proxy metacubexd-tunnel:8080
+    reverse_proxy mihomo-support-gateway:8080
 }
 ```
 
