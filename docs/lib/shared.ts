@@ -11,6 +11,11 @@ export const gitConfig = {
   branch: 'main',
 };
 
+export const community = {
+  group: 'https://t.me/+2lmP1yhxpCE3MDcy',
+  chat: 'https://t.me/+8BJQXYXYLqM4YWYy',
+};
+
 export const siteOrigin = `https://${gitConfig.user.toLowerCase()}.github.io`;
 export const siteUrl = `${siteOrigin}${basePath}`;
 export const promoUrl = `${basePath}/promo.png`;

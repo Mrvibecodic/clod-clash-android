@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
-import { basePath } from '@/lib/shared';
+import { basePath, community } from '@/lib/shared';
 
 const copy = {
   ru: {
@@ -10,6 +10,10 @@ const copy = {
       'приходят из вашей подписки, туннель поднимается одной кнопкой.',
     docs: 'Документация',
     download: 'Скачать APK',
+    group: 'Telegram-группа',
+    groupNote: '— новости и релизы',
+    chat: 'Telegram-чат',
+    chatNote: '— помощь и обсуждение',
     shot: 'ru/connected.png',
     shotAlt: 'Главный экран приложения в подключённом состоянии',
     points: [
@@ -25,6 +29,10 @@ const copy = {
       'from your subscription, and the tunnel starts with a single button.',
     docs: 'Documentation',
     download: 'Download APK',
+    group: 'Telegram group',
+    groupNote: '— news and releases',
+    chat: 'Telegram chat',
+    chatNote: '— help and discussion',
     shot: 'en/connected.png',
     shotAlt: 'The app home screen while connected',
     points: [
@@ -62,6 +70,23 @@ export default async function HomePage({ params }: PageProps<'/[lang]'>) {
             >
               {text.download}
             </Link>
+          </div>
+          <div className="flex flex-row flex-wrap justify-center gap-x-2 gap-y-1 text-sm text-fd-muted-foreground md:justify-start">
+            <a
+              href={community.group}
+              className="font-medium text-fd-foreground underline underline-offset-4"
+            >
+              {text.group}
+            </a>
+            <span>{text.groupNote}</span>
+            <span aria-hidden>·</span>
+            <a
+              href={community.chat}
+              className="font-medium text-fd-foreground underline underline-offset-4"
+            >
+              {text.chat}
+            </a>
+            <span>{text.chatNote}</span>
           </div>
         </div>
         <img

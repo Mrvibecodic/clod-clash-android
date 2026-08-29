@@ -5,6 +5,9 @@
 
 Опубликованная версия: <https://mrvibecodic.github.io/clod-clash-android/>
 
+Ссылки на Telegram-группу и чат живут в `lib/shared.ts` (`community`) — правятся там,
+а шапка сайта и главная берут их оттуда.
+
 ## Локальный запуск
 
 ```bash
