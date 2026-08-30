@@ -1,7 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
 import android.text.format.DateFormat
-import android.text.format.Formatter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -57,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
@@ -230,7 +230,6 @@ private fun SubscriptionCard(
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
-    val context = LocalContext.current
     val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
@@ -379,10 +378,9 @@ private fun SubscriptionCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = if (profile.total > 0) {
-                            "${Formatter.formatShortFileSize(context, used)} / " +
-                                Formatter.formatShortFileSize(context, profile.total)
+                            used.toBytesString() + " / " + profile.total.toBytesString()
                         } else {
-                            Formatter.formatShortFileSize(context, used) + " · " +
+                            used.toBytesString() + " · " +
                                 stringResource(R.string.clod_sub_unlimited)
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -430,7 +428,6 @@ fun ActiveSubscriptionCard(
     if (!critical) return
     if (profile.total <= 0L && profile.expire <= 0L) return
 
-    val context = LocalContext.current
     val used = profile.usedTraffic()
     val panel = item.panel
 
@@ -465,10 +462,9 @@ fun ActiveSubscriptionCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (profile.total > 0) {
-                        "${Formatter.formatShortFileSize(context, used)} / " +
-                            Formatter.formatShortFileSize(context, profile.total)
+                        used.toBytesString() + " / " + profile.total.toBytesString()
                     } else {
-                        Formatter.formatShortFileSize(context, used) + " · " +
+                        used.toBytesString() + " · " +
                             stringResource(R.string.clod_sub_unlimited)
                     },
                     style = MaterialTheme.typography.bodyMedium,

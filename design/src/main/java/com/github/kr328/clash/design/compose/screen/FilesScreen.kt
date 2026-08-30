@@ -30,11 +30,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.model.File
 import com.github.kr328.clash.design.util.elapsedIntervalString
-import com.github.kr328.clash.design.util.toBytesString
 import kotlinx.coroutines.launch
 
 @Immutable

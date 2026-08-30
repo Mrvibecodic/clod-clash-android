@@ -1,7 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
 import android.content.res.Configuration
-import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -82,7 +81,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
+import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
@@ -614,7 +613,6 @@ private fun MainHeader(
 
 @Composable
 private fun SubscriptionSummary(item: SubscriptionItem) {
-    val context = LocalContext.current
     val profile = item.profile
     val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
     val status = subscriptionState(profile, now)
@@ -623,10 +621,9 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
     val label = status.label()
     val daysText = expiryLeft(profile.expire, now)
     val trafficText = when {
-        profile.total > 0 -> Formatter.formatShortFileSize(context, used) + " / " +
-            Formatter.formatShortFileSize(context, profile.total)
+        profile.total > 0 -> used.toBytesString() + " / " + profile.total.toBytesString()
 
-        used > 0 -> Formatter.formatShortFileSize(context, used)
+        used > 0 -> used.toBytesString()
         else -> null
     }
 
@@ -734,7 +731,6 @@ private fun QuotaCards(item: SubscriptionItem) {
     if (subscriptionState(profile, now) != SubscriptionState.Active) return
     if (profile.total <= 0L && profile.expire <= 0L) return
 
-    val context = LocalContext.current
     val used = profile.usedTraffic()
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -743,12 +739,11 @@ private fun QuotaCards(item: SubscriptionItem) {
 
             QuotaCard(
                 label = stringResource(R.string.clod_quota_traffic),
-                value = Formatter.formatShortFileSize(context, used) + " / " +
-                    Formatter.formatShortFileSize(context, profile.total),
+                value = used.toBytesString() + " / " + profile.total.toBytesString(),
                 progress = (used.toFloat() / profile.total).coerceIn(0f, 1f),
                 note = stringResource(
                     R.string.clod_quota_left,
-                    Formatter.formatShortFileSize(context, left),
+                    left.toBytesString(),
                 ),
                 modifier = Modifier.weight(1f),
             )

@@ -1,7 +1,6 @@
 package com.github.kr328.clash.core.util
 
 import com.github.kr328.clash.core.model.Traffic
-import java.util.Locale
 
 fun Traffic.bytesUpload(): Long {
     return bytesTraffic(this ushr 32)
@@ -12,43 +11,15 @@ fun Traffic.bytesDownload(): Long {
 }
 
 fun Traffic.trafficUpload(): String {
-    return trafficString(scaleTraffic(this ushr 32))
+    return bytesUpload().toBytesString()
 }
 
 fun Traffic.trafficDownload(): String {
-    return trafficString(scaleTraffic(this and 0xFFFFFFFF))
+    return bytesDownload().toBytesString()
 }
 
 fun Traffic.trafficTotal(): String {
-    val upload = scaleTraffic(this ushr 32)
-    val download = scaleTraffic(this and 0xFFFFFFFF)
-
-    return trafficString(upload + download)
-}
-
-private fun trafficString(scaled: Long): String {
-    val locale = Locale.getDefault()
-
-    return when {
-        scaled > 1024 * 1024 * 1024 * 100L -> {
-            val data = scaled / 1024 / 1024 / 1024
-
-            String.format(locale, "%.2f GiB", data.toFloat() / 100)
-        }
-        scaled > 1024 * 1024 * 100L -> {
-            val data = scaled / 1024 / 1024
-
-            String.format(locale, "%.2f MiB", data.toFloat() / 100)
-        }
-        scaled > 1024 * 100L -> {
-            val data = scaled / 1024
-
-            String.format(locale, "%.2f KiB", data.toFloat() / 100)
-        }
-        else -> {
-            "$scaled Bytes"
-        }
-    }
+    return (bytesUpload() + bytesDownload()).toBytesString()
 }
 
 private fun bytesTraffic(value: Long): Long {

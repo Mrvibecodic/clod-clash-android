@@ -37,7 +37,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 private const val DAY_MILLIS = 24 * 60 * 60 * 1000L
-private const val GIGABYTE = 1000L * 1000 * 1000
+private const val GIGABYTE = 1024L * 1024 * 1024
 
 class DemoContent(
     val subscription: String,
@@ -56,8 +56,8 @@ private val russian = DemoContent(
         "Швеция 04" to "Стокгольм",
         "Франция 05" to "Париж",
     ),
-    downloaded = "1,4 ГБ",
-    uploaded = "212 МБ",
+    downloaded = "1.40 GiB",
+    uploaded = "212 MiB",
 )
 
 private val english = DemoContent(
@@ -69,8 +69,8 @@ private val english = DemoContent(
         "Sweden 04" to "Stockholm",
         "France 05" to "Paris",
     ),
-    downloaded = "1.4 GB",
-    uploaded = "212 MB",
+    downloaded = "1.40 GiB",
+    uploaded = "212 MiB",
 )
 
 @RunWith(RobolectricTestRunner::class)

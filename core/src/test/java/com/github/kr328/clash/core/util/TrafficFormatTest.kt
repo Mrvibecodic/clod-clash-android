@@ -45,7 +45,7 @@ class TrafficFormatTest {
     @Test
     fun `сотые доли не теряются`() {
         assertEquals("1.50 MiB", packed(scaled(2, 150), 0).trafficUpload())
-        assertEquals("12.34 GiB", packed(scaled(3, 1234), 0).trafficUpload())
+        assertEquals("12.3 GiB", packed(scaled(3, 1234), 0).trafficUpload())
     }
 
     @Test
@@ -60,14 +60,14 @@ class TrafficFormatTest {
     fun `итог складывает обе половины до перевода в строку`() {
         val traffic = packed(upload = scaled(2, 500), download = scaled(2, 700))
 
-        assertEquals("12.00 MiB", traffic.trafficTotal())
+        assertEquals("12.0 MiB", traffic.trafficTotal())
     }
 
     @Test
     fun `итог поднимается на единицу выше, когда половины складываются`() {
         val traffic = packed(upload = scaled(3, 600), download = scaled(3, 600))
 
-        assertEquals("12.00 GiB", traffic.trafficTotal())
+        assertEquals("12.0 GiB", traffic.trafficTotal())
     }
 
     @Test
@@ -75,12 +75,35 @@ class TrafficFormatTest {
         val traffic = packed(upload = scaled(0, 1), download = scaled(3, 1000))
 
         assertEquals("1 Bytes", traffic.trafficUpload())
-        assertEquals("10.00 GiB", traffic.trafficDownload())
+        assertEquals("10.0 GiB", traffic.trafficDownload())
     }
 
     @Test
-    fun `ровно единица измерения пока показывается байтами`() {
-        assertEquals("102400 Bytes", packed(scaled(1, 100), 0).trafficUpload())
+    fun `ровно единица измерения показывается своей единицей`() {
+        assertEquals("1.00 KiB", packed(scaled(1, 100), 0).trafficUpload())
+        assertEquals("1.00 MiB", packed(scaled(2, 100), 0).trafficUpload())
+        assertEquals("1.00 GiB", packed(scaled(3, 100), 0).trafficUpload())
+    }
+
+    @Test
+    fun `код гигабайта не запирает показ на гигабайтах`() {
+        assertEquals("1.00 TiB", packed(scaled(3, 102400), 0).trafficUpload())
+        assertEquals("1.01 TiB", packed(scaled(3, 103500), 0).trafficUpload())
+        assertEquals("1.00 PiB", packed(scaled(3, 104857600), 0).trafficUpload())
+    }
+
+    @Test
+    fun `уведомление и главный экран форматируют одно и то же`() {
+        val samples = listOf(
+            packed(scaled(0, 512), scaled(0, 1)),
+            packed(scaled(1, 100), scaled(2, 150)),
+            packed(scaled(3, 1234), scaled(3, 102400)),
+        )
+
+        for (traffic in samples) {
+            assertEquals(traffic.bytesUpload().toBytesString(), traffic.trafficUpload())
+            assertEquals(traffic.bytesDownload().toBytesString(), traffic.trafficDownload())
+        }
     }
 
     @Test

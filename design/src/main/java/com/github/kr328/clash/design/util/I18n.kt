@@ -43,32 +43,3 @@ fun Date.format(
         else -> ""
     }
 }
-
-fun Long.toBytesString(): String {
-    val locale = Locale.getDefault()
-
-    return when {
-        this > 1024.0 * 1024 * 1024 * 1024 * 1024 * 1024 ->
-            String.format(
-                locale,
-                "%.2f EiB",
-                (this.toDouble() / 1024 / 1024 / 1024 / 1024 / 1024 / 1024),
-            )
-        this > 1024.0 * 1024 * 1024 * 1024 * 1024 ->
-            String.format(
-                locale,
-                "%.2f PiB",
-                (this.toDouble() / 1024 / 1024 / 1024 / 1024 / 1024),
-            )
-        this > 1024.0 * 1024 * 1024 * 1024 ->
-            String.format(locale, "%.2f TiB", (this.toDouble() / 1024 / 1024 / 1024 / 1024))
-        this > 1024 * 1024 * 1024 ->
-            String.format(locale, "%.2f GiB", (this.toDouble() / 1024 / 1024 / 1024))
-        this > 1024 * 1024 ->
-            String.format(locale, "%.2f MiB", (this.toDouble() / 1024 / 1024))
-        this > 1024 ->
-            String.format(locale, "%.2f KiB", (this.toDouble() / 1024))
-        else ->
-            "$this Bytes"
-    }
-}
