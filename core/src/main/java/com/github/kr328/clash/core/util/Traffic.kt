@@ -4,11 +4,11 @@ import com.github.kr328.clash.core.model.Traffic
 import java.util.Locale
 
 fun Traffic.bytesUpload(): Long {
-    return scaleTraffic(this ushr 32)
+    return bytesTraffic(this ushr 32)
 }
 
 fun Traffic.bytesDownload(): Long {
-    return scaleTraffic(this and 0xFFFFFFFF)
+    return bytesTraffic(this and 0xFFFFFFFF)
 }
 
 fun Traffic.trafficUpload(): String {
@@ -49,6 +49,12 @@ private fun trafficString(scaled: Long): String {
             "$scaled Bytes"
         }
     }
+}
+
+private fun bytesTraffic(value: Long): Long {
+    val scaled = scaleTraffic(value)
+
+    return if (((value ushr 30) and 0x3) == 0L) scaled else scaled / 100
 }
 
 private fun scaleTraffic(value: Long): Long {

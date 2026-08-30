@@ -82,4 +82,25 @@ class TrafficFormatTest {
     fun `ровно единица измерения пока показывается байтами`() {
         assertEquals("102400 Bytes", packed(scaled(1, 100), 0).trafficUpload())
     }
+
+    @Test
+    fun `байты отдаются настоящими, а не сотыми долями`() {
+        assertEquals(5L * 1024 * 1024 * 1024, packed(scaled(3, 500), 0).bytesUpload())
+        assertEquals(1536L * 1024, packed(scaled(2, 150), 0).bytesUpload())
+        assertEquals(5L * 1024, packed(scaled(1, 500), 0).bytesUpload())
+    }
+
+    @Test
+    fun `меньше килобайта отдаётся как есть`() {
+        assertEquals(512L, packed(scaled(0, 512), 0).bytesUpload())
+        assertEquals(0L, packed(scaled(0, 0), 0).bytesUpload())
+    }
+
+    @Test
+    fun `половины байтов не перетекают друг в друга`() {
+        val traffic = packed(upload = scaled(3, 500), download = scaled(1, 250))
+
+        assertEquals(5L * 1024 * 1024 * 1024, traffic.bytesUpload())
+        assertEquals(2560L, traffic.bytesDownload())
+    }
 }
