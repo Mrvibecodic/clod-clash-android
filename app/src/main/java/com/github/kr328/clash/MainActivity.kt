@@ -153,7 +153,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.fetchReliability()
 
-                            if (clashRunning && proxyGroupNames.isNotEmpty() &&
+                            if (design.selectedTab == MainTab.Servers && clashRunning &&
+                                proxyGroupNames.isNotEmpty() &&
                                 SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
                             ) {
                                 launch { design.runHealthCheck(manual = false) }
@@ -228,7 +229,16 @@ class MainActivity : BaseActivity<MainDesign>() {
                             else
                                 design.startClash()
                         }
-                        MainDesign.Request.ReloadProxies -> design.reloadProxyGroups()
+                        MainDesign.Request.ReloadProxies -> {
+                            val started = design.reloadProxyGroups()
+
+                            if (!started && clashRunning && offlineGroups.isEmpty() &&
+                                proxyGroupNames.isNotEmpty() &&
+                                SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
+                            ) {
+                                launch { design.runHealthCheck(manual = false) }
+                            }
+                        }
                         is MainDesign.Request.ReloadGroup ->
                             design.reloadProxyGroup(request.index)
                         is MainDesign.Request.SelectProxy -> {
@@ -489,8 +499,10 @@ class MainActivity : BaseActivity<MainDesign>() {
                 }
                 if (clashRunning && activityStarted) {
                     ticker.onReceive {
-                        design.fetchTraffic()
-                        design.fetchSession()
+                        if (design.selectedTab == MainTab.Home) {
+                            design.fetchTraffic()
+                            design.fetchSession()
+                        }
 
                         ProfileUpdates.prune()
 
@@ -569,8 +581,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var iconGroups: Pair<UUID?, List<String>>? = null
 
+    @Volatile
     private var healthChecking = false
 
+    @Volatile
     private var healthCheckRequested = false
 
     private var lastHealthCheckAt: Long
@@ -597,7 +611,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var serversReadOnly: Boolean = false
 
-    private suspend fun MainDesign.reloadProxyGroups() {
+    private suspend fun MainDesign.reloadProxyGroups(): Boolean {
         val names = if (clashRunning) withClash { queryProxyGroupNames(true) } else emptyList()
 
         if (names.isEmpty()) {
@@ -606,7 +620,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             loadOfflineProxyGroups(readOnly = direct)
 
-            return
+            return false
         }
 
         proxyGroupNames = names
@@ -619,23 +633,27 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         reloadProxyGroup(selectedGroup)
 
-        if (names != healthCheckedGroups) {
+        if (names != healthCheckedGroups && activityStarted) {
             healthCheckedGroups = names
 
             launch { runHealthCheck(manual = false) }
+
+            return true
         }
+
+        return false
     }
 
     private suspend fun MainDesign.runHealthCheck(manual: Boolean) {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
-
-        lastHealthCheckAt = SystemClock.elapsedRealtime()
 
         if (healthChecking) {
             healthCheckRequested = true
 
             return
         }
+
+        lastHealthCheckAt = SystemClock.elapsedRealtime()
 
         if (offlineGroups.isNotEmpty()) {
             healthChecking = true

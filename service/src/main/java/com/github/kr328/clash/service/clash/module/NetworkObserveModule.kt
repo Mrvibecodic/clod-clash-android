@@ -75,6 +75,12 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
     @Volatile
     private var recoverScheduled = false
 
+    @Volatile
+    private var recoverForce = false
+
+    @Volatile
+    private var lastProbeAt = Long.MIN_VALUE / 2
+
     private var idleTicks = 0
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
@@ -230,15 +236,31 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
 
         if (isInteractive() || store.keepAwake) {
-            Clash.probeCurrentNodes()
+            probeNodes()
 
-            scheduleRecover(scope)
+            scheduleRecover(scope, force = true)
         } else {
             probePending = true
         }
     }
 
-    private fun scheduleRecover(scope: CoroutineScope) {
+    private fun probeNodes() {
+        val now = SystemClock.elapsedRealtime()
+
+        if (now - lastProbeAt < PROBE_MIN_GAP_MS) {
+            return
+        }
+
+        lastProbeAt = now
+
+        Clash.probeCurrentNodes()
+    }
+
+    private fun scheduleRecover(scope: CoroutineScope, force: Boolean) {
+        if (force) {
+            recoverForce = true
+        }
+
         if (recoverScheduled) {
             return
         }
@@ -250,8 +272,12 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             recoverScheduled = false
 
+            val forced = recoverForce
+
+            recoverForce = false
+
             if (isInteractive() || store.keepAwake) {
-                Clash.recoverDeadNodes(true)
+                Clash.recoverDeadNodes(forced)
             }
         }
     }
@@ -310,9 +336,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
                             if (SystemClock.elapsedRealtime() - lastResetAt >= RESET_THROTTLE_MS) {
                                 if (isInteractive() || store.keepAwake) {
-                                    Clash.probeCurrentNodes()
+                                    probeNodes()
 
-                                    scheduleRecover(scope)
+                                    scheduleRecover(scope, force = true)
                                 } else {
                                     probePending = true
                                 }
@@ -324,20 +350,22 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
                                 Log.i("NetworkObserve deferred probe after screen on")
 
-                                Clash.probeCurrentNodes()
-                            }
+                                probeNodes()
 
-                            Clash.recoverDeadNodes(false)
+                                scheduleRecover(scope, force = false)
+                            }
                         }
                         probeTicker.onReceive {
-                            if (isInteractive() || store.keepAwake) {
+                            val ticksPerProbe = when {
+                                isInteractive() -> 1
+                                store.keepAwake -> IDLE_TICKS_PER_PROBE_KEEP_AWAKE
+                                else -> IDLE_TICKS_PER_PROBE
+                            }
+
+                            if (++idleTicks >= ticksPerProbe) {
                                 idleTicks = 0
 
-                                Clash.probeCurrentNodes()
-                            } else if (++idleTicks >= IDLE_TICKS_PER_PROBE) {
-                                idleTicks = 0
-
-                                Clash.probeCurrentNodes()
+                                probeNodes()
                             }
                         }
                     }
@@ -361,6 +389,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         private const val PROBE_TICK_MS = 300_000L
 
         private const val IDLE_TICKS_PER_PROBE = 3
+
+        private const val IDLE_TICKS_PER_PROBE_KEEP_AWAKE = 2
+
+        private const val PROBE_MIN_GAP_MS = 3_000L
 
         private const val REGISTER_ATTEMPTS = 3
 
