@@ -107,16 +107,8 @@ subprojects {
                 isDefault = true
                 dimension = flavorDimensionList[0]
 
-                buildConfigField("boolean", "PREMIUM", "Boolean.parseBoolean(\"false\")")
-
                 resValue("string", "launch_name", "Clod Clash")
                 resValue("string", "application_name", "Clod Clash")
-            }
-        }
-
-        sourceSets {
-            getByName("standard") {
-                java.srcDirs("src/foss/java")
             }
         }
 

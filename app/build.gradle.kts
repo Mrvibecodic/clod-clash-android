@@ -6,22 +6,20 @@ import java.security.MessageDigest
 
 plugins {
     kotlin("android")
-    id("org.jetbrains.kotlin.plugin.compose")
     id("com.android.application")
     id("kotlinx-serialization")
 }
 
 android {
-    buildFeatures {
-        compose = true
-    }
-
     androidResources {
         localeFilters += listOf("en", "ru")
     }
 }
 
 dependencies {
+    // Заглушка скрытого API нужна и здесь: `common` зовёт `ActivityThread` из
+    // getCurrentProcessName, а подключён модуль compileOnly — без него R8 в
+    // релизной сборке падает на отсутствующем классе.
     compileOnly(project(":hideapi"))
 
     implementation(project(":core"))
@@ -33,18 +31,8 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.appcompat)
-    implementation(libs.google.material)
     implementation(libs.quickie.bundled)
-    implementation(libs.androidx.activity.ktx)
     implementation(libs.kotlin.serialization.json)
-
-    val composeBom = platform(libs.androidx.compose.bom)
-    implementation(composeBom)
-    implementation(libs.androidx.compose.runtime)
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
 }
 
 val geoFilesDownloadDir = "src/main/assets"
