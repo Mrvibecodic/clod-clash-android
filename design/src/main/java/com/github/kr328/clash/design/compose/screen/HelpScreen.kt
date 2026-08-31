@@ -61,7 +61,7 @@ fun HelpScreen(
                 onAction = onAction,
             )
             LinkRow(
-                title = stringResource(R.string.clash_meta_for_android),
+                title = stringResource(R.string.application_name),
                 url = stringResource(R.string.meta_github_url),
                 onAction = onAction,
             )

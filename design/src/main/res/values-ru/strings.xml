@@ -1,6 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
     <string name="tap_to_start">Нажмите для запуска</string>
-    <string name="running">Запущен</string>
 
     <string name="proxy">Прокси</string>
     <string name="direct_mode">Прямой режим</string>
@@ -61,7 +60,6 @@
     <string name="disabled">Отключен</string>
     <string name="empty_name">Пустое название</string>
     <string name="invalid_url">Неверный URL</string>
-    <string name="loading">Загрузка</string>
 
     <string name="format_fetching_configuration">Загрузка настроек из \'%s\'</string>
     <string name="format_fetching_provider">Загрузка провайдера из \'%s\'</string>
@@ -172,8 +170,6 @@
     <string name="select_none">Отменить выделение</string>
     <string name="import_from_clipboard">Импорт из буфера обмена</string>
     <string name="export_to_clipboard">Экспорт в буфер обмена</string>
-
-    <string name="clash_meta_for_android">Clod Clash</string>
 
     <string name="document">Документация</string>
     <string name="sources">Исходный код</string>

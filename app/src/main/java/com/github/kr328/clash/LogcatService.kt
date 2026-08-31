@@ -155,7 +155,7 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
             .setSmallIcon(com.github.kr328.clash.service.R.drawable.ic_logo_service)
             .setColor(getColorCompat(com.github.kr328.clash.service.R.color.color_clash))
             .setContentTitle(getString(com.github.kr328.clash.design.R.string.clash_logcat))
-            .setContentText(getString(com.github.kr328.clash.design.R.string.running))
+            .setContentText(getString(com.github.kr328.clash.service.R.string.running))
             .setContentIntent(
                 PendingIntent.getActivity(
                     this,

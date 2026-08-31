@@ -13,8 +13,8 @@
     <string name="update_failure">Не удалось обновить</string>
     <string name="format_update_complete">Обновление %s завершено</string>
     <string name="format_update_failure">Обновление %1$s: %2$s</string>
-    <string name="running">Работает</string>
-    <string name="loading">Загружается</string>
+    <string name="running">Запущен</string>
+    <string name="loading">Загрузка</string>
     <string name="clash_meta_for_android">Clod Clash</string>
     <string name="profiles_and_providers">Профили и провайдеры</string>
     <string name="configuration_yaml">Configuration.yaml</string>

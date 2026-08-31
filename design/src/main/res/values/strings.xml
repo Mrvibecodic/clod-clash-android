@@ -1,7 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
 
     <string name="tap_to_start">Tap to start</string>
-    <string name="running">Running</string>
 
     <string name="proxy">Proxy</string>
     <string name="direct_mode">Direct Mode</string>
@@ -63,7 +62,6 @@
     <string name="disabled">Disabled</string>
     <string name="empty_name">Empty Name</string>
     <string name="invalid_url">Invalid URL</string>
-    <string name="loading">Loading</string>
 
     <string name="format_fetching_configuration">Fetching configuration from \'%s\'</string>
     <string name="format_fetching_provider">Fetching provider \'%s\'</string>
@@ -186,8 +184,6 @@
     <string name="select_none">Select None</string>
     <string name="import_from_clipboard">Import from Clipboard</string>
     <string name="export_to_clipboard">Export to Clipboard</string>
-
-    <string name="clash_meta_for_android">Clod Clash</string>
 
     <string name="document">Documentation</string>
     <string name="sources">Sources</string>
