@@ -19,6 +19,7 @@ multiprocess = "1.0.0"
 quickie = "1.11.0"
 composeBom = "2026.06.01"
 activityCompose = "1.10.1"
+lifecycle = "2.10.0"
 
 [libraries]
 build-r8 = { module = "com.android.tools:r8", version.ref = "r8" }
@@ -33,6 +34,7 @@ kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializat
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 google-material = { module = "com.google.android.material:material", version.ref = "material" }

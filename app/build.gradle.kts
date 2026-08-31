@@ -31,6 +31,10 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.appcompat)
+    // Приложение работает с Lifecycle напрямую (LifecycleRegistry в util/Activity.kt,
+    // lifecycleScope в мастерах профиля), поэтому зависимость объявлена явно, а не
+    // подобрана транзитивно: иначе её версия зависит от того, кто ещё в графе.
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.quickie.bundled)
     implementation(libs.kotlin.serialization.json)
 }
