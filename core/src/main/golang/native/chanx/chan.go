@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
@@ -274,5 +273,3 @@ func abs(v int64) int64 {
 	}
 	return v
 }
-
-func Now() int64 { return time.Now().Unix() }

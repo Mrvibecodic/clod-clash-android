@@ -11,13 +11,6 @@ type (
 	PanelGroup = panel.Group
 )
 
-const (
-	HwidUnknown      = panel.HwidUnknown
-	HwidActive       = panel.HwidActive
-	HwidLimitReached = panel.HwidLimitReached
-	HwidNotSupported = panel.HwidNotSupported
-)
-
 func readPanelInfo(dir string) PanelInfo {
 	return panel.Read(dir)
 }

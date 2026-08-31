@@ -11,7 +11,6 @@ import android.content.Context
 import android.os.SystemClock
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log

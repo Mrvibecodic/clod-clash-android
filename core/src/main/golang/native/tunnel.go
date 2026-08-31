@@ -81,11 +81,6 @@ func testProfileDelays(path C.c_string) *C.char {
 	return marshalJson(tunnel.TestProfileDelays(C.GoString(path)))
 }
 
-//export healthCheckAll
-func healthCheckAll() {
-	tunnel.HealthCheckAll()
-}
-
 //export notifyNetworkChanged
 func notifyNetworkChanged(closeConnections C.int) {
 	tunnel.OnNetworkChanged(closeConnections != 0)

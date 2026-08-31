@@ -76,9 +76,6 @@ data class ConfigurationOverride(
 
     @SerialName("sniffer")
     val sniffer: Sniffer = Sniffer(),
-
-    @SerialName("geox-url")
-    val geoxurl: GeoXUrl = GeoXUrl(),
 ) : Parcelable {
     @Serializable
     data class Dns(
@@ -205,18 +202,6 @@ data class ConfigurationOverride(
 
         @SerialName("skip-dst-address")
         var skipDstAddress: List<String>? = null,
-    )
-
-    @Serializable
-    data class GeoXUrl(
-        @SerialName("geoip")
-        var geoip: String? = null,
-
-        @SerialName("mmdb")
-        var mmdb: String? = null,
-
-        @SerialName("geosite")
-        var geosite: String? = null,
     )
 
     @Serializable

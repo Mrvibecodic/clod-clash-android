@@ -419,11 +419,3 @@ func RecoverDeadNodes(force bool) {
 
 	log.Infoln("Recover dead nodes: %d of %d revived", revived.Load(), len(targets))
 }
-
-func HealthCheckAll() {
-	for _, g := range QueryProxyGroupNames(false) {
-		go func(group string) {
-			HealthCheck(group)
-		}(g)
-	}
-}

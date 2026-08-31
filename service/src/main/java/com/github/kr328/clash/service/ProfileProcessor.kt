@@ -22,7 +22,6 @@ import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.readPanelInfo
 import com.github.kr328.clash.service.util.sendProfileChanged
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

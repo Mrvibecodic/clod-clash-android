@@ -229,14 +229,6 @@ class MainDesign(
         }
     }
 
-    suspend fun setUpdateProgress(progress: Float) {
-        withContext(Dispatchers.Main) {
-            state = state.copy(
-                update = state.update?.copy(downloading = true, progress = progress),
-            )
-        }
-    }
-
     suspend fun setSessionSeconds(seconds: Long) {
         withContext(Dispatchers.Main) {
             state = state.copy(sessionSeconds = seconds)

@@ -37,10 +37,6 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryGroup(name, proxySort)
     }
 
-    override fun queryConfiguration(): UiConfiguration {
-        return Clash.queryConfiguration()
-    }
-
     override fun queryProviders(): ProviderList {
         return ProviderList(Clash.queryProviders())
     }

@@ -26,7 +26,6 @@ object Bridge {
     external fun nativeQueryGroupNames(excludeNotSelectable: Boolean): String
     external fun nativeQueryGroup(name: String, sort: String): String?
     external fun nativeHealthCheck(completable: CompletableDeferred<Unit>, name: String)
-    external fun nativeHealthCheckAll()
     external fun nativeNotifyNetworkChanged(closeConnections: Boolean)
     external fun nativeProbeCurrentNodes()
     external fun nativeRecoverDeadNodes(force: Boolean)
@@ -53,16 +52,10 @@ object Bridge {
     external fun nativeReadOverride(slot: Int): String
     external fun nativeWriteOverride(slot: Int, content: String)
     external fun nativeClearOverride(slot: Int)
-    external fun nativeQueryConfiguration(): String
     external fun nativeSubscribeLogcat(callback: LogcatInterface)
     external fun nativeCoreVersion(): String
 
     external fun nativeSetAgeSecretKey(key: String?)
-    external fun nativeGenX25519KeyPair(): String?
-    external fun nativeGenHybridKeyPair(): String?
-    external fun nativeVeritySecretKeys(secretKeys: String): Boolean
-    external fun nativeToPublicKeys(secretKeys: String): String?
-    external fun nativeVerityPublicKeys(publicKeys: String): Boolean
 
     private external fun nativeInit(home: String, versionName: String, sdkVersion: Int)
 

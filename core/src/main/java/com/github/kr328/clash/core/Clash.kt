@@ -6,7 +6,6 @@ import com.github.kr328.clash.core.util.parseInetSocketAddress
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -129,10 +128,6 @@ object Clash {
         }
     }
 
-    fun healthCheckAll() {
-        Bridge.nativeHealthCheckAll()
-    }
-
     fun notifyNetworkChanged(closeConnections: Boolean) {
         Bridge.nativeNotifyNetworkChanged(closeConnections)
     }
@@ -243,13 +238,6 @@ object Clash {
         Bridge.nativeClearOverride(slot.ordinal)
     }
 
-    fun queryConfiguration(): UiConfiguration {
-        return CoreJson.decodeFromString(
-            UiConfiguration.serializer(),
-            Bridge.nativeQueryConfiguration()
-        )
-    }
-
     fun subscribeLogcat(): ReceiveChannel<LogMessage> {
         return Channel<LogMessage>(32).apply {
             Bridge.nativeSubscribeLogcat(object : LogcatInterface {
@@ -262,31 +250,5 @@ object Clash {
 
     fun setAgeSecretKey(key: String?) {
         Bridge.nativeSetAgeSecretKey(key)
-    }
-
-    fun genX25519KeyPair(): AgeKeyPair {
-        return parseAgeKeyPair(checkNotNull(Bridge.nativeGenX25519KeyPair()))
-    }
-
-    fun genHybridKeyPair(): AgeKeyPair {
-        return parseAgeKeyPair(checkNotNull(Bridge.nativeGenHybridKeyPair()))
-    }
-
-    fun veritySecretKeys(secretKey: String): Boolean {
-        return Bridge.nativeVeritySecretKeys(secretKey)
-    }
-
-    fun toPublicKeys(secretKey: String): List<String> {
-        return Bridge.nativeToPublicKeys(secretKey)
-            ?.let { CoreJson.decodeFromString(ListSerializer(String.serializer()), it) }
-            ?: emptyList()
-    }
-
-    fun verityPublicKeys(publicKey: String): Boolean {
-        return Bridge.nativeVerityPublicKeys(publicKey)
-    }
-
-    private fun parseAgeKeyPair(value: String): AgeKeyPair {
-        return CoreJson.decodeFromString(AgeKeyPair.serializer(), value)
     }
 }

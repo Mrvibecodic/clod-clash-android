@@ -1,6 +1,5 @@
 package com.github.kr328.clash
 
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
