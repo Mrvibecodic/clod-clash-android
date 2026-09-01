@@ -87,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
@@ -173,6 +174,7 @@ data class SubscriptionsState(
 @Immutable
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
+    val startupStage: String? = null,
     val active: SubscriptionItem? = null,
     val mode: TunnelState.Mode = TunnelState.Mode.Rule,
     val downloaded: String = "",
@@ -502,7 +504,13 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             if (!connected) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.clod_tap_to_connect),
+                    text = stringResource(
+                        if (state.status == ConnectionStatus.Connecting) {
+                            startupStageText(state.startupStage)
+                        } else {
+                            R.string.clod_tap_to_connect
+                        },
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -646,6 +654,16 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+private fun startupStageText(stage: String?): Int {
+    return when (stage) {
+        Intents.STAGE_PREPARING -> R.string.clod_stage_preparing
+        Intents.STAGE_LOADING -> R.string.clod_stage_loading
+        Intents.STAGE_SELECTING -> R.string.clod_stage_selecting
+        Intents.STAGE_TUNNEL -> R.string.clod_stage_tunnel
+        else -> R.string.clod_stage_starting
     }
 }
 

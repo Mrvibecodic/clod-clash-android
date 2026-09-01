@@ -4,6 +4,11 @@
     <string name="clash_service_status_channel">Tunnel status</string>
     <string name="clod_tun_start_failed">Could not bring the tunnel up. Try connecting again</string>
     <string name="clod_tun_revoked">VPN permission revoked by the system or another app</string>
+    <string name="clod_profile_load_failed">Profile «%1$s» failed to load: %2$s. «%3$s» keeps running</string>
+    <string name="clod_profile_reload_failed">Profile «%1$s» failed to reload: %2$s. The previous configuration keeps running</string>
+    <string name="clod_start_failed">Clod Clash could not start</string>
+    <string name="clod_foreground_denied">The system did not allow the service to start in the background. Open the app and connect again</string>
+    <string name="clod_always_on_busy">Always-on VPN cannot start while the proxy-only mode is active. Turn off always-on VPN or enable «Route System Traffic»</string>
     <string name="profile_service_status">Profile Service Status</string>
     <string name="profile_process_status">Profile Processing Status</string>
     <string name="profile_process_result">Profile Process Result</string>

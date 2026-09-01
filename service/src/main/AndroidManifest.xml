@@ -19,7 +19,7 @@
             android:process=":background"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="explanation_for_special_use"/>
+                android:value="vpn_tunnel_and_proxy_core"/>
         </service>
         <service
             android:name=".TunService"
@@ -29,7 +29,7 @@
             android:process=":background"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="explanation_for_special_use"/>
+                android:value="vpn_tunnel_and_proxy_core"/>
             <intent-filter>
                 <action android:name="android.net.VpnService" />
             </intent-filter>
@@ -44,7 +44,7 @@
             android:process=":background"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="explanation_for_special_use"/>
+                android:value="vpn_tunnel_and_proxy_core"/>
         </service>
 
         <provider

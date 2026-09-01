@@ -1,5 +1,6 @@
 package com.github.kr328.clash.common.compat
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.Service
 import android.content.Context
@@ -21,4 +22,18 @@ fun Service.startForegroundCompat(id: Int, notification: Notification) {
     } else {
         startForeground(id, notification)
     }
+}
+
+fun Service.tryStartForegroundCompat(id: Int, notification: Notification): Boolean {
+    try {
+        startForegroundCompat(id, notification)
+    } catch (e: Exception) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+            return false
+        }
+
+        throw e
+    }
+
+    return true
 }

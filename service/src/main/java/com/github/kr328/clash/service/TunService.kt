@@ -10,21 +10,24 @@ import android.os.Build
 import android.os.SystemClock
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
+import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceStore
-import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.parseCIDR
+import com.github.kr328.clash.service.util.readTunPrefs
 import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.sendClashStarted
+import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
 class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.Default) {
@@ -44,13 +47,34 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private val stopNotified = AtomicBoolean(false)
 
+    private var systemStarted = false
+
+    private var startFailed = false
+
     private fun notifyStopped() {
         if (!stopNotified.compareAndSet(false, true))
             return
 
+        StatusProvider.serviceReady = false
+        StatusProvider.startupStage = null
         StatusProvider.serviceRunning = false
 
         sendClashStopped(reason)
+
+        reason?.let {
+            if (systemStarted) {
+                StaticNotificationModule.notifyStartFailed(this, it)
+            }
+        }
+    }
+
+    private fun notifyReady() {
+        StatusProvider.startupStage = null
+        StatusProvider.serviceReady = true
+
+        StaticNotificationModule.cancelStartFailed(this)
+
+        sendClashStarted()
     }
 
     private val runtime = clashRuntime {
@@ -70,18 +94,37 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         install(TimeZoneModule(self))
         install(SuspendModule(self))
 
-        try {
-            tun.open()
+        var opened = false
 
+        try {
             while (isActive) {
                 val quit = select<Boolean> {
                     close.onEvent {
                         true
                     }
                     config.onEvent {
-                        reason = it.message
+                        when (it) {
+                            is ConfigurationModule.Event.Loaded -> {
+                                if (!opened) {
+                                    StatusProvider.startupStage = Intents.STAGE_TUNNEL
 
-                        true
+                                    sendClashStarting(Intents.STAGE_TUNNEL)
+
+                                    tun.open(it.uuid)
+
+                                    opened = true
+
+                                    notifyReady()
+                                }
+
+                                false
+                            }
+                            is ConfigurationModule.Event.LoadFailed -> {
+                                reason = it.message
+
+                                true
+                            }
+                        }
                     }
                     network.onEvent { n ->
                         if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
@@ -120,15 +163,23 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         ServiceLog.mark("TunService: create, running = ${StatusProvider.serviceRunning}")
 
+        val alwaysOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isAlwaysOn
+
         if (StatusProvider.serviceRunning) {
             rejected = true
+
+            if (alwaysOn) {
+                StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_always_on_busy))
+            }
 
             return stopSelf()
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceStore(this).vpnAlwaysOn = if (isAlwaysOn) 1 else 0
+            ServiceStore(this).vpnAlwaysOn = if (alwaysOn) 1 else 0
         }
+
+        systemStarted = alwaysOn
 
         StaticNotificationModule.createNotificationChannel(this)
 
@@ -140,11 +191,16 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         reason = null
 
+        StatusProvider.serviceReady = false
         StatusProvider.serviceRunning = true
 
         sessionStartedAt = ServiceStore(this).markSessionStarted()
 
-        StaticNotificationModule.notifyLoadingNotification(this)
+        if (!StaticNotificationModule.notifyLoadingNotification(this)) {
+            startFailed = true
+
+            return
+        }
 
         runtime.launch()
     }
@@ -161,11 +217,23 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             return super.onStartCommand(intent, flags, startId)
         }
 
+        if (intent == null) {
+            systemStarted = true
+        }
+
+        if (startFailed) {
+            reason = getString(R.string.clod_foreground_denied)
+
+            notifyStopped()
+
+            stopSelf()
+
+            return START_NOT_STICKY
+        }
+
         if (stopNotified.get()) {
             startSession()
         }
-
-        sendClashStarted()
 
         return super.onStartCommand(intent, flags, startId)
     }
@@ -176,6 +244,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         ServiceLog.mark("TunService: revoked")
 
         reason = getString(R.string.clod_tun_revoked)
+
+        systemStarted = false
 
         stopSelf()
     }
@@ -213,9 +283,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         runtime.requestGc()
     }
 
-    private fun TunModule.open() {
+    private fun TunModule.open(profile: UUID) {
         val store = ServiceStore(self)
-        val prefs = activeTunPrefs() ?: TunPrefs()
+        val prefs = readTunPrefs(profile) ?: TunPrefs()
         val includeFromProfile = prefs.includePackages.toSet()
         val excludeFromProfile = prefs.excludePackages.toSet()
 

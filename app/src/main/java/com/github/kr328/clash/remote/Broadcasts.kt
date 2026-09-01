@@ -14,12 +14,14 @@ import java.util.*
 class Broadcasts(private val context: Application) {
     interface Observer {
         fun onServiceRecreated()
+        fun onStarting(stage: String?)
         fun onStarted()
         fun onStopped(cause: String?)
         fun onProfileChanged()
         fun onProfileUpdateCompleted(uuid: UUID?)
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
         fun onProfileLoaded()
+        fun onProfileLoadFailed(uuid: UUID?, reason: String?)
     }
 
     @Volatile
@@ -38,6 +40,13 @@ class Broadcasts(private val context: Application) {
 
                     receivers.forEach {
                         it.onServiceRecreated()
+                    }
+                }
+                Intents.ACTION_CLASH_STARTING -> {
+                    clashRunning = false
+
+                    receivers.forEach {
+                        it.onStarting(intent.getStringExtra(Intents.EXTRA_STAGE))
                     }
                 }
                 Intents.ACTION_CLASH_STARTED -> {
@@ -73,6 +82,13 @@ class Broadcasts(private val context: Application) {
                         it.onProfileLoaded()
                     }
                 }
+                Intents.ACTION_PROFILE_LOAD_FAILED -> {
+                    receivers.forEach {
+                        it.onProfileLoadFailed(
+                            intent.parseUUID(),
+                            intent.getStringExtra(Intents.EXTRA_FAIL_REASON))
+                    }
+                }
             }
         }
     }
@@ -96,12 +112,14 @@ class Broadcasts(private val context: Application) {
             try {
                 context.registerReceiverCompat(broadcastReceiver, IntentFilter().apply {
                     addAction(Intents.ACTION_SERVICE_RECREATED)
+                    addAction(Intents.ACTION_CLASH_STARTING)
                     addAction(Intents.ACTION_CLASH_STARTED)
                     addAction(Intents.ACTION_CLASH_STOPPED)
                     addAction(Intents.ACTION_PROFILE_CHANGED)
                     addAction(Intents.ACTION_PROFILE_UPDATE_COMPLETED)
                     addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
                     addAction(Intents.ACTION_PROFILE_LOADED)
+                    addAction(Intents.ACTION_PROFILE_LOAD_FAILED)
                 }, Permissions.RECEIVE_SELF_BROADCASTS)
 
                 registered = true

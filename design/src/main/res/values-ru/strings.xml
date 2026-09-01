@@ -262,6 +262,11 @@
     <string name="clod_status_disconnected">Отключено</string>
     <string name="clod_status_connected">Подключено</string>
     <string name="clod_status_connecting">Подключение\u2026</string>
+    <string name="clod_stage_starting">Запуск службы\u2026</string>
+    <string name="clod_stage_preparing">Подготовка профиля и баз маршрутизации\u2026</string>
+    <string name="clod_stage_loading">Загрузка профиля в ядро\u2026</string>
+    <string name="clod_stage_selecting">Восстановление выбранных серверов\u2026</string>
+    <string name="clod_stage_tunnel">Открытие VPN-туннеля\u2026</string>
     <string name="clod_status_disconnecting">Отключение\u2026</string>
     <string name="clod_tap_to_connect">Нажмите, чтобы подключиться</string>
     <string name="clod_traffic_downloaded">Скачано</string>

@@ -193,7 +193,7 @@
             android:label="@string/clash_logcat"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-            android:value="explanation_for_special_use"/>
+            android:value="vpn_tunnel_and_proxy_core"/>
         </service>
         <service
             android:name=".TileService"
@@ -240,6 +240,7 @@
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <intent-filter>
+                <action android:name="${applicationId}.intent.action.CLASH_STARTING" />
                 <action android:name="${applicationId}.intent.action.CLASH_STARTED" />
                 <action android:name="${applicationId}.intent.action.CLASH_STOPPED" />
             </intent-filter>

@@ -14,7 +14,9 @@ class StatusProvider : ContentProvider() {
         return when (method) {
             METHOD_CURRENT_PROFILE -> {
                 return Bundle().apply {
-                    putBoolean(KEY_RUNNING, serviceRunning)
+                    putBoolean(KEY_RUNNING, serviceReady)
+                    putBoolean(KEY_STARTING, serviceRunning && !serviceReady)
+                    putString(KEY_STAGE, startupStage)
                     putString(KEY_NAME, currentProfile)
                 }
             }
@@ -60,6 +62,8 @@ class StatusProvider : ContentProvider() {
     companion object {
         const val METHOD_CURRENT_PROFILE = "currentProfile"
         const val KEY_RUNNING = "running"
+        const val KEY_STARTING = "starting"
+        const val KEY_STAGE = "stage"
         const val KEY_NAME = "name"
 
         private const val CLASH_SERVICE_RUNNING_FILE = "service_running.lock"
@@ -71,6 +75,12 @@ class StatusProvider : ContentProvider() {
 
                 shouldStartClashOnBoot = value
             }
+        @Volatile
+        var serviceReady: Boolean = false
+
+        @Volatile
+        var startupStage: String? = null
+
         var shouldStartClashOnBoot: Boolean
             get() = Global.application.filesDir.resolve(CLASH_SERVICE_RUNNING_FILE).exists()
             set(value) {

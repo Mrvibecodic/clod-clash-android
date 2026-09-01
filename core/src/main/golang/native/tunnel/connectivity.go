@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cfa/native/config"
+
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/utils"
 	C "github.com/metacubex/mihomo/constant"
@@ -246,6 +248,10 @@ func HealthCheck(name string) {
 }
 
 func ProbeCurrentNodes() {
+	if !config.IsLoaded() {
+		return
+	}
+
 	proxies := tunnel.Proxies()
 	seen := make(map[string]bool, len(proxies))
 
@@ -340,6 +346,10 @@ type deadTarget struct {
 }
 
 func RecoverDeadNodes(force bool) {
+	if !config.IsLoaded() {
+		return
+	}
+
 	if !recoverBusy.CompareAndSwap(false, true) {
 		return
 	}

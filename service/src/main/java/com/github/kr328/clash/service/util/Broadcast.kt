@@ -59,6 +59,20 @@ fun Context.sendServiceRecreated() {
     sendControlBroadcastSelf(Intent(Intents.ACTION_SERVICE_RECREATED))
 }
 
+fun Context.sendProfileLoadFailed(uuid: UUID, reason: String) {
+    val intent = Intent(Intents.ACTION_PROFILE_LOAD_FAILED)
+        .putExtra(Intents.EXTRA_UUID, uuid.toString())
+        .putExtra(Intents.EXTRA_FAIL_REASON, reason)
+
+    sendBroadcastSelf(intent)
+}
+
+fun Context.sendClashStarting(stage: String) {
+    ServiceLog.mark("broadcast: clash starting, stage = $stage")
+
+    sendControlBroadcastSelf(Intent(Intents.ACTION_CLASH_STARTING).putExtra(Intents.EXTRA_STAGE, stage))
+}
+
 fun Context.sendClashStarted() {
     ServiceLog.mark("broadcast: clash started")
 

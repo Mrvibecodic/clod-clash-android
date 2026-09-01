@@ -1,11 +1,13 @@
 package config
 
 import (
+	"errors"
 	"os"
 	P "path"
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"cfa/native/app"
 
@@ -50,11 +52,53 @@ func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
 	return rawConfig, nil
 }
 
-var parseMutex sync.Mutex
+var (
+	parseMutex        sync.Mutex
+	loadGeneration    atomic.Uint64
+	pendingGeneration atomic.Uint64
+	loaded            atomic.Bool
+)
+
+var ErrLoadCancelled = errors.New("load cancelled by reset")
+
+func IsLoaded() bool {
+	return loaded.Load()
+}
+
+func applyDefaultLocked() {
+	cfg, err := config.Parse([]byte{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	loaded.Store(false)
+
+	hub.ApplyConfig(cfg)
+}
+
+func applyPendingDefault() {
+	for pendingGeneration.Load() != 0 {
+		if !parseMutex.TryLock() {
+			return
+		}
+
+		if pendingGeneration.Swap(0) != 0 {
+			applyDefaultLocked()
+		}
+
+		parseMutex.Unlock()
+	}
+}
+
+func unlockParse() {
+	parseMutex.Unlock()
+
+	applyPendingDefault()
+}
 
 func Parse(rawConfig *config.RawConfig) (*config.Config, error) {
 	parseMutex.Lock()
-	defer parseMutex.Unlock()
+	defer unlockParse()
 
 	return parseLocked(rawConfig)
 }
@@ -69,6 +113,8 @@ func parseLocked(rawConfig *config.RawConfig) (*config.Config, error) {
 }
 
 func Load(path string) error {
+	generation := loadGeneration.Load()
+
 	rawCfg, err := UnmarshalAndPatch(path)
 	if err != nil {
 		log.Errorln("Load %s: %s", path, err.Error())
@@ -79,19 +125,34 @@ func Load(path string) error {
 	logDns(rawCfg)
 
 	parseMutex.Lock()
+	defer unlockParse()
 
-	cfg, err := parseLocked(rawCfg)
-	if err == nil {
-		hub.ApplyConfig(cfg)
+	if loadGeneration.Load() != generation {
+		return ErrLoadCancelled
 	}
 
-	parseMutex.Unlock()
-
+	cfg, err := parseLocked(rawCfg)
 	if err != nil {
 		log.Errorln("Load %s: %s", path, err.Error())
 
 		return err
 	}
+
+	if loadGeneration.Load() != generation {
+		for _, p := range cfg.Proxies {
+			_ = p.Close()
+		}
+
+		DestroyProviders(cfg)
+
+		return ErrLoadCancelled
+	}
+
+	pendingGeneration.CompareAndSwap(generation, 0)
+
+	hub.ApplyConfig(cfg)
+
+	loaded.Store(true)
 
 	app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
 
@@ -101,13 +162,9 @@ func Load(path string) error {
 }
 
 func LoadDefault() {
-	parseMutex.Lock()
-	defer parseMutex.Unlock()
+	pendingGeneration.Store(loadGeneration.Load() + 1)
 
-	cfg, err := config.Parse([]byte{})
-	if err != nil {
-		panic(err.Error())
-	}
+	loadGeneration.Add(1)
 
-	hub.ApplyConfig(cfg)
+	applyPendingDefault()
 }

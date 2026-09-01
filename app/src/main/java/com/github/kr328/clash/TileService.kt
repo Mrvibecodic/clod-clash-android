@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 class TileService : TileService() {
     private var currentProfile = ""
     private var clashRunning = false
+    private var clashStarting = false
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
     private var refreshing: Job? = null
@@ -74,6 +75,7 @@ class TileService : TileService() {
         registerReceiverCompat(
             receiver,
             IntentFilter().apply {
+                addAction(Intents.ACTION_CLASH_STARTING)
                 addAction(Intents.ACTION_CLASH_STARTED)
                 addAction(Intents.ACTION_CLASH_STOPPED)
                 addAction(Intents.ACTION_PROFILE_LOADED)
@@ -112,6 +114,7 @@ class TileService : TileService() {
 
             if (updateRunning) {
                 clashRunning = status.running
+                clashStarting = status.starting
             }
 
             currentProfile = status.name?.takeIf { status.running } ?: ""
@@ -123,10 +126,11 @@ class TileService : TileService() {
     private fun updateTile() {
         val tile = qsTile ?: return
 
-        tile.state = if (clashRunning)
-            Tile.STATE_ACTIVE
-        else
-            Tile.STATE_INACTIVE
+        tile.state = when {
+            clashRunning -> Tile.STATE_ACTIVE
+            clashStarting -> Tile.STATE_UNAVAILABLE
+            else -> Tile.STATE_INACTIVE
+        }
 
         tile.label = if (currentProfile.isEmpty())
             getText(R.string.launch_name)
@@ -141,13 +145,18 @@ class TileService : TileService() {
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
+                Intents.ACTION_CLASH_STARTING -> {
+                    clashStarting = true
+                }
                 Intents.ACTION_CLASH_STARTED -> {
                     clashRunning = true
+                    clashStarting = false
 
                     currentProfile = ""
                 }
                 Intents.ACTION_CLASH_STOPPED, Intents.ACTION_SERVICE_RECREATED -> {
                     clashRunning = false
+                    clashStarting = false
 
                     currentProfile = ""
 

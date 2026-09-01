@@ -28,7 +28,7 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
 
         launch {
             val running = withContext(Dispatchers.IO) {
-                StatusClient(this@WidgetToggleActivity).isRunning()
+                StatusClient(this@WidgetToggleActivity).isActive()
             }
 
             if (running || isFinishing || isDestroyed) {

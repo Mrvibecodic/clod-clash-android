@@ -15,7 +15,12 @@ class StatusClient(private val context: Context) {
                 .build()
         }
 
-    data class Status(val running: Boolean, val name: String?)
+    data class Status(
+        val running: Boolean,
+        val name: String?,
+        val starting: Boolean = false,
+        val stage: String? = null,
+    )
 
     fun status(): Status {
         return try {
@@ -29,6 +34,8 @@ class StatusClient(private val context: Context) {
             Status(
                 running = result.getBoolean(StatusProvider.KEY_RUNNING),
                 name = result.getString(StatusProvider.KEY_NAME),
+                starting = result.getBoolean(StatusProvider.KEY_STARTING),
+                stage = result.getString(StatusProvider.KEY_STAGE),
             )
         } catch (e: Exception) {
             Log.w("Query clash status: $e", e)
@@ -38,4 +45,6 @@ class StatusClient(private val context: Context) {
     }
 
     fun isRunning(): Boolean = status().running
+
+    fun isActive(): Boolean = status().let { it.running || it.starting }
 }

@@ -191,6 +191,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
                             }
                         }
+                        Event.ClashStarting -> {
+                            stopRequestedAt = null
+
+                            design.setConnecting(startupStage)
+                        }
                         Event.ClashStart -> {
                             stopRequestedAt = null
                             startRequestedAt = null
@@ -528,7 +533,21 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private suspend fun MainDesign.fetch() {
-        setClashRunning(clashRunning)
+        val status = if (clashRunning) null else withContext(Dispatchers.IO) {
+            StatusClient(this@MainActivity).status()
+        }
+
+        if (status?.running == true) {
+            Remote.broadcasts.clashRunning = true
+        }
+
+        if (status?.starting == true) {
+            setConnecting(status.stage)
+
+            watchStart()
+        } else {
+            setClashRunning(clashRunning)
+        }
 
         val session = if (clashRunning) {
             withContext(Dispatchers.IO) {
@@ -953,14 +972,22 @@ class MainActivity : BaseActivity<MainDesign>() {
             if (clashRunning)
                 return@launch
 
-            val running = withContext(Dispatchers.IO) {
-                StatusClient(this@MainActivity).isRunning()
+            val status = withContext(Dispatchers.IO) {
+                StatusClient(this@MainActivity).status()
             }
 
-            if (running)
+            if (status.running)
                 Remote.broadcasts.clashRunning = true
 
-            target.setClashRunning(running)
+            if (status.starting) {
+                target.setConnecting(status.stage)
+
+                watchStart()
+
+                return@launch
+            }
+
+            target.setClashRunning(status.running)
         }
     }
 

@@ -307,6 +307,11 @@
     <string name="clod_status_disconnected">Disconnected</string>
     <string name="clod_status_connected">Connected</string>
     <string name="clod_status_connecting">Connecting\u2026</string>
+    <string name="clod_stage_starting">Starting the service\u2026</string>
+    <string name="clod_stage_preparing">Preparing the profile and route databases\u2026</string>
+    <string name="clod_stage_loading">Loading the profile into the core\u2026</string>
+    <string name="clod_stage_selecting">Restoring the selected servers\u2026</string>
+    <string name="clod_stage_tunnel">Opening the VPN tunnel\u2026</string>
     <string name="clod_status_disconnecting">Disconnecting\u2026</string>
     <string name="clod_tap_to_connect">Tap to connect</string>
     <string name="clod_traffic_downloaded">Downloaded</string>

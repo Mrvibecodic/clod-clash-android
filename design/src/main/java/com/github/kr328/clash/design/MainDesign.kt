@@ -203,6 +203,7 @@ class MainDesign(
         withContext(Dispatchers.Main) {
             state = state.copy(
                 status = if (running) ConnectionStatus.Connected else ConnectionStatus.Disconnected,
+                startupStage = null,
             )
         }
     }
@@ -215,10 +216,10 @@ class MainDesign(
         }
     }
 
-    suspend fun setConnecting() {
+    suspend fun setConnecting(stage: String? = null) {
         withContext(Dispatchers.Main) {
-            if (state.status == ConnectionStatus.Disconnected) {
-                state = state.copy(status = ConnectionStatus.Connecting)
+            if (state.status != ConnectionStatus.Disconnecting) {
+                state = state.copy(status = ConnectionStatus.Connecting, startupStage = stage)
             }
         }
     }

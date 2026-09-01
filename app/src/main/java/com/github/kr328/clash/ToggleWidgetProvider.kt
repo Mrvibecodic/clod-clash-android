@@ -43,7 +43,16 @@ class ToggleWidgetProvider : AppWidgetProvider() {
 
         Global.launch {
             try {
-                render(context, if (isRunning(context)) State.On else State.Off)
+                val status = withContext(Dispatchers.IO) { StatusClient(context).status() }
+
+                render(
+                    context,
+                    when {
+                        status.running -> State.On
+                        status.starting -> State.Wait
+                        else -> State.Off
+                    },
+                )
             } catch (e: Exception) {
                 Log.w("Widget render: $e", e)
             } finally {
@@ -68,6 +77,7 @@ class ToggleWidgetProvider : AppWidgetProvider() {
                 }
             }
             ACTION_WIDGET_WAIT -> render(context, State.Wait)
+            Intents.ACTION_CLASH_STARTING -> render(context, State.Wait)
             Intents.ACTION_CLASH_STARTED -> render(context, State.On)
             Intents.ACTION_CLASH_STOPPED -> render(context, State.Off)
             else -> super.onReceive(context, intent)
@@ -98,7 +108,7 @@ class ToggleWidgetProvider : AppWidgetProvider() {
 
     private suspend fun isRunning(context: Context): Boolean {
         return withContext(Dispatchers.IO) {
-            StatusClient(context).isRunning()
+            StatusClient(context).isActive()
         }
     }
 

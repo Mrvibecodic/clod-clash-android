@@ -9,8 +9,10 @@ import androidx.core.app.NotificationManagerCompat
 import com.github.kr328.clash.common.compat.getColorCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.compat.startForegroundCompat
+import com.github.kr328.clash.common.compat.tryStartForegroundCompat
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.StatusProvider
 import kotlinx.coroutines.channels.Channel
@@ -76,7 +78,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
             )
         }
 
-        fun notifyLoadingNotification(service: Service) {
+        fun notifyLoadingNotification(service: Service): Boolean {
             val notification =
                 NotificationCompat.Builder(service, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_logo_service)
@@ -87,7 +89,38 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                     .setContentTitle(service.getText(R.string.loading))
                     .build()
 
-            service.startForegroundCompat(R.id.nf_clash_status, notification)
+            return service.tryStartForegroundCompat(R.id.nf_clash_status, notification)
+        }
+
+        fun cancelStartFailed(service: Service) {
+            NotificationManagerCompat.from(service).cancel(R.id.nf_clash_start_failed)
+        }
+
+        fun notifyStartFailed(service: Service, rawReason: String) {
+            val reason = Redact.text(rawReason)
+
+            val notification =
+                NotificationCompat.Builder(service, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_logo_service)
+                    .setColor(service.getColorCompat(R.color.color_clash))
+                    .setAutoCancel(true)
+                    .setContentTitle(service.getText(R.string.clod_start_failed))
+                    .setContentText(reason)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
+                    .setContentIntent(
+                        PendingIntent.getActivity(
+                            service,
+                            R.id.nf_clash_status,
+                            Intent().setComponent(Components.MAIN_ACTIVITY)
+                                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                            pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
+                        )
+                    )
+                    .build()
+
+            runCatching {
+                NotificationManagerCompat.from(service).notify(R.id.nf_clash_start_failed, notification)
+            }
         }
     }
 }

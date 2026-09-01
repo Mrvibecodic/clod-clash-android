@@ -29,13 +29,34 @@ class ClashService : BaseService() {
 
     private val stopNotified = AtomicBoolean(false)
 
+    private var systemStarted = false
+
+    private var startFailed = false
+
     private fun notifyStopped() {
         if (!stopNotified.compareAndSet(false, true))
             return
 
+        StatusProvider.serviceReady = false
+        StatusProvider.startupStage = null
         StatusProvider.serviceRunning = false
 
         sendClashStopped(reason)
+
+        reason?.let {
+            if (systemStarted) {
+                StaticNotificationModule.notifyStartFailed(this, it)
+            }
+        }
+    }
+
+    private fun notifyReady() {
+        StatusProvider.startupStage = null
+        StatusProvider.serviceReady = true
+
+        StaticNotificationModule.cancelStartFailed(this)
+
+        sendClashStarted()
     }
 
     private val runtime = clashRuntime {
@@ -54,6 +75,8 @@ class ClashService : BaseService() {
         install(TimeZoneModule(self))
         install(SuspendModule(self))
 
+        var ready = false
+
         try {
             while (isActive) {
                 val quit = select<Boolean> {
@@ -61,9 +84,22 @@ class ClashService : BaseService() {
                         true
                     }
                     config.onEvent {
-                        reason = it.message
+                        when (it) {
+                            is ConfigurationModule.Event.Loaded -> {
+                                if (!ready) {
+                                    ready = true
 
-                        true
+                                    notifyReady()
+                                }
+
+                                false
+                            }
+                            is ConfigurationModule.Event.LoadFailed -> {
+                                reason = it.message
+
+                                true
+                            }
+                        }
                     }
                     network.onEvent {
                         false
@@ -106,11 +142,16 @@ class ClashService : BaseService() {
 
         reason = null
 
+        StatusProvider.serviceReady = false
         StatusProvider.serviceRunning = true
 
         sessionStartedAt = ServiceStore(this).markSessionStarted()
 
-        StaticNotificationModule.notifyLoadingNotification(this)
+        if (!StaticNotificationModule.notifyLoadingNotification(this)) {
+            startFailed = true
+
+            return
+        }
 
         runtime.launch()
     }
@@ -127,11 +168,23 @@ class ClashService : BaseService() {
             return START_NOT_STICKY
         }
 
+        if (intent == null) {
+            systemStarted = true
+        }
+
+        if (startFailed) {
+            reason = getString(R.string.clod_foreground_denied)
+
+            notifyStopped()
+
+            stopSelf()
+
+            return START_NOT_STICKY
+        }
+
         if (stopNotified.get()) {
             startSession()
         }
-
-        sendClashStarted()
 
         return START_STICKY
     }

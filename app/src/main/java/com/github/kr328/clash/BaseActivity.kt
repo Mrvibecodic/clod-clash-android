@@ -41,6 +41,9 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
     protected val uiStore by lazy { UiStore(this) }
     protected val events = Channel<Event>(Channel.UNLIMITED)
+
+    @Volatile
+    protected var startupStage: String? = null
     protected var activityStarted: Boolean = false
     protected val clashRunning: Boolean
         get() = Remote.broadcasts.clashRunning
@@ -173,6 +176,22 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileLoaded)
     }
 
+    override fun onProfileLoadFailed(uuid: UUID?, reason: String?) {
+        events.trySend(Event.ProfileChanged)
+
+        if (reason != null && activityStarted) {
+            launch {
+                design?.showExceptionToast(ClashException(reason))
+            }
+        }
+    }
+
+    override fun onStarting(stage: String?) {
+        startupStage = stage
+
+        events.trySend(Event.ClashStarting)
+    }
+
     override fun onServiceRecreated() {
         events.trySend(Event.ServiceRecreated)
     }
@@ -228,6 +247,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         ActivityStart,
         ActivityStop,
         ClashStop,
+        ClashStarting,
         ClashStart,
         ProfileLoaded,
         ProfileChanged,

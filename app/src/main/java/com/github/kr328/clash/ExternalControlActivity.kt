@@ -138,7 +138,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
     }
 
     private suspend fun isClashRunning(): Boolean = withContext(Dispatchers.IO) {
-        StatusClient(this@ExternalControlActivity).isRunning()
+        StatusClient(this@ExternalControlActivity).isActive()
     }
 
     private fun startClash() {
