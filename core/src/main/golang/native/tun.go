@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sync/semaphore"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/metacubex/mihomo/log"
 )
+
+const closeTimeout = 3 * time.Second
 
 var rTunLock sync.Mutex
 var rTun *remoteTun
@@ -51,8 +54,10 @@ func (t *remoteTun) querySocketUid(protocol int, source, target string) int {
 }
 
 func (t *remoteTun) close() {
-	_ = t.limit.Acquire(context.TODO(), 4)
-	defer t.limit.Release(4)
+	ctx, cancel := context.WithTimeout(context.Background(), closeTimeout)
+	defer cancel()
+
+	acquired := t.limit.Acquire(ctx, 4) == nil
 
 	t.closed = true
 
@@ -62,17 +67,27 @@ func (t *remoteTun) close() {
 
 	app.ApplyTunContext(nil, nil)
 
+	if !acquired {
+		log.Warnln("Stop tun: socket callbacks still busy after %s, leaking callback", closeTimeout)
+
+		return
+	}
+
+	t.limit.Release(4)
+
 	C.release_object(t.callback)
 }
 
 //export startTun
-func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) C.int {
+func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) (result C.int) {
+	defer guard("startTun", func() { result = 1 })
+
 	rTunLock.Lock()
 	defer rTunLock.Unlock()
 
-	if rTun != nil {
-		rTun.close()
+	if old := rTun; old != nil {
 		rTun = nil
+		old.close()
 	}
 
 	f := int(fd)
@@ -106,8 +121,8 @@ func stopTun() {
 	rTunLock.Lock()
 	defer rTunLock.Unlock()
 
-	if rTun != nil {
-		rTun.close()
+	if old := rTun; old != nil {
 		rTun = nil
+		old.close()
 	}
 }

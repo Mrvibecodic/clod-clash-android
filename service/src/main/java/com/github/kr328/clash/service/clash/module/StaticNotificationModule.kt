@@ -37,18 +37,23 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
         .addAction(0, service.getText(R.string.clod_notification_stop), stopIntent(service))
 
     override suspend fun run() {
-        val loaded = receiveBroadcast(capacity = Channel.CONFLATED) {
+        val events = receiveBroadcast(capacity = Channel.CONFLATED) {
             addAction(Intents.ACTION_PROFILE_LOADED)
+            addAction(Intents.ACTION_CLASH_STARTED)
         }
 
+        var ready = false
+
         while (true) {
-            loaded.receive()
+            if (events.receive().action == Intents.ACTION_CLASH_STARTED) {
+                ready = true
+            }
 
             val profileName = StatusProvider.currentProfile ?: "Not selected"
 
             val notification = builder
                 .setContentTitle(profileName)
-                .setContentText(service.getText(R.string.running))
+                .setContentText(service.getText(if (ready) R.string.running else R.string.loading))
                 .build()
 
             service.startForegroundCompat(R.id.nf_clash_status, notification)
@@ -90,6 +95,19 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                     .build()
 
             return service.tryStartForegroundCompat(R.id.nf_clash_status, notification)
+        }
+
+        fun notifyRejectedNotification(service: Service): Boolean {
+            val notification =
+                NotificationCompat.Builder(service, CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_logo_service)
+                    .setColor(service.getColorCompat(R.color.color_clash))
+                    .setOnlyAlertOnce(true)
+                    .setShowWhen(false)
+                    .setContentTitle(service.getText(R.string.loading))
+                    .build()
+
+            return service.tryStartForegroundCompat(R.id.nf_clash_reject, notification)
         }
 
         fun cancelStartFailed(service: Service) {

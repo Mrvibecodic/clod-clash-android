@@ -3,6 +3,7 @@ package tunnel
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -58,6 +59,22 @@ func CancelHealthChecks() {
 	if probeAbort != nil {
 		probeAbort()
 	}
+}
+
+func CloseProviders() {
+	for _, p := range tunnel.Providers() {
+		if closer, ok := p.(io.Closer); ok {
+			_ = closer.Close()
+		}
+	}
+
+	proxies := tunnel.Proxies()
+
+	go func() {
+		for _, p := range proxies {
+			_ = p.Close()
+		}
+	}()
 }
 
 func healthCheckBudget(count int) time.Duration {

@@ -2,6 +2,7 @@
 <resources>
     <item name="nf_clash_status" type="id" />
     <item name="nf_clash_start_failed" type="id" />
+    <item name="nf_clash_reject" type="id" />
     <item name="nf_vpn_status" type="id" />
     <item name="nf_profile_worker" type="id" />
     <item name="nf_subscription_expire" type="id" />

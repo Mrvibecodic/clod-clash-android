@@ -39,6 +39,11 @@ class ServiceStore(context: Context) {
         defaultValue = true,
     )
 
+    var stickyRestarts: String by store.string(
+        key = "sticky_restarts",
+        defaultValue = "",
+    )
+
     var resetConnectionsOnNetworkChange: Boolean by store.boolean(
         key = "reset_connections_on_network_change",
         defaultValue = true,

@@ -1,5 +1,6 @@
 package com.github.kr328.clash.service
 
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.LogMessage
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
@@ -11,6 +12,8 @@ object ServiceLog {
     val events = Channel<LogMessage>(CAPACITY, BufferOverflow.DROP_OLDEST)
 
     fun mark(message: String) {
+        Log.i("[APP] $message")
+
         events.trySend(LogMessage(LogMessage.Level.Info, "[APP] $message", Date()))
     }
 }

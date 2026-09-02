@@ -10,6 +10,7 @@ import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
 import kotlinx.coroutines.CoroutineScope
@@ -311,6 +312,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         while (!register() && ++attempt < REGISTER_ATTEMPTS) {
             delay(REGISTER_RETRY_MS)
+        }
+
+        if (attempt >= REGISTER_ATTEMPTS) {
+            ServiceLog.mark("network: callback registration failed after $attempt attempts, running without network watcher")
         }
 
         val screenOn = receiveBroadcast(false, Channel.CONFLATED) {

@@ -12,6 +12,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.design.AccessControlDesign
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.util.toAppInfo
+import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeTunPrefs
@@ -52,10 +53,10 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 if (changed) {
                     service.accessControlPackages = selected.toSet()
                 }
-                if (clashRunning && changed) {
+                if (changed && StatusClient(this@AccessControlActivity).isActive()) {
                     stopClashService()
                     withTimeoutOrNull(10_000) {
-                        while (clashRunning) {
+                        while (StatusClient(this@AccessControlActivity).isActive()) {
                             delay(200)
                         }
                     }

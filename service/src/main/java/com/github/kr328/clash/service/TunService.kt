@@ -8,6 +8,7 @@ import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.SystemClock
+import androidx.core.app.ServiceCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.constants.Intents
@@ -51,6 +52,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private var startFailed = false
 
+    private var wantedByUser = false
+
+    @Volatile
+    private var lastStartId = -1
+
     private fun notifyStopped() {
         if (!stopNotified.compareAndSet(false, true))
             return
@@ -71,6 +77,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     private fun notifyReady() {
         StatusProvider.startupStage = null
         StatusProvider.serviceReady = true
+
+        ServiceStore(this).stickyRestarts = ""
 
         StaticNotificationModule.cancelStartFailed(this)
 
@@ -153,9 +161,49 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                 notifyStopped()
 
-                stopSelf()
+                stopSelfResult(lastStartId)
             }
         }
+    }
+
+    private fun rejectStart() {
+        rejected = true
+
+        StaticNotificationModule.createNotificationChannel(this)
+
+        if (StaticNotificationModule.notifyRejectedNotification(this)) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        }
+
+        stopSelf()
+    }
+
+    private fun stickyRestartAllowed(): Boolean {
+        if (!wantedByUser) {
+            ServiceLog.mark("sticky restart refused: stopped by user")
+
+            return false
+        }
+
+        val store = ServiceStore(this)
+        val now = System.currentTimeMillis()
+        val marks = store.stickyRestarts.split(',')
+            .mapNotNull { it.toLongOrNull() }
+            .filter { now - it < STICKY_RESTART_WINDOW_MS } + now
+
+        store.stickyRestarts = marks.joinToString(",")
+
+        if (marks.size >= STICKY_RESTART_LIMIT) {
+            store.stickyRestarts = ""
+
+            reason = getString(R.string.clod_crash_loop, marks.size)
+
+            ServiceLog.mark("sticky restart refused: ${marks.size} restarts in window")
+
+            return false
+        }
+
+        return true
     }
 
     override fun onCreate() {
@@ -165,14 +213,14 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val alwaysOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isAlwaysOn
 
-        if (StatusProvider.serviceRunning) {
-            rejected = true
+        wantedByUser = StatusProvider.shouldStartClashOnBoot
 
+        if (StatusProvider.serviceRunning) {
             if (alwaysOn) {
                 StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_always_on_busy))
             }
 
-            return stopSelf()
+            return rejectStart()
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -211,6 +259,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 "rejected = $rejected, stopped = ${stopNotified.get()}"
         )
 
+        lastStartId = startId
+
         if (rejected) {
             stopSelf()
 
@@ -219,6 +269,14 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         if (intent == null) {
             systemStarted = true
+
+            if (!stickyRestartAllowed()) {
+                notifyStopped()
+
+                stopSelf()
+
+                return START_NOT_STICKY
+            }
         }
 
         if (startFailed) {
@@ -392,7 +450,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
             TunModule.TunDevice(
                 fd = establish()?.detachFd()
-                    ?: throw NullPointerException("Establish VPN rejected by system"),
+                    ?: throw IllegalStateException(getString(R.string.clod_tun_establish_rejected)),
                 stack = resolveTunStack(store.tunStackMode, prefs.stack),
                 gateway = "$TUN_GATEWAY/$TUN_SUBNET_PREFIX" + if (store.allowIpv6) ",$TUN_GATEWAY6/$TUN_SUBNET_PREFIX6" else "",
                 portal = TUN_PORTAL + if (store.allowIpv6) ",$TUN_PORTAL6" else "",
@@ -404,6 +462,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     companion object {
+        private const val STICKY_RESTART_WINDOW_MS = 10 * 60 * 1000L
+        private const val STICKY_RESTART_LIMIT = 3
+
         private const val TUN_MTU = 9000
         private const val TUN_SUBNET_PREFIX = 30
         private const val TUN_GATEWAY = "172.19.0.1"

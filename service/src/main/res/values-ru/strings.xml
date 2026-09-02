@@ -7,6 +7,8 @@
     <string name="clod_profile_load_failed">Профиль «%1$s» не загрузился: %2$s. Продолжает работать «%3$s»</string>
     <string name="clod_profile_reload_failed">Профиль «%1$s» не перезагрузился: %2$s. Продолжает работать прежняя конфигурация</string>
     <string name="clod_start_failed">Clod Clash не удалось запустить</string>
+    <string name="clod_tun_establish_rejected">Система отказалась создать VPN-интерфейс</string>
+    <string name="clod_crash_loop">Система перезапустила службу %1$d раза подряд. Автоперезапуск приостановлен — откройте приложение и подключитесь снова</string>
     <string name="clod_foreground_denied">Система не разрешила запустить службу в фоне. Откройте приложение и подключитесь снова</string>
     <string name="clod_always_on_busy">Постоянный VPN не может запуститься, пока включён режим «только прокси». Отключите постоянный VPN или включите «Маршрутизировать системный трафик»</string>
     <string name="profile_service_status">Статус сервиса профиля</string>

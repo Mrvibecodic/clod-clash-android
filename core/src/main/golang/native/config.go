@@ -5,9 +5,12 @@ import "C"
 
 import (
 	"runtime"
+	"runtime/debug"
 	"unsafe"
 
 	"cfa/native/config"
+
+	"github.com/metacubex/mihomo/log"
 )
 
 type remoteValidCallback struct {
@@ -23,7 +26,17 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
 	go func(path, url string, callback unsafe.Pointer) {
 		cb := &remoteValidCallback{callback: callback}
 
-		err := config.FetchAndValid(path, url, force != 0, cb.reportStatus)
+		err := func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Errorln("[APP] fetchAndValid panicked: %v\n%s", r, string(debug.Stack()))
+
+					err = panicError("fetch", r)
+				}
+			}()
+
+			return config.FetchAndValid(path, url, force != 0, cb.reportStatus)
+		}()
 
 		C.fetch_complete(callback, marshalError(err))
 
@@ -41,7 +54,19 @@ func setSecureChannel(enabled C.int) {
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
 	go func(path string) {
-		C.complete(completable, marshalError(config.Load(path)))
+		err := func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Errorln("[APP] load panicked: %v\n%s", r, string(debug.Stack()))
+
+					err = panicError("load", r)
+				}
+			}()
+
+			return config.Load(path)
+		}()
+
+		C.complete(completable, marshalError(err))
 
 		C.release_object(completable)
 

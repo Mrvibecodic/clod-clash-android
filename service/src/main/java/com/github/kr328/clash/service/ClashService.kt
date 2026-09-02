@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.SystemClock
 import android.os.IBinder
+import androidx.core.app.ServiceCompat
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
@@ -33,6 +34,11 @@ class ClashService : BaseService() {
 
     private var startFailed = false
 
+    private var wantedByUser = false
+
+    @Volatile
+    private var lastStartId = -1
+
     private fun notifyStopped() {
         if (!stopNotified.compareAndSet(false, true))
             return
@@ -54,9 +60,16 @@ class ClashService : BaseService() {
         StatusProvider.startupStage = null
         StatusProvider.serviceReady = true
 
+        ServiceStore(this).stickyRestarts = ""
+
         StaticNotificationModule.cancelStartFailed(this)
 
         sendClashStarted()
+    }
+
+    companion object {
+        private const val STICKY_RESTART_WINDOW_MS = 10 * 60 * 1000L
+        private const val STICKY_RESTART_LIMIT = 3
     }
 
     private val runtime = clashRuntime {
@@ -116,9 +129,49 @@ class ClashService : BaseService() {
             withContext(NonCancellable) {
                 notifyStopped()
 
-                stopSelf()
+                stopSelfResult(lastStartId)
             }
         }
+    }
+
+    private fun rejectStart() {
+        rejected = true
+
+        StaticNotificationModule.createNotificationChannel(this)
+
+        if (StaticNotificationModule.notifyRejectedNotification(this)) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        }
+
+        stopSelf()
+    }
+
+    private fun stickyRestartAllowed(): Boolean {
+        if (!wantedByUser) {
+            ServiceLog.mark("sticky restart refused: stopped by user")
+
+            return false
+        }
+
+        val store = ServiceStore(this)
+        val now = System.currentTimeMillis()
+        val marks = store.stickyRestarts.split(',')
+            .mapNotNull { it.toLongOrNull() }
+            .filter { now - it < STICKY_RESTART_WINDOW_MS } + now
+
+        store.stickyRestarts = marks.joinToString(",")
+
+        if (marks.size >= STICKY_RESTART_LIMIT) {
+            store.stickyRestarts = ""
+
+            reason = getString(R.string.clod_crash_loop, marks.size)
+
+            ServiceLog.mark("sticky restart refused: ${marks.size} restarts in window")
+
+            return false
+        }
+
+        return true
     }
 
     override fun onCreate() {
@@ -126,10 +179,10 @@ class ClashService : BaseService() {
 
         ServiceLog.mark("ClashService: create, running = ${StatusProvider.serviceRunning}")
 
-        if (StatusProvider.serviceRunning) {
-            rejected = true
+        wantedByUser = StatusProvider.shouldStartClashOnBoot
 
-            return stopSelf()
+        if (StatusProvider.serviceRunning) {
+            return rejectStart()
         }
 
         StaticNotificationModule.createNotificationChannel(this)
@@ -162,6 +215,8 @@ class ClashService : BaseService() {
                 "rejected = $rejected, stopped = ${stopNotified.get()}"
         )
 
+        lastStartId = startId
+
         if (rejected) {
             stopSelf()
 
@@ -170,6 +225,14 @@ class ClashService : BaseService() {
 
         if (intent == null) {
             systemStarted = true
+
+            if (!stickyRestartAllowed()) {
+                notifyStopped()
+
+                stopSelf()
+
+                return START_NOT_STICKY
+            }
         }
 
         if (startFailed) {
