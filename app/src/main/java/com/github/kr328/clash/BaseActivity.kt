@@ -8,6 +8,7 @@ import android.view.View
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
@@ -22,6 +23,7 @@ import com.github.kr328.clash.design.util.resolveThemedBoolean
 import com.github.kr328.clash.design.util.resolveThemedColor
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
+import com.github.kr328.clash.service.R as ServiceR
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
@@ -204,6 +206,8 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ClashStop)
 
         if (cause != null && activityStarted) {
+            NotificationManagerCompat.from(this).cancel(ServiceR.id.nf_clash_start_failed)
+
             launch {
                 design?.showExceptionToast(ClashException(cause))
             }

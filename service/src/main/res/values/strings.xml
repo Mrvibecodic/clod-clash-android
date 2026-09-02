@@ -7,6 +7,7 @@
     <string name="clod_profile_load_failed">Profile «%1$s» failed to load: %2$s. «%3$s» keeps running</string>
     <string name="clod_profile_reload_failed">Profile «%1$s» failed to reload: %2$s. The previous configuration keeps running</string>
     <string name="clod_start_failed">Clod Clash could not start</string>
+    <string name="clod_stopped_title">Clod Clash stopped</string>
     <string name="clod_tun_establish_rejected">The system refused to create the VPN interface</string>
     <string name="clod_crash_loop">The service was restarted by the system %1$d times in a row. Automatic restart is paused — open the app and connect again</string>
     <string name="clod_foreground_denied">The system did not allow the service to start in the background. Open the app and connect again</string>

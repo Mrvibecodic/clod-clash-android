@@ -66,7 +66,7 @@ func TestProfileDelays(path string) map[string]int {
 
 	log.Infoln("Test profile `%s`: %d proxies via %s", path, len(proxies), url)
 
-	ctx, cancel := context.WithTimeout(context.Background(), healthCheckBudget(len(proxies)))
+	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(proxies)))
 	defer cancel()
 
 	var mu sync.Mutex
@@ -86,7 +86,7 @@ func TestProfileDelays(path string) map[string]int {
 				return
 			}
 
-			probe, cancelProbe := context.WithTimeout(context.Background(), healthCheckProbeTimeout)
+			probe, cancelProbe := context.WithTimeout(ctx, healthCheckProbeTimeout)
 			defer cancelProbe()
 
 			delay, err := px.URLTest(probe, url, nil)

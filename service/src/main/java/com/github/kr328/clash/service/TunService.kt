@@ -305,6 +305,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         systemStarted = false
 
+        StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_tun_revoked), R.string.clod_stopped_title)
+
         stopSelf()
     }
 

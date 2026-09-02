@@ -114,7 +114,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
             NotificationManagerCompat.from(service).cancel(R.id.nf_clash_start_failed)
         }
 
-        fun notifyStartFailed(service: Service, rawReason: String) {
+        fun notifyStartFailed(service: Service, rawReason: String, title: Int = R.string.clod_start_failed) {
             val reason = Redact.text(rawReason)
 
             val notification =
@@ -122,7 +122,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                     .setSmallIcon(R.drawable.ic_logo_service)
                     .setColor(service.getColorCompat(R.color.color_clash))
                     .setAutoCancel(true)
-                    .setContentTitle(service.getText(R.string.clod_start_failed))
+                    .setContentTitle(service.getText(title))
                     .setContentText(reason)
                     .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
                     .setContentIntent(
