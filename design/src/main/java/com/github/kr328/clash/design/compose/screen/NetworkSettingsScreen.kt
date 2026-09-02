@@ -85,6 +85,8 @@ fun NetworkSettingsScreen(
                         R.string.clod_local_proxy_summary,
                         "127.0.0.1:${state.localProxyPort}",
                     )
+                } else if (!state.enableVpn) {
+                    stringResource(R.string.clod_local_proxy_missing)
                 } else {
                     stringResource(R.string.routing_via_vpn_service)
                 },

@@ -3,6 +3,7 @@ package proxy
 import (
 	"sync"
 
+	"github.com/metacubex/mihomo/adapter/inbound"
 	"github.com/metacubex/mihomo/listener/http"
 	"github.com/metacubex/mihomo/tunnel"
 )
@@ -16,7 +17,7 @@ func Start(listen string) (listenAt string, err error) {
 
 	stopLocked()
 
-	listener, err = http.NewWithAuthenticate(listen, tunnel.Tunnel, false)
+	listener, err = http.NewWithAuthenticate(listen, tunnel.Tunnel, false, inbound.WithInName("DEFAULT-HTTP"))
 	if err == nil {
 		listenAt = listener.Address()
 	}

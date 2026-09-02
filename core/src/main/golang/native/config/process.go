@@ -47,6 +47,8 @@ func patchOverride(cfg *config.RawConfig, _ string) error {
 func patchExternalController(cfg *config.RawConfig, _ string) error {
 	cfg.ExternalController = ""
 	cfg.ExternalControllerTLS = ""
+	cfg.ExternalControllerUnix = ""
+	cfg.ExternalControllerPipe = ""
 
 	return nil
 }
@@ -78,7 +80,7 @@ func patchGeneral(cfg *config.RawConfig, profileDir string) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
 
-	if cfg.MixedPort == 0 && cfg.Port == 0 &&
+	if cfg.MixedPort == 0 && cfg.Port == 0 && !cfg.AllowLan &&
 		!portOccupied(cfg, defaultMixedPort) &&
 		!mixedPortOverridden(OverrideSlotPersist) &&
 		!mixedPortOverridden(OverrideSlotSession) {

@@ -15,7 +15,9 @@ the address is shown right under the switch, usually `127.0.0.1:7890`. This is w
 when a single app should route its traffic, rather than the whole system.
 
 <Callout title="The port can be changed">
-The port comes from your subscription; when the subscription does not set one, 7890 is used.
+The port comes from your subscription; when the subscription does not set one, 7890 is used —
+unless `allow-lan` is enabled (by the subscription or in the override): then nothing is opened
+on your behalf, because a substituted port would be exposed to the whole network without a password.
 You can set your own in **More → Core features → Override**: an empty field means "leave it
 alone", and zero switches the local proxy off entirely.
 </Callout>

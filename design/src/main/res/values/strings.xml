@@ -94,7 +94,8 @@
 
     <string name="route_system_traffic">Route System Traffic</string>
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
-    <string name="clod_local_proxy_summary">Traffic goes through the local proxy %1$s</string>
+    <string name="clod_local_proxy_summary">Local proxy %1$s for apps set up to use it; other traffic is not protected</string>
+    <string name="clod_local_proxy_missing">Local proxy: no HTTP port is set — the subscription does not define one, or it is disabled in the override</string>
 
     <string name="vpn_service_options">VpnService Options</string>
     <string name="bypass_private_network">Bypass Private Network</string>
@@ -106,7 +107,7 @@
     <string name="allow_ipv6">Allow Ipv6</string>
     <string name="allow_ipv6_summary">Allows ipv6 traffic via VpnService</string>
     <string name="system_proxy">System Proxy</string>
-    <string name="system_proxy_summary">Attach http proxy to VpnService</string>
+    <string name="system_proxy_summary">Announce an HTTP proxy of this VPN to apps that respect the system proxy setting (no password, reachable only inside the device)</string>
     <string name="access_control_mode">Access Control Mode</string>
 
     <string name="options_unavailable">Options unavailable until the tunnel is stopped</string>
