@@ -102,7 +102,7 @@
     <string name="dns_hijacking">DNS Hijacking</string>
     <string name="dns_hijacking_summary">Handle all dns packet</string>
     <string name="allow_bypass">Allow Bypass</string>
-    <string name="allow_bypass_summary">Allows all apps to bypass this VPN connection</string>
+    <string name="allow_bypass_summary">Lets apps that explicitly bind to a network (some messengers, banking and telecom apps) connect around the VPN. Off: their traffic goes through the tunnel too</string>
     <string name="allow_ipv6">Allow Ipv6</string>
     <string name="allow_ipv6_summary">Allows ipv6 traffic via VpnService</string>
     <string name="system_proxy">System Proxy</string>

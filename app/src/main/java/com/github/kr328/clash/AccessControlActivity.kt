@@ -74,7 +74,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             uiStore,
             service,
             selected,
-            tunPrefs?.includePackages?.toSet() ?: emptySet(),
+            tunPrefs?.includePackages?.filter { runCatching { packageManager.getApplicationInfo(it, 0) }.isSuccess }?.toSet() ?: emptySet(),
             tunPrefs?.excludePackages?.toSet() ?: emptySet(),
         )
 

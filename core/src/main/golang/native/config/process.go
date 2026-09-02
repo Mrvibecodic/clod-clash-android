@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/netip"
 	"slices"
 	"strings"
 
@@ -124,7 +125,32 @@ func patchDns(cfg *config.RawConfig, _ string) error {
 		cfg.DNS.NameServer = append(cfg.DNS.NameServer, systemNameServer)
 	}
 
+	warnPrivateFakeIPRange(cfg.DNS.FakeIPRange)
+
 	return nil
+}
+
+var privateNets = []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "169.254.0.0/16", "0.0.0.0/8", "224.0.0.0/4"}
+
+func warnPrivateFakeIPRange(fakeIPRange string) {
+	if fakeIPRange == "" {
+		return
+	}
+
+	rangePrefix, err := netip.ParsePrefix(fakeIPRange)
+	if err != nil {
+		return
+	}
+
+	for _, n := range privateNets {
+		private := netip.MustParsePrefix(n)
+
+		if private.Overlaps(rangePrefix) {
+			log.Warnln("[APP] fake-ip-range %s overlaps private network %s: with bypass of private networks enabled these addresses are routed outside the tunnel", fakeIPRange, n)
+
+			return
+		}
+	}
 }
 
 const systemNameServer = "system://"

@@ -408,7 +408,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
             setMtu(TUN_MTU)
 
-            setSession("Clash")
+            setSession(getString(R.string.launch_name))
 
             addDnsServer(TUN_DNS)
             if (store.allowIpv6) {
