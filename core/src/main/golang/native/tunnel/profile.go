@@ -17,6 +17,10 @@ import (
 func TestProfileDelays(path string) map[string]int {
 	result := map[string]int{}
 
+	// Корень проб берётся ДО разбора профиля: иначе отмена, пришедшая на старте
+	// службы, отменяет старый корень, а замер получает свежий и живёт дальше.
+	root := probeContext()
+
 	rawCfg, err := config.UnmarshalAndPatch(path)
 	if err != nil {
 		log.Errorln("Test profile `%s`: %s", path, err.Error())
@@ -66,7 +70,7 @@ func TestProfileDelays(path string) map[string]int {
 
 	log.Infoln("Test profile `%s`: %d proxies via %s", path, len(proxies), url)
 
-	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(proxies)))
+	ctx, cancel := context.WithTimeout(root, healthCheckBudget(len(proxies)))
 	defer cancel()
 
 	var mu sync.Mutex

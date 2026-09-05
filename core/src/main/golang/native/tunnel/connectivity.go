@@ -136,7 +136,7 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 			return 0, false, own.err
 		}
 
-		probe, cancel := context.WithTimeout(probeContext(), healthCheckProbeTimeout)
+		probe, cancel := context.WithTimeout(ctx, healthCheckProbeTimeout)
 		defer cancel()
 
 		own.probed = true
@@ -144,6 +144,42 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 
 		return own.delay, true, own.err
 	}
+}
+
+// resolveSelected walks nested groups down to the leaf the group points at:
+// probing a group instead of a node touches the group and disables the lazy
+// health check of the real node. The lookup goes through the members of the
+// group itself, because nodes from proxy providers are not in tunnel.Proxies().
+func resolveSelected(g outboundgroup.ProxyGroup) (string, C.Proxy) {
+	for depth := 0; depth < 16; depth++ {
+		now := g.Now()
+		if now == "" {
+			return "", nil
+		}
+
+		var selected C.Proxy
+
+		for _, px := range g.Proxies() {
+			if px.Name() == now {
+				selected = px
+
+				break
+			}
+		}
+
+		if selected == nil {
+			return "", nil
+		}
+
+		inner, isGroup := selected.Adapter().(outboundgroup.ProxyGroup)
+		if !isGroup {
+			return now, selected
+		}
+
+		g = inner
+	}
+
+	return "", nil
 }
 
 func groupCheckOptions(g outboundgroup.ProxyGroup) (string, string, utils.IntRanges[uint16]) {
@@ -290,12 +326,7 @@ func ProbeCurrentNodes() {
 			continue
 		}
 
-		now := g.Now()
-		if now == "" {
-			continue
-		}
-
-		target := proxies[now]
+		now, target := resolveSelected(g)
 		if target == nil {
 			continue
 		}
@@ -305,7 +336,15 @@ func ProbeCurrentNodes() {
 			continue
 		}
 
+		// Группа, которая сама меняет узел при провале, всегда получает свою
+		// пробу: иначе её съедает дедуп по общему листу.
+		reselect := reselectsItself(g)
+
 		key := now + "|" + url
+		if reselect {
+			key = g.Name() + "|" + key
+		}
+
 		if seen[key] {
 			continue
 		}
@@ -333,7 +372,7 @@ func ProbeCurrentNodes() {
 			}
 
 			log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
-		}(target, url, statusKey, expectedStatus, g.Name(), reselectsItself(g))
+		}(target, url, statusKey, expectedStatus, g.Name(), reselect)
 	}
 
 	release()

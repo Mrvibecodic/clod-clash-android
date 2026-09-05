@@ -38,6 +38,8 @@ func coreInit(home, versionName, gitVersion C.c_string, sdkVersion C.int) {
 
 //export reset
 func reset() {
+	defer guard("reset", func() {})()
+
 	tunnel.CancelHealthChecks()
 	tunnel.CloseProviders()
 	config.LoadDefault()

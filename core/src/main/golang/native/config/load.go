@@ -82,11 +82,13 @@ func applyPendingDefault() {
 			return
 		}
 
-		if pendingGeneration.Swap(0) != 0 {
-			applyDefaultLocked()
-		}
+		func() {
+			defer parseMutex.Unlock()
 
-		parseMutex.Unlock()
+			if pendingGeneration.Swap(0) != 0 {
+				applyDefaultLocked()
+			}
+		}()
 	}
 }
 

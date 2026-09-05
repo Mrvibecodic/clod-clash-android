@@ -81,10 +81,24 @@ func (t *remoteTun) close() {
 
 //export startTun
 func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) (result C.int) {
+	started := false
+
+	// Паника внутри tun.Start оставила бы применённый контекст и глобальную
+	// ссылку на колбэки мёртвой сессии: снимаем их на любом выходе без успеха.
+	remote := &remoteTun{callback: callback, limit: semaphore.NewWeighted(4)}
+
 	defer guard("startTun", func() { result = 1 })()
 
 	rTunLock.Lock()
 	defer rTunLock.Unlock()
+
+	defer func() {
+		if !started {
+			app.ApplyTunContext(nil, nil)
+
+			remote.close()
+		}
+	}()
 
 	if old := rTun; old != nil {
 		rTun = nil
@@ -97,15 +111,11 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	p := C.GoString(portal)
 	d := C.GoString(dns)
 
-	remote := &remoteTun{callback: callback, limit: semaphore.NewWeighted(4)}
-
 	app.ApplyTunContext(remote.markSocket, remote.querySocketUid)
 
 	closer, err := tun.Start(f, s, g, p, d)
 	if err != nil {
 		log.Errorln("Start tun: %s", err.Error())
-
-		remote.close()
 
 		return 1
 	}
@@ -113,6 +123,8 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	remote.closer = closer
 
 	rTun = remote
+
+	started = true
 
 	return 0
 }

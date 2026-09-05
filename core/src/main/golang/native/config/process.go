@@ -10,6 +10,7 @@ import (
 	"github.com/dlclark/regexp2"
 
 	"cfa/native/common"
+	"cfa/native/config/groups"
 	"cfa/native/config/panel"
 
 	"github.com/metacubex/mihomo/common/utils"
@@ -27,6 +28,7 @@ var processors = []processor{
 	patchTun,
 	patchListeners,
 	patchProviders,
+	patchEmptyFallback,
 	validConfig,
 }
 
@@ -266,6 +268,18 @@ func patchListeners(cfg *config.RawConfig, _ string) error {
 		newListeners = append(newListeners, mapping)
 	}
 	cfg.Listeners = newListeners
+	return nil
+}
+
+// A group fed only by remote providers falls back to COMPATIBLE when nothing
+// was downloaded yet, and COMPATIBLE is a direct adapter: the whole group would
+// go out unprotected without a word. Where the subscription did not pick its own
+// fallback, reject instead.
+func patchEmptyFallback(cfg *config.RawConfig, _ string) error {
+	for _, name := range groups.RejectWhenProvidersAreEmpty(cfg.ProxyGroup, cfg.ProxyProvider) {
+		log.Infoln("[APP] Group %s rejects while its providers are empty", name)
+	}
+
 	return nil
 }
 
