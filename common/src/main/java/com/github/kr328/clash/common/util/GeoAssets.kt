@@ -1,6 +1,7 @@
 package com.github.kr328.clash.common.util
 
 import android.content.Context
+import android.os.Process
 import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
 import kotlinx.coroutines.CompletableDeferred
@@ -24,6 +25,9 @@ object GeoAssets {
     private const val LOCK_TIMEOUT = 15_000L
     private const val LOCK_INTERVAL = 100L
     private const val READY_TIMEOUT = 60_000L
+    private const val TEMP_MAX_AGE = 3_600_000L
+
+    private const val EXTRACTING_MARK = ".extracting"
 
     private val names = listOf(
         "geoip.metadb",
@@ -153,10 +157,23 @@ object GeoAssets {
         }
     }
 
+    private fun dropAbandonedTemp(dir: File) {
+        val deadline = System.currentTimeMillis() - TEMP_MAX_AGE
+
+        dir.listFiles { file -> file.name.contains(EXTRACTING_MARK) }
+            ?.forEach { file ->
+                if (file.lastModified() < deadline) {
+                    file.delete()
+                }
+            }
+    }
+
     private fun extractAll(context: Context) {
         val dir = File(context.filesDir, "clash")
 
         dir.mkdirs()
+
+        dropAbandonedTemp(dir)
 
         val installedAt = context.packageManager
             .getPackageInfo(context.packageName, 0)
@@ -169,7 +186,7 @@ object GeoAssets {
                 return@forEach
             }
 
-            val temp = File(dir, "$name.extracting")
+            val temp = File(dir, "$name$EXTRACTING_MARK.${Process.myPid()}")
 
             try {
                 FileOutputStream(temp).use { output ->

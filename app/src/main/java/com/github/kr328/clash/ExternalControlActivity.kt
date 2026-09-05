@@ -48,6 +48,10 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                 return finish()
             }
 
+            if (url.length > MAX_URL_LENGTH) {
+                return finish()
+            }
+
             launch {
                 withContext(NonCancellable) {
                     val uuid = withProfile(retry = false) {
@@ -172,8 +176,8 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
     }
 
     companion object {
-        // Имя приходит из чужого интента и попадает в ненарезанный список
-        // профилей: без потолка одна ссылка ломает главный экран навсегда.
         private const val MAX_NAME_LENGTH = 128
+
+        private const val MAX_URL_LENGTH = 2048
     }
 }

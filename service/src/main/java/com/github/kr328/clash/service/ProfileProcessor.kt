@@ -21,6 +21,7 @@ import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.readPanelInfo
+import com.github.kr328.clash.service.util.seedSystemDns
 import com.github.kr328.clash.service.util.sendProfileChanged
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -303,6 +304,8 @@ object ProfileProcessor {
         context.applyDeviceInfo()
 
         GeoAssets.awaitReady(context)
+
+        context.seedSystemDns()
 
         Clash.fetchAndValid(dir, source, force) {
             if (it.action == FetchStatus.Action.SubscriptionInfo) {
