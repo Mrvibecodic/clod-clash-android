@@ -28,6 +28,7 @@ jobs:
 
       - name: Apply Core Patches
         run: |
+          set -euo pipefail
           cd core/src/foss/golang/clash
           for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
           grep -q ProbeHolding adapter/adapter.go
@@ -35,6 +36,13 @@ jobs:
           grep -q ProbeFreezeGap constant/probehold.go
           grep -q expectedStatus adapter/outboundgroup/selector.go
           grep -q ResetNetwork adapter/outbound/base.go
+          # -F 0 запрещает нечёткий контекст, но не смещение: остатки .orig/.rej
+          # означают, что патч лёг не туда, куда писался.
+          if [ -n "$(find . \( -name '*.orig' -o -name '*.rej' \) -print -quit)" ]; then
+            echo "::error::патч ядра лёг со смещением или с отказом"
+            find . \( -name '*.orig' -o -name '*.rej' \)
+            exit 1
+          fi
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -53,8 +61,12 @@ jobs:
 
       - name: Apply Patches
         run: |
+          set -euo pipefail
           cd $(go env GOROOT)
-          for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 < "$p"; done
+          for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
+          # Стражи на оба патча: первый ДОБАВЛЯЕТ ветку, второй УДАЛЯЕТ две.
+          grep -q 'tailscale/tailscale/issues/13452' src/os/pidfd_linux.go
+          test "$(grep -c 'if use64bitsTimeOn32bits' src/runtime/os_linux32.go)" = "0"
 
       - uses: actions/cache@v5
         with:
@@ -67,9 +79,14 @@ jobs:
 
       - name: Update CA
         run: |
-          sudo apt-get update && sudo apt-get install ca-certificates
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y ca-certificates
           sudo update-ca-certificates
           cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
+          # Пустой или несостоявшийся бандл ядро не заметит — молча уедет на
+          # хранилище устройства.
+          test -s core/src/foss/golang/clash/component/ca/ca-certificates.crt
+          test "$(grep -c 'BEGIN CERTIFICATE' core/src/foss/golang/clash/component/ca/ca-certificates.crt)" -gt 100
 
       # Разбор заголовков панели и распознавание узлов-заглушек живут в Go, и
       # проверяются они тоже на Go — самым первым шагом: пакеты
@@ -84,7 +101,7 @@ jobs:
         id: go-tests
         if: success()
         working-directory: core/src/main/golang
-        run: go test ./native/config/panel/... ./native/config/sentinel/... ./native/chanx/... ./native/redact/...
+        run: go test ./native/config/groups/... ./native/config/panel/... ./native/config/sentinel/... ./native/chanx/... ./native/redact/...
 
       # Unit-тесты на чистые считалки — ДО сборки приложения: они дешевле
       # (:core им нужен, а вот сборка APK, R8 и упаковка — нет), и красная
