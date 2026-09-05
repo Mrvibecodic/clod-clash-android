@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -27,7 +28,7 @@ type remoteTun struct {
 	closer   io.Closer
 	callback unsafe.Pointer
 
-	closed bool
+	closed atomic.Bool
 	limit  *semaphore.Weighted
 }
 
@@ -35,7 +36,7 @@ func (t *remoteTun) markSocket(fd int) {
 	_ = t.limit.Acquire(context.Background(), 1)
 	defer t.limit.Release(1)
 
-	if t.closed {
+	if t.closed.Load() {
 		return
 	}
 
@@ -46,7 +47,7 @@ func (t *remoteTun) querySocketUid(protocol int, source, target string) int {
 	_ = t.limit.Acquire(context.Background(), 1)
 	defer t.limit.Release(1)
 
-	if t.closed {
+	if t.closed.Load() {
 		return -1
 	}
 
@@ -59,7 +60,7 @@ func (t *remoteTun) close() {
 
 	acquired := t.limit.Acquire(ctx, 4) == nil
 
-	t.closed = true
+	t.closed.Store(true)
 
 	if t.closer != nil {
 		_ = t.closer.Close()
@@ -80,7 +81,7 @@ func (t *remoteTun) close() {
 
 //export startTun
 func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) (result C.int) {
-	defer guard("startTun", func() { result = 1 })
+	defer guard("startTun", func() { result = 1 })()
 
 	rTunLock.Lock()
 	defer rTunLock.Unlock()
@@ -96,7 +97,7 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	p := C.GoString(portal)
 	d := C.GoString(dns)
 
-	remote := &remoteTun{callback: callback, closed: false, limit: semaphore.NewWeighted(4)}
+	remote := &remoteTun{callback: callback, limit: semaphore.NewWeighted(4)}
 
 	app.ApplyTunContext(remote.markSocket, remote.querySocketUid)
 
@@ -118,6 +119,8 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 
 //export stopTun
 func stopTun() {
+	defer guard("stopTun", func() {})()
+
 	rTunLock.Lock()
 	defer rTunLock.Unlock()
 

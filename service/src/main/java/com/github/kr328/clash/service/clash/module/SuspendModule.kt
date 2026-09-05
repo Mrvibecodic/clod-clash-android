@@ -59,12 +59,12 @@ class SuspendModule(service: Service) : Module<Unit>(service) {
                     Intent.ACTION_SCREEN_ON -> {
                         Clash.suspendCore(false)
 
-                        Log.d("Clash resumed")
+                        Log.d("Screen on: core keeps running")
                     }
                     Intent.ACTION_SCREEN_OFF -> {
                         Clash.suspendCore(true)
 
-                        Log.d("Clash suspended")
+                        Log.d("Screen off: core keeps running")
                     }
                 }
             }

@@ -1,6 +1,8 @@
 package tunnel
 
 import (
+	"cfa/native/config"
+
 	"github.com/metacubex/mihomo/component/iface"
 	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
@@ -10,6 +12,12 @@ import (
 )
 
 func OnNetworkChanged(closeConnections bool) {
+	if !config.IsLoaded() {
+		log.Infoln("Network changed: config not loaded, reset=%t skipped", closeConnections)
+
+		return
+	}
+
 	NoteNetworkChange()
 
 	CancelHealthChecks()

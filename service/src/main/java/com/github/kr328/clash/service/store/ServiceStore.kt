@@ -1,7 +1,9 @@
 package com.github.kr328.clash.service.store
 
 import android.content.Context
+import android.os.Build
 import android.os.SystemClock
+import android.provider.Settings
 import androidx.core.content.edit
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.store.Store
@@ -13,6 +15,8 @@ import java.util.*
 
 class ServiceStore(context: Context) {
     private val preferences = PreferenceProvider.createSharedPreferencesFromContext(context)
+
+    private val resolver = context.contentResolver
 
     private val store = Store(preferences.asStoreProvider())
 
@@ -176,7 +180,42 @@ class ServiceStore(context: Context) {
         clashStartedElapsed = 0L
     }
 
+    // Marks are elapsedRealtime values and only meaningful within one boot,
+    // so they are stored together with a boot id and dropped after a reboot
+    fun recordStickyRestart(now: Long, windowMs: Long): Int {
+        val boot = bootId()
+        val stored = stickyRestarts.split('|', limit = 2)
+        val previous = if (stored.size == 2 && stored[0] == boot) stored[1] else ""
+        val marks = previous.split(',')
+            .mapNotNull { it.toLongOrNull() }
+            .filter { it <= now && now - it < windowMs } + now
+
+        stickyRestarts = boot + "|" + marks.joinToString(",")
+
+        return marks.size
+    }
+
+    private fun bootId(): String {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            runCatching { Settings.Global.getInt(resolver, Settings.Global.BOOT_COUNT) }
+                .getOrNull()
+                ?.let { return "boot$it" }
+        }
+
+        return "at" + (System.currentTimeMillis() - SystemClock.elapsedRealtime()) / 60_000L
+    }
+
+    fun profileRetries(uuid: UUID): Int =
+        preferences.getInt(KEY_PROFILE_RETRIES + uuid, 0)
+
+    fun setProfileRetries(uuid: UUID, count: Int) {
+        preferences.edit {
+            if (count > 0) putInt(KEY_PROFILE_RETRIES + uuid, count) else remove(KEY_PROFILE_RETRIES + uuid)
+        }
+    }
+
     companion object {
         private const val KEY_ACTIVE_PROFILE = "active_profile"
+        private const val KEY_PROFILE_RETRIES = "profile_retries_"
     }
 }

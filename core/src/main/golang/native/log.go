@@ -26,6 +26,10 @@ func init() {
 		defer log.UnSubscribe(sub)
 
 		for msg := range sub {
+			if msg.LogLevel < log.Level() && !strings.HasPrefix(msg.Payload, "[APP]") {
+				continue
+			}
+
 			cPayload := C.CString(redact.Text(msg.Payload))
 
 			switch msg.LogLevel {

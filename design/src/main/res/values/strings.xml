@@ -95,7 +95,7 @@
     <string name="route_system_traffic">Route System Traffic</string>
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
     <string name="clod_local_proxy_summary">Local proxy %1$s for apps set up to use it; other traffic is not protected</string>
-    <string name="clod_local_proxy_missing">Local proxy: no HTTP port is set — the subscription does not define one, or it is disabled in the override</string>
+    <string name="clod_local_proxy_missing">Local proxy: no HTTP port is set — the subscription does not define one, it is disabled in the override, or allow-lan is enabled</string>
 
     <string name="vpn_service_options">VpnService Options</string>
     <string name="bypass_private_network">Bypass Private Network</string>
@@ -384,6 +384,7 @@
     <string name="clod_mode_locked">%s · set by your provider</string>
     <string name="clod_mode_locked_hint">Your provider has fixed the routing mode for this subscription. It cannot be changed in the app.</string>
     <string name="clod_mode_locked_toast">The routing mode is set by your provider</string>
+    <string name="clod_mode_session_only">Applies until the service restarts; pin it in the override</string>
     <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>
@@ -470,7 +471,7 @@
     <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout.</string>
     <string name="clod_background">Background</string>
     <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
-    <string name="clod_keep_awake_summary">The core is not suspended and connections survive screen-off. Battery usage is higher.</string>
+    <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and node checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
     <string name="clod_secure_channel">Secure connection</string>
     <string name="clod_secure_channel_hint">The provider must support it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
     <string name="clod_home_connected_to">Connected to</string>
@@ -486,9 +487,9 @@
     <string name="clod_reliability_title">Keep the connection from dropping</string>
     <string name="clod_reliability_text">Two Android settings. Asked once — afterwards they live in the More tab.</string>
     <string name="clod_reliability_battery">Unrestricted battery</string>
-    <string name="clod_reliability_battery_why">Otherwise the system puts the connection to sleep at night and you wake up offline.</string>
+    <string name="clod_reliability_battery_why">Some firmwares stop the service in the background without this exemption. It is also needed to update the subscription while the VPN is off.</string>
     <string name="clod_reliability_battery_allowed">Allowed</string>
-    <string name="clod_reliability_battery_limited">Restricted by the system — the connection may be put to sleep</string>
+    <string name="clod_reliability_battery_limited">Restricted by the system — the service may be stopped in the background</string>
     <string name="clod_reliability_always_on">Always-on connection</string>
     <string name="clod_reliability_always_on_why">Comes back by itself after a reboot. In system settings it is called “Always-on VPN”: the gear next to Clod Clash.</string>
     <string name="clod_reliability_always_on_enabled">Enabled</string>

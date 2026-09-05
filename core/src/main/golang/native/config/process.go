@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/netip"
 	"slices"
 	"strings"
@@ -33,12 +32,29 @@ var processors = []processor{
 
 type processor func(cfg *config.RawConfig, profileDir string) error
 
-func patchOverride(cfg *config.RawConfig, _ string) error {
+func patchOverride(cfg *config.RawConfig, profileDir string) error {
+	mode := cfg.Mode
+	nameServers := cfg.DNS.NameServer
+
 	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotPersist))).Decode(cfg); err != nil {
 		log.Warnln("Apply persist override: %s", err.Error())
 	}
 	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotSession))).Decode(cfg); err != nil {
 		log.Warnln("Apply session override: %s", err.Error())
+	}
+
+	// The provider pinned the mode: the override slots must not win over the subscription.
+	if locked := panel.Read(profileDir).LockMode; locked != nil && *locked && cfg.Mode != mode {
+		log.Warnln("Ignore override mode %s: the mode is locked by the subscription", cfg.Mode.String())
+
+		cfg.Mode = mode
+	}
+
+	// An empty list from the override would make the core reject the profile.
+	if len(cfg.DNS.NameServer) == 0 && len(nameServers) > 0 {
+		log.Warnln("Override left dns.nameserver empty: keeping the subscription list")
+
+		cfg.DNS.NameServer = nameServers
 	}
 
 	return nil
@@ -94,6 +110,11 @@ func patchGeneral(cfg *config.RawConfig, profileDir string) error {
 
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
 		cfg.ExternalUI = profileDir + "/ui"
+	} else {
+		// Without a controller the dashboard is unreachable; do not let the core download it.
+		cfg.ExternalUI = ""
+		cfg.ExternalUIURL = ""
+		cfg.ExternalUIName = ""
 	}
 
 	return nil
@@ -118,6 +139,12 @@ func patchDns(cfg *config.RawConfig, _ string) error {
 
 		for _, slot := range []OverrideSlot{OverrideSlotPersist, OverrideSlotSession} {
 			applyOwnDns(cfg, ReadOverride(slot))
+		}
+
+		if len(cfg.DNS.NameServer) == 0 {
+			log.Warnln("Override left dns.nameserver empty: using the built-in list")
+
+			cfg.DNS.NameServer = defaultNameServers
 		}
 
 		cfg.DNS.Enable = true
@@ -264,7 +291,9 @@ func validConfig(cfg *config.RawConfig, _ string) error {
 	}
 
 	if _, err := regexp2.Compile(cfg.ClashForAndroid.UiSubtitlePattern, 0); err != nil {
-		return fmt.Errorf("compile ui-subtitle-pattern: %s", err.Error())
+		log.Warnln("Ignore unsupported ui-subtitle-pattern: %s", err.Error())
+
+		cfg.ClashForAndroid.UiSubtitlePattern = ""
 	}
 
 	return nil

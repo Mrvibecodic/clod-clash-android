@@ -1,26 +1,30 @@
 diff --git a/adapter/adapter.go b/adapter/adapter.go
-index 6f20c08a..bfe39a84 100644
+index 6f20c08..265e1a4 100644
 --- a/adapter/adapter.go
 +++ b/adapter/adapter.go
-@@ -168,6 +168,9 @@ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.In
+@@ -166,8 +166,13 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
+ func (p *Proxy) URLTest(ctx context.Context, url string, expectedStatus utils.IntRanges[uint16]) (t uint16, err error) {
+ 	var satisfied bool
  
++	probeStart := time.Now()
++
  	defer func() {
  		alive := err == nil
-+		if (!alive || !satisfied) && C.ProbeHolding(time.Now().UnixNano()) {
++		if (!alive || !satisfied) && (C.ProbeHolding(probeStart) || C.ProbeHolding(time.Now())) {
 +			return
 +		}
  		record := C.DelayHistory{Time: time.Now()}
  		if alive {
  			record.Delay = t
 diff --git a/adapter/outboundgroup/groupbase.go b/adapter/outboundgroup/groupbase.go
-index eed45e0d..f57b6054 100644
+index eed45e0..080db16 100644
 --- a/adapter/outboundgroup/groupbase.go
 +++ b/adapter/outboundgroup/groupbase.go
 @@ -267,6 +267,10 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
  		return
  	}
  
-+	if C.ProbeHolding(time.Now().UnixNano()) {
++	if C.ProbeHolding(time.Now()) {
 +		return
 +	}
 +
@@ -29,35 +33,44 @@ index eed45e0d..f57b6054 100644
  	}
 diff --git a/constant/probehold.go b/constant/probehold.go
 new file mode 100644
-index 00000000..24bb32df
+index 0000000..76f86d0
 --- /dev/null
 +++ b/constant/probehold.go
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,37 @@
 +package constant
 +
-+import "sync/atomic"
-+
-+const probeFreezeGap = int64(45 * 1e9)
-+
-+var (
-+	probeHoldUntil atomic.Int64
-+	probeLastBeat  atomic.Int64
++import (
++	"sync/atomic"
++	"time"
 +)
 +
-+func SetProbeHoldUntil(nanos int64) {
-+	probeHoldUntil.Store(nanos)
++// ProbeFreezeGap is the longest pause between two heartbeats that still counts
++// as the process being awake; a longer one means the device was asleep.
++const ProbeFreezeGap = 45 * time.Second
++
++var (
++	// probeHoldUntil is compared on the monotonic clock, so wall clock jumps
++	// neither stretch nor cut the hold window.
++	probeHoldUntil atomic.Pointer[time.Time]
++	// probeLastBeat is wall clock nanoseconds: the monotonic clock stops during
++	// sleep, and a stale beat is exactly how sleep is detected here.
++	probeLastBeat atomic.Int64
++)
++
++func SetProbeHoldUntil(until time.Time) {
++	probeHoldUntil.Store(&until)
 +}
 +
 +func ProbeBeat(nanos int64) {
 +	probeLastBeat.Store(nanos)
 +}
 +
-+func ProbeHolding(nanos int64) bool {
-+	if nanos < probeHoldUntil.Load() {
++func ProbeHolding(at time.Time) bool {
++	if until := probeHoldUntil.Load(); until != nil && at.Before(*until) {
 +		return true
 +	}
 +
 +	beat := probeLastBeat.Load()
 +
-+	return beat != 0 && nanos-beat > probeFreezeGap
++	return beat != 0 && at.UnixNano()-beat > int64(ProbeFreezeGap)
 +}

@@ -33,7 +33,8 @@ alone", and zero switches the local proxy off entirely.
 | **Direct mode** | Nothing is proxied; the tunnel is up but traffic bypasses the servers |
 
 In global mode the Servers tab keeps a single `GLOBAL` group — only that choice has any
-effect, the other groups take no part in this mode.
+effect, the other groups take no part in this mode. Until a server is picked there, the core
+falls back to `DIRECT` — traffic goes direct.
 
 <Callout type="warn" title="The mode can be locked">
 A provider may pin the mode to the subscription. The switch is then visible but disabled and

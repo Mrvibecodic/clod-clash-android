@@ -70,7 +70,7 @@ func Init(home, versionName, gitVersion string, platformVersion int) {
 // которые заполнены всегда: сокет приложения и адрес нашего слушателя —
 // ровно то, что для этого случая передаёт HTTP-вход.
 func socketPair(metadata *constant.Metadata) (net.Addr, net.Addr) {
-	if metadata.RawSrcAddr != nil && metadata.RawDstAddr != nil {
+	if hasAddr(metadata.RawSrcAddr) && hasAddr(metadata.RawDstAddr) {
 		return metadata.RawSrcAddr, metadata.RawDstAddr
 	}
 
@@ -93,4 +93,19 @@ func socketPair(metadata *constant.Metadata) (net.Addr, net.Addr) {
 	}
 
 	return nil, nil
+}
+
+// hasAddr rejects a typed nil as well as a nil interface: a UDP inbound with a
+// domain target stores (*net.UDPAddr)(nil) in RawDstAddr, whose String() is "<nil>".
+func hasAddr(addr net.Addr) bool {
+	switch a := addr.(type) {
+	case nil:
+		return false
+	case *net.TCPAddr:
+		return a != nil
+	case *net.UDPAddr:
+		return a != nil
+	}
+
+	return true
 }

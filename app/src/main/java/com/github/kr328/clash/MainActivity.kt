@@ -307,6 +307,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     patchOverride(Clash.OverrideSlot.Session, override)
                                 }
 
+                                design.showToast(
+                                    DesignR.string.clod_mode_session_only,
+                                    ToastDuration.Short,
+                                )
+
                                 design.fetch()
                             }
                         }
@@ -666,7 +671,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
         if (healthChecking) {
-            healthCheckRequested = true
+            if (!manual) {
+                healthCheckRequested = true
+            }
 
             return
         }
@@ -696,6 +703,10 @@ class MainActivity : BaseActivity<MainDesign>() {
                 withClash { healthCheck(first) }
 
                 reloadProxyGroup(selectedGroup)
+
+                // The visible group is done; the rest finishes in the background
+                // while healthChecking still guards against a second round
+                setProxyTesting(false)
             }
 
             coroutineScope {

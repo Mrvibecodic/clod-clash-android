@@ -186,19 +186,14 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         }
 
         val store = ServiceStore(this)
-        val now = System.currentTimeMillis()
-        val marks = store.stickyRestarts.split(',')
-            .mapNotNull { it.toLongOrNull() }
-            .filter { now - it < STICKY_RESTART_WINDOW_MS } + now
+        val count = store.recordStickyRestart(SystemClock.elapsedRealtime(), STICKY_RESTART_WINDOW_MS)
 
-        store.stickyRestarts = marks.joinToString(",")
-
-        if (marks.size >= STICKY_RESTART_LIMIT) {
+        if (count >= STICKY_RESTART_LIMIT) {
             store.stickyRestarts = ""
 
-            reason = getString(R.string.clod_crash_loop, marks.size)
+            reason = getString(R.string.clod_crash_loop, count)
 
-            ServiceLog.mark("sticky restart refused: ${marks.size} restarts in window")
+            ServiceLog.mark("sticky restart refused: $count restarts in window")
 
             return false
         }

@@ -16,34 +16,40 @@ const (
 	networkReadyGrace = time.Second
 
 	heartbeatInterval = 10 * time.Second
-
-	heartbeatFreezeGap = 45 * time.Second
 )
 
 var (
-	settleUntil atomic.Int64
+	// settleUntil is compared on the monotonic clock: a wall clock jump must
+	// neither stretch nor cut the hold window.
+	settleUntil atomic.Pointer[time.Time]
+
+	// networkReadyAt is wall clock nanoseconds, the same scale as the heartbeat
+	// gap it is compared against.
+	networkReadyAt atomic.Int64
 
 	heartbeatOnce sync.Once
 )
 
 func NoteNetworkChange() {
-	until := time.Now().Add(networkSettleWindow).UnixNano()
+	until := time.Now().Add(networkSettleWindow)
 
-	settleUntil.Store(until)
+	settleUntil.Store(&until)
 
 	C.SetProbeHoldUntil(until)
 }
 
 func NoteNetworkReady() {
-	until := time.Now().Add(networkReadyGrace).UnixNano()
+	networkReadyAt.Store(time.Now().UnixNano())
+
+	until := time.Now().Add(networkReadyGrace)
 
 	for {
 		cur := settleUntil.Load()
-		if cur <= until {
+		if cur == nil || !until.Before(*cur) {
 			return
 		}
 
-		if settleUntil.CompareAndSwap(cur, until) {
+		if settleUntil.CompareAndSwap(cur, &until) {
 			C.SetProbeHoldUntil(until)
 
 			return
@@ -58,6 +64,8 @@ func StartHeartbeat() {
 }
 
 func heartbeat() {
+	// Wall clock on purpose: the monotonic clock stops while the device sleeps,
+	// and a gap between ticks is how sleep is detected.
 	last := time.Now().UnixNano()
 
 	C.ProbeBeat(last)
@@ -68,10 +76,14 @@ func heartbeat() {
 	for range ticker.C {
 		now := time.Now().UnixNano()
 
-		if gap := time.Duration(now - last); gap > heartbeatFreezeGap {
-			NoteNetworkChange()
+		if gap := time.Duration(now - last); gap > C.ProbeFreezeGap {
+			if time.Duration(now-networkReadyAt.Load()) > C.ProbeFreezeGap {
+				NoteNetworkChange()
 
-			log.Infoln("Resumed after %s pause: probes held for %s", gap.Round(time.Second), networkSettleWindow)
+				log.Infoln("Resumed after %s pause: probes held for %s", gap.Round(time.Second), networkSettleWindow)
+			} else {
+				log.Infoln("Resumed after %s pause: network already confirmed, probes not held", gap.Round(time.Second))
+			}
 		}
 
 		last = now
@@ -82,7 +94,12 @@ func heartbeat() {
 
 func waitNetworkSettled(ctx context.Context) error {
 	for {
-		wait := time.Until(time.Unix(0, settleUntil.Load()))
+		until := settleUntil.Load()
+		if until == nil {
+			return nil
+		}
+
+		wait := time.Until(*until)
 		if wait <= 0 {
 			return nil
 		}

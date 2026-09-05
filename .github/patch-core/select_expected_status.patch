@@ -1,0 +1,53 @@
+diff --git a/adapter/outboundgroup/selector.go b/adapter/outboundgroup/selector.go
+index 2fea750..ae74980 100644
+--- a/adapter/outboundgroup/selector.go
++++ b/adapter/outboundgroup/selector.go
+@@ -15,9 +15,10 @@ type SelectorOption struct {
+ 
+ type Selector struct {
+ 	*GroupBase
+-	disableUDP bool
+-	selected   string
+-	testUrl    string
++	disableUDP     bool
++	selected       string
++	testUrl        string
++	expectedStatus string
+ }
+ 
+ // DialContext implements C.ProxyAdapter
+@@ -66,13 +67,14 @@ func (s *Selector) MarshalJSON() ([]byte, error) {
+ 	}
+ 
+ 	return json.Marshal(map[string]any{
+-		"type":          s.Type().String(),
+-		"now":           s.Now(),
+-		"all":           all,
+-		"testUrl":       url,
+-		"hidden":        s.Hidden(),
+-		"icon":          s.Icon(),
+-		"emptyFallback": s.EmptyFallback().Name(),
++		"type":           s.Type().String(),
++		"now":            s.Now(),
++		"all":            all,
++		"testUrl":        url,
++		"expectedStatus": s.expectedStatus,
++		"hidden":         s.Hidden(),
++		"icon":           s.Icon(),
++		"emptyFallback":  s.EmptyFallback().Name(),
+ 	})
+ }
+ 
+@@ -134,8 +136,9 @@ func NewSelector(option GroupCommonOption, selectorOption SelectorOption, emptyF
+ 			EmptyFallback:  emptyFallback,
+ 			Providers:      providers,
+ 		}),
+-		selected:   selectorOption.DefaultSelected,
+-		disableUDP: option.DisableUDP,
+-		testUrl:    option.URL,
++		selected:       selectorOption.DefaultSelected,
++		disableUDP:     option.DisableUDP,
++		testUrl:        option.URL,
++		expectedStatus: option.ExpectedStatus,
+ 	}, nil
+ }

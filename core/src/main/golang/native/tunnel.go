@@ -83,6 +83,8 @@ func testProfileDelays(path C.c_string) *C.char {
 
 //export notifyNetworkChanged
 func notifyNetworkChanged(closeConnections C.int) {
+	defer guard("notifyNetworkChanged", func() {})()
+
 	tunnel.OnNetworkChanged(closeConnections != 0)
 }
 

@@ -31,6 +31,8 @@ object Clash {
         Bridge.nativeForceGc()
     }
 
+    // Intentionally a no-op in the core (tunnel/suspend.go): the tunnel keeps
+    // running while the screen is off; the bridge entry is kept as is.
     fun suspendCore(suspended: Boolean) {
         Bridge.nativeSuspend(suspended)
     }
@@ -78,11 +80,16 @@ object Clash {
             }
 
             override fun querySocketUid(protocol: Int, source: String, target: String): Int {
-                return querySocketUid(
-                    protocol,
-                    parseInetSocketAddress(source),
-                    parseInetSocketAddress(target)
-                )
+                // A nil net.Addr on the Go side arrives as "<nil>"; an exception
+                // here would stay pending across the JNI boundary, so report unknown
+                if (source.isEmpty() || source == "<nil>" || target.isEmpty() || target == "<nil>") {
+                    return -1
+                }
+
+                val src = runCatching { parseInetSocketAddress(source) }.getOrNull() ?: return -1
+                val dst = runCatching { parseInetSocketAddress(target) }.getOrNull() ?: return -1
+
+                return querySocketUid(protocol, src, dst)
             }
         })
 

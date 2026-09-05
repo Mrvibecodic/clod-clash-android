@@ -51,7 +51,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     private val store = ServiceStore(service)
 
-    private val networkChanges: Channel<Unit> = Channel(Channel.CONFLATED)
+    private val networkChanges: Channel<String> = Channel(Channel.CONFLATED)
 
     private val networkReady: Channel<Unit> = Channel(Channel.CONFLATED)
 
@@ -84,12 +84,15 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     private var idleTicks = 0
 
+    // Reactions since the last validated network, only touched from the run loop
+    private val reactionMarks = ArrayList<Long>()
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             Log.i("NetworkObserve onAvailable network=$network")
             networkInfos[network] = NetworkInfo()
 
-            onNetworkMaybeChanged(network)
+            onNetworkMaybeChanged(network, "onAvailable")
         }
 
         override fun onCapabilitiesChanged(
@@ -102,7 +105,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                 return
             }
 
-            onNetworkMaybeChanged(network)
+            onNetworkMaybeChanged(network, "caps")
 
             if (network == currentNetwork && !currentValidatedSeen) {
                 currentValidatedSeen = true
@@ -125,7 +128,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             val preferred = preferredNetwork()
 
             if (network == currentNetwork) {
-                preferred?.let(::onNetworkMaybeChanged)
+                preferred?.let { onNetworkMaybeChanged(it, "onLost") }
+                    ?: markNetworkEvent("onLost", network, "reacted=false (no network left)")
+            } else {
+                markNetworkEvent("onLost", network, "reacted=false (not current)")
             }
 
             networks.trySend(preferred)
@@ -148,6 +154,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         Log.i("NetworkObserve start register")
         return try {
             connectivity.registerNetworkCallback(request, callback)
+
+            seedDns()
 
             true
         } catch (e: Exception) {
@@ -188,12 +196,40 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             (if (capabilities == null) 0 else unvalidatedPenalty(capabilities))
     }
 
-    private fun onNetworkMaybeChanged(network: Network) {
+    private fun describe(network: Network?): String {
+        val capabilities = network?.let { networkInfos[it]?.capabilities ?: connectivity.getNetworkCapabilities(it) }
+
+        val transport = when {
+            capabilities == null -> "unknown"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "vpn"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> "bluetooth"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+            else -> "other"
+        }
+
+        return "$network/$transport"
+    }
+
+    private fun markNetworkEvent(reason: String, network: Network?, outcome: String) {
+        ServiceLog.mark("network changed: reason=$reason network=${describe(network)} $outcome")
+    }
+
+    private fun onNetworkMaybeChanged(network: Network, reason: String) {
+        // Capability updates repeat for every signal change, so only the ones
+        // that pass the filters are worth a journal line
+        val journal = reason != "caps"
+
         if (preferredNetwork()?.equals(network) == false) {
+            if (journal) markNetworkEvent(reason, network, "reacted=false (not preferred)")
+
             return
         }
 
         if (currentNetwork == network) {
+            if (journal) markNetworkEvent(reason, network, "reacted=false (same network)")
+
             return
         }
 
@@ -203,15 +239,17 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         if (!networkKnown) {
             networkKnown = true
 
+            markNetworkEvent(reason, network, "reacted=false (initial)")
+
             return
         }
 
         Log.i("NetworkObserve network changed to $network")
 
-        networkChanges.trySend(Unit)
+        networkChanges.trySend(reason)
     }
 
-    private fun handleNetworkChanged(scope: CoroutineScope) {
+    private fun handleNetworkChanged(scope: CoroutineScope, reason: String) {
         val now = SystemClock.elapsedRealtime()
         val sinceReset = now - lastResetAt
         if (sinceReset < RESET_THROTTLE_MS) {
@@ -223,23 +261,34 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
                     retriggerScheduled = false
 
-                    networkChanges.trySend(Unit)
+                    networkChanges.trySend(reason.substringBefore('/') + "/retry")
                 }
             }
 
-            Log.d("NetworkObserve reset throttled, retry after window")
+            markNetworkEvent(reason, currentNetwork, "reacted=false throttled")
 
             return
         }
 
         lastResetAt = now
 
-        Clash.notifyNetworkChanged(store.resetConnectionsOnNetworkChange)
+        // A flapping network without validation in between gets a capped series:
+        // caches and probes still reset, but connections are no longer torn down.
+        reactionMarks.removeAll { now - it >= REACTION_WINDOW_MS }
+        reactionMarks.add(now)
 
-        if (isInteractive() || store.keepAwake) {
+        val series = reactionMarks.size
+        val reset = store.resetConnectionsOnNetworkChange && series < REACTION_SERIES_LIMIT
+        val awake = isInteractive() || store.keepAwake
+
+        markNetworkEvent(reason, currentNetwork, "reacted=true reset=$reset series=$series probe=${if (awake) "now" else "deferred"}")
+
+        Clash.notifyNetworkChanged(reset)
+
+        if (awake) {
             probeNodes()
 
-            scheduleRecover(scope, force = true)
+            scheduleRecover(scope, force = series == 1)
         } else {
             probePending = true
         }
@@ -279,7 +328,39 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             if (isInteractive() || store.keepAwake) {
                 Clash.recoverDeadNodes(forced)
+            } else if (forced) {
+                probePending = true
             }
+        }
+    }
+
+    private fun seedDns() {
+        if (curDnsList.isNotEmpty()) {
+            return
+        }
+
+        try {
+            val network = connectivity.activeNetwork ?: return
+            val capabilities = connectivity.getNetworkCapabilities(network) ?: return
+
+            if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) {
+                return
+            }
+
+            val dnsList = connectivity.getLinkProperties(network)?.dnsServers.orEmpty()
+                .map { x -> x.asSocketAddressText(53) }
+
+            if (dnsList.isEmpty() || curDnsList.isNotEmpty()) {
+                return
+            }
+
+            Log.i("NetworkObserve seed dns from ${describe(network)}")
+
+            curDnsList = dnsList
+
+            Clash.notifyDnsChanged(dnsList)
+        } catch (e: Exception) {
+            Log.w("NetworkObserve seed dns failed", e)
         }
     }
 
@@ -334,9 +415,11 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                             enqueueEvent(it)
                         }
                         networkChanges.onReceive {
-                            handleNetworkChanged(scope)
+                            handleNetworkChanged(scope, it)
                         }
                         networkReady.onReceive {
+                            reactionMarks.clear()
+
                             Clash.notifyNetworkReady()
 
                             if (SystemClock.elapsedRealtime() - lastResetAt >= RESET_THROTTLE_MS) {
@@ -388,6 +471,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     companion object {
         private const val RESET_THROTTLE_MS = 5_000L
+
+        private const val REACTION_WINDOW_MS = 60_000L
+
+        private const val REACTION_SERIES_LIMIT = 3
 
         private const val RECOVER_DELAY_MS = 7_000L
 

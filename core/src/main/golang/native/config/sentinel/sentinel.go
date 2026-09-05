@@ -13,8 +13,14 @@ var serverlessTypes = map[string]bool{
 
 var credentialKeys = []string{"uuid", "password", "psk", "private-key", "auth", "auth-str", "token"}
 
+func serverless(proxy map[string]any) bool {
+	kind, ok := proxy["type"].(string)
+
+	return ok && serverlessTypes[strings.ToLower(strings.TrimSpace(kind))]
+}
+
 func Is(proxy map[string]any) bool {
-	if kind, ok := proxy["type"].(string); ok && serverlessTypes[strings.ToLower(strings.TrimSpace(kind))] {
+	if serverless(proxy) {
 		return false
 	}
 
@@ -90,6 +96,11 @@ func Inspect(proxies []map[string]any) Report {
 	real := 0
 
 	for _, proxy := range proxies {
+		// Built-in outbounds have no server: they are neither placeholders nor real nodes.
+		if serverless(proxy) {
+			continue
+		}
+
 		if !Is(proxy) {
 			real++
 
@@ -108,7 +119,7 @@ func Inspect(proxies []map[string]any) Report {
 		}
 	}
 
-	report.OnlySentinels = real == 0
+	report.OnlySentinels = real == 0 && len(report.Names) > 0
 
 	return report
 }

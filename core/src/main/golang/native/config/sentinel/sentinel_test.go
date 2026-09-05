@@ -94,6 +94,28 @@ func TestInspectWithOneRealProxy(t *testing.T) {
 	}
 }
 
+func TestInspectIgnoresServerlessTypes(t *testing.T) {
+	proxies := []map[string]any{
+		{"name": "Подписка истекла", "type": "vless", "server": "0.0.0.0", "port": 443},
+		{"name": "Без VPN", "type": "direct"},
+		{"name": "DNS-OUT", "type": "dns"},
+	}
+
+	report := Inspect(proxies)
+
+	if !report.OnlySentinels {
+		t.Fatal("встроенные типы рядом с заглушками не должны считаться живыми узлами")
+	}
+
+	if len(report.Names) != 1 || report.Names[0] != "Подписка истекла" {
+		t.Fatalf("скрывать надо только заглушку, получено %v", report.Names)
+	}
+
+	if report := Inspect([]map[string]any{{"name": "Без VPN", "type": "direct"}}); report.OnlySentinels {
+		t.Fatal("конфиг из одного встроенного типа без заглушек не должен помечаться OnlySentinels")
+	}
+}
+
 func TestInspectCapsRemarks(t *testing.T) {
 	proxies := make([]map[string]any, 0, 10)
 

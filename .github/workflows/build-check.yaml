@@ -29,7 +29,12 @@ jobs:
       - name: Apply Core Patches
         run: |
           cd core/src/foss/golang/clash
-          for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 < "$p"; done
+          for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
+          grep -q ProbeHolding adapter/adapter.go
+          grep -q ProbeHolding adapter/outboundgroup/groupbase.go
+          grep -q ProbeFreezeGap constant/probehold.go
+          grep -q expectedStatus adapter/outboundgroup/selector.go
+          grep -q ResetNetwork adapter/outbound/base.go
 
       - name: Setup Java
         uses: actions/setup-java@v5

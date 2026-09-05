@@ -93,7 +93,7 @@
     <string name="route_system_traffic">Маршрутизировать системный трафик</string>
     <string name="routing_via_vpn_service">Автоматически маршрутизировать весь системный трафик через VPN</string>
     <string name="clod_local_proxy_summary">Локальный прокси %1$s для приложений, где он настроен; остальной трафик не защищён</string>
-    <string name="clod_local_proxy_missing">Локальный прокси: HTTP-порт не задан — подписка его не задаёт либо он выключен в переопределении</string>
+    <string name="clod_local_proxy_missing">Локальный прокси: HTTP-порт не задан — подписка его не задаёт, он выключен в переопределении либо включён allow-lan</string>
 
     <string name="vpn_service_options">Настройки VPN</string>
     <string name="bypass_private_network">Игнорировать частные сети</string>
@@ -352,6 +352,7 @@
     <string name="clod_mode_locked">%s · задан вашим сервисом</string>
     <string name="clod_mode_locked_hint">Режим маршрутизации для этой подписки задан вашим сервисом и в приложении не меняется.</string>
     <string name="clod_mode_locked_toast">Режим задан вашим сервисом</string>
+    <string name="clod_mode_session_only">Действует до перезапуска службы; закрепить можно в переопределении</string>
     <string name="clod_select_failed">Не удалось выбрать этот сервер. Обновите подписку и попробуйте снова.</string>
     <string name="clod_test_delays">Проверить задержки</string>
     <string name="clod_no_servers">Серверов нет</string>
@@ -465,7 +466,7 @@
     <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута.</string>
     <string name="clod_background">Фоновая работа</string>
     <string name="clod_keep_awake">Держать туннель активным при выключенном экране</string>
-    <string name="clod_keep_awake_summary">Ядро не усыпляется, соединения переживают сон экрана. Расход батареи выше.</string>
+    <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки узлов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
     <string name="clod_secure_channel">Защищённое соединение</string>
     <string name="clod_secure_channel_hint">Провайдер должен его поддерживать. Включённую защиту нельзя снять — придётся добавить подписку заново.</string>
     <string name="clod_home_connected_to">Подключено к</string>
@@ -481,9 +482,9 @@
     <string name="clod_reliability_title">Чтобы соединение не отваливалось</string>
     <string name="clod_reliability_text">Две настройки Android. Спрашиваем один раз — потом они живут во вкладке «Ещё».</string>
     <string name="clod_reliability_battery">Не ограничивать батарею</string>
-    <string name="clod_reliability_battery_why">Иначе система усыпит соединение ночью — и утром вы без сети.</string>
+    <string name="clod_reliability_battery_why">На некоторых прошивках без исключения службу останавливают в фоне. Без него также не обновляется подписка при выключенном VPN.</string>
     <string name="clod_reliability_battery_allowed">Разрешено</string>
-    <string name="clod_reliability_battery_limited">Ограничено системой — соединение могут усыпить</string>
+    <string name="clod_reliability_battery_limited">Ограничено системой — службу могут остановить в фоне</string>
     <string name="clod_reliability_always_on">Постоянное соединение</string>
     <string name="clod_reliability_always_on_why">Поднимется само после перезагрузки. В настройках системы пункт называется «Постоянный VPN»: шестерёнка рядом с Clod Clash.</string>
     <string name="clod_reliability_always_on_enabled">Включено</string>

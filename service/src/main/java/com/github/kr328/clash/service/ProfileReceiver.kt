@@ -18,6 +18,7 @@ import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -60,8 +61,10 @@ class ProfileReceiver : BroadcastReceiver() {
 
                     Global.launch {
                         try {
+                            // The worker could not start (foreground start denied in
+                            // background); try again at the next regular interval
                             ImportedDao().queryByUUID(uuid)
-                                ?.let { scheduleRetry(context, it) }
+                                ?.let { scheduleAfterInterval(context, it) }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -95,6 +98,8 @@ class ProfileReceiver : BroadcastReceiver() {
 
         fun cancelNext(context: Context, imported: Imported) {
             cancelAlarm(context, imported)
+
+            ServiceStore(context).setProfileRetries(imported.uuid, 0)
         }
 
         fun schedule(context: Context, imported: Imported) {
@@ -109,6 +114,8 @@ class ProfileReceiver : BroadcastReceiver() {
             val intent = pendingIntentOf(context, imported)
 
             cancelAlarm(context, imported)
+
+            ServiceStore(context).setProfileRetries(imported.uuid, 0)
 
             if (imported.interval < TimeUnit.MINUTES.toMillis(15))
                 return
@@ -127,6 +134,18 @@ class ProfileReceiver : BroadcastReceiver() {
             setAlarm(context, current + interval, intent)
         }
 
+        fun scheduleAfterInterval(context: Context, imported: Imported) {
+            val intent = pendingIntentOf(context, imported)
+
+            cancelAlarm(context, imported)
+
+            if (imported.interval < TimeUnit.MINUTES.toMillis(15))
+                return
+
+            setAlarm(context, System.currentTimeMillis() + imported.interval, intent)
+        }
+
+        // Retries back off 15 -> 30 -> 60 ... minutes, capped by the profile interval
         fun scheduleRetry(context: Context, imported: Imported) {
             val intent = pendingIntentOf(context, imported)
 
@@ -135,11 +154,17 @@ class ProfileReceiver : BroadcastReceiver() {
             if (imported.interval < TimeUnit.MINUTES.toMillis(15))
                 return
 
-            setAlarm(
-                context,
-                System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(15),
-                intent
-            )
+            val store = ServiceStore(context)
+            val attempt = store.profileRetries(imported.uuid) + 1
+
+            store.setProfileRetries(imported.uuid, attempt)
+
+            val base = TimeUnit.MINUTES.toMillis(15)
+            val delay = (base shl (attempt - 1).coerceIn(0, 16)).coerceIn(base, imported.interval.coerceAtLeast(base))
+
+            Log.i("Retry profile update ${imported.uuid} attempt $attempt in ${delay / 60_000} min")
+
+            setAlarm(context, System.currentTimeMillis() + delay, intent)
         }
 
         private fun setAlarm(context: Context, timestamp: Long, intent: PendingIntent) {

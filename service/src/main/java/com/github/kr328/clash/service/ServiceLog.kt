@@ -7,7 +7,7 @@ import kotlinx.coroutines.channels.Channel
 import java.util.Date
 
 object ServiceLog {
-    private const val CAPACITY = 64
+    private const val CAPACITY = 256
 
     val events = Channel<LogMessage>(CAPACITY, BufferOverflow.DROP_OLDEST)
 
