@@ -328,7 +328,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             if (isInteractive() || store.keepAwake) {
                 Clash.recoverDeadNodes(forced)
-            } else if (forced) {
+            } else {
                 probePending = true
             }
         }

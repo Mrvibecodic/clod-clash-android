@@ -97,7 +97,15 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setContentDesign(design)
 
-        design.fetch()
+        try {
+            design.fetch()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Main first fetch: $e", e)
+
+            design.showExceptionToast(e)
+        }
 
         if (restored == null && !design.hasProfiles) {
             design.selectTab(MainTab.Subscriptions)
@@ -609,6 +617,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     @Volatile
     private var healthCheckRequested = false
+    private var healthCheckRequestedManually = false
 
     private var lastHealthCheckAt: Long
         get() = HealthProbes.checkedAt
@@ -671,8 +680,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
         if (healthChecking) {
-            if (!manual) {
-                healthCheckRequested = true
+            healthCheckRequested = true
+
+            // Спиннер гаснет по видимой группе, а проверка идёт дальше: без
+            // очереди повторное нажатие не делало бы вообще ничего.
+            if (manual) {
+                healthCheckRequestedManually = true
+
+                setProxyTesting(true)
             }
 
             return
@@ -737,7 +752,11 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (healthCheckRequested) {
             healthCheckRequested = false
 
-            runHealthCheck(manual = false)
+            val queuedManually = healthCheckRequestedManually
+
+            healthCheckRequestedManually = false
+
+            runHealthCheck(manual = queuedManually)
         }
     }
 

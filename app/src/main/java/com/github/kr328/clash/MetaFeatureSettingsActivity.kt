@@ -4,7 +4,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.os.BundleCompat
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.intent
@@ -29,7 +28,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
 
     override suspend fun main() {
         val configuration = restored
-            ?.let { BundleCompat.getParcelable(it, "override", ConfigurationOverride::class.java) }
+            ?.takeIf { it.getBoolean(PendingOverride.KEY) }
+            ?.let { PendingOverride.value }
             ?: withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
         this.configuration = configuration
@@ -44,6 +44,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     patchOverride(Clash.OverrideSlot.Persist, configuration)
                 }
             }
+
+            PendingOverride.value = null
         }
 
         val design = MetaFeatureSettingsDesign(
@@ -81,6 +83,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                                     withClash {
                                         clearOverride(Clash.OverrideSlot.Persist)
                                     }
+
+                                    PendingOverride.value = null
                                 }
                                 finish()
                             }
@@ -121,7 +125,9 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         outState.putBoolean("reload", reload && !rereading)
 
         if (!reload) {
-            configuration?.let { outState.putParcelable("override", it) }
+            PendingOverride.value = configuration
+
+            outState.putBoolean(PendingOverride.KEY, configuration != null)
         }
     }
 

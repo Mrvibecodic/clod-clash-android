@@ -56,7 +56,11 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                             "file" -> Profile.Type.File
                             else -> Profile.Type.Url
                         }
-                        val name = uri.getQueryParameter("name") ?: getString(R.string.new_profile)
+                        val name = uri.getQueryParameter("name")
+                            ?.trim()
+                            ?.takeIf { it.isNotEmpty() }
+                            ?.take(MAX_NAME_LENGTH)
+                            ?: getString(R.string.new_profile)
 
                         val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
                         val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
@@ -165,5 +169,11 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
         super.finish()
         @Suppress("DEPRECATION")
         overridePendingTransition(0, 0)
+    }
+
+    companion object {
+        // Имя приходит из чужого интента и попадает в ненарезанный список
+        // профилей: без потолка одна ссылка ломает главный экран навсегда.
+        private const val MAX_NAME_LENGTH = 128
     }
 }

@@ -30,7 +30,7 @@ together with the phone. Both rows show the current state — restricted by the 
 | --- | --- |
 | Route system traffic | A device-wide tunnel, or a local proxy |
 | Bypass private networks | Your LAN and printers stay reachable directly |
-| DNS hijacking | DNS queries go into the tunnel instead of around it |
+| DNS hijacking | Catches every DNS query on port 53, not only the ones addressed to our resolver |
 | Allow bypass | Lets other VPN apps bypass our tunnel |
 | Allow IPv6 | Carries IPv6 through the tunnel |
 | System proxy | Tells the system the proxy address (Android 10 and newer) |
@@ -52,6 +52,16 @@ setting.
 
 **Core features** — sniffer, routing database sources, config overrides. This section is for
 people who know what they are changing; an ordinary user has no reason to go in.
+
+The first three rows below live in **Core features → Override → DNS**, DNS hijacking lives in
+**More → Network**:
+
+| Setting | What happens |
+| --- | --- |
+| Use built-in | The subscription's DNS is replaced wholesale by the built-in list: `1.0.0.1`, `8.8.4.4`, `9.9.9.10` and the system resolver (`system://`). `default-nameserver` and `fallback-filter` stay as the core defines them |
+| Force enable | If the subscription carries no `dns` block at all, the core's own default kicks in: `redir-host` instead of fake-ip, the core vendor's public resolvers (Chinese ones among them) and the core's live `default-nameserver` — app queries reach those servers from the phone's own IP |
+| Append system DNS | The carrier's plain DNS joins the list and competes with the subscription's encrypted servers: whichever answers first wins |
+| DNS hijacking | Every query on port 53 inside the tunnel is intercepted, whoever it is addressed to, IPv6 included; queries to 853 (DoT) and 443 (DoH) go their own way |
 
 **Databases and providers** — the country, site and network lists the rules rely on.
 Refreshed with a button.

@@ -20,6 +20,9 @@ class LogcatWriter(context: Context) : AutoCloseable {
         writer.appendLine(
             String.format(Locale.ROOT, FORMAT, message.time.time, message.level.name, message.message),
         )
+
+        // Запись логов включают ради падения, а буфер как раз падение и теряет.
+        writer.flush()
     }
 
     companion object {

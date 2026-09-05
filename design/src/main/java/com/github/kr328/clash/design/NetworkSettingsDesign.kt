@@ -11,6 +11,7 @@ import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.resolveTunStack
 
 class NetworkSettingsDesign(
     context: Context,
@@ -18,6 +19,8 @@ class NetworkSettingsDesign(
     private val srvStore: ServiceStore,
     running: Boolean,
     localProxyPort: Int,
+    private val profileTunStack: String,
+    privateDnsHost: String?,
 ) : Design<NetworkSettingsDesign.Request>(context) {
     sealed interface Request {
         data object Back : Request
@@ -39,8 +42,15 @@ class NetworkSettingsDesign(
             resetConnections = srvStore.resetConnectionsOnNetworkChange,
             keepAwake = srvStore.keepAwake,
             localProxyPort = localProxyPort,
+            effectiveTunStack = resolveTunStack(srvStore.tunStackMode, profileTunStack),
+            effectiveTunStackFromProfile = tunStackFromProfile(srvStore.tunStackMode),
+            privateDnsHost = privateDnsHost,
         ),
     )
+
+    // Стек пришёл из подписки, если выбор в настройках сам по себе дал бы другой результат
+    private fun tunStackFromProfile(mode: String): Boolean =
+        resolveTunStack(mode, "") != resolveTunStack(mode, profileTunStack)
 
     override val root: View = composeRoot {
         NetworkSettingsScreen(state = state, onAction = ::onAction)
@@ -94,7 +104,11 @@ class NetworkSettingsDesign(
 
                 srvStore.tunStackMode = stack
 
-                state = state.copy(tunStack = action.index)
+                state = state.copy(
+                    tunStack = action.index,
+                    effectiveTunStack = resolveTunStack(stack, profileTunStack),
+                    effectiveTunStackFromProfile = tunStackFromProfile(stack),
+                )
             }
         }
     }

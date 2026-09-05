@@ -1,7 +1,6 @@
 package com.github.kr328.clash
 
 import android.os.Bundle
-import androidx.core.os.BundleCompat
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.OverrideSettingsDesign
@@ -17,7 +16,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
 
     override suspend fun main() {
         val configuration = restored
-            ?.let { BundleCompat.getParcelable(it, "override", ConfigurationOverride::class.java) }
+            ?.takeIf { it.getBoolean(PendingOverride.KEY) }
+            ?.let { PendingOverride.value }
             ?: withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
         this.configuration = configuration
@@ -34,6 +34,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             withClash {
                 patchOverride(Clash.OverrideSlot.Persist, configuration)
             }
+
+            PendingOverride.value = null
         }
 
         val design = OverrideSettingsDesign(
@@ -58,6 +60,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
                                     withClash {
                                         clearOverride(Clash.OverrideSlot.Persist)
                                     }
+
+                                    PendingOverride.value = null
                                 }
 
                                 finish()
@@ -72,6 +76,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        configuration?.let { outState.putParcelable("override", it) }
+        PendingOverride.value = configuration
+
+        outState.putBoolean(PendingOverride.KEY, configuration != null)
     }
 }

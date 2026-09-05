@@ -96,12 +96,14 @@
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
     <string name="clod_local_proxy_summary">Local proxy %1$s for apps set up to use it; other traffic is not protected</string>
     <string name="clod_local_proxy_missing">Local proxy: no HTTP port is set — the subscription does not define one, it is disabled in the override, or allow-lan is enabled</string>
+    <string name="clod_local_proxy_allow_lan">If the subscription turns on allow-lan, the port listens on every interface: any device on the same local network can use this proxy</string>
 
     <string name="vpn_service_options">VpnService Options</string>
     <string name="bypass_private_network">Bypass Private Network</string>
     <string name="bypass_private_network_summary">Bypass private network addresses</string>
     <string name="dns_hijacking">DNS Hijacking</string>
     <string name="dns_hijacking_summary">Handle all dns packet</string>
+    <string name="clod_private_dns_strict">Private DNS with an explicit host (%1$s) is on in the system settings: apps get real addresses, so domain rules and fake-ip do not apply to them</string>
     <string name="allow_bypass">Allow Bypass</string>
     <string name="allow_bypass_summary">Lets apps that explicitly bind to a network (some messengers, banking and telecom apps) connect around the VPN. Off: their traffic goes through the tunnel too</string>
     <string name="allow_ipv6">Allow Ipv6</string>
@@ -209,6 +211,8 @@
     <string name="tun_stack_system">System Stack</string>
     <string name="tun_stack_gvisor">Gvisor Stack</string>
     <string name="tun_stack_mixed">Mixed Stack</string>
+    <string name="clod_tun_stack_effective">Stack in use</string>
+    <string name="clod_tun_stack_from_profile">%1$s — from the subscription</string>
 
     <string name="allow_all_apps">Allow all apps</string>
     <string name="allow_selected_apps">Allow selected apps</string>

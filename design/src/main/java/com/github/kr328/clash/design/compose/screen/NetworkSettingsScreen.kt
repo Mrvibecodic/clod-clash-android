@@ -41,6 +41,9 @@ data class NetworkSettingsState(
     val resetConnections: Boolean = true,
     val keepAwake: Boolean = false,
     val localProxyPort: Int = 0,
+    val effectiveTunStack: String = "",
+    val effectiveTunStackFromProfile: Boolean = false,
+    val privateDnsHost: String? = null,
 )
 
 sealed interface NetworkSettingsAction {
@@ -75,7 +78,14 @@ fun NetworkSettingsScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!state.editable) {
-                LockedNotice()
+                InfoNotice(stringResource(R.string.options_unavailable))
+            }
+
+            // В режиме локального прокси приложения сами передают имя хоста, там подсказка ни к чему
+            if (state.enableVpn) {
+                state.privateDnsHost?.let {
+                    InfoNotice(stringResource(R.string.clod_private_dns_strict, it))
+                }
             }
 
             SwitchRow(
@@ -84,7 +94,7 @@ fun NetworkSettingsScreen(
                     stringResource(
                         R.string.clod_local_proxy_summary,
                         "127.0.0.1:${state.localProxyPort}",
-                    )
+                    ) + "\n" + stringResource(R.string.clod_local_proxy_allow_lan)
                 } else if (!state.enableVpn) {
                     stringResource(R.string.clod_local_proxy_missing)
                 } else {
@@ -148,6 +158,20 @@ fun NetworkSettingsScreen(
                 enabled = vpnOptions,
                 onSelect = { onAction(NetworkSettingsAction.SetTunStack(it)) },
             )
+            val effectiveStack = when (state.effectiveTunStack) {
+                "gvisor" -> stringResource(R.string.tun_stack_gvisor)
+                "mixed" -> stringResource(R.string.tun_stack_mixed)
+                else -> stringResource(R.string.tun_stack_system)
+            }
+            ReadOnlyRow(
+                title = stringResource(R.string.clod_tun_stack_effective),
+                value = if (state.effectiveTunStackFromProfile) {
+                    stringResource(R.string.clod_tun_stack_from_profile, effectiveStack)
+                } else {
+                    effectiveStack
+                },
+                enabled = vpnOptions,
+            )
 
             SectionHeader(stringResource(R.string.clod_network_switch))
             SwitchRow(
@@ -172,7 +196,27 @@ fun NetworkSettingsScreen(
 }
 
 @Composable
-private fun LockedNotice() {
+private fun ReadOnlyRow(title: String, value: String, enabled: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f),
+        )
+    }
+}
+
+@Composable
+private fun InfoNotice(text: String) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -190,7 +234,7 @@ private fun LockedNotice() {
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = stringResource(R.string.options_unavailable),
+                text = text,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

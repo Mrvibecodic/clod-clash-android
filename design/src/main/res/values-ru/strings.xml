@@ -94,12 +94,14 @@
     <string name="routing_via_vpn_service">Автоматически маршрутизировать весь системный трафик через VPN</string>
     <string name="clod_local_proxy_summary">Локальный прокси %1$s для приложений, где он настроен; остальной трафик не защищён</string>
     <string name="clod_local_proxy_missing">Локальный прокси: HTTP-порт не задан — подписка его не задаёт, он выключен в переопределении либо включён allow-lan</string>
+    <string name="clod_local_proxy_allow_lan">Если подписка включает allow-lan, порт слушает на всех интерфейсах: этим прокси сможет пользоваться любое устройство той же локальной сети</string>
 
     <string name="vpn_service_options">Настройки VPN</string>
     <string name="bypass_private_network">Игнорировать частные сети</string>
     <string name="bypass_private_network_summary">Игнорировать адреса частных сетей</string>
     <string name="dns_hijacking">Перехват DNS</string>
     <string name="dns_hijacking_summary">Обрабатывать все DNS запросы</string>
+    <string name="clod_private_dns_strict">В системных настройках включён Private DNS с указанным хостом (%1$s) — приложения получают настоящие адреса, поэтому правила по доменам и fake-ip для них не действуют</string>
     <string name="allow_bypass">Разрешить обход</string>
     <string name="allow_bypass_summary">Приложения, которые явно привязываются к сети (некоторые мессенджеры, банковские и операторские), смогут ходить в обход VPN. Выключено — их трафик тоже идёт через туннель</string>
     <string name="system_proxy">Системный прокси</string>
@@ -306,6 +308,8 @@
     <string name="tun_stack_system">Системный</string>
     <string name="tun_stack_gvisor">gVisor</string>
     <string name="tun_stack_mixed">Смешанный</string>
+    <string name="clod_tun_stack_effective">Фактический стек</string>
+    <string name="clod_tun_stack_from_profile">%1$s — из подписки</string>
     <string name="hide_app_icon_title">Скрыть значок</string>
     <string name="hide_app_icon_desc">Убрать значок приложения из списка программ</string>
     <string name="hide_from_recents_title">Скрыть из недавних</string>
