@@ -19,12 +19,8 @@ const (
 )
 
 var (
-	// settleUntil is compared on the monotonic clock: a wall clock jump must
-	// neither stretch nor cut the hold window.
 	settleUntil atomic.Pointer[time.Time]
 
-	// networkReadyAt is wall clock nanoseconds, the same scale as the heartbeat
-	// gap it is compared against.
 	networkReadyAt atomic.Int64
 
 	heartbeatOnce sync.Once
@@ -39,7 +35,11 @@ func NoteNetworkChange() {
 }
 
 func NoteNetworkReady() {
-	networkReadyAt.Store(time.Now().UnixNano())
+	now := time.Now().UnixNano()
+
+	networkReadyAt.Store(now)
+
+	C.ProbeBeat(now)
 
 	until := time.Now().Add(networkReadyGrace)
 
@@ -64,8 +64,6 @@ func StartHeartbeat() {
 }
 
 func heartbeat() {
-	// Wall clock on purpose: the monotonic clock stops while the device sleeps,
-	// and a gap between ticks is how sleep is detected.
 	last := time.Now().UnixNano()
 
 	C.ProbeBeat(last)

@@ -139,17 +139,13 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 		probe, cancel := context.WithTimeout(ctx, healthCheckProbeTimeout)
 		defer cancel()
 
-		own.probed = true
 		own.delay, own.err = px.URLTest(probe, url, expected)
+		own.probed = own.err == nil || ctx.Err() == nil
 
-		return own.delay, true, own.err
+		return own.delay, own.probed, own.err
 	}
 }
 
-// resolveSelected walks nested groups down to the leaf the group points at:
-// probing a group instead of a node touches the group and disables the lazy
-// health check of the real node. The lookup goes through the members of the
-// group itself, because nodes from proxy providers are not in tunnel.Proxies().
 func resolveSelected(g outboundgroup.ProxyGroup) (string, C.Proxy) {
 	for depth := 0; depth < 16; depth++ {
 		now := g.Now()
@@ -336,8 +332,6 @@ func ProbeCurrentNodes() {
 			continue
 		}
 
-		// Группа, которая сама меняет узел при провале, всегда получает свою
-		// пробу: иначе её съедает дедуп по общему листу.
 		reselect := reselectsItself(g)
 
 		key := now + "|" + url

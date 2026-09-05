@@ -49,6 +49,9 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryTunnelState(JNIEnv *en
 
     scoped_string response = queryTunnelState();
 
+    if (response == NULL)
+        return NULL;
+
     return new_string(response);
 }
 
@@ -159,6 +162,9 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryGroupNames(JNIEnv *env
     TRACE_METHOD();
 
     scoped_string response = queryGroupNames((int) exclude_not_selectable);
+
+    if (response == NULL)
+        return NULL;
 
     return new_string(response);
 }
@@ -316,6 +322,9 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryProviders(JNIEnv *env,
 
     scoped_string response = queryProviders();
 
+    if (response == NULL)
+        return NULL;
+
     return new_string(response);
 }
 
@@ -339,6 +348,9 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeReadOverride(JNIEnv *env, j
     TRACE_METHOD();
 
     scoped_string response = readOverride(slot);
+
+    if (response == NULL)
+        return NULL;
 
     return new_string(response);
 }
@@ -394,6 +406,8 @@ static void call_tun_interface_mark_socket_impl(void *tun_interface, int fd) {
     (*env)->CallVoidMethod(env, (jobject) tun_interface,
                            (jmethodID) m_tun_interface_mark_socket,
                            (jint) fd);
+
+    jni_catch_exception(env);
 }
 
 static int call_tun_interface_query_socket_uid_impl(void *tun_interface, int protocol,
@@ -402,11 +416,26 @@ static int call_tun_interface_query_socket_uid_impl(void *tun_interface, int pro
 
     ATTACH_JNI();
 
-    return (*env)->CallIntMethod(env, (jobject) tun_interface,
-                                 (jmethodID) m_tun_interface_query_socket_uid,
-                                 (jint) protocol,
-                                 (jstring) new_string(source),
-                                 (jstring) new_string(target));
+    jstring _source = new_string(source);
+
+    if (jni_catch_exception(env))
+        return -1;
+
+    jstring _target = new_string(target);
+
+    if (jni_catch_exception(env))
+        return -1;
+
+    int uid = (*env)->CallIntMethod(env, (jobject) tun_interface,
+                                    (jmethodID) m_tun_interface_query_socket_uid,
+                                    (jint) protocol,
+                                    _source,
+                                    _target);
+
+    if (jni_catch_exception(env))
+        return -1;
+
+    return uid;
 }
 
 static void call_completable_complete_impl(void *completable, const char *exception) {
@@ -419,19 +448,33 @@ static void call_completable_complete_impl(void *completable, const char *except
                                   (jobject) completable,
                                   (jmethodID) m_completable_complete,
                                   (jobject) o_unit);
-    } else {
-        jthrowable _exception = (jthrowable)
-                (*env)->NewObject(env,
-                                  (jclass) c_clash_exception,
-                                  (jmethodID) m_clash_exception,
-                                  (jstring) new_string(exception)
-                );
 
-        (*env)->CallBooleanMethod(env,
-                                  (jobject) completable,
-                                  (jmethodID) m_completable_complete_exceptionally,
-                                  (jobject) _exception);
+        jni_catch_exception(env);
+
+        return;
     }
+
+    jstring _message = new_string(exception);
+
+    if (jni_catch_exception(env))
+        return;
+
+    jthrowable _exception = (jthrowable)
+            (*env)->NewObject(env,
+                              (jclass) c_clash_exception,
+                              (jmethodID) m_clash_exception,
+                              _message
+            );
+
+    if (jni_catch_exception(env))
+        return;
+
+    (*env)->CallBooleanMethod(env,
+                              (jobject) completable,
+                              (jmethodID) m_completable_complete_exceptionally,
+                              (jobject) _exception);
+
+    jni_catch_exception(env);
 }
 
 static void call_fetch_callback_report_impl(void *fetch_callback, const char *status_json) {
@@ -441,10 +484,15 @@ static void call_fetch_callback_report_impl(void *fetch_callback, const char *st
 
     jstring _status_json = new_string(status_json);
 
+    if (jni_catch_exception(env))
+        return;
+
     (*env)->CallVoidMethod(env,
                            (jobject) fetch_callback,
                            (jmethodID) m_fetch_callback_report,
                            (jstring) _status_json);
+
+    jni_catch_exception(env);
 }
 
 static void call_fetch_callback_complete_impl(void *fetch_callback, const char *error) {
@@ -454,13 +502,19 @@ static void call_fetch_callback_complete_impl(void *fetch_callback, const char *
 
     jstring _error = NULL;
 
-    if (error != NULL)
+    if (error != NULL) {
         _error = new_string(error);
+
+        if (jni_catch_exception(env))
+            return;
+    }
 
     (*env)->CallVoidMethod(env,
                            (jobject) fetch_callback,
                            (jmethodID) m_fetch_callback_complete,
                            (jstring) _error);
+
+    jni_catch_exception(env);
 }
 
 static int call_logcat_interface_received_impl(void *callback, const char *payload) {
@@ -468,10 +522,16 @@ static int call_logcat_interface_received_impl(void *callback, const char *paylo
 
     ATTACH_JNI();
 
+    jstring _payload = new_string(payload);
+
+    if (jni_catch_exception(env)) {
+        return 1;
+    }
+
     (*env)->CallVoidMethod(env,
                            (jobject) callback,
                            (jmethodID) m_logcat_interface_received,
-                           (jstring) new_string(payload));
+                           _payload);
 
     if (jni_catch_exception(env)) {
         return 1;
@@ -485,7 +545,15 @@ static int open_content_impl(const char *url, char *error, int error_length) {
 
     ATTACH_JNI();
 
-    int fd = (*env)->CallStaticIntMethod(env, c_content, m_open, new_string(url));
+    jstring _url = new_string(url);
+
+    if (jni_catch_exception(env)) {
+        strncpy(error, "unknown", error_length - 1);
+
+        return -1;
+    }
+
+    int fd = (*env)->CallStaticIntMethod(env, c_content, m_open, _url);
 
     if ((*env)->ExceptionCheck(env)) {
         jthrowable exception = (*env)->ExceptionOccurred(env);
