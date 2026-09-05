@@ -249,7 +249,7 @@
     <string name="clod_sub_menu">Subscription actions</string>
 
     <string name="invalid_log_file">Invalid log file</string>
-    <string name="unable_to_start_vpn">Unable to start VPN component</string>
+    <string name="unable_to_start_vpn">The system did not open the VPN permission request. Try again</string>
 
     <string name="clod_docs">Clod Clash documentation</string>
     <string name="clod_docs_url">https://mrvibecodic.github.io/clod-clash-android/en/docs</string>
@@ -467,7 +467,7 @@
     <string name="clod_no_servers_traffic_title">Out of traffic</string>
     <string name="clod_no_servers_traffic">The traffic is used up. Buy more, or wait for the next reset.</string>
     <string name="clod_no_servers_traffic_date">The traffic is used up. It resets on %1$s — or buy more now.</string>
-    <string name="clod_no_servers_provider_title">No servers available</string>
+    <string name="clod_no_servers_provider_title">The provider sent no servers</string>
     <string name="clod_no_servers_provider">The subscription is valid and has traffic left, but no servers were given out. Contact support — this is fixed on their side.</string>
     <string name="clod_open_settings">Settings</string>
     <string name="clod_network_switch">Network switching</string>

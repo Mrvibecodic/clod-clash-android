@@ -3,12 +3,12 @@
 
     <string name="clash_service_status_channel">Состояние туннеля</string>
     <string name="clod_tun_start_failed">Не удалось поднять туннель. Попробуйте подключиться ещё раз</string>
-    <string name="clod_tun_revoked">Разрешение VPN отозвано системой или другим приложением</string>
-    <string name="clod_profile_load_failed">Профиль «%1$s» не загрузился: %2$s. Продолжает работать «%3$s»</string>
-    <string name="clod_profile_reload_failed">Профиль «%1$s» не перезагрузился: %2$s. Продолжает работать прежняя конфигурация</string>
+    <string name="clod_tun_revoked">Разрешение на VPN забрало другое приложение или система — туннель закрыт, трафик идёт мимо него. Подключитесь снова, когда другой VPN будет выключен</string>
+    <string name="clod_profile_load_failed">Ядро не приняло профиль «%1$s»: %2$s. Продолжает работать «%3$s». Проверьте свои правки в переопределении, если они есть</string>
+    <string name="clod_profile_reload_failed">Ядро не приняло профиль «%1$s»: %2$s. Продолжает работать прежняя конфигурация. Проверьте свои правки в переопределении, если они есть</string>
     <string name="clod_start_failed">Clod Clash не удалось запустить</string>
     <string name="clod_stopped_title">Clod Clash остановлен</string>
-    <string name="clod_tun_establish_rejected">Система отказалась создать VPN-интерфейс</string>
+    <string name="clod_tun_establish_rejected">Система не дала создать туннель. Попробуйте подключиться ещё раз</string>
     <string name="clod_crash_loop">Система перезапустила службу %1$d раза подряд. Автоперезапуск приостановлен — откройте приложение и подключитесь снова</string>
     <string name="clod_foreground_denied">Система не разрешила запустить службу в фоне. Откройте приложение и подключитесь снова</string>
     <string name="clod_always_on_busy">Постоянный VPN не может запуститься, пока включён режим «только прокси». Отключите постоянный VPN или включите «Маршрутизировать системный трафик»</string>
@@ -20,7 +20,7 @@
     <string name="update_successfully">Успешно обновлено</string>
     <string name="update_failure">Не удалось обновить</string>
     <string name="format_update_complete">Обновление %s завершено</string>
-    <string name="format_update_failure">Обновление %1$s: %2$s</string>
+    <string name="format_update_failure">«%1$s»: %2$s</string>
     <string name="running">Запущен</string>
     <string name="loading">Загрузка</string>
     <string name="clash_meta_for_android">Clod Clash</string>

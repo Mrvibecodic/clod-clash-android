@@ -225,7 +225,7 @@
     <string name="clod_sub_menu">Действия с подпиской</string>
 
     <string name="invalid_log_file">Недопустимый лог файл</string>
-    <string name="unable_to_start_vpn">Не удалось запустить компонент VPN</string>
+    <string name="unable_to_start_vpn">Система не открыла запрос разрешения на VPN. Попробуйте ещё раз</string>
 
     <string name="clod_docs">Документация Clod Clash</string>
     <string name="clod_docs_url">https://mrvibecodic.github.io/clod-clash-android/ru/docs</string>
@@ -454,7 +454,7 @@
     <string name="clod_no_servers_traffic_title">Трафик закончился</string>
     <string name="clod_no_servers_traffic">Трафик израсходован. Докупите или дождитесь обновления.</string>
     <string name="clod_no_servers_traffic_date">Трафик израсходован. Обновится %1$s — или докупите сейчас.</string>
-    <string name="clod_no_servers_provider_title">Серверы недоступны</string>
+    <string name="clod_no_servers_provider_title">Провайдер не выдал серверы</string>
     <string name="clod_no_servers_provider">Срок и трафик в порядке, но серверов не выдано. Свяжитесь с поддержкой — это решается на их стороне.</string>
     <string name="clod_open_settings">Настройки</string>
     <string name="clod_shortcut_disabled">Значок приложения скрыт в настройках</string>

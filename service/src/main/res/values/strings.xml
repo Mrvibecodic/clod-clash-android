@@ -3,12 +3,12 @@
 
     <string name="clash_service_status_channel">Tunnel status</string>
     <string name="clod_tun_start_failed">Could not bring the tunnel up. Try connecting again</string>
-    <string name="clod_tun_revoked">VPN permission revoked by the system or another app</string>
-    <string name="clod_profile_load_failed">Profile «%1$s» failed to load: %2$s. «%3$s» keeps running</string>
-    <string name="clod_profile_reload_failed">Profile «%1$s» failed to reload: %2$s. The previous configuration keeps running</string>
+    <string name="clod_tun_revoked">Another app or the system took the VPN permission — the tunnel is closed and traffic goes around it. Connect again once the other VPN is off</string>
+    <string name="clod_profile_load_failed">The core rejected the profile «%1$s»: %2$s. «%3$s» keeps running. Check your own edits in the override, if you made any</string>
+    <string name="clod_profile_reload_failed">The core rejected the profile «%1$s»: %2$s. The previous configuration keeps running. Check your own edits in the override, if you made any</string>
     <string name="clod_start_failed">Clod Clash could not start</string>
     <string name="clod_stopped_title">Clod Clash stopped</string>
-    <string name="clod_tun_establish_rejected">The system refused to create the VPN interface</string>
+    <string name="clod_tun_establish_rejected">The system did not allow the tunnel to be created. Try connecting again</string>
     <string name="clod_crash_loop">The service was restarted by the system %1$d times in a row. Automatic restart is paused — open the app and connect again</string>
     <string name="clod_foreground_denied">The system did not allow the service to start in the background. Open the app and connect again</string>
     <string name="clod_always_on_busy">Always-on VPN cannot start while the proxy-only mode is active. Turn off always-on VPN or enable «Route System Traffic»</string>
@@ -18,9 +18,9 @@
     <string name="profile_process_error">Profile Update Errors</string>
     <string name="clod_notification_stop">Disconnect</string>
     <string name="update_successfully">Update Successfully</string>
-    <string name="update_failure">Update Failure</string>
+    <string name="update_failure">Failed to update</string>
     <string name="format_update_complete">Update %s completed</string>
-    <string name="format_update_failure">Update %1$s: %2$s</string>
+    <string name="format_update_failure">«%1$s»: %2$s</string>
     <string name="running">Running</string>
     <string name="loading">Loading</string>
     <string name="clash_meta_for_android">Clod Clash</string>
