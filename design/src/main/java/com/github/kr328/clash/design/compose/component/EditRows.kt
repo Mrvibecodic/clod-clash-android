@@ -15,6 +15,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -100,7 +101,7 @@ fun LinesRow(
     val shown = when {
         values == null -> stringResource(R.string.dont_modify)
         values.isEmpty() -> stringResource(R.string.empty)
-        else -> values.joinToString(", ")
+        else -> remember(values) { values.joinToString(", ") }
     }
 
     ValueRow(
@@ -148,7 +149,7 @@ fun PairsRow(
     val shown = when {
         values == null -> stringResource(R.string.dont_modify)
         values.isEmpty() -> stringResource(R.string.empty)
-        else -> values.entries.joinToString(", ") { "${it.key} = ${it.value}" }
+        else -> remember(values) { values.entries.joinToString(", ") { "${it.key} = ${it.value}" } }
     }
 
     ValueRow(

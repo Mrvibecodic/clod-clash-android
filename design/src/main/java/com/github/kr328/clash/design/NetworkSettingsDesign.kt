@@ -17,6 +17,7 @@ class NetworkSettingsDesign(
     context: Context,
     private val uiStore: UiStore,
     private val srvStore: ServiceStore,
+    prefs: NetworkSettingsPrefs,
     running: Boolean,
     localProxyPort: Int,
     private val profileTunStack: String,
@@ -31,24 +32,23 @@ class NetworkSettingsDesign(
     private var state by mutableStateOf(
         NetworkSettingsState(
             enableVpn = uiStore.enableVpn,
-            bypassPrivateNetwork = srvStore.bypassPrivateNetwork,
-            dnsHijacking = srvStore.dnsHijacking,
-            allowBypass = srvStore.allowBypass,
-            allowIpv6 = srvStore.allowIpv6,
-            systemProxy = srvStore.systemProxy,
+            bypassPrivateNetwork = prefs.bypassPrivateNetwork,
+            dnsHijacking = prefs.dnsHijacking,
+            allowBypass = prefs.allowBypass,
+            allowIpv6 = prefs.allowIpv6,
+            systemProxy = prefs.systemProxy,
             systemProxySupported = Build.VERSION.SDK_INT >= 29,
-            tunStack = tunStacks.indexOf(srvStore.tunStackMode).coerceAtLeast(0),
+            tunStack = tunStacks.indexOf(prefs.tunStackMode).coerceAtLeast(0),
             editable = !running,
-            resetConnections = srvStore.resetConnectionsOnNetworkChange,
-            keepAwake = srvStore.keepAwake,
+            resetConnections = prefs.resetConnections,
+            keepAwake = prefs.keepAwake,
             localProxyPort = localProxyPort,
-            effectiveTunStack = resolveTunStack(srvStore.tunStackMode, profileTunStack),
-            effectiveTunStackFromProfile = tunStackFromProfile(srvStore.tunStackMode),
+            effectiveTunStack = resolveTunStack(prefs.tunStackMode, profileTunStack),
+            effectiveTunStackFromProfile = tunStackFromProfile(prefs.tunStackMode),
             privateDnsHost = privateDnsHost,
         ),
     )
 
-    // Стек пришёл из подписки, если выбор в настройках сам по себе дал бы другой результат
     private fun tunStackFromProfile(mode: String): Boolean =
         resolveTunStack(mode, "") != resolveTunStack(mode, profileTunStack)
 

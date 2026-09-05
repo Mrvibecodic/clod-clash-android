@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.componentName
 import com.github.kr328.clash.design.AppSettingsDesign
+import com.github.kr328.clash.design.AppSettingsPrefs
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -39,10 +40,14 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
     private val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     override suspend fun main() {
+        val srvStore = ServiceStore(this)
+        val prefs = withContext(Dispatchers.IO) { AppSettingsPrefs.read(srvStore) }
+
         val design = AppSettingsDesign(
             this,
             uiStore,
-            ServiceStore(this),
+            srvStore,
+            prefs,
             this,
             clashRunning,
             ::onHideIconChange,

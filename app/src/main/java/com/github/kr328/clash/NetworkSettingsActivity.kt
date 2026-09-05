@@ -1,6 +1,7 @@
 package com.github.kr328.clash
 
 import com.github.kr328.clash.design.NetworkSettingsDesign
+import com.github.kr328.clash.design.NetworkSettingsPrefs
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.service.util.activeTunPrefs
@@ -12,13 +13,16 @@ import kotlinx.coroutines.withContext
 
 class NetworkSettingsActivity : BaseActivity<NetworkSettingsDesign>() {
     override suspend fun main() {
-        // Разовое чтение при открытии экрана: и стек подписки, и Private DNS читаются вне главного потока
+        val srvStore = ServiceStore(this)
+
         val profileTunStack = withContext(Dispatchers.IO) { activeTunPrefs()?.stack ?: "" }
+        val prefs = withContext(Dispatchers.IO) { NetworkSettingsPrefs.read(srvStore) }
 
         val design = NetworkSettingsDesign(
             this,
             uiStore,
-            ServiceStore(this),
+            srvStore,
+            prefs,
             clashRunning,
             activeLocalProxyPort() ?: 0,
             profileTunStack,

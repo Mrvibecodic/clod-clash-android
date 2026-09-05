@@ -682,8 +682,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (healthChecking) {
             healthCheckRequested = true
 
-            // Спиннер гаснет по видимой группе, а проверка идёт дальше: без
-            // очереди повторное нажатие не делало бы вообще ничего.
             if (manual) {
                 healthCheckRequestedManually = true
 
@@ -704,6 +702,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                 healthChecking = false
             }
 
+            drainQueuedHealthCheck()
+
             return
         }
 
@@ -719,8 +719,6 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                 reloadProxyGroup(selectedGroup)
 
-                // The visible group is done; the rest finishes in the background
-                // while healthChecking still guards against a second round
                 setProxyTesting(false)
             }
 
@@ -749,15 +747,19 @@ class MainActivity : BaseActivity<MainDesign>() {
             setProxyTesting(false)
         }
 
-        if (healthCheckRequested) {
-            healthCheckRequested = false
+        drainQueuedHealthCheck()
+    }
 
-            val queuedManually = healthCheckRequestedManually
+    private suspend fun MainDesign.drainQueuedHealthCheck() {
+        if (!healthCheckRequested) return
 
-            healthCheckRequestedManually = false
+        healthCheckRequested = false
 
-            runHealthCheck(manual = queuedManually)
-        }
+        val queuedManually = healthCheckRequestedManually
+
+        healthCheckRequestedManually = false
+
+        runHealthCheck(manual = queuedManually)
     }
 
     private suspend fun MainDesign.runOfflineHealthCheck(manual: Boolean) {
