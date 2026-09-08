@@ -29,7 +29,7 @@ class MainApplication : Application() {
 
         GeoAssets.extract(this)
 
-        Log.d("Process $processName started")
+        Log.i("Process $processName started")
 
         if (processName == packageName) {
             restoreLauncherIconOnTelevision()

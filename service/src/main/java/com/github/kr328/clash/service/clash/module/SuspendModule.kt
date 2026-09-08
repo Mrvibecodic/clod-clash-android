@@ -33,7 +33,7 @@ class SuspendModule(service: Service) : Module<Unit>(service) {
         try {
             wakeLock?.acquire()
 
-            Log.d("Clash keep awake")
+            Log.i("Clash keep awake")
 
             awaitCancellation()
         } finally {
@@ -59,12 +59,12 @@ class SuspendModule(service: Service) : Module<Unit>(service) {
                     Intent.ACTION_SCREEN_ON -> {
                         Clash.suspendCore(false)
 
-                        Log.d("Screen on: core keeps running")
+                        Log.i("Screen on: core keeps running")
                     }
                     Intent.ACTION_SCREEN_OFF -> {
                         Clash.suspendCore(true)
 
-                        Log.d("Screen off: core keeps running")
+                        Log.i("Screen off: core keeps running")
                     }
                 }
             }

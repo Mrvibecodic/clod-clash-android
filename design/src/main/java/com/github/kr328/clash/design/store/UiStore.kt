@@ -50,7 +50,11 @@ class UiStore(context: Context) {
     )
 
     var hideAppIcon: Boolean
-        get() = store.provider.getBoolean(HIDE_APP_ICON, hideAppIconDefault)
+        get() = if (preferences.contains(HIDE_APP_ICON)) {
+            store.provider.getBoolean(HIDE_APP_ICON, false)
+        } else {
+            hideAppIconDefault
+        }
         set(value) = store.provider.setBoolean(HIDE_APP_ICON, value)
 
     var hideFromRecents: Boolean by store.boolean(

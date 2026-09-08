@@ -59,7 +59,7 @@ abstract class Module<E>(val service: Service) {
         val moduleName = this.javaClass.simpleName
 
         try {
-            Log.d("$moduleName: initialize")
+            Log.i("$moduleName: initialize")
 
             run()
         } finally {
@@ -74,7 +74,7 @@ abstract class Module<E>(val service: Service) {
 
                 receivers.clear()
 
-                Log.d("$moduleName: destroyed")
+                Log.i("$moduleName: destroyed")
             }
         }
     }

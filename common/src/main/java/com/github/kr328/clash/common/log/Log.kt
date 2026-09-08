@@ -1,5 +1,6 @@
 package com.github.kr328.clash.common.log
 
+import com.github.kr328.clash.common.BuildConfig
 import com.github.kr328.clash.common.util.Redact
 
 object Log {
@@ -14,8 +15,11 @@ object Log {
     fun e(message: String, throwable: Throwable? = null) =
         android.util.Log.e(TAG, compose(message, throwable))
 
-    fun d(message: String, throwable: Throwable? = null) =
+    fun d(message: String, throwable: Throwable? = null) {
+        if (!BuildConfig.DEBUG) return
+
         android.util.Log.d(TAG, compose(message, throwable))
+    }
 
     private fun compose(message: String, throwable: Throwable?): String {
         val stack = throwable?.let { "\n" + android.util.Log.getStackTraceString(it) } ?: ""

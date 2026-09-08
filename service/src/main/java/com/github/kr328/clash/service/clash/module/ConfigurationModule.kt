@@ -1,12 +1,14 @@
 package com.github.kr328.clash.service.clash.module
 
 import android.app.Service
+import android.os.SystemClock
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.R
+import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.SelectionDao
@@ -88,7 +90,26 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 if (first) stage(Intents.STAGE_LOADING)
 
-                Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
+                val applyStartedAt = SystemClock.elapsedRealtime()
+
+                ServiceLog.mark("config: apply window start")
+
+                var applyOutcome = "failed"
+
+                try {
+                    Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
+
+                    applyOutcome = "ok"
+                } catch (e: CancellationException) {
+                    applyOutcome = "cancelled"
+
+                    throw e
+                } finally {
+                    ServiceLog.mark(
+                        "config: apply window end, $applyOutcome, in " +
+                            "${SystemClock.elapsedRealtime() - applyStartedAt} ms",
+                    )
+                }
 
                 loaded = current
                 loadedSecretKey = secretKey

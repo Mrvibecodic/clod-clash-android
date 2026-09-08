@@ -26,9 +26,9 @@ import (
 
 var secureChannel atomic.Bool
 
-var errChanFingerprint = errors.New("clod-chan: отпечаток chrome недоступен в ядре")
+var errChanFingerprint = errors.New("clod-chan: chrome fingerprint is not available in the core")
 
-var errChanAlpn = errors.New("clod-chan: прослойка выбрала не http/1.1")
+var errChanAlpn = errors.New("clod-chan: relay negotiated a protocol other than http/1.1")
 
 func SetSecureChannel(enabled bool) {
 	secureChannel.Store(enabled)

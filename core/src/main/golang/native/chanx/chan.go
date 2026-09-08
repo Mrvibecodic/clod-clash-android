@@ -231,11 +231,11 @@ func split(base string) (prefix, token, query string, err error) {
 
 	i := strings.LastIndexByte(rest, '/')
 	if i < 0 || i+1 >= len(rest) {
-		return "", "", "", fmt.Errorf("clod-chan: адрес без токена: %s", base)
+		return "", "", "", fmt.Errorf("clod-chan: address without token: %s", base)
 	}
 	prefix, token = rest[:i], rest[i+1:]
 	if !strings.HasPrefix(prefix, "http://") && !strings.HasPrefix(prefix, "https://") {
-		return "", "", "", fmt.Errorf("clod-chan: не http-адрес: %s", base)
+		return "", "", "", fmt.Errorf("clod-chan: not an http address: %s", base)
 	}
 
 	return prefix, token, query, nil

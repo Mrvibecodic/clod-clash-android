@@ -214,7 +214,7 @@ object Updater {
                     connection.disconnect()
                 }
             }.onFailure {
-                Log.d("$TAG: $url через $proxy не удалось: ${it.message}")
+                Log.i("$TAG: $url через $proxy не удалось: ${it.message}")
             }
 
             if (result.exceptionOrNull() is LimitExceededException) return null
