@@ -1,50 +1,102 @@
 ## Privacy Policy
 
-The Clash for Android is built as an Open Source software. This app is provided by personal at no cost and is intended for use as is.
+Clod Clash is an open source VPN client. It is provided free of charge and as is.
 
-This page is used to inform visitors regarding our policies with the collection, use, and disclosure of Personal Information if anyone decided to use our app.
+The app has no accounts of its own, shows no advertising, and contains no analytics or
+crash-reporting code written by us. It has one third-party dependency that is worth naming
+explicitly: the QR-code scanner used when adding a subscription is built on Google's ML Kit
+barcode library, and that library pulls in Google Play Services and Google DataTransport
+components. Recognition itself runs offline on the device and the camera image is never
+uploaded by this app, but those Google components can report their own usage telemetry
+directly to Google. Everything described below covers the
+requests this app makes itself.
 
-If you choose to use our app, then you agree to the collection and use of information in relation to this policy. The Personal Information that we collect is used for providing and improving the app. We will not use or share your information with anyone except as described in this Privacy Policy.
+**What the app sends, and where**
 
-The terms used in this Privacy Policy have the same meanings as in our Terms and Conditions, which is accessible at Clash for Android unless otherwise defined in this Privacy Policy.
+*   **To the subscription address you entered.** When the app downloads or refreshes a
+    subscription, it requests the URL you typed or scanned. If the profile uses the secure
+    channel, the request to that same address is sent with a browser-like TLS fingerprint and
+    a browser-like set of headers (a desktop Chrome `User-Agent`, `sec-ch-ua`,
+    `accept-language` and similar) instead of the app's own `User-Agent`; the host is still
+    the one you entered and no relay of ours is involved; in that mode the four values below
+    travel encrypted inside the request path rather than as headers. If the "device identifier"
+    setting is enabled, the request carries four headers: `x-hwid`, `x-device-os`
+    (`Android`), `x-ver-os` (the Android version) and `x-device-model` (manufacturer and
+    model). `x-hwid` is a pseudonymous identifier — a truncated SHA-256 hash of the system
+    `ANDROID_ID` with a fixed salt, or of a locally generated random value if `ANDROID_ID`
+    is unavailable. It is not a hardware serial number. The salt is a constant published in
+    the source, so the value is stable and identical across providers: a provider cannot
+    recover `ANDROID_ID` from it in practice, but two providers who compare notes could tell
+    that two subscriptions belong to the same device.
+    Turning the setting off removes all four headers. These headers exist so that a provider
+    can enforce its own device limits; whether a provider stores them is the provider's
+    decision, described in the provider's own policy.
+*   **To the update and routing-data endpoints.** Checking for an app update, downloading an
+    update package, fetching routing databases (GeoIP, GeoSite, ASN) and loading a provider
+    logo send only a standard `User-Agent` of the form `ClodClash/<version> (Android)`. No
+    device headers and no identifier are attached to these requests.
+*   **Through the tunnel itself.** While the VPN is on, application traffic goes to the proxy
+    servers listed in your subscription. The app does not inspect, store or forward that
+    traffic anywhere else; where it ends up is defined by the configuration you supplied.
 
-**Information Collection and Use**
+Nothing else is transmitted. The app has no server of its own.
 
-For a better experience, while using our app, we may require you to provide us with certain personally identifiable information. The information that we request will be retained by us and used as described in this privacy policy.
+**What stays on the device**
 
-The app does use third party services that may collect information used to identify you.
+Subscriptions, profiles, configuration files, credentials contained in them, selected
+servers, settings and logs are stored in the app's private storage. The app itself never
+uploads them anywhere; the one way they can leave the device is system backup, described
+below. The
+log screen and saved log files are written locally; they are shared only if you export and
+send them yourself. Note that logs and configuration files can contain your subscription
+address, so review a log before sharing it.
 
-Link to privacy policy of third party service providers used by the app
+System backup is currently enabled for the app (`allowBackup`), and the backup rules include
+the profile database, imported profile directories and the config overrides. No separate
+Android 12+ extraction rules are declared, so on newer versions the default set — which is
+wider than that list — applies. On a device
+where cloud backup is on, those files — including subscription addresses and any credentials
+inside the configuration — are copied by the operating system to the backup provider you use.
+That transfer is performed by the operating system, not by this app, but it does mean the data
+can leave the device. Turn off backup for the app in system settings if that is not wanted.
 
-*   [Google Play Services](https://www.google.com/policies/privacy/)
-*   [AppCenter](https://docs.microsoft.com/en-us/appcenter/gdpr/)
+**Permissions**
 
-**Log Data**
+The VPN permission is required to create the tunnel; notification permission is used for the
+foreground service notification and for subscription and update notices. The app also declares
+`QUERY_ALL_PACKAGES`, because the per-app tunnel screen has to list the applications installed
+on the device — that list is read locally and never sent anywhere; `REQUEST_INSTALL_PACKAGES`,
+to install an app update it has downloaded; and permissions for exact alarms and battery
+optimisation, used for scheduled subscription refreshes. Camera access comes from the QR
+scanner and is used only to read a subscription code; the image is not stored or transmitted.
+The app requests no location, contacts or microphone access.
 
-We want to inform you that whenever you use our app, in a case of an error in the app we collect data and information (through third party products) on your phone called Log Data. This Log Data may include information such as your device Internet Protocol (“IP”) address, device name, operating system version, the configuration of the app when utilizing our App, the time and date of your use of the app, and other statistics.
+**Children's privacy**
 
-**Cookies**
+The app is not directed at children under 13 and collects no personal information from
+anyone, including children.
 
-Cookies are files with a small amount of data that are commonly used as anonymous unique identifiers. These are sent to your browser from the websites that you visit and are stored on your device's internal memory.
+**Links to other sites**
 
-This app does not use these “cookies” explicitly. However, the app may use third party code and libraries that use “cookies” to collect information and improve their services. You have the option to either accept or refuse these cookies and know when a cookie is being sent to your device. If you choose to refuse our cookies, you may not be able to use some portions of this app.
+The app can open links supplied by your subscription provider — a support page, a portal or a
+provider announcement. Those sites are not operated by the authors of this app and have their
+own policies.
 
 **Security**
 
-We value your trust in providing us your Personal Information, thus we are striving to use commercially acceptable means of protecting it. But remember that no method of transmission over the internet, or method of electronic storage is 100% secure and reliable, and we cannot guarantee its absolute security.
+Subscription addresses entered in the app must be HTTPS, and update packages are verified by
+SHA-256 and against the signature of the installed package before installation. Two honest
+caveats: a configuration can itself point at plain `http` addresses for its rule and proxy
+providers, and those are then fetched without TLS; and the network security configuration
+trusts user-installed root certificates, so a certificate added to the device (by you, by an
+employer's device management, or by a debugging proxy) can read subscription traffic. No method of transmission
+or storage is completely secure, so absolute security cannot be guaranteed.
 
-**Links to Other Sites**
+**Changes to this policy**
 
-This app may contain links to other sites. If you click on a third-party link, you will be directed to that site. Note that these external sites are not operated by us. Therefore, we strongly advise you to review the Privacy Policy of these websites. We have no control over and assume no responsibility for the content, privacy policies, or practices of any third-party sites or services.
+This page is updated when the behaviour of the app changes. The version in the repository
+always describes the current release.
 
-**Children’s Privacy**
+**Contact**
 
-These Services do not address anyone under the age of 13\. We do not knowingly collect personally identifiable information from children under 13\. In the case we discover that a child under 13 has provided us with personal information, we immediately delete this from our servers. If you are a parent or guardian and you are aware that your child has provided us with personal information, please contact us so that we will be able to do necessary actions.
-
-**Changes to This Privacy Policy**
-
-We may update our Privacy Policy from time to time. Thus, you are advised to review this page periodically for any changes. We will notify you of any changes by posting the new Privacy Policy on this page. These changes are effective immediately after they are posted on this page.
-
-**Contact Us**
-
-If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us.
+Questions and reports: open an issue in the project repository.

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.ProxyRow
 import com.github.kr328.clash.design.compose.component.noServersReason
@@ -250,7 +251,7 @@ private fun ChipGroups(state: ServersState, onAction: (MainAction) -> Unit) {
                 onClick = { onAction(MainAction.SelectGroup(index)) },
                 label = {
                     Text(
-                        text = group.name,
+                        text = group.name.bidiIsolated(),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -279,7 +280,7 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
                 state.selected + 1,
                 state.groups.size,
             ),
-            value = selected?.name.orEmpty(),
+            value = selected?.name.orEmpty().bidiIsolated(),
             onClick = { expanded = true },
             leading = selectedPainter ?: painterResource(R.drawable.ic_nav_servers),
         )
@@ -292,7 +293,7 @@ private fun DropdownGroups(state: ServersState, onAction: (MainAction) -> Unit) 
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = group.name,
+                            text = group.name.bidiIsolated(),
                             fontWeight = if (index == state.selected) {
                                 FontWeight.SemiBold
                             } else {

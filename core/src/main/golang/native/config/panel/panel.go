@@ -73,6 +73,8 @@ const panelFileName = "panel.json"
 
 const announceMaxChars = 300
 
+const titleMaxChars = 60
+
 func panelPath(dir string) string {
 	return P.Join(dir, panelFileName)
 }
@@ -125,7 +127,7 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.PromoURL = httpsURL(headerValue(header, "clod-promo-url"))
 	info.HwidLimitMessage = truncate(headerValue(header, "clod-hwid-limit"), announceMaxChars)
 
-	info.Title = firstNonEmpty(headerValue(header, "profile-title"), info.Title)
+	info.Title = firstNonEmpty(truncate(headerValue(header, "profile-title"), titleMaxChars), info.Title)
 
 	info.HwidState = hwidState(header)
 	info.HwidMaxDevices, _ = parseUint(headerValue(header, "x-hwid-max-devices"))

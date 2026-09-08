@@ -48,6 +48,9 @@ enum class ConnectionStatus {
     Disconnecting,
 }
 
+
+private const val FACE_HIGHLIGHT = 0.22f
+
 @Composable
 fun PowerButton(
     status: ConnectionStatus,
@@ -94,7 +97,7 @@ fun PowerButton(
     val faceBrush = remember(animatedAccent) {
         Brush.radialGradient(
             colors = listOf(
-                lerp(animatedAccent, Color.White, 0.45f),
+                lerp(animatedAccent, Color.White, FACE_HIGHLIGHT),
                 animatedAccent,
             ),
         )

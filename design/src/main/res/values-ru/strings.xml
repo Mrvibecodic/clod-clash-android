@@ -220,7 +220,7 @@
     <string name="clod_shortcut_control_activity">Ярлык Clod Clash</string>
     <string name="clod_external_control_title">Разрешить внешнее управление</string>
     <string name="clod_external_control_summary">Другие приложения смогут включать и выключать туннель — для автоматизации вроде Tasker. Свои ярлыки, плитка в шторке и виджет работают в любом случае.</string>
-    <string name="clod_service_unavailable">Фоновая служба не отвечает</string>
+    <string name="clod_service_unavailable">Фоновая служба не отвечает. Попробуйте ещё раз, а если повторяется — откройте приложение заново</string>
     <string name="clod_external_control_refused">Внешнее управление выключено. Включите его в настройках, раздел «Приложение».</string>
     <string name="clod_sub_menu">Действия с подпиской</string>
 
@@ -316,6 +316,8 @@
     <string name="hide_from_recents_desc">Не показывать приложение на экране недавних</string>
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
+    <string name="clod_properties_tip_source">Адрес этого профиля задан источником, из которого он пришёл, и здесь не меняется. Имя можно менять когда угодно.</string>
+    <string name="clod_properties_tip_file">Это локальный профиль-файл: адреса у него нет, конфигурация правится на экране «Файлы». Имя можно менять когда угодно.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
     <string name="clod_no_files">Файлов пока нет</string>
     <string name="clod_section_settings">Приложение</string>
@@ -467,7 +469,7 @@
     <string name="shortcut_stop_long">Выключить VPN</string>
     <string name="clod_network_switch">Переключение сети</string>
     <string name="clod_reset_connections">Разрывать соединения при смене сети</string>
-    <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута.</string>
+    <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута. Заодно пересоздаются мультиплексные сессии (mux, QUIC, gRPC, anytls, ssh): при выключенном тумблере дохлая сессия травит и новые подключения.</string>
     <string name="clod_background">Фоновая работа</string>
     <string name="clod_keep_awake">Держать туннель активным при выключенном экране</string>
     <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки узлов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
@@ -503,7 +505,7 @@
     <string name="clod_notify_open_settings">Открыть настройки</string>
     <string name="clod_reset_section">Сброс</string>
     <string name="clod_reset_title">Сбросить настройки</string>
-    <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским. Подписки, профили и их собственные настройки останутся.</string>
-    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Подписки и профили останутся нетронутыми.</string>
+    <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским. Подписки, профили, их собственные настройки и переопределения конфига останутся.</string>
+    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Подписки, профили и переопределения конфига останутся нетронутыми — переопределения сбрасываются на своём экране.</string>
     <string name="clod_reset_action">Сбросить</string>
 </resources>

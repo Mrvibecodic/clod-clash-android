@@ -106,6 +106,7 @@ import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
 import com.github.kr328.clash.design.compose.theme.statusContainer
+import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.design.util.GroupIcons
 import com.github.kr328.clash.service.model.PanelInfo
@@ -692,7 +693,7 @@ private fun StatusPill(status: ConnectionStatus) {
             modifier = Modifier
                 .size(7.dp)
                 .clip(CircleShape)
-                .background(accent),
+                .background(accent.statusText()),
         )
         Spacer(Modifier.width(7.dp))
         Text(
@@ -705,7 +706,7 @@ private fun StatusPill(status: ConnectionStatus) {
                 },
             ),
             style = MaterialTheme.typography.labelLarge,
-            color = accent,
+            color = accent.statusText(),
         )
     }
 }

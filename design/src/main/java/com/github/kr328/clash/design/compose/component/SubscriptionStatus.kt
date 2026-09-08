@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
+import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 import java.text.DateFormat
@@ -100,14 +101,14 @@ fun NoServersCard(
                 Icon(
                     painter = painterResource(iconOf(reason)),
                     contentDescription = null,
-                    tint = accent,
+                    tint = accent.statusText(),
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
                     text = stringResource(titleOf(reason)),
                     style = MaterialTheme.typography.titleSmall,
-                    color = accent,
+                    color = accent.statusText(),
                 )
             }
 

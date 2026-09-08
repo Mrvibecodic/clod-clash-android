@@ -244,7 +244,7 @@
     <string name="clod_shortcut_control_activity">Clod Clash shortcut</string>
     <string name="clod_external_control_title">Allow external control</string>
     <string name="clod_external_control_summary">Let other apps turn the tunnel on and off — for automation such as Tasker. Own shortcuts, the quick tile and the widget work regardless.</string>
-    <string name="clod_service_unavailable">The background service is not responding</string>
+    <string name="clod_service_unavailable">The background service is not responding. Try again; if it keeps happening, reopen the app</string>
     <string name="clod_external_control_refused">External control is off. Turn it on in settings, App.</string>
     <string name="clod_sub_menu">Subscription actions</string>
 
@@ -350,6 +350,8 @@
     <string name="clod_help_notice">Clod Clash is free software. Support for the subscription itself comes from whoever issued you the link — not from us.</string>
     <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
+    <string name="clod_properties_tip_source">The address of this profile is set by the source it came from and cannot be changed here. The name can be changed at any time.</string>
+    <string name="clod_properties_tip_file">This profile is a local file: it has no address, and its configuration is edited on the Files screen. The name can be changed at any time.</string>
     <string name="clod_no_logs">No saved logs yet</string>
     <string name="clod_no_files">No files yet</string>
     <string name="clod_section_settings">App</string>
@@ -472,7 +474,7 @@
     <string name="clod_open_settings">Settings</string>
     <string name="clod_network_switch">Network switching</string>
     <string name="clod_reset_connections">Drop connections when the network changes</string>
-    <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout.</string>
+    <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout. It also rebuilds the multiplexed sessions (mux, QUIC, gRPC, anytls, ssh): with the switch off a dead session keeps poisoning new connections too.</string>
     <string name="clod_background">Background</string>
     <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
     <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and node checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
@@ -508,7 +510,7 @@
     <string name="clod_notify_open_settings">Open settings</string>
     <string name="clod_reset_section">Reset</string>
     <string name="clod_reset_title">Reset settings</string>
-    <string name="clod_reset_summary">App, network and notification settings go back to defaults. Subscriptions, profiles and their own settings stay.</string>
-    <string name="clod_reset_confirm">App, network and notification settings will go back to defaults. Subscriptions and profiles stay untouched.</string>
+    <string name="clod_reset_summary">App, network and notification settings go back to defaults. Subscriptions, profiles, their own settings and the config overrides stay.</string>
+    <string name="clod_reset_confirm">App, network and notification settings will go back to defaults. Subscriptions, profiles and the config overrides stay untouched — reset the overrides on their own screen.</string>
     <string name="clod_reset_action">Reset</string>
 </resources>

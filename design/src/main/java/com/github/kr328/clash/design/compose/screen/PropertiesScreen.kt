@@ -109,7 +109,10 @@ fun PropertiesScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Column(modifier = Modifier.padding(horizontal = 18.dp)) {
-                Tip()
+                Tip(
+                    urlEditable = state.urlEditable,
+                    intervalEditable = state.intervalEditable,
+                )
 
                 Spacer(Modifier.height(16.dp))
 
@@ -221,7 +224,7 @@ fun PropertiesScreen(
 }
 
 @Composable
-private fun Tip() {
+private fun Tip(urlEditable: Boolean, intervalEditable: Boolean) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -237,7 +240,13 @@ private fun Tip() {
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = stringResource(R.string.clod_properties_tip),
+                text = stringResource(
+                    when {
+                        urlEditable -> R.string.clod_properties_tip
+                        intervalEditable -> R.string.clod_properties_tip_source
+                        else -> R.string.clod_properties_tip_file
+                    },
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

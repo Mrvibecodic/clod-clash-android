@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.compose.theme.ClodRowCorner
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
@@ -102,7 +103,7 @@ fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
     ) {
         Text(
             text = label,
-            color = color,
+            color = color.statusText(),
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
         )
@@ -236,7 +237,7 @@ fun ProxyRow(
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = name,
+                text = name.bidiIsolated(),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -245,7 +246,7 @@ fun ProxyRow(
             )
             if (subtitle.isNotBlank()) {
                 Text(
-                    text = subtitle,
+                    text = subtitle.bidiIsolated(),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
