@@ -65,6 +65,7 @@
 
     <string name="format_fetching_configuration">Fetching configuration from \'%s\'</string>
     <string name="format_fetching_provider">Fetching provider \'%s\'</string>
+    <string name="clod_provider_update">Update this provider</string>
     <string name="clod_provider_failed">Provider \'%s\' could not be downloaded</string>
     <string name="initializing">Initializing</string>
     <string name="verifying">Verifying</string>
@@ -364,10 +365,10 @@
     <string name="clod_settings_meta_subtitle">Sniffer, geodata sources, TLS</string>
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
-    <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode.</string>
+    <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode. If the subscription sends its own app list, only those apps go through the tunnel in this mode.</string>
     <plurals name="clod_access_control_sub_include_hint">
-        <item quantity="one">The subscription limited the tunnel to %d app — the checkboxes below change nothing until you pick another mode.</item>
-        <item quantity="other">The subscription limited the tunnel to %d apps — the checkboxes below change nothing until you pick another mode.</item>
+        <item quantity="one">The subscription limited the tunnel to %d app: “all apps” here means “all apps from the subscription list”, it is marked below. The checkboxes change nothing until you pick another mode.</item>
+        <item quantity="other">The subscription limited the tunnel to %d apps: “all apps” here means “all apps from the subscription list”, they are marked below. The checkboxes change nothing until you pick another mode.</item>
     </plurals>
     <string name="clod_servers_offline">Not connected: delays are measured directly, and the server you pick is applied once you connect.</string>
     <string name="clod_select_offline">Saved. It will be applied when you connect.</string>

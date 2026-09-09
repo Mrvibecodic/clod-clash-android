@@ -50,6 +50,7 @@ class MainDesign(
 
         data object LoadRoutingData : Request
         data object UpdateRoutingData : Request
+        data class UpdateRoutingDataProvider(val key: String) : Request
 
         data object ReloadProxies : Request
         data class ReloadGroup(val index: Int) : Request
@@ -119,6 +120,7 @@ class MainDesign(
                 request(Request.SetPrerelease(action.enabled))
             }
             MainAction.UpdateRoutingData -> request(Request.UpdateRoutingData)
+            is MainAction.UpdateRoutingDataProvider -> request(Request.UpdateRoutingDataProvider(action.key))
             MainAction.TestDelays -> request(Request.UrlTest)
             is MainAction.ToggleFavorite -> request(Request.ToggleFavorite(action.name))
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
@@ -386,8 +388,37 @@ class MainDesign(
 
     suspend fun setRoutingData(files: List<GeoFileState>, providers: List<ProviderFileState>) {
         withContext(Dispatchers.Main) {
+            val known = state.routingData.providers.associateBy { it.key }
+
             state = state.copy(
-                routingData = state.routingData.copy(files = files, providers = providers),
+                routingData = state.routingData.copy(
+                    files = files,
+                    providers = providers.map { fresh ->
+                        val old = known[fresh.key] ?: return@map fresh
+
+                        fresh.copy(updating = old.updating, error = old.error)
+                    },
+                ),
+            )
+        }
+    }
+
+    suspend fun setRoutingDataProvider(key: String, updating: Boolean, error: String?, updatedAt: Long? = null) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                routingData = state.routingData.copy(
+                    providers = state.routingData.providers.map {
+                        if (it.key != key) {
+                            it
+                        } else {
+                            it.copy(
+                                updating = updating,
+                                error = error,
+                                updatedAt = updatedAt ?: it.updatedAt,
+                            )
+                        }
+                    },
+                ),
             )
         }
     }

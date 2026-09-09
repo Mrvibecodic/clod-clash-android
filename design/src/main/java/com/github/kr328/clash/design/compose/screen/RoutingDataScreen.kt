@@ -37,8 +37,11 @@ data class GeoFileState(
 
 @Immutable
 data class ProviderFileState(
+    val key: String,
     val name: String,
     val updatedAt: Long,
+    val updating: Boolean = false,
+    val error: String? = null,
 )
 
 @Immutable
@@ -97,8 +100,29 @@ fun RoutingDataScreen(
                 DataRow(
                     icon = R.drawable.ic_baseline_swap_vertical_circle,
                     title = provider.name,
-                    subtitle = relativeTime(provider.updatedAt),
-                )
+                    subtitle = provider.error
+                        ?: relativeTime(provider.updatedAt),
+                    error = provider.error != null,
+                ) {
+                    if (provider.updating) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.dp,
+                            modifier = Modifier
+                                .padding(horizontal = 13.dp)
+                                .size(22.dp),
+                        )
+                    } else {
+                        IconButton(
+                            onClick = { onAction(MainAction.UpdateRoutingDataProvider(provider.key)) },
+                            enabled = !state.updating,
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_baseline_sync),
+                                contentDescription = stringResource(R.string.clod_provider_update),
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -139,7 +163,14 @@ private fun relativeTime(millis: Long): String {
 }
 
 @Composable
-private fun DataRow(icon: Int, title: String, subtitle: String, trailing: String? = null) {
+private fun DataRow(
+    icon: Int,
+    title: String,
+    subtitle: String,
+    trailing: String? = null,
+    error: Boolean = false,
+    action: (@Composable () -> Unit)? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -164,8 +195,14 @@ private fun DataRow(icon: Int, title: String, subtitle: String, trailing: String
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
+        }
+        if (action != null) {
+            Spacer(Modifier.width(4.dp))
+            action()
         }
         if (trailing != null) {
             Spacer(Modifier.width(12.dp))

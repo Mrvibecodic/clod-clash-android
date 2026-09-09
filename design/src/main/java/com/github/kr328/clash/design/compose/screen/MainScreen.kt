@@ -217,6 +217,7 @@ sealed interface MainAction {
     data class SetAutoCheckUpdate(val enabled: Boolean) : MainAction
     data class SetPrerelease(val enabled: Boolean) : MainAction
     data object UpdateRoutingData : MainAction
+    data class UpdateRoutingDataProvider(val key: String) : MainAction
     data class SelectSubscriptionGroup(val group: String?) : MainAction
     data class SetSubscriptionGroup(val profile: Profile, val group: String?) : MainAction
     data object NewProfile : MainAction

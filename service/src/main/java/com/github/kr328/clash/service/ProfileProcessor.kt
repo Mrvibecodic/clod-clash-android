@@ -38,6 +38,10 @@ object ProfileProcessor {
 
     private const val MAX_MIGRATION_HISTORY = 10
 
+    private val MIGRATION_HOPS_WINDOW_MS = TimeUnit.DAYS.toMillis(1)
+
+    private val MIGRATION_HISTORY_WINDOW_MS = TimeUnit.DAYS.toMillis(7)
+
     private const val MIGRATION_FILE = "migration.json"
 
     private const val PROVIDERS_DIR = "providers"
@@ -203,12 +207,24 @@ object ProfileProcessor {
 
         val candidate = context.readPanelInfo(uuid)?.migrateUrl.orEmpty()
         if (candidate.isBlank() || candidate == current) {
-            stateFile.delete()
+            return
+        }
+
+        val now = System.currentTimeMillis()
+
+        val state = readMigration(stateFile).let {
+            it.copy(
+                hops = if (it.hops > 0 && now - it.lastAt > MIGRATION_HOPS_WINDOW_MS) 0 else it.hops,
+                history = it.history.filter { visit -> now - visit.at < MIGRATION_HISTORY_WINDOW_MS },
+            )
+        }
+
+        if (state.history.any { it.url == candidate }) {
+            Log.w("Migration of $uuid ignored: the address was already left behind, looks like a loop")
 
             return
         }
 
-        val state = readMigration(stateFile)
         if (state.hops >= MAX_MIGRATION_HOPS) {
             Log.w("Migration of $uuid ignored: ${state.hops} hops already followed")
 
@@ -252,7 +268,8 @@ object ProfileProcessor {
                 stateFile,
                 MigrationState(
                     hops = state.hops + 1,
-                    previous = (state.previous + current).takeLast(MAX_MIGRATION_HISTORY),
+                    history = (state.history + MigrationVisit(current, now)).takeLast(MAX_MIGRATION_HISTORY),
+                    lastAt = now,
                 ),
             )
         }
@@ -267,7 +284,14 @@ object ProfileProcessor {
     @Serializable
     private data class MigrationState(
         val hops: Int = 0,
-        val previous: List<String> = emptyList(),
+        val history: List<MigrationVisit> = emptyList(),
+        val lastAt: Long = 0,
+    )
+
+    @Serializable
+    private data class MigrationVisit(
+        val url: String,
+        val at: Long,
     )
 
     suspend fun repair(context: Context) {

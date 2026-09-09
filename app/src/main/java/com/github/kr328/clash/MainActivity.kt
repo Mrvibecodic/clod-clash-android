@@ -17,6 +17,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
@@ -62,7 +63,9 @@ import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.CancellationException
@@ -76,6 +79,7 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
 
@@ -143,6 +147,12 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         launch {
             RoutingDataUpdate.state.collect { design.renderRoutingDataUpdate(it) }
+        }
+
+        launch {
+            RoutingDataUpdate.providerEvents.collect {
+                design.setRoutingDataProvider(it.key, it.updating, it.error, it.updatedAt)
+            }
         }
 
         if (UpdatePrompt.shouldCheckInBackground(this)) {
@@ -518,6 +528,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                         MainDesign.Request.UpdateRoutingData ->
                             RoutingDataUpdate.start(this@MainActivity, clashRunning)
+
+                        is MainDesign.Request.UpdateRoutingDataProvider ->
+                            RoutingDataUpdate.startProvider(request.key)
                     }
                 }
                 if (clashRunning && activityStarted) {
@@ -1384,7 +1397,12 @@ class MainActivity : BaseActivity<MainDesign>() {
         setRoutingData(
             files = GeoData.query(this@MainActivity),
             providers = RoutingDataUpdate.updatableProviders().map {
-                ProviderFileState(name = it.name, updatedAt = it.updatedAt)
+                ProviderFileState(
+                    key = RoutingDataUpdate.keyOf(it),
+                    name = it.name,
+                    updatedAt = it.updatedAt,
+                    updating = RoutingDataUpdate.isBusy(it),
+                )
             },
         )
     }
@@ -1414,10 +1432,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                 detail = listOfNotNull(geo.failed.joinToString(", ").ifEmpty { null }, reconnect)
                     .joinToString(" · ").ifEmpty { null },
             )
-            outcome.providersFailed -> showToast(
+            outcome.providersFailed.isNotEmpty() -> showToast(
                 DesignR.string.clod_geo_providers_failed,
                 ToastDuration.Long,
-                detail = reconnect,
+                detail = listOfNotNull(outcome.providersFailed.joinToString(", "), reconnect)
+                    .joinToString(" · "),
             )
             reconnect != null -> showToast(
                 DesignR.string.clod_geo_updated_reconnect,
@@ -1432,7 +1451,18 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private object RoutingDataUpdate {
-        data class Outcome(val geo: GeoData.UpdateResult, val providersFailed: Boolean)
+        data class Outcome(val geo: GeoData.UpdateResult, val providersFailed: List<String>)
+
+        data class ProviderEvent(
+            val key: String,
+            val updating: Boolean,
+            val error: String? = null,
+            val updatedAt: Long? = null,
+        )
+
+        fun keyOf(provider: Provider): String = "${provider.type}/${provider.name}"
+
+        fun isBusy(provider: Provider): Boolean = keyOf(provider) in busy
 
         sealed interface State {
             data object Idle : State
@@ -1443,6 +1473,52 @@ class MainActivity : BaseActivity<MainDesign>() {
         private val current = MutableStateFlow<State>(State.Idle)
 
         val state: StateFlow<State> = current
+
+        private val events = MutableSharedFlow<ProviderEvent>(extraBufferCapacity = 64)
+
+        val providerEvents: SharedFlow<ProviderEvent> = events
+
+        private val busy = ConcurrentHashMap.newKeySet<String>()
+
+        private suspend fun updateOne(provider: Provider): String? {
+            val key = keyOf(provider)
+
+            events.emit(ProviderEvent(key, updating = true))
+
+            return try {
+                withClash { updateProvider(provider.type, provider.name) }
+
+                events.emit(ProviderEvent(key, updating = false, updatedAt = System.currentTimeMillis()))
+
+                null
+            } catch (e: CancellationException) {
+                events.emit(ProviderEvent(key, updating = false))
+
+                throw e
+            } catch (e: Exception) {
+                Log.w("Update provider ${provider.name}: $e", e)
+
+                val reason = Redact.text(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+
+                events.emit(ProviderEvent(key, updating = false, error = reason))
+
+                reason
+            }
+        }
+
+        fun startProvider(key: String) {
+            if (current.value is State.Running || !busy.add(key)) return
+
+            Global.launch {
+                try {
+                    val provider = updatableProviders().firstOrNull { keyOf(it) == key } ?: return@launch
+
+                    updateOne(provider)
+                } finally {
+                    busy.remove(key)
+                }
+            }
+        }
 
         suspend fun updatableProviders(): List<Provider> = try {
             withClash { queryProviders() }
@@ -1465,17 +1541,15 @@ class MainActivity : BaseActivity<MainDesign>() {
                 try {
                     val geo = GeoData.update(app, app.activeLocalProxyPort(), running)
 
-                    var providersFailed = false
+                    val providersFailed = updatableProviders().mapNotNull {
+                        val key = keyOf(it)
 
-                    updatableProviders().forEach {
+                        if (!busy.add(key)) return@mapNotNull null
+
                         try {
-                            withClash { updateProvider(it.type, it.name) }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            providersFailed = true
-
-                            Log.w("Update provider ${it.name}: $e", e)
+                            updateOne(it)?.let { _ -> it.name }
+                        } finally {
+                            busy.remove(key)
                         }
                     }
 
