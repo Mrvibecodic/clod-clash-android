@@ -18,6 +18,9 @@ import java.util.UUID
 class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
     private val store = ServiceStore(context)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val selections = Dispatchers.IO.limitedParallelism(1)
+    private val selectionWriter = CoroutineScope(SupervisorJob() + selections)
     private var logReceiver: ReceiveChannel<LogMessage>? = null
     private var markReceiver: Job? = null
 
@@ -49,10 +52,12 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.patchSelector(group, name).also {
             val current = store.activeProfile ?: return@also
 
-            if (it) {
-                SelectionDao().setSelected(Selection(current, group, name))
-            } else {
-                SelectionDao().removeSelected(current, group)
+            persistSelection(group, name) {
+                if (it) {
+                    SelectionDao().setSelected(Selection(current, group, name))
+                } else {
+                    SelectionDao().removeSelected(current, group)
+                }
             }
         }
     }
@@ -60,13 +65,25 @@ class ClashManager(private val context: Context) : IClashManager,
     override fun rememberSelection(group: String, name: String) {
         val current = store.activeProfile ?: return
 
-        SelectionDao().setSelected(Selection(current, group, name))
+        persistSelection(group, name) {
+            SelectionDao().setSelected(Selection(current, group, name))
+        }
     }
 
-    override suspend fun querySelection(group: String): String? {
-        val current = store.activeProfile ?: return null
+    private fun persistSelection(group: String, name: String, block: () -> Unit) {
+        selectionWriter.launch {
+            try {
+                block()
+            } catch (e: Exception) {
+                Log.w("Remember selection $name for $group: $e", e)
+            }
+        }
+    }
 
-        return SelectionDao().querySelections(current)
+    override suspend fun querySelection(group: String): String? = withContext(selections) {
+        val current = store.activeProfile ?: return@withContext null
+
+        SelectionDao().querySelections(current)
             .firstOrNull { it.proxy == group }
             ?.selected
     }

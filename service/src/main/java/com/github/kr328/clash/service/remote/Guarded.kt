@@ -1,6 +1,15 @@
 package com.github.kr328.clash.service.remote
 
+import android.os.BadParcelableException
+import android.os.NetworkOnMainThreadException
+import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.Provider
+import com.github.kr328.clash.core.model.ProviderList
+import com.github.kr328.clash.core.model.ProxyGroup
+import com.github.kr328.clash.core.model.ProxySort
+import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
 
@@ -14,7 +23,61 @@ private inline fun <T> guard(block: () -> T): T {
     }
 }
 
+private inline fun <T> guardSync(name: String, block: () -> T): T {
+    try {
+        return block()
+    } catch (e: Throwable) {
+        when (e) {
+            is SecurityException,
+            is BadParcelableException,
+            is IllegalArgumentException,
+            is NullPointerException,
+            is IllegalStateException,
+            is NetworkOnMainThreadException,
+            is UnsupportedOperationException,
+            -> throw e
+        }
+
+        Log.w("Remote call $name failed: $e", e)
+
+        throw IllegalStateException("$name: $e")
+    }
+}
+
 class GuardedClashManager(private val delegate: IClashManager) : IClashManager by delegate {
+    override fun queryTunnelState(): TunnelState =
+        guardSync("queryTunnelState") { delegate.queryTunnelState() }
+
+    override fun queryTrafficTotal(): Long =
+        guardSync("queryTrafficTotal") { delegate.queryTrafficTotal() }
+
+    override fun queryProxyGroupNames(excludeNotSelectable: Boolean): List<String> =
+        guardSync("queryProxyGroupNames") { delegate.queryProxyGroupNames(excludeNotSelectable) }
+
+    override fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup =
+        guardSync("queryProxyGroup") { delegate.queryProxyGroup(name, proxySort) }
+
+    override fun queryProviders(): ProviderList =
+        guardSync("queryProviders") { delegate.queryProviders() }
+
+    override fun patchSelector(group: String, name: String): Boolean =
+        guardSync("patchSelector") { delegate.patchSelector(group, name) }
+
+    override fun rememberSelection(group: String, name: String) =
+        guardSync("rememberSelection") { delegate.rememberSelection(group, name) }
+
+    override fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride =
+        guardSync("queryOverride") { delegate.queryOverride(slot) }
+
+    override fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride) =
+        guardSync("patchOverride") { delegate.patchOverride(slot, configuration) }
+
+    override fun clearOverride(slot: Clash.OverrideSlot) =
+        guardSync("clearOverride") { delegate.clearOverride(slot) }
+
+    override fun setLogObserver(observer: ILogObserver?) =
+        guardSync("setLogObserver") { delegate.setLogObserver(observer) }
+
     override suspend fun querySelection(group: String): String? =
         guard { delegate.querySelection(group) }
 
