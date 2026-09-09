@@ -511,6 +511,6 @@
     <string name="clod_reset_section">Reset</string>
     <string name="clod_reset_title">Reset settings</string>
     <string name="clod_reset_summary">App, network and notification settings go back to defaults. Subscriptions, profiles, their own settings and the config overrides stay.</string>
-    <string name="clod_reset_confirm">App, network and notification settings will go back to defaults. Subscriptions, profiles and the config overrides stay untouched — reset the overrides on their own screen.</string>
+    <string name="clod_reset_confirm">App, network and notification settings will go back to defaults, and the per-app tunnel list will be cleared. Subscriptions, profiles and the config overrides stay untouched — reset the overrides on their own screen.</string>
     <string name="clod_reset_action">Reset</string>
 </resources>
