@@ -397,6 +397,12 @@ static jmethodID m_get_message;
 static jclass c_clash_exception;
 static jclass c_content;
 static jobject o_unit;
+// Built once at load time, when memory is still there: the last resort for
+// completing a Kotlin await when the JVM cannot allocate even the message.
+// Without it an OutOfMemoryError at this boundary would leave the Deferred
+// pending forever, and ProfileProcessor holds its lock across that await.
+static jobject o_oom_message;
+static jobject o_oom_exception;
 
 static void call_tun_interface_mark_socket_impl(void *tun_interface, int fd) {
     TRACE_METHOD();
@@ -454,20 +460,24 @@ static void call_completable_complete_impl(void *completable, const char *except
         return;
     }
 
+    jthrowable _exception = NULL;
+
     jstring _message = new_string(exception);
 
-    if (jni_catch_exception(env))
-        return;
+    if (!jni_catch_exception(env)) {
+        _exception = (jthrowable)
+                (*env)->NewObject(env,
+                                  (jclass) c_clash_exception,
+                                  (jmethodID) m_clash_exception,
+                                  _message
+                );
 
-    jthrowable _exception = (jthrowable)
-            (*env)->NewObject(env,
-                              (jclass) c_clash_exception,
-                              (jmethodID) m_clash_exception,
-                              _message
-            );
+        if (jni_catch_exception(env))
+            _exception = NULL;
+    }
 
-    if (jni_catch_exception(env))
-        return;
+    if (_exception == NULL)
+        _exception = (jthrowable) o_oom_exception;
 
     (*env)->CallBooleanMethod(env,
                               (jobject) completable,
@@ -506,7 +516,7 @@ static void call_fetch_callback_complete_impl(void *fetch_callback, const char *
         _error = new_string(error);
 
         if (jni_catch_exception(env))
-            return;
+            _error = (jstring) o_oom_message;
     }
 
     (*env)->CallVoidMethod(env,
@@ -636,6 +646,20 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
     c_clash_exception = (jclass) new_global(_c_clash_exception);
     c_content = (jclass) new_global(_c_content);
     o_unit = new_global(o_unit);
+
+    jstring _oom_message = new_string("out of memory at the core boundary");
+    jthrowable _oom_exception = (jthrowable)
+            (*env)->NewObject(env,
+                              (jclass) c_clash_exception,
+                              (jmethodID) m_clash_exception,
+                              _oom_message
+            );
+
+    if (_oom_message == NULL || _oom_exception == NULL)
+        return JNI_ERR;
+
+    o_oom_message = new_global(_oom_message);
+    o_oom_exception = new_global(_oom_exception);
 
     mark_socket_func = &call_tun_interface_mark_socket_impl;
     query_socket_uid_func = &call_tun_interface_query_socket_uid_impl;

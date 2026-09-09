@@ -1,5 +1,5 @@
 diff --git a/adapter/adapter.go b/adapter/adapter.go
-index 6f20c08a..265e1a49 100644
+index 6f20c08..265e1a4 100644
 --- a/adapter/adapter.go
 +++ b/adapter/adapter.go
 @@ -166,8 +166,13 @@ func (p *Proxy) MarshalJSON() ([]byte, error) {
@@ -17,23 +17,23 @@ index 6f20c08a..265e1a49 100644
  		if alive {
  			record.Delay = t
 diff --git a/adapter/outboundgroup/groupbase.go b/adapter/outboundgroup/groupbase.go
-index eed45e0d..2e9266ec 100644
+index eed45e0..080db16 100644
 --- a/adapter/outboundgroup/groupbase.go
 +++ b/adapter/outboundgroup/groupbase.go
-@@ -277,6 +277,10 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
- 			return
- 		}
+@@ -267,6 +267,10 @@ func (gb *GroupBase) onDialFailed(adapterType C.AdapterType, err error, fn func(
+ 		return
+ 	}
  
-+		if C.ProbeHolding(time.Now()) {
-+			return
-+		}
++	if C.ProbeHolding(time.Now()) {
++		return
++	}
 +
- 		gb.failedTestMux.Lock()
- 		defer gb.failedTestMux.Unlock()
- 
+ 	if errors.Is(err, C.ErrNotSupport) {
+ 		return
+ 	}
 diff --git a/constant/probehold.go b/constant/probehold.go
 new file mode 100644
-index 00000000..76f86d0f
+index 0000000..76f86d0
 --- /dev/null
 +++ b/constant/probehold.go
 @@ -0,0 +1,37 @@

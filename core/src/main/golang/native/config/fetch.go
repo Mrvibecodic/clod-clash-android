@@ -67,7 +67,30 @@ func subscriptionHeaders(device bool) http.Header {
 	return header
 }
 
-func openUrl(ctx context.Context, direct context.Context, url string, device bool) (io.ReadCloser, fetchHeader, error) {
+// directBudget hands the direct retry its own timeout, started when the retry
+// starts. A deadline that ticks from the beginning of the tunnel attempt is
+// already spent in the very case the retry exists for: a proxy that accepts
+// the connection and then never answers.
+type directBudget struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func (b *directBudget) start() context.Context {
+	if b.ctx == nil {
+		b.ctx, b.cancel = context.WithTimeout(context.Background(), fetchTimeout)
+	}
+
+	return b.ctx
+}
+
+func (b *directBudget) close() {
+	if b.cancel != nil {
+		b.cancel()
+	}
+}
+
+func openUrl(ctx context.Context, direct *directBudget, url string, device bool) (io.ReadCloser, fetchHeader, error) {
 	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(device), nil)
 
 	if err != nil && device && !refusedByRedirectPolicy(err) {
@@ -76,7 +99,7 @@ func openUrl(ctx context.Context, direct context.Context, url string, device boo
 		log.Warnln("Subscription request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
 
 		response, err = clashHttp.HttpRequest(
-			direct,
+			direct.start(),
 			url,
 			http.MethodGet,
 			subscriptionHeaders(device),
@@ -162,8 +185,8 @@ func fetch(url *U.URL, file string, device bool) (fetchHeader, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
 	defer cancel()
 
-	direct, cancelDirect := context.WithTimeout(context.Background(), fetchTimeout)
-	defer cancelDirect()
+	direct := &directBudget{}
+	defer direct.close()
 
 	var reader io.ReadCloser
 	var header fetchHeader

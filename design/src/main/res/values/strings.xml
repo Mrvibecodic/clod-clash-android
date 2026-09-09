@@ -513,10 +513,10 @@
     <string name="clod_reset_summary">App, network and notification settings go back to defaults. Subscriptions, profiles, their own settings and the config overrides stay.</string>
     <string name="clod_reset_confirm">App, network and notification settings will go back to defaults, and the per-app tunnel list will be cleared. Subscriptions, profiles and the config overrides stay untouched — reset the overrides on their own screen.</string>
     <string name="clod_reset_action">Reset</string>
-    <string name="clod_update_cause_downgrade">The provider redirected the request to an unencrypted address, so it was refused: the subscription and the device details would have travelled in the clear. This is a misconfiguration on the provider side — ask them about it</string>
+    <string name="clod_update_cause_downgrade">The provider redirected the request to an unencrypted address, so it was refused. This is a misconfiguration on the provider side — ask them about it</string>
     <string name="clod_update_cause_clock">The clock on the device is far off, and the provider rejected the request. Set the date and time to automatic and try again</string>
     <string name="clod_update_cause_mismatch">The provider answer failed the secure channel check. Try again; if it repeats, the provider address may have been substituted</string>
-    <string name="clod_update_cause_bad_answer">The provider answered with something the secure channel does not understand. It usually means the address is not a Clod Clash subscription, or the secure channel is not supported there</string>
+    <string name="clod_update_cause_bad_answer">The provider answered with something the secure channel does not understand: the address is not a Clod Clash subscription, or the channel is not supported there</string>
     <string name="clod_update_cause_no_servers">The subscription contains no servers and no providers. Ask the provider — usually the subscription has expired or run out of traffic</string>
     <string name="clod_update_cause_too_large">The answer is too large for a subscription and was not accepted</string>
     <string name="clod_update_cause_scheme">The subscription address is in an unsupported scheme. It has to be an https link</string>

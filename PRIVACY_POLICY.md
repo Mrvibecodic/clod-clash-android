@@ -31,6 +31,24 @@ requests this app makes itself.
     Turning the setting off removes all four headers. These headers exist so that a provider
     can enforce its own device limits; whether a provider stores them is the provider's
     decision, described in the provider's own policy.
+    One more thing to know about this request: while the VPN is on, it normally travels
+    through the tunnel like any other traffic. If that attempt fails — the selected server
+    is down, or the connection through it breaks — the app retries the same request once
+    outside the tunnel, directly from your network. In that case the provider sees your
+    real IP address together with the device headers above. The retry is made only for
+    the subscription address, never for other hosts, and only after the attempt through
+    the tunnel has failed.
+*   **To a connectivity-check address, through each server.** Measuring latency (the
+    "check" button, the automatic check when the Servers tab is opened, and the checks
+    after a network change) sends a tiny request to a test address through every server
+    being measured. The address is the one set in your subscription for that group or
+    provider; when none is set, the app uses `https://www.gstatic.com/generate_204`,
+    operated by Google. The request carries no identifier and no device headers, but the
+    operator of the test address sees a connection from each server's IP.
+*   **DNS.** Name resolution goes wherever your configuration says. If the configuration
+    has no DNS section at all, the app fills in public resolvers of its own choosing —
+    currently `1.0.0.1` (Cloudflare), `8.8.4.4` (Google) and `9.9.9.10` (Quad9) — and the
+    names you resolve reach those operators.
 *   **To the update and routing-data endpoints.** Checking for an app update, downloading an
     update package, fetching routing databases (GeoIP, GeoSite, ASN) and loading a provider
     logo send only a standard `User-Agent` of the form `ClodClash/<version> (Android)`. No
@@ -52,7 +70,9 @@ send them yourself. Note that logs and configuration files can contain your subs
 address, so review a log before sharing it.
 
 System backup is currently enabled for the app (`allowBackup`), and the backup rules include
-the profile database, imported profile directories and the config overrides. No separate
+the profile database, imported and pending profile directories, the config overrides and the
+app's settings (which contain the locally generated fallback identifier when `ANDROID_ID` was
+unavailable). No separate
 Android 12+ extraction rules are declared, so on newer versions the default set — which is
 wider than that list — applies. On a device
 where cloud backup is on, those files — including subscription addresses and any credentials
