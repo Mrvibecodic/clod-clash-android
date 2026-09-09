@@ -81,7 +81,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                         Event.ActivityStop -> {
                             val profile = design.profile
 
-                            if (!canceled && profile != original && design.draftValid) {
+                            if (!canceled && profile != original && design.draftValid && !ProfileImports.isCommitting(profile.uuid)) {
                                 withContext(NonCancellable) {
                                     withProfile(retry = false) {
                                         patch(profile.uuid, profile.name, profile.source, profile.interval, profile.ageSecretKey)

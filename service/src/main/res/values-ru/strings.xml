@@ -20,6 +20,7 @@
     <string name="update_successfully">Успешно обновлено</string>
     <string name="update_failure">Не удалось обновить</string>
     <string name="format_update_complete">Обновление %s завершено</string>
+    <string name="clod_draft_changed">Черновик изменился, пока грузилась подписка, и ничего не сохранено. Повторите попытку</string>
     <string name="format_update_partial">«%1$s» обновлена, но не скачалось: %2$s</string>
     <string name="format_update_failure">«%1$s»: %2$s</string>
     <string name="running">Запущен</string>

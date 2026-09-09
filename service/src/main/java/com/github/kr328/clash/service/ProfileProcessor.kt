@@ -42,6 +42,14 @@ object ProfileProcessor {
 
     private const val PROVIDERS_DIR = "providers"
 
+    private fun Pending.sameDraft(other: Pending): Boolean =
+        name == other.name &&
+            type == other.type &&
+            source == other.source &&
+            interval == other.interval &&
+            ageSecretKey == other.ageSecretKey &&
+            secure == other.secure
+
     class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
 
     private val migrationJson = Json { ignoreUnknownKeys = true }
@@ -78,43 +86,49 @@ object ProfileProcessor {
                 val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, force, callback).info
 
                 profileLock.withLock {
-                    if (PendingDao().queryByUUID(snapshot.uuid) == snapshot) {
-                        ProfileSwap.replace(
-                            context.importedDir.resolve(snapshot.uuid.toString()),
-                            context.processingDir,
-                            warn = { Log.w(it) },
-                        )
+                    val current = PendingDao().queryByUUID(snapshot.uuid)
 
-                        val old = ImportedDao().queryByUUID(snapshot.uuid)
-                        val updateInterval = subscriptionInfo?.subUpdateInterval
-                            ?.takeIf { old == null && snapshot.interval == 0L }
-                            ?: snapshot.interval
-                        val new = Imported(
-                            snapshot.uuid,
-                            snapshot.name,
-                            snapshot.type,
-                            snapshot.source,
-                            updateInterval,
-                            subscriptionInfo?.subUpload ?: 0,
-                            subscriptionInfo?.subDownload ?: 0,
-                            subscriptionInfo?.subTotal ?: 0,
-                            subscriptionInfo?.subExpire ?: 0,
-                            old?.createdAt ?: System.currentTimeMillis(),
-                            ageSecretKey = snapshot.ageSecretKey,
-                            secure = snapshot.secure
-                        )
-                        if (old != null) {
-                            ImportedDao().update(new)
-                        } else {
-                            ImportedDao().insert(new)
-                        }
+                    if (current == null || !current.sameDraft(snapshot)) {
+                        Log.w("Draft $uuid changed while its subscription was loading, result dropped")
 
-                        PendingDao().remove(snapshot.uuid)
-
-                        context.pendingDir.resolve(snapshot.uuid.toString()).deleteRecursively()
-
-                        context.sendProfileChanged(snapshot.uuid)
+                        throw IllegalStateException(context.getString(R.string.clod_draft_changed))
                     }
+
+                    ProfileSwap.replace(
+                        context.importedDir.resolve(snapshot.uuid.toString()),
+                        context.processingDir,
+                        warn = { Log.w(it) },
+                    )
+
+                    val old = ImportedDao().queryByUUID(snapshot.uuid)
+                    val updateInterval = subscriptionInfo?.subUpdateInterval
+                        ?.takeIf { old == null && snapshot.interval == 0L }
+                        ?: snapshot.interval
+                    val new = Imported(
+                        snapshot.uuid,
+                        snapshot.name,
+                        snapshot.type,
+                        snapshot.source,
+                        updateInterval,
+                        subscriptionInfo?.subUpload ?: 0,
+                        subscriptionInfo?.subDownload ?: 0,
+                        subscriptionInfo?.subTotal ?: 0,
+                        subscriptionInfo?.subExpire ?: 0,
+                        old?.createdAt ?: System.currentTimeMillis(),
+                        ageSecretKey = snapshot.ageSecretKey,
+                        secure = snapshot.secure
+                    )
+                    if (old != null) {
+                        ImportedDao().update(new)
+                    } else {
+                        ImportedDao().insert(new)
+                    }
+
+                    PendingDao().remove(snapshot.uuid)
+
+                    context.pendingDir.resolve(snapshot.uuid.toString()).deleteRecursively()
+
+                    context.sendProfileChanged(snapshot.uuid)
                 }
             }
         }

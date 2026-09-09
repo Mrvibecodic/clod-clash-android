@@ -139,11 +139,14 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 total = 0,
                 download = 0,
                 expire = 0,
-                createdAt = System.currentTimeMillis(),
                 ageSecretKey = ageSecretKey,
             )
 
             PendingDao().update(newPending)
+
+            if (!context.pendingDir.resolve(uuid.toString()).setLastModified(System.currentTimeMillis())) {
+                Log.w("Draft $uuid: cannot refresh its directory time")
+            }
         }
     }
 

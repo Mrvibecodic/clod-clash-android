@@ -53,12 +53,18 @@ object ProfileImports {
     private var job: Job? = null
     private var batchJob: Job? = null
     private var lastToken: Long = 0
+    private var committing: UUID? = null
+
+    @Synchronized
+    fun isCommitting(uuid: UUID): Boolean = committing == uuid && job?.isActive == true
 
     @Synchronized
     fun start(source: String, secure: Boolean): Long {
         if (job?.isActive == true) return 0
 
         val token = ++lastToken
+
+        committing = null
 
         state_.value = State.Running(token, null)
 
@@ -136,6 +142,7 @@ object ProfileImports {
         val token = ++lastToken
 
         state_.value = State.Running(token, null)
+        committing = profile.uuid
 
         job = Global.launch {
             val context = Global.application.withAppLocale()
