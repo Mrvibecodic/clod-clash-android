@@ -14,13 +14,16 @@ import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
 import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
 import com.github.kr328.clash.common.compat.isSystemBarsTranslucentCompat
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.ui.DayNight
 import com.github.kr328.clash.design.util.resolveThemedBoolean
 import com.github.kr328.clash.design.util.resolveThemedColor
+import com.github.kr328.clash.design.util.humanizeUpdateFailure
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.service.R as ServiceR
@@ -172,6 +175,18 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
     override fun onProfileUpdateFailed(uuid: UUID?, reason: String?) {
         events.trySend(Event.ProfileUpdateFailed)
+
+        if (reason == null || !activityStarted) return
+
+        val human = humanizeUpdateFailure(reason)
+
+        launch {
+            design?.showToast(
+                message = human ?: getString(ServiceR.string.update_failure),
+                duration = ToastDuration.Long,
+                detail = Redact.text(reason),
+            )
+        }
     }
 
     override fun onProfileLoaded() {
