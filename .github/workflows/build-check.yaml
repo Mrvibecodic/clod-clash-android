@@ -38,6 +38,7 @@ jobs:
           grep -Eq '"expectedStatus": +s\.expectedStatus,' adapter/outboundgroup/selector.go
           grep -Eq 'expectedStatus: +option\.ExpectedStatus,' adapter/outboundgroup/selector.go
           grep -q ResetNetwork adapter/outbound/base.go
+          grep -q ErrRedirectDowngrade component/http/http.go
           # -F 0 запрещает нечёткий контекст, но не смещение: остатки .orig/.rej
           # означают, что патч лёг не туда, куда писался.
           if [ -n "$(find . \( -name '*.orig' -o -name '*.rej' \) -print -quit)" ]; then

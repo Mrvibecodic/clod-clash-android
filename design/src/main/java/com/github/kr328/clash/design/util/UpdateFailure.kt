@@ -8,6 +8,8 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
 
     if (text.isEmpty()) return null
 
+    if (text.contains(REDIRECT_DOWNGRADE)) return getString(R.string.clod_update_cause_downgrade)
+
     if (text.contains(CHAN_STALE)) return getString(R.string.clod_update_cause_clock)
 
     if (text.contains(CHAN_MISMATCH)) return getString(R.string.clod_update_cause_mismatch)
@@ -39,6 +41,8 @@ private fun statusOf(text: String): Int? {
 
     return text.drop(at + STATUS_PREFIX.length).takeWhile(Char::isDigit).toIntOrNull()
 }
+
+private const val REDIRECT_DOWNGRADE = "refused redirect from https"
 
 private const val CHAN_STALE = "clod-chan-stale"
 

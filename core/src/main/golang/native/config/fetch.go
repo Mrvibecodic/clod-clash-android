@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,6 +44,10 @@ type fetchHeader struct {
 
 const directOutbound = "DIRECT"
 
+func refusedByRedirectPolicy(err error) bool {
+	return errors.Is(err, clashHttp.ErrRedirectDowngrade) || errors.Is(err, clashHttp.ErrTooManyRedirects)
+}
+
 const fetchTimeout = 60 * time.Second
 
 func subscriptionHeaders(device bool) http.Header {
@@ -65,7 +70,7 @@ func subscriptionHeaders(device bool) http.Header {
 func openUrl(ctx context.Context, direct context.Context, url string, device bool) (io.ReadCloser, fetchHeader, error) {
 	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(device), nil)
 
-	if err != nil && device {
+	if err != nil && device && !refusedByRedirectPolicy(err) {
 		tunnelErr := err
 
 		log.Warnln("Subscription request failed through the tunnel (%s), retrying directly", tunnelErr.Error())

@@ -30,6 +30,14 @@ var errChanFingerprint = errors.New("clod-chan: chrome fingerprint is not availa
 
 var errChanAlpn = errors.New("clod-chan: relay negotiated a protocol other than http/1.1")
 
+var errChanRedirects = errors.New("clod-chan: stopped after 10 redirects")
+
+var errChanDowngrade = errors.New("clod-chan: refused redirect from https to plain http")
+
+func refusedByChanRedirect(err error) bool {
+	return errors.Is(err, errChanDowngrade) || errors.Is(err, errChanRedirects)
+}
+
 func SetSecureChannel(enabled bool) {
 	secureChannel.Store(enabled)
 }
@@ -120,7 +128,20 @@ func chanClient(direct bool) *http.Client {
 		},
 	}
 
-	return &http.Client{Transport: transport}
+	return &http.Client{
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errChanRedirects
+			}
+
+			if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+				return errChanDowngrade
+			}
+
+			return nil
+		},
+	}
 }
 
 func chanPinFile(dir string) string {
@@ -215,7 +236,7 @@ func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, erro
 	}
 
 	response, err := chanClient(false).Do(request)
-	if err != nil {
+	if err != nil && !refusedByChanRedirect(err) {
 		tunnelErr := err
 
 		log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
