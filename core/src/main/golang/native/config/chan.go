@@ -52,17 +52,27 @@ var chanBrowserHeaders = [][2]string{
 	{"accept-language", "en-US,en;q=0.9"},
 }
 
-func chanClient() *http.Client {
+const chanDirectTimeout = 60 * time.Second
+
+func chanClient(direct bool) *http.Client {
 	transport := &http.Transport{
 		DisableKeepAlives:   true,
 		TLSHandshakeTimeout: 10 * time.Second,
 		DialTLSContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			conn, err := inner.HandleTcp(inner.GetTunnel(), address, "")
-			if err != nil {
+			var conn net.Conn
+			var err error
+
+			if direct {
 				conn, err = dialer.DialContext(ctx, network, address)
+			} else {
+				conn, err = inner.HandleTcp(inner.GetTunnel(), address, "")
 				if err != nil {
-					return nil, err
+					conn, err = dialer.DialContext(ctx, network, address)
 				}
+			}
+
+			if err != nil {
+				return nil, err
 			}
 
 			host, _, err := net.SplitHostPort(address)
@@ -204,7 +214,22 @@ func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, erro
 		request.Header.Set(pair[0], pair[1])
 	}
 
-	response, err := chanClient().Do(request)
+	response, err := chanClient(false).Do(request)
+	if err != nil {
+		tunnelErr := err
+
+		log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
+
+		direct, cancel := context.WithTimeout(context.Background(), chanDirectTimeout)
+		defer cancel()
+
+		response, err = chanClient(true).Do(request.WithContext(direct))
+
+		if err != nil {
+			return nil, tunnelErr
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -41,6 +41,10 @@ type fetchHeader struct {
 	Raw                   map[string][]string
 }
 
+const directOutbound = "DIRECT"
+
+const fetchTimeout = 60 * time.Second
+
 func subscriptionHeaders(device bool) http.Header {
 	header := http.Header{
 		"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"},
@@ -58,8 +62,27 @@ func subscriptionHeaders(device bool) http.Header {
 	return header
 }
 
-func openUrl(ctx context.Context, url string, device bool) (io.ReadCloser, fetchHeader, error) {
+func openUrl(ctx context.Context, direct context.Context, url string, device bool) (io.ReadCloser, fetchHeader, error) {
 	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(device), nil)
+
+	if err != nil && device {
+		tunnelErr := err
+
+		log.Warnln("Subscription request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
+
+		response, err = clashHttp.HttpRequest(
+			direct,
+			url,
+			http.MethodGet,
+			subscriptionHeaders(device),
+			nil,
+			clashHttp.WithSpecialProxy(directOutbound),
+		)
+
+		if err != nil {
+			return nil, fetchHeader{}, tunnelErr
+		}
+	}
 
 	if err != nil {
 		return nil, fetchHeader{}, err
@@ -131,8 +154,11 @@ func warnOnForeignRedirect(requested string, final *U.URL) {
 }
 
 func fetch(url *U.URL, file string, device bool) (fetchHeader, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
 	defer cancel()
+
+	direct, cancelDirect := context.WithTimeout(context.Background(), fetchTimeout)
+	defer cancelDirect()
 
 	var reader io.ReadCloser
 	var header fetchHeader
@@ -140,7 +166,7 @@ func fetch(url *U.URL, file string, device bool) (fetchHeader, error) {
 
 	switch url.Scheme {
 	case "http", "https":
-		reader, header, err = openUrl(ctx, url.String(), device)
+		reader, header, err = openUrl(ctx, direct, url.String(), device)
 	case "content":
 		reader, err = openContent(url.String())
 	default:
