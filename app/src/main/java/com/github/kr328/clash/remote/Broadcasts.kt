@@ -18,7 +18,7 @@ class Broadcasts(private val context: Application) {
         fun onStarted()
         fun onStopped(cause: String?)
         fun onProfileChanged()
-        fun onProfileUpdateCompleted(uuid: UUID?)
+        fun onProfileUpdateCompleted(uuid: UUID?, warning: String?)
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
         fun onProfileLoaded()
         fun onProfileLoadFailed(uuid: UUID?, reason: String?)
@@ -69,7 +69,9 @@ class Broadcasts(private val context: Application) {
                     }
                 Intents.ACTION_PROFILE_UPDATE_COMPLETED ->
                     receivers.forEach {
-                        it.onProfileUpdateCompleted(intent.parseUUID())
+                        it.onProfileUpdateCompleted(
+                            intent.parseUUID(),
+                            intent.getStringExtra(Intents.EXTRA_WARNING))
                     }
                 Intents.ACTION_PROFILE_UPDATE_FAILED ->
                     receivers.forEach {

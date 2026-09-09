@@ -20,6 +20,11 @@ class StatusProvider : ContentProvider() {
                     putString(KEY_NAME, currentProfile)
                 }
             }
+            METHOD_UPDATING_PROFILES -> {
+                return Bundle().apply {
+                    putStringArrayList(KEY_UPDATING, ArrayList(ProfileWorker.updating.map { it.toString() }))
+                }
+            }
             else -> super.call(method, arg, extras)
         }
     }
@@ -65,6 +70,8 @@ class StatusProvider : ContentProvider() {
         const val KEY_STARTING = "starting"
         const val KEY_STAGE = "stage"
         const val KEY_NAME = "name"
+        const val METHOD_UPDATING_PROFILES = "updatingProfiles"
+        const val KEY_UPDATING = "updating"
 
         private const val CLASH_SERVICE_RUNNING_FILE = "service_running.lock"
 

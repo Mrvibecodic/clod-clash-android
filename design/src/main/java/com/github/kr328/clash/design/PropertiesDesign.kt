@@ -131,7 +131,11 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
             text = context.getString(R.string.format_fetching_configuration, args[0]),
         )
         FetchStatus.Action.FetchProviders -> FetchProgress(
-            text = context.getString(R.string.format_fetching_provider, args[0]),
+            text = context.getString(R.string.format_fetching_provider, args.firstOrNull().orEmpty()),
+            progress = fraction(),
+        )
+        FetchStatus.Action.ProviderFailed -> FetchProgress(
+            text = context.getString(R.string.clod_provider_failed, args.firstOrNull().orEmpty()),
             progress = fraction(),
         )
         FetchStatus.Action.Verifying -> FetchProgress(

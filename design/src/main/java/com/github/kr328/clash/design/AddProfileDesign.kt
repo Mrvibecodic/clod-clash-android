@@ -66,6 +66,9 @@ class AddProfileDesign(
             FetchStatus.Action.FetchProviders ->
                 context.getString(R.string.format_fetching_provider, status.args.firstOrNull().orEmpty())
 
+            FetchStatus.Action.ProviderFailed ->
+                context.getString(R.string.clod_provider_failed, status.args.firstOrNull().orEmpty())
+
             FetchStatus.Action.Verifying -> context.getString(R.string.verifying)
             FetchStatus.Action.SubscriptionInfo -> null
         } ?: return

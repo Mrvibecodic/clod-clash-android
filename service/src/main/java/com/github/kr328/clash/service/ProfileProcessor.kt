@@ -40,6 +40,10 @@ object ProfileProcessor {
 
     private const val MIGRATION_FILE = "migration.json"
 
+    private const val PROVIDERS_DIR = "providers"
+
+    class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
+
     private val migrationJson = Json { ignoreUnknownKeys = true }
 
     private val profileLock = Mutex()
@@ -71,7 +75,7 @@ object ProfileProcessor {
                 Clash.setSecureChannel(snapshot.secure)
 
                 val force = snapshot.type != Profile.Type.File
-                val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, force, callback)
+                val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, force, callback).info
 
                 profileLock.withLock {
                     if (PendingDao().queryByUUID(snapshot.uuid) == snapshot) {
@@ -116,8 +120,8 @@ object ProfileProcessor {
         }
     }
 
-    suspend fun update(context: Context, uuid: UUID, callback: IFetchObserver?) {
-        withContext(NonCancellable) {
+    suspend fun update(context: Context, uuid: UUID, callback: IFetchObserver?): List<String> {
+        return withContext(NonCancellable) {
             processLock.withLock {
                 val snapshot = profileLock.withLock {
                     val imported =
@@ -139,7 +143,8 @@ object ProfileProcessor {
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
                 Clash.setSecureChannel(snapshot.secure)
 
-                val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, true, callback)
+                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, callback)
+                val subscriptionInfo = fetched.info
 
                 profileLock.withLock {
                     val imported = ImportedDao().queryByUUID(snapshot.uuid)
@@ -167,6 +172,8 @@ object ProfileProcessor {
                 }
 
                 followMigration(context, snapshot.uuid, snapshot.source, callback)
+
+                fetched.failedProviders
             }
         }
     }
@@ -200,7 +207,10 @@ object ProfileProcessor {
             probe.deleteRecursively()
             probe.mkdirs()
 
-            fetchProfile(context, probe, candidate, true, callback)
+            profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
+                ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
+
+            fetchProfile(context, probe, candidate, true, callback).info
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
 
@@ -297,8 +307,9 @@ object ProfileProcessor {
         source: String,
         force: Boolean,
         callback: IFetchObserver?,
-    ): FetchStatus? {
+    ): Fetched {
         var subscriptionInfo: FetchStatus? = null
+        val failedProviders = ArrayList<String>()
         var cb = callback
 
         context.applyDeviceInfo()
@@ -308,9 +319,15 @@ object ProfileProcessor {
         context.seedSystemDns()
 
         Clash.fetchAndValid(dir, source, force) {
-            if (it.action == FetchStatus.Action.SubscriptionInfo) {
-                subscriptionInfo = it
-                return@fetchAndValid
+            when (it.action) {
+                FetchStatus.Action.SubscriptionInfo -> {
+                    subscriptionInfo = it
+                    return@fetchAndValid
+                }
+                FetchStatus.Action.ProviderFailed -> synchronized(failedProviders) {
+                    it.args.firstOrNull()?.let(failedProviders::add)
+                }
+                else -> Unit
             }
 
             try {
@@ -322,7 +339,7 @@ object ProfileProcessor {
             }
         }.await()
 
-        return subscriptionInfo
+        return Fetched(subscriptionInfo, synchronized(failedProviders) { failedProviders.toList() })
     }
 
     suspend fun delete(context: Context, uuid: UUID) {

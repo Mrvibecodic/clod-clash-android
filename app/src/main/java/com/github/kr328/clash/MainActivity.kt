@@ -80,8 +80,8 @@ import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
 
 class MainActivity : BaseActivity<MainDesign>() {
-    override fun onProfileUpdateCompleted(uuid: UUID?) {
-        super.onProfileUpdateCompleted(uuid)
+    override fun onProfileUpdateCompleted(uuid: UUID?, warning: String?) {
+        super.onProfileUpdateCompleted(uuid, warning)
 
         uuid?.let { ProfileUpdates.finish(it) }
     }
@@ -117,14 +117,22 @@ class MainActivity : BaseActivity<MainDesign>() {
             null -> Unit
         }
 
-        ProfileUpdates.prune()
-
-        if (ProfileUpdates.running.value.isNotEmpty()) {
-            schedulePrune()
+        launch {
+            ProfileUpdates.running.collect { design.setUpdatingProfiles(it.keys) }
         }
 
         launch {
-            ProfileUpdates.running.collect { design.setUpdatingProfiles(it.keys) }
+            while (isActive) {
+                if (activityStarted) {
+                    val actual = withContext(Dispatchers.IO) {
+                        StatusClient(this@MainActivity).updatingProfiles()
+                    }
+
+                    ProfileUpdates.reconcile(actual)
+                }
+
+                delay(if (ProfileUpdates.running.value.isEmpty()) UPDATES_IDLE_POLL_MS else UPDATES_ACTIVE_POLL_MS)
+            }
         }
 
         design.loadVersionName()
@@ -360,7 +368,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     }
 
                                     ProfileUpdates.start(targets)
-                                    schedulePrune()
 
                                     withProfile(retry = false) { targets.forEach { update(it) } }
                                 } catch (e: CancellationException) {
@@ -405,7 +412,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
 
                                 ProfileUpdates.start(listOf(uuid))
-                                schedulePrune()
 
                                 try {
                                     withProfile(retry = false) { update(uuid) }
@@ -920,6 +926,10 @@ class MainActivity : BaseActivity<MainDesign>() {
     private companion object {
         private const val DELAY_UNKNOWN = 0xffff
 
+        private val UPDATES_ACTIVE_POLL_MS = TimeUnit.SECONDS.toMillis(3)
+
+        private val UPDATES_IDLE_POLL_MS = TimeUnit.SECONDS.toMillis(15)
+
         private const val GLOBAL_GROUP = "GLOBAL"
 
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
@@ -1323,14 +1333,6 @@ class MainActivity : BaseActivity<MainDesign>() {
             }
             UpdateTask.State.Idle, is UpdateTask.State.Checking, is UpdateTask.State.Ready ->
                 setUpdate(null)
-        }
-    }
-
-    private fun schedulePrune() {
-        launch {
-            delay(ProfileUpdates.TIMEOUT)
-
-            ProfileUpdates.prune()
         }
     }
 

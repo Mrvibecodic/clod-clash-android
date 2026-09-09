@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"cfa/native/app"
@@ -20,6 +22,7 @@ import (
 
 	"github.com/metacubex/mihomo/adapter/provider"
 	clashHttp "github.com/metacubex/mihomo/component/http"
+	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/log"
 	RB "github.com/metacubex/mihomo/rules/bundle"
 )
@@ -48,7 +51,14 @@ func refusedByRedirectPolicy(err error) bool {
 	return errors.Is(err, clashHttp.ErrRedirectDowngrade) || errors.Is(err, clashHttp.ErrTooManyRedirects)
 }
 
-const fetchTimeout = 60 * time.Second
+const (
+	fetchTimeout      = 60 * time.Second
+	fetchQuickTimeout = 30 * time.Second
+	fetchMinAttempt   = 10 * time.Second
+	fetchBudgetTotal  = 180 * time.Second
+	providerTimeout   = 30 * time.Second
+	providerParallel  = 4
+)
 
 func subscriptionHeaders(device bool) http.Header {
 	header := http.Header{
@@ -67,26 +77,59 @@ func subscriptionHeaders(device bool) http.Header {
 	return header
 }
 
-// directBudget hands the direct retry its own timeout, started when the retry
-// starts. A deadline that ticks from the beginning of the tunnel attempt is
-// already spent in the very case the retry exists for: a proxy that accepts
-// the connection and then never answers.
-type directBudget struct {
-	ctx    context.Context
-	cancel context.CancelFunc
+type fetchBudget struct {
+	deadline time.Time
 }
 
-func (b *directBudget) start() context.Context {
-	if b.ctx == nil {
-		b.ctx, b.cancel = context.WithTimeout(context.Background(), fetchTimeout)
+func newFetchBudget() *fetchBudget {
+	return &fetchBudget{deadline: time.Now().Add(fetchBudgetTotal)}
+}
+
+func (b *fetchBudget) remaining() time.Duration {
+	return time.Until(b.deadline)
+}
+
+func (b *fetchBudget) ensure(minimum time.Duration) {
+	if floor := time.Now().Add(minimum); b.deadline.Before(floor) {
+		b.deadline = floor
+	}
+}
+
+func (b *fetchBudget) context(limit time.Duration) (context.Context, context.CancelFunc, bool) {
+	remaining := b.remaining()
+	if remaining < fetchMinAttempt {
+		return nil, nil, false
 	}
 
-	return b.ctx
+	if remaining < limit {
+		limit = remaining
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
+
+	return ctx, cancel, true
+}
+
+type directBudget struct {
+	budget  *fetchBudget
+	limit   time.Duration
+	cancels []context.CancelFunc
+}
+
+func (b *directBudget) start() (context.Context, bool) {
+	ctx, cancel, ok := b.budget.context(b.limit)
+	if !ok {
+		return nil, false
+	}
+
+	b.cancels = append(b.cancels, cancel)
+
+	return ctx, true
 }
 
 func (b *directBudget) close() {
-	if b.cancel != nil {
-		b.cancel()
+	for _, cancel := range b.cancels {
+		cancel()
 	}
 }
 
@@ -96,10 +139,17 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 	if err != nil && device && !refusedByRedirectPolicy(err) {
 		tunnelErr := err
 
+		direct, ok := direct.start()
+		if !ok {
+			log.Warnln("Subscription request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
+
+			return nil, fetchHeader{}, tunnelErr
+		}
+
 		log.Warnln("Subscription request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
 
 		response, err = clashHttp.HttpRequest(
-			direct.start(),
+			direct,
 			url,
 			http.MethodGet,
 			subscriptionHeaders(device),
@@ -137,15 +187,21 @@ func openContent(url string) (io.ReadCloser, error) {
 	return app.OpenContent(url)
 }
 
-func fetchConfig(url *U.URL, file string) (fetchHeader, error) {
+func fetchConfig(url *U.URL, file string, budget *fetchBudget, limit time.Duration) (fetchHeader, error) {
 	if !SecureChannel() || (url.Scheme != "http" && url.Scheme != "https") {
-		return fetch(url, file, true)
+		return fetch(url, file, true, budget, limit)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel, ok := budget.context(limit)
+	if !ok {
+		return fetchHeader{}, errFetchBudget
+	}
 	defer cancel()
 
-	reader, header, err := openUrlSecure(ctx, url.String(), P.Dir(file))
+	direct := &directBudget{budget: budget, limit: limit}
+	defer direct.close()
+
+	reader, header, err := openUrlSecure(ctx, url.String(), P.Dir(file), direct)
 	if err != nil {
 		return fetchHeader{}, err
 	}
@@ -181,11 +237,16 @@ func warnOnForeignRedirect(requested string, final *U.URL) {
 	}
 }
 
-func fetch(url *U.URL, file string, device bool) (fetchHeader, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), fetchTimeout)
+var errFetchBudget = errors.New("time budget for the update is exhausted")
+
+func fetch(url *U.URL, file string, device bool, budget *fetchBudget, limit time.Duration) (fetchHeader, error) {
+	ctx, cancel, ok := budget.context(limit)
+	if !ok {
+		return fetchHeader{}, errFetchBudget
+	}
 	defer cancel()
 
-	direct := &directBudget{}
+	direct := &directBudget{budget: budget, limit: limit}
 	defer direct.close()
 
 	var reader io.ReadCloser
@@ -288,23 +349,33 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 }
 
 func fetchFromSpare(
-	info PanelInfo,
-	primary *U.URL,
+	spares []string,
 	configPath string,
 	cause error,
+	budget *fetchBudget,
 	reportStatus func(string),
 ) (fetchHeader, error) {
-	spares := info.SpareAddresses(primary.String())
 	if len(spares) == 0 {
 		return fetchHeader{}, cause
 	}
 
 	log.Warnln("Subscription address failed (%s), trying %d spare address(es) from the provider", cause.Error(), len(spares))
 
-	for _, spare := range spares {
+	for index, spare := range spares {
 		parsed, err := U.Parse(spare)
 		if err != nil {
 			continue
+		}
+
+		limit := fetchQuickTimeout
+		if index == len(spares)-1 {
+			limit = fetchTimeout
+		}
+
+		if budget.remaining() < fetchMinAttempt {
+			log.Warnln("Spare address %s skipped: %s", parsed.Host, errFetchBudget.Error())
+
+			break
 		}
 
 		bytes, _ := json.Marshal(&Status{
@@ -316,7 +387,7 @@ func fetchFromSpare(
 
 		reportStatus(string(bytes))
 
-		header, err := fetchConfig(parsed, configPath)
+		header, err := fetchConfig(parsed, configPath, budget, limit)
 		if err != nil {
 			log.Warnln("Spare address %s failed as well: %s", parsed.Host, err.Error())
 
@@ -339,6 +410,8 @@ func FetchAndValid(
 ) error {
 	configPath := P.Join(path, "config.yaml")
 
+	budget := newFetchBudget()
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) || force {
 		url, err := U.Parse(url)
 		if err != nil {
@@ -356,9 +429,16 @@ func FetchAndValid(
 
 		info := readPanelInfo(path)
 
-		header, err := fetchConfig(url, configPath)
+		spares := info.SpareAddresses(url.String())
+
+		limit := fetchTimeout
+		if len(spares) > 0 {
+			limit = fetchQuickTimeout
+		}
+
+		header, err := fetchConfig(url, configPath, budget, limit)
 		if err != nil {
-			header, err = fetchFromSpare(info, url, configPath, err, reportStatus)
+			header, err = fetchFromSpare(spares, configPath, err, budget, reportStatus)
 			if err != nil {
 				return err
 			}
@@ -397,15 +477,41 @@ func FetchAndValid(
 
 	writePanelInfo(path, panelInfo)
 
-	forEachProviders(rawCfg, func(index int, total int, name string, provider map[string]any, prefix string) {
-		bytes, _ := json.Marshal(&Status{
-			Action:      "FetchProviders",
-			Args:        []string{name},
-			Progress:    index,
-			MaxProgress: total,
-		})
+	fetchProviders(rawCfg, budget, reportStatus)
 
-		reportStatus(string(bytes))
+	bytes, _ := json.Marshal(&Status{
+		Action:      "Verifying",
+		Args:        []string{},
+		Progress:    0xffff,
+		MaxProgress: 0xffff,
+	})
+
+	reportStatus(string(bytes))
+
+	cfg, err := Parse(rawCfg)
+	if err != nil {
+		return err
+	}
+
+	DestroyProviders(cfg)
+
+	return nil
+}
+
+type providerJob struct {
+	name   string
+	url    *U.URL
+	path   string
+	bundle string
+}
+
+func providerJobs(rawCfg *config.RawConfig) ([]providerJob, int) {
+	jobs := []providerJob{}
+	paths := map[string]bool{}
+	total := 0
+
+	forEachProviders(rawCfg, func(index int, count int, name string, provider map[string]any, prefix string) {
+		total = count
 
 		u, uok := provider["url"]
 		p, pok := provider["path"]
@@ -425,44 +531,99 @@ func FetchAndValid(
 			return
 		}
 
+		if paths[ps] {
+			return
+		}
+
+		paths[ps] = true
+
 		url, err := U.Parse(us)
 		if err != nil {
 			return
 		}
 
+		job := providerJob{name: name, url: url, path: ps}
+
 		if prefix == RULES {
-			if pib, uok := provider["path-in-bundle"]; uok {
-				if pib, uok := pib.(string); uok && pib != "" {
-					if file, err := RB.Open(pib); err == nil {
-						defer file.Close()
-						if err := writeFile(ps, file); err == nil {
-							return
-						}
-					}
-				}
+			if pib, ok := provider["path-in-bundle"].(string); ok {
+				job.bundle = pib
 			}
 		}
 
-		if _, err := fetch(url, ps, false); err != nil {
-			log.Warnln("Fetch provider %s: %s", P.Base(ps), err.Error())
-		}
+		jobs = append(jobs, job)
 	})
 
+	return jobs, total
+}
+
+func reportProvider(reportStatus func(string), action string, args []string, progress int, total int) {
 	bytes, _ := json.Marshal(&Status{
-		Action:      "Verifying",
-		Args:        []string{},
-		Progress:    0xffff,
-		MaxProgress: 0xffff,
+		Action:      action,
+		Args:        args,
+		Progress:    progress,
+		MaxProgress: total,
 	})
 
 	reportStatus(string(bytes))
+}
 
-	cfg, err := Parse(rawCfg)
-	if err != nil {
-		return err
+func fetchProviders(rawCfg *config.RawConfig, budget *fetchBudget, reportStatus func(string)) {
+	jobs, total := providerJobs(rawCfg)
+
+	if len(jobs) == 0 {
+		return
 	}
 
-	DestroyProviders(cfg)
+	reportProvider(reportStatus, "FetchProviders", []string{jobs[0].name}, total-len(jobs), total)
 
-	return nil
+	budget.ensure(providerTimeout)
+
+	var done atomic.Int32
+
+	slots := make(chan struct{}, providerParallel)
+
+	wg := &sync.WaitGroup{}
+
+	for _, job := range jobs {
+		wg.Add(1)
+
+		go func(job providerJob) {
+			defer wg.Done()
+
+			slots <- struct{}{}
+			defer func() { <-slots }()
+
+			err := fetchProvider(job, budget)
+
+			finished := total - len(jobs) + int(done.Add(1))
+
+			if err != nil {
+				log.Warnln("Fetch provider %s: %s", job.name, err.Error())
+
+				reportProvider(reportStatus, "ProviderFailed", []string{job.name, err.Error()}, finished, total)
+
+				return
+			}
+
+			reportProvider(reportStatus, "FetchProviders", []string{job.name}, finished, total)
+		}(job)
+	}
+
+	wg.Wait()
+}
+
+func fetchProvider(job providerJob, budget *fetchBudget) error {
+	if job.bundle != "" {
+		if file, err := RB.Open(job.bundle); err == nil {
+			defer file.Close()
+
+			if err := writeFile(job.path, file); err == nil {
+				return nil
+			}
+		}
+	}
+
+	_, err := fetch(job.url, job.path, false, budget, providerTimeout)
+
+	return err
 }

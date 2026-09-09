@@ -5,6 +5,7 @@ import android.net.Uri
 import com.github.kr328.clash.common.constants.Authorities
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.StatusProvider
+import java.util.UUID
 
 class StatusClient(private val context: Context) {
     private val uri: Uri
@@ -41,6 +42,25 @@ class StatusClient(private val context: Context) {
             Log.w("Query clash status: $e", e)
 
             Status(running = false, name = null)
+        }
+    }
+
+    fun updatingProfiles(): Set<UUID>? {
+        return try {
+            val result = context.contentResolver.call(
+                uri,
+                StatusProvider.METHOD_UPDATING_PROFILES,
+                null,
+                null
+            ) ?: return null
+
+            result.getStringArrayList(StatusProvider.KEY_UPDATING)
+                ?.mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }
+                ?.toSet()
+        } catch (e: Exception) {
+            Log.w("Query updating profiles: $e", e)
+
+            null
         }
     }
 

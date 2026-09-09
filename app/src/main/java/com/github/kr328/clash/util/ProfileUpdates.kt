@@ -8,7 +8,9 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 object ProfileUpdates {
-    val TIMEOUT = TimeUnit.SECONDS.toMillis(90)
+    val TIMEOUT = TimeUnit.MINUTES.toMillis(15)
+
+    private val GRACE = TimeUnit.SECONDS.toMillis(25)
 
     private val deadlines = MutableStateFlow<Map<UUID, Long>>(emptyMap())
 
@@ -30,6 +32,26 @@ object ProfileUpdates {
         if (deadlines.value.isEmpty()) return
 
         deadlines.update { it.alive() }
+    }
+
+    fun reconcile(actual: Set<UUID>?) {
+        if (actual == null) {
+            prune()
+
+            return
+        }
+
+        val now = SystemClock.elapsedRealtime()
+
+        deadlines.update { current ->
+            val kept = current.filter { (uuid, until) ->
+                uuid in actual || (until > now && until - now > TIMEOUT - GRACE)
+            }
+
+            val added = actual.filter { it !in kept }.associateWith { now + TIMEOUT }
+
+            if (added.isEmpty() && kept.size == current.size) current else kept + added
+        }
     }
 
     private fun Map<UUID, Long>.alive(): Map<UUID, Long> {

@@ -19,7 +19,7 @@ import (
 const (
 	Version   = 1
 	salt      = "clod-chan-v1"
-	skew      = 300
+	Skew      = 300
 	maxAnswer = 32 << 20
 	padBlock  = 512
 	padKeyLen = 9
@@ -192,7 +192,7 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	if !hmac.Equal([]byte(answer.N), []byte(s.nonce)) {
 		return nil, ErrMismatch
 	}
-	if answer.T <= 0 || abs(now-answer.T) > skew {
+	if answer.T <= 0 || abs(now-answer.T) > Skew {
 		return nil, ErrStale
 	}
 

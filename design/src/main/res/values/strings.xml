@@ -65,6 +65,7 @@
 
     <string name="format_fetching_configuration">Fetching configuration from \'%s\'</string>
     <string name="format_fetching_provider">Fetching provider \'%s\'</string>
+    <string name="clod_provider_failed">Provider \'%s\' could not be downloaded</string>
     <string name="initializing">Initializing</string>
     <string name="verifying">Verifying</string>
 

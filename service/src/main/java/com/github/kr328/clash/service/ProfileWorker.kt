@@ -26,6 +26,7 @@ import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import kotlinx.coroutines.*
 import kotlinx.coroutines.CancellationException
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
 
@@ -62,8 +63,18 @@ class ProfileWorker : BaseService() {
         when (intent?.action) {
             Intents.ACTION_PROFILE_REQUEST_UPDATE -> {
                 intent.uuid?.also {
+                    if (!updating.add(it)) {
+                        Log.i("Update of $it already queued")
+
+                        return@also
+                    }
+
                     val job = launch {
-                        run(it)
+                        try {
+                            run(it)
+                        } finally {
+                            updating.remove(it)
+                        }
                     }
 
                     jobs.add(job)
@@ -80,11 +91,15 @@ class ProfileWorker : BaseService() {
         val name = displayProfileName(imported.uuid, imported.name)
 
         try {
-            processing(name) {
-                ProfileProcessor.update(this, imported.uuid, null)
+            val failedProviders = try {
+                processing(name) {
+                    ProfileProcessor.update(this, imported.uuid, null)
+                }
+            } finally {
+                updating.remove(uuid)
             }
 
-            completed(imported.uuid, displayProfileName(imported.uuid, imported.name))
+            completed(imported.uuid, displayProfileName(imported.uuid, imported.name), failedProviders)
 
             ProfileReceiver.scheduleNext(this, imported)
         } catch (e: CancellationException) {
@@ -140,7 +155,7 @@ class ProfileWorker : BaseService() {
         startForegroundCompat(R.id.nf_profile_worker, notification)
     }
 
-    private suspend inline fun processing(name: String, block: () -> Unit) {
+    private suspend inline fun <T> processing(name: String, block: () -> T): T {
         val id = UndefinedIds.next()
 
         val notification = NotificationCompat.Builder(this, STATUS_CHANNEL)
@@ -156,7 +171,7 @@ class ProfileWorker : BaseService() {
         NotificationManagerCompat.from(applicationContext)
             .notify(id, notification)
         try {
-            block()
+            return block()
         } finally {
             withContext(NonCancellable) {
                 NotificationManagerCompat.from(applicationContext)
@@ -182,20 +197,41 @@ class ProfileWorker : BaseService() {
             .setGroup(RESULT_CHANNEL)
     }
 
-    private fun completed(uuid: UUID, name: String) {
-        if (ServiceStore(this).notifyProfileUpdates) {
-            val id = uuid.hashCode()
+    private fun completed(uuid: UUID, name: String, failedProviders: List<String>) {
+        val store = ServiceStore(this)
+
+        val warning = failedProviders.takeIf { it.isNotEmpty() }
+            ?.let { getString(R.string.format_update_partial, name, it.joinToString(", ")) }
+
+        if (warning != null) {
+            Log.w("Update of $uuid: providers not downloaded: ${failedProviders.joinToString(", ")}")
+        }
+
+        val id = uuid.hashCode()
+
+        if (warning != null && store.notifyProfileErrors) {
+            val notification = resultBuilder(id, uuid, ERROR_CHANNEL)
+                .setContentTitle(getString(R.string.update_successfully))
+                .setContentText(warning)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(warning))
+                .build()
+
+            NotificationManagerCompat.from(this)
+                .notify(id, notification)
+        } else if (store.notifyProfileUpdates) {
+            val content = warning ?: getString(R.string.format_update_complete, name)
 
             val notification = resultBuilder(id, uuid, RESULT_CHANNEL)
                 .setContentTitle(getString(R.string.update_successfully))
-                .setContentText(getString(R.string.format_update_complete, name))
+                .setContentText(content)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
                 .build()
 
             NotificationManagerCompat.from(this)
                 .notify(id, notification)
         }
 
-        sendProfileUpdateCompleted(uuid)
+        sendProfileUpdateCompleted(uuid, warning)
     }
 
     private fun failed(uuid: UUID, name: String, reason: String) {
@@ -218,6 +254,8 @@ class ProfileWorker : BaseService() {
     }
 
     companion object {
+        val updating: MutableSet<UUID> = ConcurrentHashMap.newKeySet()
+
         private const val SERVICE_CHANNEL = "profile_service_channel"
         private const val STATUS_CHANNEL = "profile_status_channel"
         private const val RESULT_CHANNEL = "profile_result_channel"

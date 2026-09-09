@@ -60,8 +60,6 @@ var chanBrowserHeaders = [][2]string{
 	{"accept-language", "en-US,en;q=0.9"},
 }
 
-const chanDirectTimeout = 60 * time.Second
-
 func chanClient(direct bool) *http.Client {
 	transport := &http.Transport{
 		DisableKeepAlives:   true,
@@ -171,14 +169,27 @@ func writeChanPin(dir string, pin []byte) {
 	_ = os.WriteFile(chanPinFile(dir), []byte(base64.RawURLEncoding.EncodeToString(pin)), 0600)
 }
 
-func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, fetchHeader, error) {
+func openUrlSecure(ctx context.Context, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
 	pin := readChanPin(dir)
 
-	answer, err := chanRound(ctx, url, pin)
+	var offset int64
+
+	answer, served, err := chanRound(ctx, url, pin, offset, direct)
+
+	if err != nil && served > 0 {
+		if skew := served - time.Now().Unix(); abs(skew) > chanx.Skew {
+			offset = skew
+
+			log.Warnln("Secure channel: device clock is %d s off the relay, retrying with the relay time", offset)
+
+			answer, _, err = chanRound(ctx, url, pin, offset, direct)
+		}
+	}
+
 	if err != nil && pin != nil {
 		log.Warnln("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
 
-		answer, err = chanRound(ctx, url, nil)
+		answer, _, err = chanRound(ctx, url, nil, offset, direct)
 		if err == nil {
 			_ = os.Remove(chanPinFile(dir))
 		}
@@ -209,7 +220,15 @@ func openUrlSecure(ctx context.Context, url string, dir string) (io.ReadCloser, 
 	}, nil
 }
 
-func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, error) {
+func abs(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+
+	return v
+}
+
+func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, direct *directBudget) (*chanx.Answer, int64, error) {
 	device := app.DeviceHeaders()
 
 	fields := chanx.Fields{
@@ -221,14 +240,14 @@ func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, erro
 		Accept: "*/*",
 	}
 
-	secureURL, session, err := chanx.Build(url, pin, fields, time.Now().Unix())
+	secureURL, session, err := chanx.Build(url, pin, fields, time.Now().Unix()+clockOffset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	for _, pair := range chanBrowserHeaders {
@@ -239,28 +258,44 @@ func chanRound(ctx context.Context, url string, pin []byte) (*chanx.Answer, erro
 	if err != nil && !refusedByChanRedirect(err) {
 		tunnelErr := err
 
+		directCtx, ok := direct.start()
+		if !ok {
+			log.Warnln("Secure channel: request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
+
+			return nil, 0, tunnelErr
+		}
+
 		log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
 
-		direct, cancel := context.WithTimeout(context.Background(), chanDirectTimeout)
-		defer cancel()
-
-		response, err = chanClient(true).Do(request.WithContext(direct))
+		response, err = chanClient(true).Do(request.WithContext(directCtx))
 
 		if err != nil {
-			return nil, tunnelErr
+			return nil, 0, tunnelErr
 		}
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	defer response.Body.Close()
 
+	served := serverTime(response.Header)
+
 	wire, err := io.ReadAll(io.LimitReader(response.Body, 32<<20))
 	if err != nil {
-		return nil, err
+		return nil, served, err
 	}
 
-	return session.Open(wire, time.Now().Unix())
+	answer, err := session.Open(wire, time.Now().Unix()+clockOffset)
+
+	return answer, served, err
+}
+
+func serverTime(header http.Header) int64 {
+	if parsed, err := http.ParseTime(strings.TrimSpace(header.Get("Date"))); err == nil {
+		return parsed.Unix()
+	}
+
+	return 0
 }

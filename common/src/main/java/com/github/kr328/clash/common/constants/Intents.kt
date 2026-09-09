@@ -26,6 +26,7 @@ object Intents {
     const val EXTRA_STOP_REASON = "stop_reason"
     const val EXTRA_UUID = "uuid"
     const val EXTRA_FAIL_REASON = "fail_reason"
+    const val EXTRA_WARNING = "warning"
     const val EXTRA_STAGE = "stage"
 
     const val STAGE_PREPARING = "preparing"

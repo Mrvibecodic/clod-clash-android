@@ -32,9 +32,10 @@ fun Context.sendProfileLoaded(uuid: UUID) {
     sendBroadcastSelf(intent)
 }
 
-fun Context.sendProfileUpdateCompleted(uuid: UUID) {
+fun Context.sendProfileUpdateCompleted(uuid: UUID, warning: String?) {
     val intent = Intent(Intents.ACTION_PROFILE_UPDATE_COMPLETED)
         .putExtra(Intents.EXTRA_UUID, uuid.toString())
+        .putExtra(Intents.EXTRA_WARNING, warning)
 
     sendBroadcastSelf(intent)
 }

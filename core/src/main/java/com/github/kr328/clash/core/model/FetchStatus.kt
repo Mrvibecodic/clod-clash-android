@@ -20,6 +20,7 @@ data class FetchStatus(
     enum class Action {
         FetchConfiguration,
         FetchProviders,
+        ProviderFailed,
         SubscriptionInfo,
         Verifying,
     }

@@ -169,8 +169,14 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileChanged)
     }
 
-    override fun onProfileUpdateCompleted(uuid: UUID?) {
+    override fun onProfileUpdateCompleted(uuid: UUID?, warning: String?) {
         events.trySend(Event.ProfileUpdateCompleted)
+
+        if (warning == null || !activityStarted) return
+
+        launch {
+            design?.showToast(message = warning, duration = ToastDuration.Long)
+        }
     }
 
     override fun onProfileUpdateFailed(uuid: UUID?, reason: String?) {
