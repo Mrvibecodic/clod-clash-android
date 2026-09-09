@@ -272,18 +272,17 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         lastResetAt = now
 
-        // A flapping network without validation in between gets a capped series:
-        // caches and probes still reset, but connections are no longer torn down.
         reactionMarks.removeAll { now - it >= REACTION_WINDOW_MS }
         reactionMarks.add(now)
 
         val series = reactionMarks.size
         val reset = store.resetConnectionsOnNetworkChange && series < REACTION_SERIES_LIMIT
+        val hold = series < REACTION_FLAP_LIMIT
         val awake = isInteractive() || store.keepAwake
 
-        markNetworkEvent(reason, currentNetwork, "reacted=true reset=$reset series=$series probe=${if (awake) "now" else "deferred"}")
+        markNetworkEvent(reason, currentNetwork, "reacted=true reset=$reset hold=$hold series=$series probe=${if (awake) "now" else "deferred"}")
 
-        Clash.notifyNetworkChanged(reset)
+        Clash.notifyNetworkChanged(reset, hold)
 
         if (awake) {
             probeNodes()
@@ -418,8 +417,6 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                             handleNetworkChanged(scope, it)
                         }
                         networkReady.onReceive {
-                            reactionMarks.clear()
-
                             Clash.notifyNetworkReady()
 
                             if (SystemClock.elapsedRealtime() - lastResetAt >= RESET_THROTTLE_MS) {
@@ -475,6 +472,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         private const val REACTION_WINDOW_MS = 60_000L
 
         private const val REACTION_SERIES_LIMIT = 3
+
+        private const val REACTION_FLAP_LIMIT = 5
 
         private const val RECOVER_DELAY_MS = 7_000L
 

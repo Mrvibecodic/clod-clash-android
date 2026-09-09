@@ -38,8 +38,6 @@ jstring jni_new_string(JNIEnv *env, const char *str) {
     int length = strlen(str);
     jbyteArray array = (*env)->NewByteArray(env, length);
 
-    // NULL means an OutOfMemoryError is already pending; touching the array
-    // would abort the process before the caller gets to check for it.
     if (array == NULL)
         return NULL;
 

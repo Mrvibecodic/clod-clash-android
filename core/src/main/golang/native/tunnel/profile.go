@@ -2,6 +2,8 @@ package tunnel
 
 import (
 	"context"
+	"io"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -9,9 +11,12 @@ import (
 	"cfa/native/config"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
+	"github.com/metacubex/mihomo/adapter/provider"
 	mihomoConfig "github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
+	P "github.com/metacubex/mihomo/constant/provider"
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/tunnel"
 )
 
 func TestProfileDelays(path string) map[string]int {
@@ -48,22 +53,40 @@ func TestProfileDelays(path string) map[string]int {
 	url := profileTestURL(rawCfg)
 
 	proxies := make([]C.Proxy, 0, len(cfg.Proxies))
+	seen := make(map[string]bool, len(cfg.Proxies))
 
-	for _, p := range cfg.Proxies {
+	add := func(p C.Proxy) {
 		if _, isGroup := p.Adapter().(outboundgroup.ProxyGroup); isGroup {
-			continue
+			return
 		}
 
 		switch p.Type() {
 		case C.Direct, C.Reject, C.RejectDrop, C.Pass, C.PassRule, C.Compatible, C.Dns:
-			continue
+			return
 		}
+
+		if seen[p.Name()] {
+			return
+		}
+
+		seen[p.Name()] = true
 
 		proxies = append(proxies, p)
 	}
 
+	for _, p := range cfg.Proxies {
+		add(p)
+	}
+
+	fromProviders, closeProviders := providerProxies(path, rawCfg)
+	defer closeProviders()
+
+	for _, p := range fromProviders {
+		add(p)
+	}
+
 	if len(proxies) == 0 {
-		log.Warnln("Test profile `%s`: no inline proxies to test", path)
+		log.Warnln("Test profile `%s`: no proxies to test", path)
 
 		return result
 	}
@@ -140,4 +163,57 @@ func profileTestURL(rawCfg *mihomoConfig.RawConfig) string {
 	}
 
 	return C.DefaultTestURL
+}
+
+func providerProxies(path string, rawCfg *mihomoConfig.RawConfig) ([]C.Proxy, func()) {
+	proxies := []C.Proxy{}
+	created := []P.ProxyProvider{}
+
+	closeAll := func() {
+		for _, pd := range created {
+			if closer, ok := pd.(io.Closer); ok {
+				_ = closer.Close()
+			}
+		}
+	}
+
+	for name, raw := range rawCfg.ProxyProvider {
+		file, _ := raw["path"].(string)
+		if file == "" {
+			continue
+		}
+
+		if _, err := os.Stat(file); err != nil {
+			log.Infoln("Test profile `%s`: provider %s not downloaded yet, skipped", path, name)
+
+			continue
+		}
+
+		mapping := make(map[string]any, len(raw)+2)
+		for key, value := range raw {
+			mapping[key] = value
+		}
+
+		mapping["interval"] = 0
+		mapping["health-check"] = map[string]any{"enable": false}
+
+		pd, err := provider.ParseProxyProvider(name, mapping, tunnel.Tunnel)
+		if err != nil {
+			log.Warnln("Test profile `%s`: provider %s: %s", path, name, err.Error())
+
+			continue
+		}
+
+		created = append(created, pd)
+
+		if err := pd.Initial(); err != nil {
+			log.Warnln("Test profile `%s`: provider %s: %s", path, name, err.Error())
+
+			continue
+		}
+
+		proxies = append(proxies, pd.Proxies()...)
+	}
+
+	return proxies, closeAll
 }

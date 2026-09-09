@@ -11,14 +11,18 @@ import (
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
-func OnNetworkChanged(closeConnections bool) {
+func OnNetworkChanged(closeConnections bool, holdProbes bool) {
 	if !config.IsLoaded() {
 		log.Infoln("Network changed: config not loaded, reset=%t skipped", closeConnections)
 
 		return
 	}
 
-	NoteNetworkChange()
+	if holdProbes {
+		NoteNetworkChange()
+	} else {
+		log.Infoln("Network changed: flapping, probes not held")
+	}
 
 	CancelHealthChecks()
 

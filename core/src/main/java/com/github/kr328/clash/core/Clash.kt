@@ -135,8 +135,8 @@ object Clash {
         }
     }
 
-    fun notifyNetworkChanged(closeConnections: Boolean) {
-        Bridge.nativeNotifyNetworkChanged(closeConnections)
+    fun notifyNetworkChanged(closeConnections: Boolean, holdProbes: Boolean) {
+        Bridge.nativeNotifyNetworkChanged(closeConnections, holdProbes)
     }
 
     fun probeCurrentNodes() {
