@@ -2,8 +2,22 @@ package safego
 
 import (
 	"runtime/debug"
+	"sync"
 
 	"github.com/metacubex/mihomo/log"
+)
+
+const reportQueueSize = 64
+
+type panicReport struct {
+	name  string
+	cause any
+	stack []byte
+}
+
+var (
+	reportQueue  = make(chan panicReport, reportQueueSize)
+	reporterOnce sync.Once
 )
 
 func Guard(name string, onPanic func()) func() {
@@ -38,20 +52,35 @@ func capturedStack() (stack []byte) {
 	return debug.Stack()
 }
 
-func reportPanic(name string, r any, stack []byte) {
-	go func() {
-		defer func() {
-			_ = recover()
-		}()
+func reportPanic(name string, cause any, stack []byte) {
+	reporterOnce.Do(func() {
+		go processReports()
+	})
 
-		if len(stack) == 0 {
-			log.Errorln("[APP] %s panicked: %v", name, r)
+	select {
+	case reportQueue <- panicReport{name: name, cause: cause, stack: stack}:
+	default:
+	}
+}
 
-			return
-		}
+func processReports() {
+	for report := range reportQueue {
+		writeReport(report)
+	}
+}
 
-		log.Errorln("[APP] %s panicked: %v\n%s", name, r, string(stack))
+func writeReport(report panicReport) {
+	defer func() {
+		_ = recover()
 	}()
+
+	if len(report.stack) == 0 {
+		log.Errorln("[APP] %s panicked: %v", report.name, report.cause)
+
+		return
+	}
+
+	log.Errorln("[APP] %s panicked: %v\n%s", report.name, report.cause, string(report.stack))
 }
 
 func Go(name string, body func()) {

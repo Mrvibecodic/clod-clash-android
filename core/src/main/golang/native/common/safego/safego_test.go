@@ -2,6 +2,7 @@ package safego
 
 import (
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 
@@ -80,29 +81,68 @@ func TestGuardSurvivesPanicInOnPanic(t *testing.T) {
 	}()
 }
 
-func TestGuardCallsOnPanicWhileLogIsStuck(t *testing.T) {
+func stickLog(t *testing.T) {
 	sub := log.Subscribe()
-	defer log.UnSubscribe(sub)
 
-	for i := 0; i < 256; i++ {
+	release := make(chan struct{})
+	drained := make(chan struct{})
+
+	go func() {
+		defer close(drained)
+
+		<-release
+
+		for range sub {
+		}
+	}()
+
+	t.Cleanup(func() {
+		close(release)
+
+		log.UnSubscribe(sub)
+
+		<-drained
+	})
+}
+
+func panicUnderGuard(t *testing.T, name string, times int) {
+	t.Helper()
+
+	calls := 0
+
+	for i := 0; i < times; i++ {
 		func() {
-			defer Guard("filler", func() {})()
+			defer Guard(name, func() { calls++ })()
 
-			panic("filler")
+			panic("boom")
 		}()
 	}
 
-	called := make(chan struct{})
+	if calls != times {
+		t.Fatalf("onPanic was called %d times, want %d", calls, times)
+	}
+}
 
-	go func() {
-		defer Guard("guarded", func() { close(called) })()
+func TestGuardDoesNotBlockOrLeakWhileLogIsStuck(t *testing.T) {
+	stickLog(t)
 
-		panic("boom")
-	}()
+	panicUnderGuard(t, "saturate", 256)
 
-	select {
-	case <-called:
-	case <-time.After(5 * time.Second):
-		t.Fatal("onPanic was not called while the log channel was stuck")
+	time.Sleep(100 * time.Millisecond)
+
+	before := runtime.NumGoroutine()
+
+	startedAt := time.Now()
+
+	panicUnderGuard(t, "stuck", 256)
+
+	if elapsed := time.Since(startedAt); elapsed > 5*time.Second {
+		t.Fatalf("guard took %s to return while the log channel was stuck", elapsed)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	if after := runtime.NumGoroutine(); after > before+1 {
+		t.Fatalf("goroutines grew from %d to %d while the log channel was stuck", before, after)
 	}
 }
