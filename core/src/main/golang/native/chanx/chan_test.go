@@ -271,3 +271,32 @@ func TestNonceLength(t *testing.T) {
 		t.Fatalf("длина метки: %d != %d", len(sess.nonce), v.NonceLen)
 	}
 }
+
+func TestCorrection(t *testing.T) {
+	for _, row := range []struct {
+		name    string
+		served  int64
+		now     int64
+		current int64
+		want    int64
+		changed bool
+	}{
+		{"no relay time at all", 0, 1000, 0, 0, false},
+		{"no relay time, correction already stored", 0, 1000, 3600, 3600, false},
+		{"clocks agree", 1000, 1000, 0, 0, false},
+		{"divergence exactly at the tolerance", 1000 + Skew, 1000, 0, 0, false},
+		{"divergence just past the tolerance", 1000 + Skew + 1, 1000, 0, Skew + 1, true},
+		{"device clock an hour behind", 4600, 1000, 0, 3600, true},
+		{"device clock an hour ahead", 1000, 4600, 0, -3600, true},
+		{"stored correction is still right", 4600, 1000, 3600, 3600, false},
+		{"stored correction went stale", 1000, 1000, 3600, 0, true},
+		{"stored correction needs adjusting", 4600, 1000, 7200, 3600, true},
+	} {
+		got, changed := Correction(row.served, row.now, row.current)
+
+		if got != row.want || changed != row.changed {
+			t.Fatalf("%s: Correction(%d, %d, %d) = %d, %v; want %d, %v",
+				row.name, row.served, row.now, row.current, got, changed, row.want, row.changed)
+		}
+	}
+}

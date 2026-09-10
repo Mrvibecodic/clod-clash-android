@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	P "path"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	tlsC "github.com/metacubex/mihomo/component/tls"
+	"github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/listener/inner"
 	"github.com/metacubex/mihomo/log"
 )
@@ -169,18 +171,50 @@ func writeChanPin(dir string, pin []byte) {
 	_ = os.WriteFile(chanPinFile(dir), []byte(base64.RawURLEncoding.EncodeToString(pin)), 0600)
 }
 
+func chanSkewFile() string {
+	return constant.Path.Resolve("chan.skew")
+}
+
+func readChanSkew() int64 {
+	raw, err := os.ReadFile(chanSkewFile())
+	if err != nil {
+		return 0
+	}
+
+	offset, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
+	if err != nil || abs(offset) <= chanx.Skew {
+		return 0
+	}
+
+	return offset
+}
+
+func storeChanSkew(offset int64) {
+	if offset == 0 {
+		_ = os.Remove(chanSkewFile())
+
+		return
+	}
+
+	_ = os.WriteFile(chanSkewFile(), []byte(strconv.FormatInt(offset, 10)), 0600)
+}
+
 func openUrlSecure(ctx context.Context, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
 	pin := readChanPin(dir)
 
-	var offset int64
+	offset := readChanSkew()
 
 	answer, served, err := chanRound(ctx, url, pin, offset, direct)
 
-	if err != nil && served > 0 {
-		if skew := served - time.Now().Unix(); abs(skew) > chanx.Skew {
-			offset = skew
+	if err != nil {
+		if next, changed := chanx.Correction(served, time.Now().Unix(), offset); changed {
+			if next == 0 {
+				log.Warnln("Secure channel: the stored clock correction of %d s is stale, retrying with the device clock", offset)
+			} else {
+				log.Warnln("Secure channel: device clock is %d s off the relay, retrying with the relay time", next)
+			}
 
-			log.Warnln("Secure channel: device clock is %d s off the relay, retrying with the relay time", offset)
+			offset = next
 
 			answer, _, err = chanRound(ctx, url, pin, offset, direct)
 		}
@@ -199,6 +233,8 @@ func openUrlSecure(ctx context.Context, url string, dir string, direct *directBu
 	}
 
 	writeChanPin(dir, answer.SP)
+
+	storeChanSkew(offset)
 
 	meta := http.Header{}
 	for name, values := range answer.Meta {

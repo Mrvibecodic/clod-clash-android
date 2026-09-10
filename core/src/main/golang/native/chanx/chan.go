@@ -273,3 +273,20 @@ func abs(v int64) int64 {
 	}
 	return v
 }
+
+func Correction(served, now, current int64) (int64, bool) {
+	if served <= 0 {
+		return current, false
+	}
+
+	raw := served - now
+	if abs(raw) <= Skew {
+		raw = 0
+	}
+
+	if raw == current {
+		return current, false
+	}
+
+	return raw, true
+}
