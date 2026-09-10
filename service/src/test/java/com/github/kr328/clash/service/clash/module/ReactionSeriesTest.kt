@@ -84,7 +84,7 @@ class ReactionSeriesTest {
     }
 
     @Test
-    fun `подтверждение сети между реакциями держит разрыв соединений включённым`() {
+    fun `подтверждение сети держит разрыв соединений включённым, пока сеть не флапает сверх лимита`() {
         val unconfirmed = ReactionSeries(window, 3)
         val flaps = ReactionSeries(window, 5)
 
@@ -94,14 +94,45 @@ class ReactionSeriesTest {
         for (i in 0 until 6) {
             val now = i * 5_000L
 
-            resets += unconfirmed.mark(now).withinLimit
-            holds += flaps.mark(now).withinLimit
+            val unconfirmedMark = unconfirmed.mark(now)
+            val flapMark = flaps.mark(now)
+
+            resets += resetsConnections(true, unconfirmedMark, flapMark)
+            holds += flapMark.withinLimit
 
             unconfirmed.clear()
         }
 
-        assertEquals(List(6) { true }, resets)
+        assertEquals(listOf(true, true, true, true, false, false), resets)
         assertEquals(listOf(true, true, true, true, false, false), holds)
+    }
+
+    @Test
+    fun `за минуту разрыв соединений разрешён не больше четырёх раз`() {
+        val unconfirmed = ReactionSeries(window, 3)
+        val flaps = ReactionSeries(window, 5)
+
+        var allowed = 0
+
+        for (i in 0 until 12) {
+            val now = i * 5_000L
+
+            if (resetsConnections(true, unconfirmed.mark(now), flaps.mark(now))) {
+                allowed++
+            }
+
+            unconfirmed.clear()
+        }
+
+        assertEquals(4, allowed)
+    }
+
+    @Test
+    fun `выключатель пользователя гасит разрыв соединений при любых счётчиках`() {
+        val unconfirmed = ReactionSeries(window, 3)
+        val flaps = ReactionSeries(window, 5)
+
+        assertFalse(resetsConnections(false, unconfirmed.mark(0L), flaps.mark(0L)))
     }
 
     @Test
@@ -115,8 +146,11 @@ class ReactionSeriesTest {
         for (i in 0 until 6) {
             val now = i * 5_000L
 
-            resets += unconfirmed.mark(now).withinLimit
-            holds += flaps.mark(now).withinLimit
+            val unconfirmedMark = unconfirmed.mark(now)
+            val flapMark = flaps.mark(now)
+
+            resets += resetsConnections(true, unconfirmedMark, flapMark)
+            holds += flapMark.withinLimit
         }
 
         assertEquals(listOf(true, true, false, false, false, false), resets)

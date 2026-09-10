@@ -16,3 +16,9 @@ internal class ReactionSeries(private val windowMs: Long, private val limit: Int
 
     data class Mark(val count: Int, val withinLimit: Boolean)
 }
+
+internal fun resetsConnections(
+    enabled: Boolean,
+    unconfirmed: ReactionSeries.Mark,
+    flaps: ReactionSeries.Mark,
+): Boolean = enabled && unconfirmed.withinLimit && flaps.withinLimit

@@ -276,7 +276,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         val unconfirmedMark = unconfirmed.mark(now)
         val flapMark = flaps.mark(now)
 
-        val reset = store.resetConnectionsOnNetworkChange && unconfirmedMark.withinLimit
+        val reset = resetsConnections(store.resetConnectionsOnNetworkChange, unconfirmedMark, flapMark)
         val hold = flapMark.withinLimit
         val awake = isInteractive() || store.keepAwake
 
