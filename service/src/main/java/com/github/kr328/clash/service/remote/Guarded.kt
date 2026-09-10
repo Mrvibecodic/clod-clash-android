@@ -23,25 +23,35 @@ private inline fun <T> guard(block: () -> T): T {
     }
 }
 
+internal fun rethrownAsIs(e: Throwable): Boolean = when (e) {
+    is SecurityException,
+    is BadParcelableException,
+    is IllegalArgumentException,
+    is NullPointerException,
+    is IllegalStateException,
+    is NetworkOnMainThreadException,
+    is UnsupportedOperationException,
+    -> true
+
+    else -> false
+}
+
 private inline fun <T> guardSync(name: String, block: () -> T): T {
     try {
         return block()
     } catch (e: Throwable) {
-        when (e) {
-            is SecurityException,
-            is BadParcelableException,
-            is IllegalArgumentException,
-            is NullPointerException,
-            is IllegalStateException,
-            is NetworkOnMainThreadException,
-            is UnsupportedOperationException,
-            -> throw e
-        }
+        if (rethrownAsIs(e)) throw e
 
         Log.w("Remote call $name failed: $e", e)
 
         throw IllegalStateException("$name: $e")
     }
+}
+
+class GuardedRemoteService(private val delegate: IRemoteService) : IRemoteService {
+    override fun clash(): IClashManager = guardSync("clash") { delegate.clash() }
+
+    override fun profile(): IProfileManager = guardSync("profile") { delegate.profile() }
 }
 
 class GuardedClashManager(private val delegate: IClashManager) : IClashManager by delegate {

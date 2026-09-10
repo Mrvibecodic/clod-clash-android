@@ -7,11 +7,12 @@ import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.IProfileManager
 import com.github.kr328.clash.service.remote.GuardedClashManager
 import com.github.kr328.clash.service.remote.GuardedProfileManager
+import com.github.kr328.clash.service.remote.GuardedRemoteService
 import com.github.kr328.clash.service.remote.wrap
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 
 class RemoteService : BaseService(), IRemoteService {
-    private val binder = this.wrap()
+    private val binder = GuardedRemoteService(this).wrap()
 
     private var clash: ClashManager? = null
     private var profile: ProfileManager? = null
@@ -39,10 +40,10 @@ class RemoteService : BaseService(), IRemoteService {
     }
 
     override fun clash(): IClashManager {
-        return clashBinder!!
+        return clashBinder ?: throw IllegalStateException("remote service is not ready")
     }
 
     override fun profile(): IProfileManager {
-        return profileBinder!!
+        return profileBinder ?: throw IllegalStateException("remote service is not ready")
     }
 }

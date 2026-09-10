@@ -105,12 +105,16 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
                         private var overflowed = false
 
                         override fun newItem(log: LogMessage) {
-                            if (channel.trySend(log).isSuccess) {
-                                overflowed = false
-                            } else if (!overflowed) {
-                                overflowed = true
+                            runCatching {
+                                if (channel.trySend(log).isSuccess) {
+                                    overflowed = false
+                                } else if (!overflowed) {
+                                    overflowed = true
 
-                                Log.w("Logcat buffer overflow, messages dropped")
+                                    Log.w("Logcat buffer overflow, messages dropped")
+                                }
+                            }.onFailure {
+                                Log.w("Receive log item: $it", it)
                             }
                         }
                     }

@@ -77,7 +77,11 @@ object ProfileImports {
                 }
 
                 val profile = import(uuid, true) { status ->
-                    state_.value = State.Running(token, status)
+                    runCatching {
+                        state_.value = State.Running(token, status)
+                    }.onFailure {
+                        Log.w("Report import status: $it", it)
+                    }
                 }
 
                 val title = context.queryPanelInfo(uuid)?.title?.takeIf { it.isNotBlank() } ?: profile.name
