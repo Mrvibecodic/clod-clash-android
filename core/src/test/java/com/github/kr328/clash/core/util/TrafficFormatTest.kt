@@ -120,6 +120,19 @@ class TrafficFormatTest {
     }
 
     @Test
+    fun `путь уведомления берёт разделитель из локали`() {
+        val traffic = packed(upload = scaled(3, 140), download = scaled(2, 150))
+
+        Locale.setDefault(Locale.ROOT)
+        assertEquals("1.40 GiB", traffic.trafficUpload())
+        assertEquals("1.50 MiB", traffic.trafficDownload())
+
+        Locale.setDefault(Locale("ru", "RU"))
+        assertEquals("1,40 GiB", traffic.trafficUpload())
+        assertEquals("1,50 MiB", traffic.trafficDownload())
+    }
+
+    @Test
     fun `половины байтов не перетекают друг в друга`() {
         val traffic = packed(upload = scaled(3, 500), download = scaled(1, 250))
 

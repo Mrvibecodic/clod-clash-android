@@ -21,5 +21,5 @@ fun Long.toBytesString(): String {
         else -> 2
     }
 
-    return String.format(Locale.ROOT, "%.${digits}f %s", value, UNITS[unit])
+    return String.format(Locale.getDefault(), "%.${digits}f %s", value, UNITS[unit])
 }

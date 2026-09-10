@@ -59,6 +59,32 @@ class BytesStringTest {
     }
 
     @Test
+    fun `десятичный разделитель берётся из локали`() {
+        val value = 1024L * 1024 * 1024 + 429496730
+
+        Locale.setDefault(Locale.ROOT)
+        assertEquals("1.40 GiB", value.toBytesString())
+
+        Locale.setDefault(Locale.US)
+        assertEquals("1.40 GiB", value.toBytesString())
+
+        Locale.setDefault(Locale("ru", "RU"))
+        assertEquals("1,40 GiB", value.toBytesString())
+
+        Locale.setDefault(Locale("de", "DE"))
+        assertEquals("1,40 GiB", value.toBytesString())
+    }
+
+    @Test
+    fun `локаль не добавляет разделитель там, где его нет`() {
+        Locale.setDefault(Locale("ru", "RU"))
+
+        assertEquals("512 Bytes", 512L.toBytesString())
+        assertEquals("212 MiB", (212L * 1024 * 1024).toBytesString())
+        assertEquals("12,3 GiB", (12L * 1024 * 1024 * 1024 + 322122547).toBytesString())
+    }
+
+    @Test
     fun `безлимит в терабайтах не ломает разряды`() {
         val huge = 1024L * 1024 * 1024 * 1024 * 1024 * 1024 * 5
 
