@@ -10,6 +10,8 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
+import com.github.kr328.clash.design.model.PendingRestore
+import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.util.clashDir
 import com.github.kr328.clash.util.withClash
@@ -27,9 +29,13 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
     private var configuration: ConfigurationOverride? = null
 
     override suspend fun main() {
-        val configuration = restored
-            ?.takeIf { it.getBoolean(PendingOverride.KEY) }
-            ?.let { PendingOverride.value }
+        val pending = PendingOverride.take(PendingOverride.SLOT_META)
+        val restore = pendingRestore(
+            flagSet = restored?.getBoolean(PendingOverride.KEY) == true,
+            valuePresent = pending != null,
+        )
+
+        val configuration = pending
             ?: withClash { queryOverride(Clash.OverrideSlot.Persist) }
 
         this.configuration = configuration
@@ -45,7 +51,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                 }
             }
 
-            PendingOverride.value = null
+            PendingOverride.clear(PendingOverride.SLOT_META)
         }
 
         val design = MetaFeatureSettingsDesign(
@@ -54,6 +60,10 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         )
 
         setContentDesign(design)
+
+        if (restore == PendingRestore.UseStoredAndWarn) {
+            design.showToast(R.string.clod_override_pending_lost, ToastDuration.Long)
+        }
 
         while (isActive) {
             select<Unit> {
@@ -84,7 +94,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                                         clearOverride(Clash.OverrideSlot.Persist)
                                     }
 
-                                    PendingOverride.value = null
+                                    PendingOverride.clearAll()
                                 }
                                 finish()
                             }
@@ -125,7 +135,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         outState.putBoolean("reload", reload && !rereading)
 
         if (!reload) {
-            PendingOverride.value = configuration
+            PendingOverride.put(PendingOverride.SLOT_META, configuration)
 
             outState.putBoolean(PendingOverride.KEY, configuration != null)
         }
