@@ -7,6 +7,9 @@ import com.github.kr328.clash.service.clash.module.StaticNotificationModule
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStopped
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 enum class StartCommandOutcome {
@@ -14,25 +17,45 @@ enum class StartCommandOutcome {
     StopSticky,
     StopStartFailed,
     StartSession,
+    Remember,
     Ignore,
+}
+
+enum class AfterStopOutcome {
+    Done,
+    StartSession,
+    Abandon,
 }
 
 fun startCommandOutcome(
     rejected: Boolean,
+    stopping: Boolean,
     systemStart: Boolean,
     stickyAllowed: Boolean,
     startFailed: Boolean,
     stopped: Boolean,
 ): StartCommandOutcome = when {
     rejected -> StartCommandOutcome.Rejected
+    stopping -> StartCommandOutcome.Remember
     systemStart && !stickyAllowed -> StartCommandOutcome.StopSticky
     startFailed -> StartCommandOutcome.StopStartFailed
     stopped -> StartCommandOutcome.StartSession
     else -> StartCommandOutcome.Ignore
 }
 
+fun afterStopOutcome(
+    stopSelfSucceeded: Boolean,
+    restartRequested: Boolean,
+    stickyAllowed: Boolean,
+): AfterStopOutcome = when {
+    stopSelfSucceeded && !restartRequested -> AfterStopOutcome.Done
+    !stickyAllowed -> AfterStopOutcome.Abandon
+    else -> AfterStopOutcome.StartSession
+}
+
 class SessionLifecycle(
     private val service: Service,
+    private val scope: CoroutineScope,
     private val launchRuntime: () -> Unit,
 ) {
     @Volatile
@@ -51,8 +74,20 @@ class SessionLifecycle(
 
     private val stopNotified = AtomicBoolean(false)
 
+    private val stopping = AtomicBoolean(false)
+
+    private val restartRequested = AtomicBoolean(false)
+
+    private val restartBySystem = AtomicBoolean(false)
+
+    @Volatile
+    private var destroyed = false
+
     @Volatile
     private var lastStartId = -1
+
+    @Volatile
+    private var stopId = -1
 
     val stopped: Boolean
         get() = stopNotified.get()
@@ -144,22 +179,36 @@ class SessionLifecycle(
     }
 
     fun onStartCommand(systemStart: Boolean, startId: Int): StartCommandOutcome {
-        lastStartId = startId
+        val pending = !rejected && stopping.get()
 
-        if (!rejected && systemStart) {
+        if (!pending) {
+            lastStartId = startId
+        }
+
+        if (!rejected && !pending && systemStart) {
             systemStarted = true
         }
 
         val outcome = startCommandOutcome(
             rejected = rejected,
+            stopping = pending,
             systemStart = systemStart,
-            stickyAllowed = if (!rejected && systemStart) stickyRestartAllowed() else true,
+            stickyAllowed = if (!rejected && !pending && systemStart) stickyRestartAllowed() else true,
             startFailed = startFailed,
             stopped = stopNotified.get(),
         )
 
         when (outcome) {
             StartCommandOutcome.Rejected -> service.stopSelf()
+            StartCommandOutcome.Remember -> {
+                restartRequested.set(true)
+
+                if (systemStart) {
+                    restartBySystem.set(true)
+                }
+
+                ServiceLog.mark("start command $startId held until stop finishes")
+            }
             StartCommandOutcome.StopSticky -> {
                 notifyStopped()
 
@@ -179,13 +228,47 @@ class SessionLifecycle(
         return outcome
     }
 
+    fun beginStop() {
+        stopId = lastStartId
+
+        stopping.set(true)
+    }
+
     fun finishSession() {
         notifyStopped()
 
-        service.stopSelfResult(lastStartId)
+        val stopSelfSucceeded = service.stopSelfResult(stopId)
+        val requested = restartRequested.getAndSet(false)
+        val bySystem = restartBySystem.getAndSet(false)
+
+        stopping.set(false)
+
+        if (requested && bySystem) {
+            systemStarted = true
+        }
+
+        val outcome = afterStopOutcome(
+            stopSelfSucceeded = stopSelfSucceeded,
+            restartRequested = requested,
+            stickyAllowed = if (requested && bySystem) stickyRestartAllowed() else true,
+        )
+
+        ServiceLog.mark("stop finished, self stopped = $stopSelfSucceeded, next = $outcome")
+
+        when (outcome) {
+            AfterStopOutcome.Done -> Unit
+            AfterStopOutcome.Abandon -> service.stopSelf()
+            AfterStopOutcome.StartSession -> scope.launch(Dispatchers.Main) {
+                if (destroyed || !stopNotified.get()) return@launch
+
+                startSession()
+            }
+        }
     }
 
     fun destroy() {
+        destroyed = true
+
         notifyStopped()
 
         ServiceStore(service).clearSessionStarted(sessionStartedAt)

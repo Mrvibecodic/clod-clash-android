@@ -10,6 +10,7 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.Rejected,
             startCommandOutcome(
                 rejected = true,
+                stopping = false,
                 systemStart = true,
                 stickyAllowed = false,
                 startFailed = true,
@@ -24,6 +25,7 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.StopSticky,
             startCommandOutcome(
                 rejected = false,
+                stopping = false,
                 systemStart = true,
                 stickyAllowed = false,
                 startFailed = true,
@@ -38,6 +40,7 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.StartSession,
             startCommandOutcome(
                 rejected = false,
+                stopping = false,
                 systemStart = true,
                 stickyAllowed = true,
                 startFailed = false,
@@ -52,6 +55,7 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.Ignore,
             startCommandOutcome(
                 rejected = false,
+                stopping = false,
                 systemStart = false,
                 stickyAllowed = false,
                 startFailed = false,
@@ -66,6 +70,7 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.StopStartFailed,
             startCommandOutcome(
                 rejected = false,
+                stopping = false,
                 systemStart = false,
                 stickyAllowed = true,
                 startFailed = true,
@@ -80,6 +85,7 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.StartSession,
             startCommandOutcome(
                 rejected = false,
+                stopping = false,
                 systemStart = false,
                 stickyAllowed = true,
                 startFailed = false,
@@ -94,11 +100,97 @@ class StartCommandOutcomeTest {
             StartCommandOutcome.Ignore,
             startCommandOutcome(
                 rejected = false,
+                stopping = false,
                 systemStart = false,
                 stickyAllowed = true,
                 startFailed = false,
                 stopped = false,
             ),
+        )
+    }
+
+    @Test
+    fun startInsideStopWindowIsRemembered() {
+        assertEquals(
+            StartCommandOutcome.Remember,
+            startCommandOutcome(
+                rejected = false,
+                stopping = true,
+                systemStart = false,
+                stickyAllowed = true,
+                startFailed = false,
+                stopped = false,
+            ),
+        )
+        assertEquals(
+            StartCommandOutcome.Remember,
+            startCommandOutcome(
+                rejected = false,
+                stopping = true,
+                systemStart = true,
+                stickyAllowed = false,
+                startFailed = true,
+                stopped = true,
+            ),
+        )
+    }
+
+    @Test
+    fun rejectedStillWinsOverStopWindow() {
+        assertEquals(
+            StartCommandOutcome.Rejected,
+            startCommandOutcome(
+                rejected = true,
+                stopping = true,
+                systemStart = false,
+                stickyAllowed = true,
+                startFailed = false,
+                stopped = false,
+            ),
+        )
+    }
+
+    @Test
+    fun plainStopDoesNotRestart() {
+        assertEquals(
+            AfterStopOutcome.Done,
+            afterStopOutcome(stopSelfSucceeded = true, restartRequested = false, stickyAllowed = true),
+        )
+    }
+
+    @Test
+    fun heldRequestRestartsSession() {
+        assertEquals(
+            AfterStopOutcome.StartSession,
+            afterStopOutcome(stopSelfSucceeded = true, restartRequested = true, stickyAllowed = true),
+        )
+        assertEquals(
+            AfterStopOutcome.StartSession,
+            afterStopOutcome(stopSelfSucceeded = false, restartRequested = false, stickyAllowed = true),
+        )
+        assertEquals(
+            AfterStopOutcome.StartSession,
+            afterStopOutcome(stopSelfSucceeded = false, restartRequested = true, stickyAllowed = true),
+        )
+    }
+
+    @Test
+    fun refusedStickyRestartAbandonsHeldRequest() {
+        assertEquals(
+            AfterStopOutcome.Abandon,
+            afterStopOutcome(stopSelfSucceeded = false, restartRequested = true, stickyAllowed = false),
+        )
+        assertEquals(
+            AfterStopOutcome.Abandon,
+            afterStopOutcome(stopSelfSucceeded = true, restartRequested = true, stickyAllowed = false),
+        )
+    }
+
+    @Test
+    fun plainStopIgnoresStickyRefusal() {
+        assertEquals(
+            AfterStopOutcome.Done,
+            afterStopOutcome(stopSelfSucceeded = true, restartRequested = false, stickyAllowed = false),
         )
     }
 }

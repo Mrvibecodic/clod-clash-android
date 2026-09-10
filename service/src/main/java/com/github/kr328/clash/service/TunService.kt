@@ -36,7 +36,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         super.attachBaseContext(base.withStoredLocale())
     }
 
-    private val session = SessionLifecycle(this) { runtime.launch() }
+    private val session = SessionLifecycle(this, this) { runtime.launch() }
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
@@ -104,6 +104,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             session.reason = e.message
         } finally {
             withContext(NonCancellable) {
+                session.beginStop()
+
                 val startedAt = SystemClock.elapsedRealtime()
 
                 tun.close()
