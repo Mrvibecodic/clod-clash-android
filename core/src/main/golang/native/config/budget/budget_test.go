@@ -143,3 +143,40 @@ func TestProviderShareScalesWithASmallerBudget(t *testing.T) {
 		t.Fatalf("provider share of a 60 s budget = %s, want 20s", got)
 	}
 }
+
+func TestSecureChannelRoundsShareTheAddressWindow(t *testing.T) {
+	b := New(start)
+	deadline := start.Add(30 * time.Second)
+
+	spent := time.Duration(0)
+	granted := []time.Duration{}
+
+	for round := 0; round < 3; round++ {
+		limit, ok := b.DirectWindow(start.Add(spent), deadline, 0)
+		if !ok {
+			break
+		}
+
+		window := TunnelShare(limit)
+
+		granted = append(granted, window)
+
+		spent += window
+	}
+
+	want := []time.Duration{20 * time.Second, 10 * time.Second}
+
+	if len(granted) != len(want) {
+		t.Fatalf("rounds granted = %v, want %v", granted, want)
+	}
+
+	for index, window := range granted {
+		if window != want[index] {
+			t.Fatalf("round %d window = %s, want %s", index+1, window, want[index])
+		}
+	}
+
+	if spent != 30*time.Second {
+		t.Fatalf("the address window was exceeded: %s", spent)
+	}
+}

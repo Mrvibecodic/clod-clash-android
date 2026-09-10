@@ -199,10 +199,15 @@ func storeChanSkew(offset int64) {
 	_ = os.WriteFile(chanSkewFile(), []byte(strconv.FormatInt(offset, 10)), 0600)
 }
 
-func openUrlSecure(ctx context.Context, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
+func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
 	pin := readChanPin(dir)
 
 	offset := readChanSkew()
+
+	ctx, ok := rounds.start()
+	if !ok {
+		return nil, fetchHeader{}, errFetchBudget
+	}
 
 	answer, served, err := chanRound(ctx, url, pin, offset, direct)
 
@@ -216,16 +221,24 @@ func openUrlSecure(ctx context.Context, url string, dir string, direct *directBu
 
 			offset = next
 
-			answer, _, err = chanRound(ctx, url, pin, offset, direct)
+			if ctx, ok = rounds.start(); ok {
+				answer, _, err = chanRound(ctx, url, pin, offset, direct)
+			} else {
+				log.Warnln("Secure channel: no time left for a round with the relay time")
+			}
 		}
 	}
 
 	if err != nil && pin != nil {
 		log.Warnln("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
 
-		answer, _, err = chanRound(ctx, url, nil, offset, direct)
-		if err == nil {
-			_ = os.Remove(chanPinFile(dir))
+		if ctx, ok = rounds.start(); ok {
+			answer, _, err = chanRound(ctx, url, nil, offset, direct)
+			if err == nil {
+				_ = os.Remove(chanPinFile(dir))
+			}
+		} else {
+			log.Warnln("Secure channel: no time left for a round without the pin")
 		}
 	}
 	if err != nil {

@@ -98,6 +98,31 @@ func openAddressWindow(budget *budgets.Budget, limit time.Duration, device bool)
 	return addressWindow{tunnel: tunnel, deadline: now.Add(window)}, true
 }
 
+type roundBudget struct {
+	budget   *budgets.Budget
+	deadline time.Time
+	cancels  []context.CancelFunc
+}
+
+func (b *roundBudget) start() (context.Context, bool) {
+	limit, ok := b.budget.DirectWindow(time.Now(), b.deadline, 0)
+	if !ok {
+		return nil, false
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), budgets.TunnelShare(limit))
+
+	b.cancels = append(b.cancels, cancel)
+
+	return ctx, true
+}
+
+func (b *roundBudget) close() {
+	for _, cancel := range b.cancels {
+		cancel()
+	}
+}
+
 type directBudget struct {
 	budget   *budgets.Budget
 	deadline time.Time
@@ -195,13 +220,13 @@ func fetchConfig(url *U.URL, file string, budget *budgets.Budget, limit time.Dur
 		return fetchHeader{}, errFetchBudget
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), window.tunnel)
-	defer cancel()
+	rounds := &roundBudget{budget: budget, deadline: window.deadline}
+	defer rounds.close()
 
 	direct := &directBudget{budget: budget, deadline: window.deadline}
 	defer direct.close()
 
-	reader, header, err := openUrlSecure(ctx, url.String(), P.Dir(file), direct)
+	reader, header, err := openUrlSecure(rounds, url.String(), P.Dir(file), direct)
 	if err != nil {
 		return fetchHeader{}, err
 	}
