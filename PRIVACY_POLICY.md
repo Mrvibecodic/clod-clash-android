@@ -50,9 +50,16 @@ requests this app makes itself.
     operated by Google. The request carries no identifier and no device headers, but the
     operator of the test address sees a connection from each server's IP.
 *   **DNS.** Name resolution goes wherever your configuration says. If the configuration
-    has no DNS section at all, the app fills in public resolvers of its own choosing —
-    currently `1.0.0.1` (Cloudflare), `8.8.4.4` (Google) and `9.9.9.10` (Quad9) — and the
-    names you resolve reach those operators.
+    leaves DNS disabled — either because it has no DNS section at all, or because the
+    section is present but sets `enable: false` — the app replaces that whole section with
+    one of its own: DNS is turned on, any resolvers the configuration listed are discarded,
+    and public resolvers of the app's choosing are filled in — currently `1.0.0.1`
+    (Cloudflare), `8.8.4.4` (Google) and `9.9.9.10` (Quad9) — so the names you resolve reach
+    those operators. Your own DNS override, if you set one, replaces that list. In this
+    branch the app also appends the resolver handed out by your network or mobile operator,
+    so the names you resolve reach that resolver too; the same appending happens whenever
+    the configuration itself asks for the system resolver. If the configuration enables DNS
+    on its own, the app leaves the section as written.
 *   **To the update and routing-data endpoints.** Checking for an app update, downloading an
     update package, fetching routing databases (GeoIP, GeoSite, ASN) and loading a provider
     logo send only a standard `User-Agent` of the form `ClodClash/<version> (Android)`. No
