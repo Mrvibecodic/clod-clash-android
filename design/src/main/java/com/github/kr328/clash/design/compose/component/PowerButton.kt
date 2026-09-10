@@ -132,7 +132,8 @@ fun PowerButton(
                 painter = painterResource(R.drawable.ic_power),
                 contentDescription = stringResource(
                     if (status == ConnectionStatus.Connected ||
-                        status == ConnectionStatus.Disconnecting
+                        status == ConnectionStatus.Disconnecting ||
+                        status == ConnectionStatus.Connecting
                     ) {
                         R.string.clod_action_disconnect
                     } else {

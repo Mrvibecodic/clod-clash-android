@@ -33,6 +33,8 @@ import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.model.globalRoutingBlocked
+import com.github.kr328.clash.design.model.ToggleIntent
+import com.github.kr328.clash.design.model.toggleIntent
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
@@ -255,10 +257,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                 design.requests.onReceive { request ->
                     when (request) {
                         MainDesign.Request.ToggleStatus -> {
-                            if (clashRunning)
-                                requestStopClash()
-                            else
-                                design.startClash()
+                            when (toggleIntent(design.status, clashRunning)) {
+                                ToggleIntent.Start -> design.startClash()
+                                ToggleIntent.Stop -> requestStopClash()
+                                ToggleIntent.Ignore -> Unit
+                            }
                         }
                         MainDesign.Request.ReloadProxies -> {
                             val started = design.reloadProxyGroups()
@@ -1089,6 +1092,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         stopRequestedAt = now
+
+        startRequestedAt = null
 
         stopClashService()
 

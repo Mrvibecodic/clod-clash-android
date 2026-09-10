@@ -212,7 +212,9 @@ class MainDesign(
 
     suspend fun setDisconnecting() {
         withContext(Dispatchers.Main) {
-            if (state.status == ConnectionStatus.Connected) {
+            if (state.status == ConnectionStatus.Connected ||
+                state.status == ConnectionStatus.Connecting
+            ) {
                 state = state.copy(status = ConnectionStatus.Disconnecting)
             }
         }
@@ -255,6 +257,9 @@ class MainDesign(
 
     val selectedGroup: Int
         get() = state.servers.selected
+
+    val status: ConnectionStatus
+        get() = state.status
 
     val selectedTab: MainTab
         get() = state.selectedTab
