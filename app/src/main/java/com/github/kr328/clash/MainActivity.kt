@@ -71,6 +71,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -130,15 +131,15 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         launch {
             while (isActive) {
-                if (activityStarted) {
-                    val actual = withContext(Dispatchers.IO) {
-                        StatusClient(this@MainActivity).updatingProfiles()
+                ProfileUpdates.running.first { it.isNotEmpty() }
+
+                while (isActive && ProfileUpdates.running.value.isNotEmpty()) {
+                    if (ProfileUpdates.polls(ProfileUpdates.running.value.isEmpty(), activityStarted)) {
+                        reconcileUpdatingProfiles()
                     }
 
-                    ProfileUpdates.reconcile(actual)
+                    delay(UPDATES_ACTIVE_POLL_MS)
                 }
-
-                delay(if (ProfileUpdates.running.value.isEmpty()) UPDATES_IDLE_POLL_MS else UPDATES_ACTIVE_POLL_MS)
             }
         }
 
@@ -173,7 +174,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
                             startRequestedAt = null
 
-                            ProfileUpdates.prune()
+                            reconcileUpdatingProfiles()
 
                             design.fetch()
 
@@ -976,8 +977,6 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         private val UPDATES_ACTIVE_POLL_MS = TimeUnit.SECONDS.toMillis(3)
 
-        private val UPDATES_IDLE_POLL_MS = TimeUnit.SECONDS.toMillis(15)
-
         private const val GLOBAL_GROUP = "GLOBAL"
 
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
@@ -1022,6 +1021,14 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
 
         design?.showAddedProfile()
+    }
+
+    private suspend fun reconcileUpdatingProfiles() {
+        ProfileUpdates.reconcile(
+            withContext(Dispatchers.IO) {
+                StatusClient(this@MainActivity).updatingProfiles()
+            },
+        )
     }
 
     private suspend fun MainDesign.showAddedProfile() {

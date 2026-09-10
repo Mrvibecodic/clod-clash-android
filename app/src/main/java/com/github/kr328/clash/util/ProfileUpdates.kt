@@ -28,6 +28,9 @@ object ProfileUpdates {
         deadlines.update { (it - uuid).alive() }
     }
 
+    fun polls(runningIsEmpty: Boolean, activityStarted: Boolean): Boolean =
+        !runningIsEmpty && activityStarted
+
     fun prune() {
         if (deadlines.value.isEmpty()) return
 
