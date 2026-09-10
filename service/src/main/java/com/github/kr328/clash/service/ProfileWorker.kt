@@ -21,6 +21,7 @@ import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.displayProfileName
+import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import kotlinx.coroutines.*
@@ -230,13 +231,19 @@ class ProfileWorker : BaseService() {
     }
 
     private fun failed(uuid: UUID, name: String, reason: String) {
+        Log.w("Update of $uuid failed: ${Redact.text(reason)}")
+
         if (ServiceStore(this).notifyProfileErrors) {
             post(
                 uuid,
                 UpdateOutcome.Kind.Failure,
                 ERROR_CHANNEL,
                 getString(R.string.update_failure),
-                getString(R.string.format_update_failure, name, Redact.text(reason)),
+                getString(
+                    R.string.format_update_failure,
+                    name,
+                    humanizeUpdateFailure(reason) ?: Redact.text(reason),
+                ),
             )
         }
 

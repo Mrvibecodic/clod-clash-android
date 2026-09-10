@@ -42,4 +42,15 @@
         <item quantity="many">Подписки осталось на %d дней</item>
         <item quantity="other">Подписки осталось на %d дня</item>
     </plurals>
+    <string name="clod_update_cause_downgrade">Провайдер перенаправил запрос на незашифрованный адрес, и запрос отклонён. Это ошибка настройки на стороне провайдера — спросите у него</string>
+    <string name="clod_update_cause_clock">Часы устройства сильно расходятся, и провайдер отклонил запрос. Поставьте дату и время автоматически и попробуйте снова</string>
+    <string name="clod_update_cause_mismatch">Ответ провайдера не прошёл проверку защищённого канала. Попробуйте ещё раз; если повторяется — адрес могли подменить</string>
+    <string name="clod_update_cause_bad_answer">Провайдер ответил не тем, что понимает защищённый канал: по адресу не подписка Clod Clash или канал там не поддерживается</string>
+    <string name="clod_update_cause_no_servers">В подписке нет ни серверов, ни провайдеров. Так выглядит истёкшая подписка или исчерпанный трафик — спросите провайдера</string>
+    <string name="clod_update_cause_too_large">Ответ слишком большой для подписки и не был принят</string>
+    <string name="clod_update_cause_scheme">Адрес подписки в неподдерживаемой схеме. Нужна ссылка https</string>
+    <string name="clod_update_cause_unauthorized">Провайдер отказал в доступе (код %1$d). Возможно, подписка закончилась или исчерпан лимит устройств</string>
+    <string name="clod_update_cause_not_found">Провайдер не нашёл эту подписку (код %1$d). Адрес мог смениться — возьмите свежую ссылку у провайдера</string>
+    <string name="clod_update_cause_server">У сервера провайдера неполадки (код %1$d). Это на его стороне, попробуйте позже</string>
+    <string name="clod_update_cause_status">Провайдер ответил кодом %1$d</string>
 </resources>

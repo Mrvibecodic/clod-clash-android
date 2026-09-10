@@ -23,11 +23,11 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.ui.DayNight
 import com.github.kr328.clash.design.util.resolveThemedBoolean
 import com.github.kr328.clash.design.util.resolveThemedColor
-import com.github.kr328.clash.design.util.humanizeUpdateFailure
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.service.R as ServiceR
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
 import com.github.kr328.clash.util.ApplicationObserver

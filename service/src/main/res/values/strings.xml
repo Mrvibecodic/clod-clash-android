@@ -40,4 +40,15 @@
         <item quantity="one">%d day of subscription left</item>
         <item quantity="other">%d days of subscription left</item>
     </plurals>
+    <string name="clod_update_cause_downgrade">The provider redirected the request to an unencrypted address, so it was refused. This is a misconfiguration on the provider side — ask them about it</string>
+    <string name="clod_update_cause_clock">The clock on the device is far off, and the provider rejected the request. Set the date and time to automatic and try again</string>
+    <string name="clod_update_cause_mismatch">The provider answer failed the secure channel check. Try again; if it repeats, the provider address may have been substituted</string>
+    <string name="clod_update_cause_bad_answer">The provider answered with something the secure channel does not understand: the address is not a Clod Clash subscription, or the channel is not supported there</string>
+    <string name="clod_update_cause_no_servers">The subscription contains no servers and no providers. Ask the provider — usually the subscription has expired or run out of traffic</string>
+    <string name="clod_update_cause_too_large">The answer is too large for a subscription and was not accepted</string>
+    <string name="clod_update_cause_scheme">The subscription address is in an unsupported scheme. It has to be an https link</string>
+    <string name="clod_update_cause_unauthorized">The provider refused access (code %1$d). The subscription may have expired, or the device limit is reached</string>
+    <string name="clod_update_cause_not_found">The provider did not find this subscription (code %1$d). The address may have changed — take a fresh link from the provider</string>
+    <string name="clod_update_cause_server">The provider server is having trouble (code %1$d). This is on their side, try again later</string>
+    <string name="clod_update_cause_status">The provider answered with code %1$d</string>
 </resources>
