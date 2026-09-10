@@ -207,28 +207,27 @@ class ProfileWorker : BaseService() {
             Log.w("Update of $uuid: providers not downloaded: ${failedProviders.joinToString(", ")}")
         }
 
-        val id = uuid.hashCode()
+        val plan = UpdateOutcome.plan(
+            partial = warning != null,
+            notifyErrors = store.notifyProfileErrors,
+            notifyUpdates = store.notifyProfileUpdates,
+        )
 
-        if (warning != null && store.notifyProfileErrors) {
-            val notification = resultBuilder(id, uuid, ERROR_CHANNEL)
-                .setContentTitle(getString(R.string.update_successfully))
-                .setContentText(warning)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(warning))
-                .build()
+        if (plan != null) {
+            val title = when (plan.kind) {
+                UpdateOutcome.Kind.Partial -> R.string.update_partially
+                else -> R.string.update_successfully
+            }
 
-            NotificationManagerCompat.from(this)
-                .notify(id, notification)
-        } else if (store.notifyProfileUpdates) {
             val content = warning ?: getString(R.string.format_update_complete, name)
 
-            val notification = resultBuilder(id, uuid, RESULT_CHANNEL)
-                .setContentTitle(getString(R.string.update_successfully))
-                .setContentText(content)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
-                .build()
-
-            NotificationManagerCompat.from(this)
-                .notify(id, notification)
+            post(
+                uuid,
+                plan.kind,
+                if (plan.error) ERROR_CHANNEL else RESULT_CHANNEL,
+                getString(title),
+                content,
+            )
         }
 
         sendProfileUpdateCompleted(uuid, warning)
@@ -236,21 +235,39 @@ class ProfileWorker : BaseService() {
 
     private fun failed(uuid: UUID, name: String, reason: String) {
         if (ServiceStore(this).notifyProfileErrors) {
-            val id = uuid.hashCode()
-
-            val content = getString(R.string.format_update_failure, name, Redact.text(reason))
-
-            val notification = resultBuilder(id, uuid, ERROR_CHANNEL)
-                .setContentTitle(getString(R.string.update_failure))
-                .setContentText(content)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
-                .build()
-
-            NotificationManagerCompat.from(this)
-                .notify(id, notification)
+            post(
+                uuid,
+                UpdateOutcome.Kind.Failure,
+                ERROR_CHANNEL,
+                getString(R.string.update_failure),
+                getString(R.string.format_update_failure, name, Redact.text(reason)),
+            )
         }
 
         sendProfileUpdateFailed(uuid, reason)
+    }
+
+    private fun post(
+        uuid: UUID,
+        kind: UpdateOutcome.Kind,
+        channel: String,
+        title: String,
+        content: String,
+    ) {
+        val manager = NotificationManagerCompat.from(this)
+
+        UpdateOutcome.replaced(uuid, kind).forEach(manager::cancel)
+
+        val id = UpdateOutcome.id(uuid, kind)
+
+        manager.notify(
+            id,
+            resultBuilder(id, uuid, channel)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(content))
+                .build(),
+        )
     }
 
     companion object {

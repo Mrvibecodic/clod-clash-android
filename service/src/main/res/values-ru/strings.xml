@@ -18,6 +18,7 @@
     <string name="profile_process_error">Ошибки обновления подписки</string>
     <string name="clod_notification_stop">Отключить</string>
     <string name="update_successfully">Успешно обновлено</string>
+    <string name="update_partially">Обновлено не полностью</string>
     <string name="update_failure">Не удалось обновить</string>
     <string name="format_update_complete">Обновление %s завершено</string>
     <string name="clod_draft_changed">Черновик изменился, пока грузилась подписка, и ничего не сохранено. Повторите попытку</string>

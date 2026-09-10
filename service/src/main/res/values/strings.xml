@@ -18,6 +18,7 @@
     <string name="profile_process_error">Profile Update Errors</string>
     <string name="clod_notification_stop">Disconnect</string>
     <string name="update_successfully">Update Successfully</string>
+    <string name="update_partially">Updated, but not completely</string>
     <string name="update_failure">Failed to update</string>
     <string name="format_update_complete">Update %s completed</string>
     <string name="clod_draft_changed">The draft changed while the subscription was loading, so nothing was saved. Try again</string>
