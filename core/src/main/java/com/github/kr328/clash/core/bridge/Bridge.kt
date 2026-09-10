@@ -38,7 +38,8 @@ object Bridge {
         completable: FetchCallback,
         path: String,
         url: String,
-        force: Boolean
+        force: Boolean,
+        probe: Boolean
     )
 
     external fun nativeLoad(completable: CompletableDeferred<Unit>, path: String)

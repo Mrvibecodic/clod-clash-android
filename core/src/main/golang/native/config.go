@@ -22,7 +22,7 @@ func (r *remoteValidCallback) reportStatus(json string) {
 }
 
 //export fetchAndValid
-func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
+func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C.int) {
 	go func(path, url string, callback unsafe.Pointer) {
 		cb := &remoteValidCallback{callback: callback}
 
@@ -35,7 +35,7 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force C.int) {
 				}
 			}()
 
-			return config.FetchAndValid(path, url, force != 0, cb.reportStatus)
+			return config.FetchAndValid(path, url, force != 0, probe != 0, cb.reportStatus)
 		}()
 
 		C.fetch_complete(callback, marshalError(err))

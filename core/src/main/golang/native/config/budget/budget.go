@@ -8,6 +8,7 @@ const (
 	ConfigShare   = 120 * time.Second
 	ProviderShare = 60 * time.Second
 	Total         = ConfigShare + ProviderShare
+	MigrationPart = 60 * time.Second
 )
 
 type Budget struct {

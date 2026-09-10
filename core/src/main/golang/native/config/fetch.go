@@ -408,11 +408,17 @@ func FetchAndValid(
 	path string,
 	url string,
 	force bool,
+	probe bool,
 	reportStatus func(string),
 ) error {
 	configPath := P.Join(path, "config.yaml")
 
-	budget := budgets.New(time.Now())
+	total := budgets.Total
+	if probe {
+		total = budgets.MigrationPart
+	}
+
+	budget := budgets.Within(time.Now(), total)
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) || force {
 		url, err := U.Parse(url)

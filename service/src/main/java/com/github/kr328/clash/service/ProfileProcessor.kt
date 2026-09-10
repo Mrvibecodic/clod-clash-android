@@ -89,7 +89,8 @@ object ProfileProcessor {
                 Clash.setSecureChannel(snapshot.secure)
 
                 val force = snapshot.type != Profile.Type.File
-                val subscriptionInfo = fetchProfile(context, context.processingDir, snapshot.source, force, callback).info
+                val subscriptionInfo =
+                    fetchProfile(context, context.processingDir, snapshot.source, force, false, callback).info
 
                 profileLock.withLock {
                     val current = PendingDao().queryByUUID(snapshot.uuid)
@@ -163,7 +164,7 @@ object ProfileProcessor {
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
                 Clash.setSecureChannel(snapshot.secure)
 
-                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, callback)
+                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, callback)
                 val subscriptionInfo = fetched.info
 
                 profileLock.withLock {
@@ -242,7 +243,7 @@ object ProfileProcessor {
             profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
                 ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
 
-            fetchProfile(context, probe, candidate, true, callback).info
+            fetchProfile(context, probe, candidate, true, true, callback).info
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
 
@@ -346,6 +347,7 @@ object ProfileProcessor {
         dir: File,
         source: String,
         force: Boolean,
+        probe: Boolean,
         callback: IFetchObserver?,
     ): Fetched {
         var subscriptionInfo: FetchStatus? = null
@@ -358,7 +360,7 @@ object ProfileProcessor {
 
         context.seedSystemDns()
 
-        Clash.fetchAndValid(dir, source, force) {
+        Clash.fetchAndValid(dir, source, force, probe) {
             when (it.action) {
                 FetchStatus.Action.SubscriptionInfo -> {
                     subscriptionInfo = it
