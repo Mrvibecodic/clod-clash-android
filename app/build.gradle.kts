@@ -37,6 +37,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.quickie.bundled)
     implementation(libs.kotlin.serialization.json)
+
+    testImplementation(libs.junit)
 }
 
 val geoFilesDownloadDir = "src/main/assets"
