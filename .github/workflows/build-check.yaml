@@ -54,6 +54,22 @@ jobs:
             exit 1
           }
 
+      - name: Check Update Budget Numbers Shared With The Core
+        run: |
+          set -euo pipefail
+          check() {
+            grep -Eq "$2" "$1" || {
+              echo "Цифры бюджета обновления подписки в $1 разошлись с копией в другом языке: сверьте ConfigShare/ProviderShare/MigrationPart в Go и FETCH_BUDGET/MIGRATION_PROBE_BUDGET в Kotlin" >&2
+              exit 1
+            }
+          }
+          check core/src/main/golang/native/config/budget/budget.go 'ConfigShare +=  *120 \* time\.Second'
+          check core/src/main/golang/native/config/budget/budget.go 'ProviderShare +=  *60 \* time\.Second'
+          check core/src/main/golang/native/config/budget/budget.go 'Total +=  *ConfigShare \+ ProviderShare'
+          check core/src/main/golang/native/config/budget/budget.go 'MigrationPart +=  *60 \* time\.Second'
+          check app/src/main/java/com/github/kr328/clash/util/ProfileUpdates.kt 'FETCH_BUDGET = TimeUnit\.SECONDS\.toMillis\(180\)'
+          check app/src/main/java/com/github/kr328/clash/util/ProfileUpdates.kt 'MIGRATION_PROBE_BUDGET = TimeUnit\.SECONDS\.toMillis\(60\)'
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
