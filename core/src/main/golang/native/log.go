@@ -4,12 +4,12 @@ package main
 import "C"
 
 import (
-	"strings"
 	"time"
 	"unsafe"
 
 	"cfa/native/app"
 	"cfa/native/common/safego"
+	"cfa/native/logfilter"
 	"cfa/native/redact"
 
 	"github.com/metacubex/mihomo/log"
@@ -27,7 +27,7 @@ func init() {
 		defer log.UnSubscribe(sub)
 
 		for msg := range sub {
-			if msg.LogLevel < log.Level() && !strings.HasPrefix(msg.Payload, "[APP]") {
+			if !logfilter.Passes(msg.Payload, msg.LogLevel, log.Level()) {
 				continue
 			}
 
@@ -56,7 +56,7 @@ func subscribeLogcat(remote unsafe.Pointer) {
 		defer log.UnSubscribe(sub)
 
 		for msg := range sub {
-			if msg.LogLevel < log.Level() && !strings.HasPrefix(msg.Payload, "[APP]") {
+			if !logfilter.Passes(msg.Payload, msg.LogLevel, log.Level()) {
 				continue
 			}
 
