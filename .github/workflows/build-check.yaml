@@ -45,6 +45,15 @@ jobs:
           grep -q ResetNetwork adapter/outbound/base.go
           grep -q ErrRedirectDowngrade component/http/http.go
 
+      - name: Check Core Connectivity Test Address
+        run: |
+          set -euo pipefail
+          cd core/src/foss/golang/clash
+          grep -Eq 'DefaultTestURL *= *"https://www\.gstatic\.com/generate_204"' constant/adapters.go || {
+            echo "Адрес проверки связности в ядре не совпадает с названным в PRIVACY_POLICY.md: сверьте пункт про адрес проверки связности" >&2
+            exit 1
+          }
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
