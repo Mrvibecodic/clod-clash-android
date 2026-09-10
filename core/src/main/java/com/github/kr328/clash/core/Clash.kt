@@ -33,7 +33,7 @@ object Clash {
         Persist, Session
     }
 
-    private val CoreJson = Json {
+    internal val CoreJson = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
     }
