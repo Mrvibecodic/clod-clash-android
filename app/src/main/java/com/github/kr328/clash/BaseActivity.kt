@@ -14,6 +14,7 @@ import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
 import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
 import com.github.kr328.clash.common.compat.isSystemBarsTranslucentCompat
+import com.github.kr328.clash.common.util.AppLocale
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.design.Design
@@ -286,6 +287,8 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     }
 
     private fun syncAppLocale() {
+        AppLocale.current = AppCompatDelegate.getApplicationLocales()[0]
+
         if (appLocaleSynced) return
 
         appLocaleSynced = true

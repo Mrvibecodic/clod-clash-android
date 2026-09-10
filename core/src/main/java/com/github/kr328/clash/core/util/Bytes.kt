@@ -1,6 +1,6 @@
 package com.github.kr328.clash.core.util
 
-import java.util.Locale
+import com.github.kr328.clash.common.util.AppLocale
 
 private val UNITS = arrayOf("KiB", "MiB", "GiB", "TiB", "PiB", "EiB")
 
@@ -21,5 +21,5 @@ fun Long.toBytesString(): String {
         else -> 2
     }
 
-    return String.format(Locale.getDefault(), "%.${digits}f %s", value, UNITS[unit])
+    return String.format(AppLocale.formatting(), "%.${digits}f %s", value, UNITS[unit])
 }

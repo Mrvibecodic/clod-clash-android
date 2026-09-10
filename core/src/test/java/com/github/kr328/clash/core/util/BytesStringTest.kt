@@ -1,5 +1,6 @@
 package com.github.kr328.clash.core.util
 
+import com.github.kr328.clash.common.util.AppLocale
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -13,11 +14,15 @@ class BytesStringTest {
     fun setUp() {
         restore = Locale.getDefault()
 
+        AppLocale.current = null
+
         Locale.setDefault(Locale.ROOT)
     }
 
     @After
     fun tearDown() {
+        AppLocale.current = null
+
         Locale.setDefault(restore)
     }
 
@@ -89,5 +94,29 @@ class BytesStringTest {
         val huge = 1024L * 1024 * 1024 * 1024 * 1024 * 1024 * 5
 
         assertEquals("5.00 EiB", huge.toBytesString())
+    }
+
+    @Test
+    fun `разделитель берётся из языка приложения, а не из языка устройства`() {
+        val value = 1024L * 1024 * 1024 + 429496730
+
+        Locale.setDefault(Locale.US)
+        AppLocale.current = Locale("ru", "RU")
+
+        assertEquals("1,40 GiB", value.toBytesString())
+
+        Locale.setDefault(Locale("ru", "RU"))
+        AppLocale.current = Locale.US
+
+        assertEquals("1.40 GiB", value.toBytesString())
+    }
+
+    @Test
+    fun `без выбранного языка приложения разделитель берётся из языка устройства`() {
+        val value = 1024L * 1024 * 1024 + 429496730
+
+        Locale.setDefault(Locale("ru", "RU"))
+
+        assertEquals("1,40 GiB", value.toBytesString())
     }
 }

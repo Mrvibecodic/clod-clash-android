@@ -3,6 +3,7 @@ package com.github.kr328.clash.service.util
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
+import com.github.kr328.clash.common.util.AppLocale
 import com.github.kr328.clash.service.PreferenceProvider
 import java.util.Locale
 
@@ -22,6 +23,8 @@ fun Context.withStoredLocale(): Context {
 }
 
 fun Context.withLocale(locale: Locale): Context {
+    AppLocale.current = locale
+
     val configuration = Configuration()
 
     configuration.setLocale(locale)
