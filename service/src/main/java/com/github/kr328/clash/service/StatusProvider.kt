@@ -18,6 +18,7 @@ class StatusProvider : ContentProvider() {
                     putBoolean(KEY_STARTING, serviceRunning && !serviceReady)
                     putString(KEY_STAGE, startupStage)
                     putString(KEY_NAME, currentProfile)
+                    putString(KEY_UUID, currentProfileUuid)
                 }
             }
             METHOD_UPDATING_PROFILES -> {
@@ -70,6 +71,7 @@ class StatusProvider : ContentProvider() {
         const val KEY_STARTING = "starting"
         const val KEY_STAGE = "stage"
         const val KEY_NAME = "name"
+        const val KEY_UUID = "uuid"
         const val METHOD_UPDATING_PROFILES = "updatingProfiles"
         const val KEY_UPDATING = "updating"
 
@@ -103,5 +105,8 @@ class StatusProvider : ContentProvider() {
                 }
             }
         var currentProfile: String? = null
+
+        @Volatile
+        var currentProfileUuid: String? = null
     }
 }

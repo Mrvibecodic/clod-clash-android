@@ -101,6 +101,7 @@ class SessionLifecycle(
 
         StatusProvider.serviceReady = false
         StatusProvider.startupStage = null
+        StatusProvider.currentProfileUuid = null
         StatusProvider.serviceRunning = false
 
         service.sendClashStopped(reason)

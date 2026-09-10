@@ -21,6 +21,7 @@ class StatusClient(private val context: Context) {
         val name: String?,
         val starting: Boolean = false,
         val stage: String? = null,
+        val uuid: String? = null,
     )
 
     fun status(): Status {
@@ -37,6 +38,7 @@ class StatusClient(private val context: Context) {
                 name = result.getString(StatusProvider.KEY_NAME),
                 starting = result.getBoolean(StatusProvider.KEY_STARTING),
                 stage = result.getString(StatusProvider.KEY_STAGE),
+                uuid = result.getString(StatusProvider.KEY_UUID),
             )
         } catch (e: Exception) {
             Log.w("Query clash status: $e", e)

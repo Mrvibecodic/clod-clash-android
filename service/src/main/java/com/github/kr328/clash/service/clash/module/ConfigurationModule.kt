@@ -136,6 +136,8 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 StatusProvider.currentProfile =
                     service.displayProfileName(active.uuid, active.name)
 
+                StatusProvider.currentProfileUuid = active.uuid.toString()
+
                 service.sendProfileLoaded(current)
 
                 enqueueEvent(Event.Loaded(current))
