@@ -834,3 +834,95 @@ func TestApplyHeadersBadLinkDropsOldOne(t *testing.T) {
 		t.Fatalf("мониторинг = %q, ожидалась пустая строка", info.MonitorURL)
 	}
 }
+
+func TestTruncateIsIdempotent(t *testing.T) {
+	for _, value := range []string{
+		strings.Repeat("я", titleMaxChars+1),
+		strings.Repeat("я", titleMaxChars+200),
+		strings.Repeat("я", titleMaxChars-1) + " я",
+		strings.Repeat("a", titleMaxChars*3),
+		"🙂" + strings.Repeat("🙃", titleMaxChars+10),
+	} {
+		once := truncate(value, titleMaxChars)
+		twice := truncate(once, titleMaxChars)
+
+		if once != twice {
+			t.Fatalf("повторная обрезка %q дала %q вместо %q", value, twice, once)
+		}
+
+		if len([]rune(twice)) > titleMaxChars+1 {
+			t.Fatalf("длина после двух обрезок %d рун", len([]rune(twice)))
+		}
+	}
+}
+
+func TestTitleIsTruncatedOnRead(t *testing.T) {
+	dir := t.TempDir()
+
+	long := strings.Repeat("я", titleMaxChars+140)
+
+	Write(dir, Info{Title: long})
+
+	got := Read(dir)
+
+	if want := truncate(long, titleMaxChars); got.Title != want {
+		t.Fatalf("название из файла = %q, ожидалось %q", got.Title, want)
+	}
+
+	if got.Title == long {
+		t.Fatalf("длинное название дожило до читателя")
+	}
+}
+
+func TestApplyHeadersTruncatesStoredTitle(t *testing.T) {
+	long := strings.Repeat("я", titleMaxChars+140)
+
+	info := Info{Title: long}
+
+	ApplyHeaders(&info, map[string][]string{}, "https://panel/sub")
+
+	if want := truncate(long, titleMaxChars); info.Title != want {
+		t.Fatalf("без заголовка название = %q, ожидалось %q", info.Title, want)
+	}
+
+	fresh := Info{Title: long}
+	header := map[string][]string{"profile-title": {strings.Repeat("ю", titleMaxChars+5)}}
+
+	ApplyHeaders(&fresh, header, "https://panel/sub")
+
+	if want := truncate(strings.Repeat("ю", titleMaxChars+5), titleMaxChars); fresh.Title != want {
+		t.Fatalf("свежее название = %q, ожидалось %q", fresh.Title, want)
+	}
+
+	short := Info{Title: "Провайдер"}
+
+	ApplyHeaders(&short, map[string][]string{}, "https://panel/sub")
+
+	if short.Title != "Провайдер" {
+		t.Fatalf("короткое сохранённое название изменилось: %q", short.Title)
+	}
+
+	empty := Info{}
+
+	ApplyHeaders(&empty, map[string][]string{}, "https://panel/sub")
+
+	if empty.Title != "" {
+		t.Fatalf("пустое название стало %q", empty.Title)
+	}
+}
+
+func TestTitleBoundaryLengths(t *testing.T) {
+	for _, size := range []int{0, titleMaxChars - 1, titleMaxChars} {
+		value := strings.Repeat("я", size)
+
+		if got := truncate(value, titleMaxChars); got != value {
+			t.Fatalf("название длиной %d изменилось: %q", size, got)
+		}
+	}
+
+	over := strings.Repeat("я", titleMaxChars+1)
+
+	if got := []rune(truncate(over, titleMaxChars)); len(got) != titleMaxChars+1 {
+		t.Fatalf("название длиной %d дало %d рун", titleMaxChars+1, len(got))
+	}
+}

@@ -89,6 +89,8 @@ func Read(dir string) Info {
 
 	_ = json.Unmarshal(bytes, &info)
 
+	info.Title = truncate(info.Title, titleMaxChars)
+
 	return info
 }
 
@@ -127,7 +129,7 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.PromoURL = httpsURL(headerValue(header, "clod-promo-url"))
 	info.HwidLimitMessage = truncate(headerValue(header, "clod-hwid-limit"), announceMaxChars)
 
-	info.Title = firstNonEmpty(truncate(headerValue(header, "profile-title"), titleMaxChars), info.Title)
+	info.Title = truncate(firstNonEmpty(headerValue(header, "profile-title"), info.Title), titleMaxChars)
 
 	info.HwidState = hwidState(header)
 	info.HwidMaxDevices, _ = parseUint(headerValue(header, "x-hwid-max-devices"))
