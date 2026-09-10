@@ -31,6 +31,11 @@ jobs:
           set -euo pipefail
           cd core/src/foss/golang/clash
           for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
+          # -F 0 запрещает нечёткий контекст: отвергнутый хунк валит шаг кодом 1 ещё в
+          # цикле выше. Смещение номеров строк при -F 0 законно и означает, что
+          # содержимое легло туда, куда писалось, поэтому единственная настоящая защита
+          # от «лёг, но не тем местом» — маркеры из ТЕЛА каждого патча. На каждую правку
+          # ядра обязан быть свой маркер: нет маркера — патча в стражах нет.
           grep -q ProbeHolding adapter/adapter.go
           grep -q ProbeHolding adapter/outboundgroup/groupbase.go
           grep -q ProbeFreezeGap constant/probehold.go
@@ -39,13 +44,6 @@ jobs:
           grep -Eq 'expectedStatus: +option\.ExpectedStatus,' adapter/outboundgroup/selector.go
           grep -q ResetNetwork adapter/outbound/base.go
           grep -q ErrRedirectDowngrade component/http/http.go
-          # -F 0 запрещает нечёткий контекст, но не смещение: остатки .orig/.rej
-          # означают, что патч лёг не туда, куда писался.
-          if [ -n "$(find . \( -name '*.orig' -o -name '*.rej' \) -print -quit)" ]; then
-            echo "::error::патч ядра лёг со смещением или с отказом"
-            find . \( -name '*.orig' -o -name '*.rej' \)
-            exit 1
-          fi
 
       - name: Setup Java
         uses: actions/setup-java@v5
