@@ -172,6 +172,12 @@ class SessionLifecycle(
         if (!StaticNotificationModule.notifyLoadingNotification(service)) {
             startFailed = true
 
+            reason = service.getString(R.string.clod_foreground_denied)
+
+            notifyStopped()
+
+            service.stopSelf()
+
             return
         }
 
