@@ -154,6 +154,10 @@ func Load(path string) error {
 
 	hub.ApplyConfig(cfg)
 
+	if !globalGroupDeclared(rawCfg) {
+		pinGlobalDefault()
+	}
+
 	loaded.Store(true)
 
 	app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
