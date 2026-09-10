@@ -11,6 +11,7 @@ import com.github.kr328.clash.design.compose.screen.isHttpUrl
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.displayProfileName
+import com.github.kr328.clash.util.DraftGate
 import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.NonCancellable
@@ -81,7 +82,14 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                         Event.ActivityStop -> {
                             val profile = design.profile
 
-                            if (!canceled && profile != original && design.draftValid && !ProfileImports.isCommitting(profile.uuid)) {
+                            val saves = DraftGate.savesOnStop(
+                                canceled = canceled,
+                                changed = profile != original,
+                                valid = design.draftValid,
+                                committing = ProfileImports.isCommitting(profile.uuid),
+                            )
+
+                            if (saves) {
                                 withContext(NonCancellable) {
                                     withProfile(retry = false) {
                                         patch(profile.uuid, profile.name, profile.source, profile.interval, profile.ageSecretKey)
@@ -90,7 +98,9 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                             }
                         }
                         Event.ServiceRecreated -> {
-                            finish()
+                            if (DraftGate.closesOnServiceRecreated(ProfileImports.isCommitting(uuid))) {
+                                finish()
+                            }
                         }
                         else -> Unit
                     }
