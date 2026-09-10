@@ -1,9 +1,12 @@
 package com.github.kr328.clash.log
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
+
 object SystemLogcat {
-    private val command = arrayOf(
-        "logcat",
-        "-d",
+    private val tags = arrayOf(
         "-s",
         "Go",
         "DEBUG",
@@ -16,36 +19,52 @@ object SystemLogcat {
 
     private const val MAX_CHARS = 512 * 1024
 
-    private const val TRUNCATED = "--- head of the log dropped, tail only ---"
+    private const val HEAD_LINES = MAX_LINES / 4
+
+    private const val HEAD_CHARS = MAX_CHARS / 4
+
+    private val WINDOW = TimeUnit.MINUTES.toMillis(10)
+
+    private const val TRUNCATED = "--- %d lines in the middle dropped ---"
 
     fun dumpCrash(): String {
+        val windowed = dump(arrayOf("logcat", "-t", since(WINDOW)) + tags)
+
+        if (windowed.isNotEmpty()) return windowed
+
+        return dump(arrayOf("logcat", "-d") + tags)
+    }
+
+    private fun since(window: Long): String =
+        SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.ROOT)
+            .format(Date(System.currentTimeMillis() - window))
+
+    private fun dump(command: Array<String>): String {
         return try {
             val process = Runtime.getRuntime().exec(command)
 
             val result = process.inputStream.use { stream ->
-                val tail = ArrayDeque<String>()
-
-                var chars = 0
-
-                var dropped = false
-
-                stream.reader().forEachLine { line ->
-                    if (line.startsWith("------")) return@forEachLine
-
-                    tail.addLast(line)
-
-                    chars += line.length + 1
-
-                    while (tail.size > MAX_LINES || chars > MAX_CHARS) {
-                        chars -= tail.removeFirst().length + 1
-
-                        dropped = true
-                    }
+                val clipped = stream.reader().useLines { lines ->
+                    CrashLogClip.clip(
+                        lines.filterNot { it.startsWith("------") },
+                        HEAD_LINES,
+                        HEAD_CHARS,
+                        MAX_LINES - HEAD_LINES,
+                        MAX_CHARS - HEAD_CHARS,
+                    )
                 }
 
-                if (dropped) tail.addFirst(TRUNCATED)
+                val text = ArrayList<String>(clipped.head.size + clipped.tail.size + 1)
 
-                tail.joinToString("\n")
+                text.addAll(clipped.head)
+
+                if (clipped.dropped > 0) {
+                    text.add(TRUNCATED.format(clipped.dropped))
+                }
+
+                text.addAll(clipped.tail)
+
+                text.joinToString("\n")
             }
 
             process.waitFor()
