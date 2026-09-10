@@ -108,6 +108,7 @@ import com.github.kr328.clash.design.compose.theme.SessionUploadTint
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.design.model.providerLinks
+import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.GroupIcons
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
@@ -550,8 +551,10 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                         R.string.clod_home_selected_server
                     },
                 ),
-                value = current?.title
-                    ?: group.now.ifBlank { stringResource(R.string.proxy) },
+                value = (
+                    current?.title
+                        ?: group.now.ifBlank { stringResource(R.string.proxy) }
+                    ).bidiIsolated(),
                 leading = painterResource(R.drawable.ic_nav_servers),
                 onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
                 trailing = if (current != null) {

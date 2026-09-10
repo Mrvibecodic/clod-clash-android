@@ -64,6 +64,7 @@ import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
+import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.service.model.Profile
 import java.util.Date
@@ -241,7 +242,7 @@ private fun SubscriptionCard(
         AlertDialog(
             onDismissRequest = { deleting = false },
             title = { Text(stringResource(R.string.delete)) },
-            text = { Text(stringResource(R.string.clod_sub_delete_message, profile.name)) },
+            text = { Text(stringResource(R.string.clod_sub_delete_message, profile.name.bidiIsolated())) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -307,7 +308,7 @@ private fun SubscriptionCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = item.title,
+                        text = item.title.bidiIsolated(),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
@@ -442,7 +443,7 @@ fun ActiveSubscriptionCard(
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = item.title,
+                    text = item.title.bidiIsolated(),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
