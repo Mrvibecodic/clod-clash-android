@@ -19,6 +19,7 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/common/safego"
+	budgets "cfa/native/config/budget"
 	"cfa/native/config/sentinel"
 
 	"github.com/metacubex/mihomo/adapter/provider"
@@ -55,8 +56,6 @@ func refusedByRedirectPolicy(err error) bool {
 const (
 	fetchTimeout      = 60 * time.Second
 	fetchQuickTimeout = 30 * time.Second
-	fetchMinAttempt   = 10 * time.Second
-	fetchBudgetTotal  = 180 * time.Second
 	providerTimeout   = 30 * time.Second
 	providerParallel  = 4
 )
@@ -78,50 +77,48 @@ func subscriptionHeaders(device bool) http.Header {
 	return header
 }
 
-type fetchBudget struct {
+type addressWindow struct {
+	tunnel   time.Duration
 	deadline time.Time
 }
 
-func newFetchBudget() *fetchBudget {
-	return &fetchBudget{deadline: time.Now().Add(fetchBudgetTotal)}
-}
+func openAddressWindow(budget *budgets.Budget, limit time.Duration, device bool) (addressWindow, bool) {
+	now := time.Now()
 
-func (b *fetchBudget) remaining() time.Duration {
-	return time.Until(b.deadline)
-}
-
-func (b *fetchBudget) ensure(minimum time.Duration) {
-	if floor := time.Now().Add(minimum); b.deadline.Before(floor) {
-		b.deadline = floor
-	}
-}
-
-func (b *fetchBudget) context(limit time.Duration) (context.Context, context.CancelFunc, bool) {
-	remaining := b.remaining()
-	if remaining < fetchMinAttempt {
-		return nil, nil, false
+	window, ok := budget.Window(now, limit)
+	if !ok {
+		return addressWindow{}, false
 	}
 
-	if remaining < limit {
-		limit = remaining
+	tunnel := window
+	if device {
+		tunnel = budgets.TunnelShare(window)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), limit)
-
-	return ctx, cancel, true
+	return addressWindow{tunnel: tunnel, deadline: now.Add(window)}, true
 }
 
 type directBudget struct {
-	budget  *fetchBudget
-	limit   time.Duration
-	cancels []context.CancelFunc
+	budget   *budgets.Budget
+	deadline time.Time
+	reserved bool
+	cancels  []context.CancelFunc
 }
 
 func (b *directBudget) start() (context.Context, bool) {
-	ctx, cancel, ok := b.budget.context(b.limit)
+	minimum := time.Duration(0)
+	if !b.reserved {
+		minimum = budgets.DirectReserve
+	}
+
+	limit, ok := b.budget.DirectWindow(time.Now(), b.deadline, minimum)
 	if !ok {
 		return nil, false
 	}
+
+	b.reserved = true
+
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
 
 	b.cancels = append(b.cancels, cancel)
 
@@ -188,18 +185,20 @@ func openContent(url string) (io.ReadCloser, error) {
 	return app.OpenContent(url)
 }
 
-func fetchConfig(url *U.URL, file string, budget *fetchBudget, limit time.Duration) (fetchHeader, error) {
+func fetchConfig(url *U.URL, file string, budget *budgets.Budget, limit time.Duration) (fetchHeader, error) {
 	if !SecureChannel() || (url.Scheme != "http" && url.Scheme != "https") {
 		return fetch(url, file, true, budget, limit)
 	}
 
-	ctx, cancel, ok := budget.context(limit)
+	window, ok := openAddressWindow(budget, limit, true)
 	if !ok {
 		return fetchHeader{}, errFetchBudget
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), window.tunnel)
 	defer cancel()
 
-	direct := &directBudget{budget: budget, limit: limit}
+	direct := &directBudget{budget: budget, deadline: window.deadline}
 	defer direct.close()
 
 	reader, header, err := openUrlSecure(ctx, url.String(), P.Dir(file), direct)
@@ -240,14 +239,16 @@ func warnOnForeignRedirect(requested string, final *U.URL) {
 
 var errFetchBudget = errors.New("time budget for the update is exhausted")
 
-func fetch(url *U.URL, file string, device bool, budget *fetchBudget, limit time.Duration) (fetchHeader, error) {
-	ctx, cancel, ok := budget.context(limit)
+func fetch(url *U.URL, file string, device bool, budget *budgets.Budget, limit time.Duration) (fetchHeader, error) {
+	window, ok := openAddressWindow(budget, limit, device)
 	if !ok {
 		return fetchHeader{}, errFetchBudget
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), window.tunnel)
 	defer cancel()
 
-	direct := &directBudget{budget: budget, limit: limit}
+	direct := &directBudget{budget: budget, deadline: window.deadline}
 	defer direct.close()
 
 	var reader io.ReadCloser
@@ -353,7 +354,7 @@ func fetchFromSpare(
 	spares []string,
 	configPath string,
 	cause error,
-	budget *fetchBudget,
+	budget *budgets.Budget,
 	reportStatus func(string),
 ) (fetchHeader, error) {
 	if len(spares) == 0 {
@@ -373,7 +374,7 @@ func fetchFromSpare(
 			limit = fetchTimeout
 		}
 
-		if budget.remaining() < fetchMinAttempt {
+		if budget.Remaining(time.Now()) < budgets.MinAttempt {
 			log.Warnln("Spare address %s skipped: %s", parsed.Host, errFetchBudget.Error())
 
 			break
@@ -411,7 +412,7 @@ func FetchAndValid(
 ) error {
 	configPath := P.Join(path, "config.yaml")
 
-	budget := newFetchBudget()
+	budget := budgets.New(time.Now())
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) || force {
 		url, err := U.Parse(url)
@@ -568,7 +569,7 @@ func reportProvider(reportStatus func(string), action string, args []string, pro
 	reportStatus(string(bytes))
 }
 
-func fetchProviders(rawCfg *config.RawConfig, budget *fetchBudget, reportStatus func(string)) {
+func fetchProviders(rawCfg *config.RawConfig, budget *budgets.Budget, reportStatus func(string)) {
 	jobs, total := providerJobs(rawCfg)
 
 	if len(jobs) == 0 {
@@ -577,7 +578,7 @@ func fetchProviders(rawCfg *config.RawConfig, budget *fetchBudget, reportStatus 
 
 	reportProvider(reportStatus, "FetchProviders", []string{jobs[0].name}, total-len(jobs), total)
 
-	budget.ensure(providerTimeout)
+	budget.Ensure(time.Now(), providerTimeout)
 
 	var done atomic.Int32
 
@@ -615,7 +616,7 @@ func fetchProviders(rawCfg *config.RawConfig, budget *fetchBudget, reportStatus 
 	wg.Wait()
 }
 
-func fetchProvider(job providerJob, budget *fetchBudget) error {
+func fetchProvider(job providerJob, budget *budgets.Budget) error {
 	if job.bundle != "" {
 		if file, err := RB.Open(job.bundle); err == nil {
 			defer file.Close()
