@@ -48,16 +48,18 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryOverride(slot)
     }
 
-    override fun patchSelector(group: String, name: String): Boolean {
-        return Clash.patchSelector(group, name).also {
+    override fun patchSelector(group: String, name: String): Boolean = runBlocking(selections) {
+        Clash.patchSelector(group, name).also { patched ->
             val current = store.activeProfile ?: return@also
 
-            persistSelection(group, name) {
-                if (it) {
+            try {
+                if (patched) {
                     SelectionDao().setSelected(Selection(current, group, name))
                 } else {
                     SelectionDao().removeSelected(current, group)
                 }
+            } catch (e: Exception) {
+                Log.w("Remember selection $name for $group: $e", e)
             }
         }
     }
