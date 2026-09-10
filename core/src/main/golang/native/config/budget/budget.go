@@ -5,11 +5,14 @@ import "time"
 const (
 	MinAttempt    = 10 * time.Second
 	DirectReserve = 10 * time.Second
-	Total         = 180 * time.Second
+	ConfigShare   = 120 * time.Second
+	ProviderShare = 60 * time.Second
+	Total         = ConfigShare + ProviderShare
 )
 
 type Budget struct {
 	deadline time.Time
+	phase    time.Time
 }
 
 func New(now time.Time) *Budget {
@@ -17,7 +20,19 @@ func New(now time.Time) *Budget {
 }
 
 func Within(now time.Time, total time.Duration) *Budget {
-	return &Budget{deadline: now.Add(total)}
+	return &Budget{deadline: now.Add(total), phase: now.Add(configShare(total))}
+}
+
+func configShare(total time.Duration) time.Duration {
+	if total >= Total {
+		return ConfigShare
+	}
+
+	if total <= 0 {
+		return total
+	}
+
+	return time.Duration(total.Milliseconds()*ConfigShare.Milliseconds()/Total.Milliseconds()) * time.Millisecond
 }
 
 func (b *Budget) Deadline() time.Time {
@@ -25,13 +40,17 @@ func (b *Budget) Deadline() time.Time {
 }
 
 func (b *Budget) Remaining(now time.Time) time.Duration {
-	return b.deadline.Sub(now)
+	remaining := b.deadline.Sub(now)
+
+	if phase := b.phase.Sub(now); phase < remaining {
+		remaining = phase
+	}
+
+	return remaining
 }
 
-func (b *Budget) Ensure(now time.Time, minimum time.Duration) {
-	if floor := now.Add(minimum); b.deadline.Before(floor) {
-		b.deadline = floor
-	}
+func (b *Budget) EnterProviderPhase() {
+	b.phase = b.deadline
 }
 
 func (b *Budget) Window(now time.Time, limit time.Duration) (time.Duration, bool) {

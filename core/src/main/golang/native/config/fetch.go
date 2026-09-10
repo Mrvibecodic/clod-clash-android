@@ -578,7 +578,7 @@ func fetchProviders(rawCfg *config.RawConfig, budget *budgets.Budget, reportStat
 
 	reportProvider(reportStatus, "FetchProviders", []string{jobs[0].name}, total-len(jobs), total)
 
-	budget.Ensure(time.Now(), providerTimeout)
+	budget.EnterProviderPhase()
 
 	var done atomic.Int32
 

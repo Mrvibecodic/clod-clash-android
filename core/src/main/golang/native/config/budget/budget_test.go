@@ -26,26 +26,29 @@ func TestTunnelShareKeepsAttemptMeaningful(t *testing.T) {
 
 func TestDirectRetryStaysInsideAddressWindow(t *testing.T) {
 	for _, row := range []struct {
-		name    string
-		total   time.Duration
-		window  time.Duration
-		spent   time.Duration
-		minimum time.Duration
-		want    time.Duration
-		ok      bool
+		name     string
+		spent    time.Duration
+		window   time.Duration
+		provider bool
+		minimum  time.Duration
+		want     time.Duration
+		ok       bool
 	}{
-		{"nothing spent", Total, 30 * time.Second, 0, DirectReserve, 30 * time.Second, true},
-		{"tunnel used its share", Total, 30 * time.Second, 20 * time.Second, DirectReserve, 10 * time.Second, true},
-		{"tunnel overran its share", Total, 30 * time.Second, 29 * time.Second, DirectReserve, 10 * time.Second, true},
-		{"window already over", Total, 30 * time.Second, 30 * time.Second, DirectReserve, 10 * time.Second, true},
-		{"total budget is the tighter cap", 12 * time.Second, 30 * time.Second, 0, DirectReserve, 12 * time.Second, true},
-		{"total budget exhausted", 5 * time.Second, 30 * time.Second, 0, DirectReserve, 0, false},
-		{"second retry without the reserve", Total, 30 * time.Second, 30 * time.Second, 0, 0, false},
+		{"nothing spent", 0, 30 * time.Second, false, DirectReserve, 30 * time.Second, true},
+		{"tunnel used its share", 20 * time.Second, 30 * time.Second, false, DirectReserve, 10 * time.Second, true},
+		{"tunnel overran its share", 29 * time.Second, 30 * time.Second, false, DirectReserve, 10 * time.Second, true},
+		{"window already over", 30 * time.Second, 30 * time.Second, false, DirectReserve, 10 * time.Second, true},
+		{"overall budget is the tighter cap", 168 * time.Second, 190 * time.Second, true, DirectReserve, 12 * time.Second, true},
+		{"overall budget exhausted", 175 * time.Second, 190 * time.Second, true, DirectReserve, 0, false},
+		{"configuration share exhausted", 115 * time.Second, 190 * time.Second, false, DirectReserve, 0, false},
+		{"second retry without the reserve", 30 * time.Second, 30 * time.Second, false, 0, 0, false},
 	} {
-		b := Within(start, row.total)
-		deadline := start.Add(row.window)
+		b := New(start)
+		if row.provider {
+			b.EnterProviderPhase()
+		}
 
-		got, ok := b.DirectWindow(start.Add(row.spent), deadline, row.minimum)
+		got, ok := b.DirectWindow(start.Add(row.spent), start.Add(row.window), row.minimum)
 
 		if ok != row.ok {
 			t.Fatalf("%s: ok = %v, want %v", row.name, ok, row.ok)
@@ -59,6 +62,7 @@ func TestDirectRetryStaysInsideAddressWindow(t *testing.T) {
 
 func TestWindowRefusesBelowTheFloor(t *testing.T) {
 	b := New(start)
+	b.EnterProviderPhase()
 
 	if _, ok := b.Window(start.Add(Total-MinAttempt+time.Second), 30*time.Second); ok {
 		t.Fatal("a window shorter than the floor was granted")
@@ -78,5 +82,64 @@ func TestWindowSurvivesAClockJump(t *testing.T) {
 
 	if got, ok := b.Window(start.Add(-time.Hour), 30*time.Second); !ok || got != 30*time.Second {
 		t.Fatalf("the clock jumped backwards: window = %s, %v", got, ok)
+	}
+}
+
+func TestConfigurationPhaseCannotEatTheProviderShare(t *testing.T) {
+	for _, spent := range []time.Duration{
+		0,
+		30 * time.Second,
+		60 * time.Second,
+		110 * time.Second,
+		ConfigShare,
+	} {
+		b := New(start)
+		now := start.Add(spent)
+
+		if got := b.Remaining(now); got > ConfigShare-spent {
+			t.Fatalf("spent %s: the configuration phase sees %s, more than its share", spent, got)
+		}
+
+		b.EnterProviderPhase()
+
+		if got := b.Remaining(now); got < ProviderShare {
+			t.Fatalf("spent %s: providers got %s, less than %s", spent, got, ProviderShare)
+		}
+
+		if b.Deadline() != start.Add(Total) {
+			t.Fatalf("spent %s: the overall deadline moved to %s", spent, b.Deadline())
+		}
+	}
+}
+
+func TestConfigurationPhaseIsCapped(t *testing.T) {
+	b := New(start)
+
+	if got, ok := b.Window(start, fetchTimeoutForTest); !ok || got != fetchTimeoutForTest {
+		t.Fatalf("first address window = %s, %v", got, ok)
+	}
+
+	if got, ok := b.Window(start.Add(100*time.Second), fetchTimeoutForTest); !ok || got != 20*time.Second {
+		t.Fatalf("late address window = %s, %v", got, ok)
+	}
+
+	if _, ok := b.Window(start.Add(ConfigShare-MinAttempt+time.Second), fetchTimeoutForTest); ok {
+		t.Fatal("an address window was granted past the configuration share")
+	}
+}
+
+const fetchTimeoutForTest = 60 * time.Second
+
+func TestProviderShareScalesWithASmallerBudget(t *testing.T) {
+	b := Within(start, 60*time.Second)
+
+	if got := b.Remaining(start); got != 40*time.Second {
+		t.Fatalf("configuration share of a 60 s budget = %s, want 40s", got)
+	}
+
+	b.EnterProviderPhase()
+
+	if got := b.Remaining(start.Add(40 * time.Second)); got != 20*time.Second {
+		t.Fatalf("provider share of a 60 s budget = %s, want 20s", got)
 	}
 }
