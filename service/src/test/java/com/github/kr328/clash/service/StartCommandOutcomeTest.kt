@@ -154,7 +154,7 @@ class StartCommandOutcomeTest {
     fun plainStopDoesNotRestart() {
         assertEquals(
             AfterStopOutcome.Done,
-            afterStopOutcome(stopSelfSucceeded = true, restartRequested = false, stickyAllowed = true),
+            afterStopOutcome(restartRequested = false, stickyAllowed = true),
         )
     }
 
@@ -162,15 +162,7 @@ class StartCommandOutcomeTest {
     fun heldRequestRestartsSession() {
         assertEquals(
             AfterStopOutcome.StartSession,
-            afterStopOutcome(stopSelfSucceeded = true, restartRequested = true, stickyAllowed = true),
-        )
-        assertEquals(
-            AfterStopOutcome.StartSession,
-            afterStopOutcome(stopSelfSucceeded = false, restartRequested = false, stickyAllowed = true),
-        )
-        assertEquals(
-            AfterStopOutcome.StartSession,
-            afterStopOutcome(stopSelfSucceeded = false, restartRequested = true, stickyAllowed = true),
+            afterStopOutcome(restartRequested = true, stickyAllowed = true),
         )
     }
 
@@ -178,11 +170,7 @@ class StartCommandOutcomeTest {
     fun refusedStickyRestartAbandonsHeldRequest() {
         assertEquals(
             AfterStopOutcome.Abandon,
-            afterStopOutcome(stopSelfSucceeded = false, restartRequested = true, stickyAllowed = false),
-        )
-        assertEquals(
-            AfterStopOutcome.Abandon,
-            afterStopOutcome(stopSelfSucceeded = true, restartRequested = true, stickyAllowed = false),
+            afterStopOutcome(restartRequested = true, stickyAllowed = false),
         )
     }
 
@@ -190,7 +178,7 @@ class StartCommandOutcomeTest {
     fun plainStopIgnoresStickyRefusal() {
         assertEquals(
             AfterStopOutcome.Done,
-            afterStopOutcome(stopSelfSucceeded = true, restartRequested = false, stickyAllowed = false),
+            afterStopOutcome(restartRequested = false, stickyAllowed = false),
         )
     }
 }

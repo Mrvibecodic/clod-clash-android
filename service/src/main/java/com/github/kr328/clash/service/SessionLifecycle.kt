@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 enum class StartCommandOutcome {
     Rejected,
@@ -47,11 +48,10 @@ fun shouldWarnAlwaysOnBusy(running: Boolean, ready: Boolean, alwaysOn: Boolean):
     running && !ready && alwaysOn
 
 fun afterStopOutcome(
-    stopSelfSucceeded: Boolean,
     restartRequested: Boolean,
     stickyAllowed: Boolean,
 ): AfterStopOutcome = when {
-    stopSelfSucceeded && !restartRequested -> AfterStopOutcome.Done
+    !restartRequested -> AfterStopOutcome.Done
     !stickyAllowed -> AfterStopOutcome.Abandon
     else -> AfterStopOutcome.StartSession
 }
@@ -79,9 +79,7 @@ class SessionLifecycle(
 
     private val stopping = AtomicBoolean(false)
 
-    private val restartRequested = AtomicBoolean(false)
-
-    private val restartBySystem = AtomicBoolean(false)
+    private val pendingStart = AtomicReference<PendingStart?>(null)
 
     @Volatile
     private var destroyed = false
@@ -193,6 +191,8 @@ class SessionLifecycle(
 
         if (!pending) {
             lastStartId = startId
+
+            pendingStart.set(null)
         }
 
         if (!rejected && !pending && systemStart) {
@@ -211,11 +211,11 @@ class SessionLifecycle(
         when (outcome) {
             StartCommandOutcome.Rejected -> service.stopSelf()
             StartCommandOutcome.Remember -> {
-                restartRequested.set(true)
+                val held = pendingStart.get()
 
-                if (systemStart) {
-                    restartBySystem.set(true)
-                }
+                pendingStart.set(
+                    PendingStart(startId = startId, bySystem = systemStart && (held?.bySystem ?: true)),
+                )
 
                 ServiceLog.mark("start command $startId held until stop finishes")
             }
@@ -247,20 +247,23 @@ class SessionLifecycle(
     fun finishSession() {
         notifyStopped()
 
+        val held = pendingStart.getAndSet(null)
+
+        if (held != null) {
+            lastStartId = held.startId
+        }
+
         val stopSelfSucceeded = service.stopSelfResult(stopId)
-        val requested = restartRequested.getAndSet(false)
-        val bySystem = restartBySystem.getAndSet(false)
 
         stopping.set(false)
 
-        if (requested && bySystem) {
+        if (held != null && held.bySystem) {
             systemStarted = true
         }
 
         val outcome = afterStopOutcome(
-            stopSelfSucceeded = stopSelfSucceeded,
-            restartRequested = requested,
-            stickyAllowed = if (requested && bySystem) stickyRestartAllowed() else true,
+            restartRequested = held != null,
+            stickyAllowed = if (held != null && held.bySystem) stickyRestartAllowed() else true,
         )
 
         ServiceLog.mark("stop finished, self stopped = $stopSelfSucceeded, next = $outcome")
@@ -283,6 +286,8 @@ class SessionLifecycle(
 
         ServiceStore(service).clearSessionStarted(sessionStartedAt)
     }
+
+    private data class PendingStart(val startId: Int, val bySystem: Boolean)
 
     private companion object {
         private const val STICKY_RESTART_WINDOW_MS = 10 * 60 * 1000L
