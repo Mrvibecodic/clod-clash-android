@@ -13,6 +13,9 @@ import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.ActiveProfileAction
+import com.github.kr328.clash.service.util.activeProfileGone
+import com.github.kr328.clash.service.util.activeProfileRollback
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendClashStarting
@@ -33,6 +36,14 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
     private val reload = Channel<Unit>(Channel.CONFLATED)
 
     private var loadedSecretKey: String? = null
+
+    private fun forgetMissingProfile(missing: UUID): Nothing {
+        if (activeProfileGone(store.activeProfile, missing) == ActiveProfileAction.Clear) {
+            store.activeProfile = null
+        }
+
+        throw NullPointerException("No profile selected")
+    }
 
     private fun stage(stage: String) {
         StatusProvider.startupStage = stage
@@ -74,7 +85,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                     continue
 
                 val active = ImportedDao().queryByUUID(current)
-                    ?: throw NullPointerException("No profile selected")
+                    ?: forgetMissingProfile(current)
 
                 val secretKey = active.ageSecretKey?.takeIf { it.isNotBlank() }
 
@@ -145,7 +156,14 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 Clash.setAgeSecretKey(loadedSecretKey)
 
-                if (current != retained && store.activeProfile == current) {
+                val rollback = activeProfileRollback(
+                    store.activeProfile,
+                    current,
+                    retained,
+                    ImportedDao().exists(retained),
+                )
+
+                if (rollback == ActiveProfileAction.Restore) {
                     store.activeProfile = retained
                 }
 

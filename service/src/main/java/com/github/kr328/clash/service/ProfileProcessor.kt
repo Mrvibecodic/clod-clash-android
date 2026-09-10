@@ -18,6 +18,8 @@ import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.migrationDir
 import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.service.util.ProfileSwap
+import com.github.kr328.clash.service.util.ActiveProfileAction
+import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.readPanelInfo
@@ -392,6 +394,12 @@ object ProfileProcessor {
                 pending.deleteRecursively()
                 imported.deleteRecursively()
                 ProfileSwap.staleOf(imported).deleteRecursively()
+
+                val store = ServiceStore(context)
+
+                if (activeProfileGone(store.activeProfile, uuid) == ActiveProfileAction.Clear) {
+                    store.activeProfile = null
+                }
 
                 context.sendProfileChanged(uuid)
             }
