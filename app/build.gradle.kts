@@ -121,7 +121,7 @@ task("downloadGeoFiles") {
 
 tasks.matching {
     it.name.startsWith("assemble") ||
-        it.name.startsWith("bundle") ||
+        (it.name.startsWith("bundle") && !it.name.contains("ClassesTo")) ||
         it.name.contains("Assets") ||
         it.name.contains("lint", ignoreCase = true)
 }.configureEach {
