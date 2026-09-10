@@ -194,3 +194,17 @@ class StartCommandOutcomeTest {
         )
     }
 }
+
+class AlwaysOnBusyTest {
+    @Test
+    fun warnsOnlyWhileTheRunningServiceIsNotReadyYet() {
+        assertEquals(true, shouldWarnAlwaysOnBusy(running = true, ready = false, alwaysOn = true))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = true, ready = true, alwaysOn = true))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = true, ready = false, alwaysOn = false))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = true, ready = true, alwaysOn = false))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = false, ready = false, alwaysOn = true))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = false, ready = true, alwaysOn = true))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = false, ready = false, alwaysOn = false))
+        assertEquals(false, shouldWarnAlwaysOnBusy(running = false, ready = true, alwaysOn = false))
+    }
+}

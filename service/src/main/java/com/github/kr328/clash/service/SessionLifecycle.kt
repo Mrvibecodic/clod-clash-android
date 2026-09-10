@@ -43,6 +43,9 @@ fun startCommandOutcome(
     else -> StartCommandOutcome.Ignore
 }
 
+fun shouldWarnAlwaysOnBusy(running: Boolean, ready: Boolean, alwaysOn: Boolean): Boolean =
+    running && !ready && alwaysOn
+
 fun afterStopOutcome(
     stopSelfSucceeded: Boolean,
     restartRequested: Boolean,

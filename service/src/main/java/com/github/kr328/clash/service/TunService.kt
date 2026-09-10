@@ -129,7 +129,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         session.claimUserIntent()
 
         if (StatusProvider.serviceRunning) {
-            if (alwaysOn) {
+            if (shouldWarnAlwaysOnBusy(StatusProvider.serviceRunning, StatusProvider.serviceReady, alwaysOn)) {
                 StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_always_on_busy))
             }
 
