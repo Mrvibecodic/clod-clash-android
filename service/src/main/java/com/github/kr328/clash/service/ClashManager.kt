@@ -6,6 +6,7 @@ import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.*
 import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
+import com.github.kr328.clash.service.data.Selections
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
@@ -18,8 +19,7 @@ import java.util.UUID
 class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
     private val store = ServiceStore(context)
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val selections = Dispatchers.IO.limitedParallelism(1)
+    private val selections = Selections.queue
     private val selectionWriter = CoroutineScope(SupervisorJob() + selections)
     private var logReceiver: ReceiveChannel<LogMessage>? = null
     private var markReceiver: Job? = null

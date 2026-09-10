@@ -12,6 +12,7 @@ import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.SelectionDao
+import com.github.kr328.clash.service.data.Selections
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.ActiveProfileAction
 import com.github.kr328.clash.service.util.activeProfileGone
@@ -23,6 +24,7 @@ import com.github.kr328.clash.service.util.sendProfileLoadFailed
 import com.github.kr328.clash.service.util.sendProfileLoaded
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.selects.select
 import java.util.*
 
@@ -127,11 +129,17 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 if (first) stage(Intents.STAGE_SELECTING)
 
-                val remove = SelectionDao().querySelections(active.uuid)
+                val stored = withContext(Selections.queue) {
+                    SelectionDao().querySelections(active.uuid)
+                }
+
+                val remove = stored
                     .filterNot { Clash.patchSelector(it.proxy, it.selected) }
                     .map { it.proxy }
 
-                SelectionDao().removeSelections(active.uuid, remove)
+                withContext(Selections.queue) {
+                    SelectionDao().removeSelections(active.uuid, remove)
+                }
 
                 StatusProvider.currentProfile =
                     service.displayProfileName(active.uuid, active.name)
