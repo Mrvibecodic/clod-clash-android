@@ -11,6 +11,7 @@ import (
 
 	"cfa/native/common/safego"
 	"cfa/native/config"
+	"cfa/native/probeoutcome"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/utils"
@@ -28,10 +29,10 @@ const (
 )
 
 type probeResult struct {
-	done   chan struct{}
-	probed bool
-	delay  uint16
-	err    error
+	done    chan struct{}
+	outcome probeoutcome.Outcome
+	delay   uint16
+	err     error
 }
 
 var (
@@ -88,7 +89,7 @@ func healthCheckBudget(count int) time.Duration {
 	return need
 }
 
-func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) (uint16, bool, error) {
+func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) (uint16, probeoutcome.Outcome, error) {
 	key := px.Name() + "|" + url + "|" + statusKey
 
 	for {
@@ -99,13 +100,15 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 
 			select {
 			case <-shared.done:
-				if !shared.probed && ctx.Err() == nil {
+				stale := shared.outcome == probeoutcome.Superseded || shared.outcome == probeoutcome.Expired
+
+				if stale && ctx.Err() == nil {
 					continue
 				}
 
-				return shared.delay, shared.probed, shared.err
+				return shared.delay, shared.outcome, shared.err
 			case <-ctx.Done():
-				return 0, false, ctx.Err()
+				return 0, probeoutcome.Classify(ctx.Err(), ctx.Err()), ctx.Err()
 			}
 		}
 
@@ -124,8 +127,9 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 
 		if err := waitNetworkSettled(ctx); err != nil {
 			own.err = err
+			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
 
-			return 0, false, own.err
+			return 0, own.outcome, own.err
 		}
 
 		select {
@@ -133,17 +137,18 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 			defer func() { <-probeSlots }()
 		case <-ctx.Done():
 			own.err = ctx.Err()
+			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
 
-			return 0, false, own.err
+			return 0, own.outcome, own.err
 		}
 
 		probe, cancel := context.WithTimeout(ctx, healthCheckProbeTimeout)
 		defer cancel()
 
 		own.delay, own.err = px.URLTest(probe, url, expected)
-		own.probed = own.err == nil || ctx.Err() == nil
+		own.outcome = probeoutcome.Classify(own.err, ctx.Err())
 
-		return own.delay, own.probed, own.err
+		return own.delay, own.outcome, own.err
 	}
 }
 
@@ -273,9 +278,9 @@ func HealthCheck(name string) {
 		safego.Go("healthCheckProbe", func() {
 			defer wg.Done()
 
-			_, done, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
+			_, outcome, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
 
-			if !done {
+			if outcome == probeoutcome.Superseded || outcome == probeoutcome.Expired {
 				return
 			}
 
@@ -355,24 +360,25 @@ func ProbeCurrentNodes() {
 		safego.Go("probeCurrentNode", func() {
 			defer release()
 
-			delay, done, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
-			if !done {
-				return
-			}
+			delay, outcome, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
 
-			if err != nil {
-				log.Infoln("Probe after network change: %s failed", px.Name())
+			switch outcome {
+			case probeoutcome.Alive:
+				log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
+			case probeoutcome.Superseded:
+			default:
+				if err != nil {
+					log.Infoln("Probe after network change: %s failed: %s", px.Name(), err.Error())
+				} else {
+					log.Infoln("Probe after network change: %s did not finish in the round budget", px.Name())
+				}
 
 				if reselect {
 					safego.Go("healthCheck", func() {
 						HealthCheck(group)
 					})
 				}
-
-				return
 			}
-
-			log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
 		})
 	}
 
@@ -474,9 +480,9 @@ func RecoverDeadNodes(force bool) {
 		safego.Go("recoverDeadNode", func() {
 			defer wg.Done()
 
-			delay, done, err := probeProxy(ctx, t.proxy, t.url, t.status, t.expected)
+			delay, outcome, _ := probeProxy(ctx, t.proxy, t.url, t.status, t.expected)
 
-			if done && err == nil {
+			if outcome == probeoutcome.Alive {
 				revived.Add(1)
 
 				log.Infoln("Recover dead nodes: %s alive, %d ms", t.proxy.Name(), delay)
