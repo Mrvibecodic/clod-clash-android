@@ -33,11 +33,15 @@ requests this app makes itself.
     decision, described in the provider's own policy.
     One more thing to know about this request: while the VPN is on, it normally travels
     through the tunnel like any other traffic. If that attempt fails — the selected server
-    is down, or the connection through it breaks — the app retries the same request once
-    outside the tunnel, directly from your network. In that case the provider sees your
-    real IP address together with the device headers above. The retry is made only for
-    the subscription address, never for other hosts, and only after the attempt through
-    the tunnel has failed.
+    is down, or the connection through it breaks — the app retries that request outside the
+    tunnel, directly from your network. In that case the provider sees your real IP address
+    together with the device headers above. Every failed attempt is retried directly at most
+    once, and one refresh can make several attempts: the address you entered plus up to two
+    spare addresses supplied by the provider, and, with the secure channel, up to three
+    rounds per address. So a single refresh can produce up to three such direct requests, or
+    up to nine when the secure channel is in use; the time budget of the refresh may cut that
+    short. The retry is made only for the subscription address, never for other hosts, and
+    only after the attempt through the tunnel has failed.
 *   **To a connectivity-check address, through each server.** Measuring latency (the
     "check" button, the automatic check when the Servers tab is opened, and the checks
     after a network change) sends a tiny request to a test address through every server
