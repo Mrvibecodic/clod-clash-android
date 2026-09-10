@@ -23,6 +23,7 @@ import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
+import com.github.kr328.clash.design.model.RoutingDataMerge
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
@@ -393,16 +394,10 @@ class MainDesign(
 
     suspend fun setRoutingData(files: List<GeoFileState>, providers: List<ProviderFileState>) {
         withContext(Dispatchers.Main) {
-            val known = state.routingData.providers.associateBy { it.key }
-
             state = state.copy(
                 routingData = state.routingData.copy(
                     files = files,
-                    providers = providers.map { fresh ->
-                        val old = known[fresh.key] ?: return@map fresh
-
-                        fresh.copy(updating = old.updating, error = old.error)
-                    },
+                    providers = RoutingDataMerge.merge(providers, state.routingData.providers),
                 ),
             )
         }

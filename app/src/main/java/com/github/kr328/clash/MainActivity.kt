@@ -1558,10 +1558,14 @@ class MainActivity : BaseActivity<MainDesign>() {
             return try {
                 withClash { updateProvider(provider.type, provider.name) }
 
+                busy.remove(key)
+
                 events.emit(ProviderEvent(key, updating = false, updatedAt = System.currentTimeMillis()))
 
                 null
             } catch (e: CancellationException) {
+                busy.remove(key)
+
                 events.emit(ProviderEvent(key, updating = false))
 
                 throw e
@@ -1569,6 +1573,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                 Log.w("Update provider ${provider.name}: $e", e)
 
                 val reason = Redact.text(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+
+                busy.remove(key)
 
                 events.emit(ProviderEvent(key, updating = false, error = reason))
 
