@@ -8,6 +8,7 @@ import (
 	"io"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -82,6 +83,7 @@ func (t *remoteTun) close() {
 //export startTun
 func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) (result C.int) {
 	started := false
+	handedOver := false
 
 	// Паника внутри tun.Start оставила бы применённый контекст и глобальную
 	// ссылку на колбэки мёртвой сессии: снимаем их на любом выходе без успеха.
@@ -94,6 +96,10 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 
 	defer func() {
 		if !started {
+			if !handedOver {
+				_ = syscall.Close(int(fd))
+			}
+
 			app.ApplyTunContext(nil, nil)
 
 			remote.close()
@@ -112,6 +118,8 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	d := C.GoString(dns)
 
 	app.ApplyTunContext(remote.markSocket, remote.querySocketUid)
+
+	handedOver = true
 
 	closer, err := tun.Start(f, s, g, p, d)
 	if err != nil {

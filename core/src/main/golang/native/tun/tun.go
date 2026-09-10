@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"strings"
+	"syscall"
 
 	C "github.com/metacubex/mihomo/constant"
 	LC "github.com/metacubex/mihomo/listener/config"
@@ -16,6 +17,14 @@ import (
 
 func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 	log.Debugln("TUN: fd = %d, stack = %s, gateway = %s, portal = %s, dns = %s", fd, stack, gateway, portal, dns)
+
+	owned := true
+
+	defer func() {
+		if owned {
+			_ = syscall.Close(fd)
+		}
+	}()
 
 	tunStack, ok := C.StackTypeMapping[strings.ToLower(stack)]
 	if !ok {
@@ -48,7 +57,13 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 		if len(dnsStr) == 0 {
 			continue
 		}
-		dnsHijack = append(dnsHijack, net.JoinHostPort(dnsStr, "53"))
+		addr, err := netip.ParseAddr(dnsStr)
+		if err != nil {
+			log.Errorln("TUN:", err)
+			return nil, err
+		}
+
+		dnsHijack = append(dnsHijack, net.JoinHostPort(addr.String(), "53"))
 	}
 
 	options := LC.Tun{
@@ -66,6 +81,8 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 
 	tunOptions, _ := json.Marshal(options)
 	log.Debugln(string(tunOptions))
+
+	owned = false
 
 	listener, err := sing_tun.New(options, tunnel.Tunnel)
 	if err != nil {
