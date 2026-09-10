@@ -17,7 +17,9 @@ import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.store.ServiceStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppSettingsDesign(
     context: Context,
@@ -83,33 +85,47 @@ class AppSettingsDesign(
             return
         }
 
+        state = state.copy(resetEnabled = false)
+
         behavior.autoRestart = false
 
         onHideIconChange(false)
 
-        uiStore.reset()
-        srvStore.reset()
-        onReset()
+        launch {
+            val prefs = withContext(Dispatchers.IO) {
+                uiStore.reset()
+                srvStore.reset()
 
-        applyLanguage(0)
+                srvStore.appLocale = languageTags[0]
 
-        state = state.copy(
-            autoRestart = behavior.autoRestart,
-            darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
-            language = 0,
-            showGroupIcons = uiStore.showGroupIcons,
-            hideAppIcon = false,
-            hideFromRecents = uiStore.hideFromRecents,
-            allowExternalControl = uiStore.allowExternalControl,
-            dynamicNotification = srvStore.dynamicNotification,
-            enableHwid = srvStore.enableHwid,
-            subNotifications = srvStore.enableSubNotifications,
-            profileErrorNotifications = srvStore.notifyProfileErrors,
-            profileUpdateNotifications = srvStore.notifyProfileUpdates,
-            notificationsBlocked = notificationsBlocked(),
-        )
+                AppSettingsPrefs.read(srvStore)
+            }
 
-        requests.trySend(Request.ReCreateAllActivities)
+            withContext(Dispatchers.Main) {
+                onReset()
+
+                applyLocale(languageTags[0])
+
+                state = state.copy(
+                    autoRestart = behavior.autoRestart,
+                    darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+                    language = 0,
+                    showGroupIcons = uiStore.showGroupIcons,
+                    hideAppIcon = false,
+                    hideFromRecents = uiStore.hideFromRecents,
+                    allowExternalControl = uiStore.allowExternalControl,
+                    dynamicNotification = prefs.dynamicNotification,
+                    enableHwid = prefs.enableHwid,
+                    subNotifications = prefs.subNotifications,
+                    profileErrorNotifications = prefs.profileErrorNotifications,
+                    profileUpdateNotifications = prefs.profileUpdateNotifications,
+                    notificationsBlocked = notificationsBlocked(),
+                    resetEnabled = true,
+                )
+
+                requests.trySend(Request.ReCreateAllActivities)
+            }
+        }
     }
 
     private fun currentLanguage(): Int {
@@ -127,8 +143,18 @@ class AppSettingsDesign(
     private fun applyLanguage(index: Int) {
         val tag = languageTags.getOrNull(index) ?: return
 
-        srvStore.appLocale = tag
+        launch {
+            withContext(Dispatchers.IO) {
+                srvStore.appLocale = tag
+            }
 
+            withContext(Dispatchers.Main) {
+                applyLocale(tag)
+            }
+        }
+    }
+
+    private fun applyLocale(tag: String) {
         AppCompatDelegate.setApplicationLocales(
             if (tag.isEmpty()) {
                 LocaleListCompat.getEmptyLocaleList()
