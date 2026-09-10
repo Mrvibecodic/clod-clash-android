@@ -39,7 +39,11 @@ object ProfileImports {
     sealed interface BatchState {
         data object Idle : BatchState
         data class Running(val restored: Int, val total: Int) : BatchState
-        data class Done(val restored: Int, val total: Int) : BatchState
+        data class Done(
+            val restored: Int,
+            val total: Int,
+            val failedProviders: List<String> = emptyList(),
+        ) : BatchState
     }
 
     data class Item(
@@ -120,6 +124,7 @@ object ProfileImports {
 
         batchJob = Global.launch {
             var restored = 0
+            val failed = AtomicReference(emptyList<String>())
 
             for (item in items) {
                 try {
@@ -131,7 +136,9 @@ object ProfileImports {
                         withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval, null) }
                     }
 
-                    import(uuid, item.active, null)
+                    import(uuid, item.active) { status ->
+                        FailedProviders.accumulate(failed, status)
+                    }
 
                     restored += 1
 
@@ -143,7 +150,7 @@ object ProfileImports {
                 }
             }
 
-            batch_.value = BatchState.Done(restored, total)
+            batch_.value = BatchState.Done(restored, total, failed.get())
         }
 
         return true

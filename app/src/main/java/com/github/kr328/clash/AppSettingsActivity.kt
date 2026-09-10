@@ -66,6 +66,14 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                         getString(DesignR.string.clod_backup_restored, state.restored, state.total),
                         ToastDuration.Long,
                     )
+
+                    if (state.failedProviders.isNotEmpty()) {
+                        design.showToast(
+                            DesignR.string.clod_providers_failed_plural,
+                            ToastDuration.Long,
+                            detail = state.failedProviders.joinToString(", "),
+                        )
+                    }
                 }
             }
         }
