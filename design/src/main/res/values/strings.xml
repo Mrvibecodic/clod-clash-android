@@ -437,6 +437,7 @@
     <string name="clod_profile_update_notify_title">Successful subscription updates</string>
     <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
     <string name="clod_delay_unavailable">No server responded to the delay test</string>
+    <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded nodes. Traffic is blocked, not sent directly. Update the subscription</string>
     <string name="clod_language_title">Language</string>
     <string name="clod_language_system">System default</string>
     <string name="clod_group_icons_title">Group icons</string>

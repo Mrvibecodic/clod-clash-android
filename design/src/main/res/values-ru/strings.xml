@@ -424,6 +424,7 @@
     <string name="clod_profile_update_notify_title">Успешные обновления подписки</string>
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
     <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
+    <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных узлов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
     <string name="clod_language_title">Язык</string>
     <string name="clod_language_system">Как в системе</string>
     <string name="clod_group_icons_title">Иконки групп</string>

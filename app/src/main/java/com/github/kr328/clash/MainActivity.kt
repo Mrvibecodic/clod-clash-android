@@ -32,6 +32,7 @@ import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
+import com.github.kr328.clash.design.model.globalRoutingBlocked
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
@@ -662,10 +663,16 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var serversReadOnly: Boolean = false
 
+    private var globalSelection: String? = null
+
+    private var globalBlockedReported: Boolean = false
+
     private suspend fun MainDesign.reloadProxyGroups(): Boolean {
         val names = if (clashRunning) withClash { queryProxyGroupNames(true) } else emptyList()
 
         if (names.isEmpty()) {
+            globalSelection = null
+
             val direct = clashRunning &&
                 withClash { queryTunnelState() }.mode == TunnelState.Mode.Direct
 
@@ -683,6 +690,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         reloadGroupIcons(names)
 
         reloadProxyGroup(selectedGroup)
+
+        reportGlobalRoutingBlocked(names)
 
         if (names != healthCheckedGroups && activityStarted) {
             healthCheckedGroups = names
@@ -921,6 +930,25 @@ class MainActivity : BaseActivity<MainDesign>() {
         showToast(DesignR.string.clod_delay_unavailable, ToastDuration.Long)
     }
 
+    private suspend fun MainDesign.reportGlobalRoutingBlocked(names: List<String>) {
+        if (!globalRoutingBlocked(names, globalSelection)) {
+            globalBlockedReported = false
+
+            return
+        }
+
+        if (globalBlockedReported) return
+
+        globalBlockedReported = true
+
+        showToast(
+            resId = DesignR.string.clod_global_nothing_to_use,
+            duration = ToastDuration.Long,
+            actionLabel = DesignR.string.profiles,
+            onAction = { launch { selectTab(MainTab.Subscriptions) } },
+        )
+    }
+
     private suspend fun MainDesign.reloadProxyGroup(index: Int): List<Int> {
         if (offlineGroups.isNotEmpty()) {
             fillOfflineProxyGroup(index)
@@ -930,6 +958,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val name = proxyGroupNames.getOrNull(index) ?: return emptyList()
         val group = withClash { queryProxyGroup(name, uiStore.proxySort) }
+
+        if (name == GLOBAL_GROUP) {
+            globalSelection = group.now
+        }
 
         setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
 
