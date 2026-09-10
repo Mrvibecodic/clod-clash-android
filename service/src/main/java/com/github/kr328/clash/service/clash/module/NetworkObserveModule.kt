@@ -290,7 +290,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         Clash.notifyNetworkChanged(reset, hold)
 
         if (awake) {
-            probeNodes()
+            probeNodes(force = true)
 
             scheduleRecover(scope, force = flapMark.count == 1)
         } else {
@@ -298,10 +298,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         }
     }
 
-    private fun probeNodes() {
+    private fun probeNodes(force: Boolean = false) {
         val now = SystemClock.elapsedRealtime()
 
-        if (now - lastProbeAt < PROBE_MIN_GAP_MS) {
+        if (!shouldProbe(now, lastProbeAt, PROBE_MIN_GAP_MS, force)) {
             return
         }
 
