@@ -603,19 +603,15 @@ func fetchProviders(rawCfg *config.RawConfig, budget *budgets.Budget, reportStat
 			slots <- struct{}{}
 			defer func() { <-slots }()
 
-			err := fetchProvider(job, budget)
+			started := total - len(jobs) + int(done.Add(1))
 
-			finished := total - len(jobs) + int(done.Add(1))
+			reportProvider(reportStatus, "FetchProviders", []string{job.name}, started, total)
 
-			if err != nil {
+			if err := fetchProvider(job, budget); err != nil {
 				log.Warnln("Fetch provider %s: %s", job.name, err.Error())
 
-				reportProvider(reportStatus, "ProviderFailed", []string{job.name, err.Error()}, finished, total)
-
-				return
+				reportProvider(reportStatus, "ProviderFailed", []string{job.name, err.Error()}, started, total)
 			}
-
-			reportProvider(reportStatus, "FetchProviders", []string{job.name}, finished, total)
 		})
 	}
 

@@ -354,9 +354,7 @@ object ProfileProcessor {
         probe: Boolean,
         callback: IFetchObserver?,
     ): Fetched {
-        var subscriptionInfo: FetchStatus? = null
-        val failedProviders = ArrayList<String>()
-        var cb = callback
+        val reports = FetchReports(callback)
 
         context.applyDeviceInfo()
 
@@ -365,27 +363,22 @@ object ProfileProcessor {
         context.seedSystemDns()
 
         Clash.fetchAndValid(dir, source, force, probe) {
-            when (it.action) {
-                FetchStatus.Action.SubscriptionInfo -> {
-                    subscriptionInfo = it
-                    return@fetchAndValid
-                }
-                FetchStatus.Action.ProviderFailed -> synchronized(failedProviders) {
-                    it.args.firstOrNull()?.let(failedProviders::add)
-                }
-                else -> Unit
-            }
+            if (reports.record(it)) {
+                val observer = reports.observer()
 
-            try {
-                cb?.updateStatus(it)
-            } catch (e: Exception) {
-                cb = null
+                if (observer != null) {
+                    try {
+                        observer.updateStatus(it)
+                    } catch (e: Exception) {
+                        reports.drop()
 
-                Log.w("Report fetch status: $e", e)
+                        Log.w("Report fetch status: $e", e)
+                    }
+                }
             }
         }.await()
 
-        return Fetched(subscriptionInfo, synchronized(failedProviders) { failedProviders.toList() })
+        return Fetched(reports.info(), reports.failed())
     }
 
     suspend fun delete(context: Context, uuid: UUID) {
