@@ -16,18 +16,36 @@ type GlobalMember struct {
 	Resolved string
 }
 
+func routable(member GlobalMember) bool {
+	if globalNonRoutable[member.Name] {
+		return false
+	}
+
+	resolved := member.Resolved
+	if resolved == "" {
+		resolved = member.Name
+	}
+
+	return !globalNonRoutable[resolved]
+}
+
+func GlobalSelectionRoutable(members []GlobalMember, selected string) bool {
+	if selected == "" {
+		return false
+	}
+
+	for _, member := range members {
+		if member.Name == selected {
+			return routable(member)
+		}
+	}
+
+	return false
+}
+
 func PreferredGlobalSelection(members []GlobalMember) string {
 	for _, member := range members {
-		if globalNonRoutable[member.Name] {
-			continue
-		}
-
-		resolved := member.Resolved
-		if resolved == "" {
-			resolved = member.Name
-		}
-
-		if globalNonRoutable[resolved] {
+		if !routable(member) {
 			continue
 		}
 

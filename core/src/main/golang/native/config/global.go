@@ -86,13 +86,17 @@ func pinGlobalDefault() {
 		members = append(members, groups.GlobalMember{Name: px.Name(), Resolved: resolveTerminal(px)})
 	}
 
+	if groups.GlobalSelectionRoutable(members, g.Now()) {
+		return
+	}
+
 	name := groups.PreferredGlobalSelection(members)
 
 	if err := s.Set(name); err != nil {
-		log.Errorln("[APP] GLOBAL has no selection and %s cannot be pinned: %s", name, err.Error())
+		log.Errorln("[APP] GLOBAL has no routable selection and %s cannot be pinned: %s", name, err.Error())
 
 		return
 	}
 
-	log.Infoln("[APP] GLOBAL had no selection, pinned %s", name)
+	log.Infoln("[APP] GLOBAL had no routable selection, pinned %s", name)
 }

@@ -87,3 +87,32 @@ func TestPreferredGlobalSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestGlobalSelectionRoutable(t *testing.T) {
+	members := []GlobalMember{
+		node("DIRECT"),
+		node("REJECT"),
+		node("node-1"),
+		group("Auto", "node-7"),
+		group("Bypass", "DIRECT"),
+	}
+
+	cases := []struct {
+		selected string
+		want     bool
+	}{
+		{"", false},
+		{"node-1", true},
+		{"Auto", true},
+		{"DIRECT", false},
+		{"REJECT", false},
+		{"Bypass", false},
+		{"node-that-left-the-profile", false},
+	}
+
+	for _, c := range cases {
+		if got := GlobalSelectionRoutable(members, c.selected); got != c.want {
+			t.Fatalf("selected %q: want %v, got %v", c.selected, c.want, got)
+		}
+	}
+}
