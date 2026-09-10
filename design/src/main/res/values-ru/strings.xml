@@ -281,6 +281,8 @@
     <string name="clod_sub_other_ways">Другие способы импорта</string>
     <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
     <string name="clod_sub_added">Подписка успешно добавлена</string>
+    <string name="clod_sub_added_partial">Подписка добавлена, но часть провайдеров не скачалась</string>
+    <string name="clod_providers_failed_plural">Часть провайдеров не скачалась</string>
     <string name="clod_sub_draft">Не загружена</string>
     <string name="clod_sub_active">Активна</string>
     <string name="clod_sub_expiring">Истекает</string>

@@ -56,6 +56,11 @@ class AppStore(context: Context) {
         defaultValue = "",
     )
 
+    var profileProvidersFailed: String by store.string(
+        key = "profile_providers_failed",
+        defaultValue = "",
+    )
+
     companion object {
         private const val FILE_NAME = "app"
     }

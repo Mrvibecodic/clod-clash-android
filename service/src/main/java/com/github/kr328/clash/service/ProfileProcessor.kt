@@ -192,9 +192,9 @@ object ProfileProcessor {
                     }
                 }
 
-                followMigration(context, snapshot.uuid, snapshot.source, callback)
+                val migrated = followMigration(context, snapshot.uuid, snapshot.source, callback)
 
-                fetched.failedProviders
+                (fetched.failedProviders + migrated).distinct()
             }
         }
     }
@@ -204,13 +204,13 @@ object ProfileProcessor {
         uuid: UUID,
         current: String,
         callback: IFetchObserver?,
-    ) {
+    ): List<String> {
         val profileDir = context.importedDir.resolve(uuid.toString())
         val stateFile = profileDir.resolve(MIGRATION_FILE)
 
         val candidate = context.readPanelInfo(uuid)?.migrateUrl.orEmpty()
         if (candidate.isBlank() || candidate == current) {
-            return
+            return emptyList()
         }
 
         val now = System.currentTimeMillis()
@@ -225,32 +225,34 @@ object ProfileProcessor {
         if (state.history.any { it.url == candidate }) {
             Log.w("Migration of $uuid ignored: the address was already left behind, looks like a loop")
 
-            return
+            return emptyList()
         }
 
         if (state.hops >= MAX_MIGRATION_HOPS) {
             Log.w("Migration of $uuid ignored: ${state.hops} hops already followed")
 
-            return
+            return emptyList()
         }
 
         val probe = context.migrationDir
 
-        val info = try {
+        val fetched = try {
             probe.deleteRecursively()
             probe.mkdirs()
 
             profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
                 ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
 
-            fetchProfile(context, probe, candidate, true, true, callback).info
+            fetchProfile(context, probe, candidate, true, true, callback)
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
 
             probe.deleteRecursively()
 
-            return
+            return emptyList()
         }
+
+        val info = fetched.info
 
         profileLock.withLock {
             val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock
@@ -282,6 +284,8 @@ object ProfileProcessor {
         Log.i("Subscription $uuid migrated to a new address by the provider")
 
         context.sendProfileChanged(uuid)
+
+        return fetched.failedProviders
     }
 
     @Serializable

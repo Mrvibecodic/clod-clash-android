@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 object ProfileImports {
     sealed interface State {
@@ -26,7 +27,12 @@ object ProfileImports {
         }
 
         data class Running(override val token: Long, val status: FetchStatus?) : State
-        data class Done(override val token: Long, val uuid: UUID, val name: String) : State
+        data class Done(
+            override val token: Long,
+            val uuid: UUID,
+            val name: String,
+            val failedProviders: List<String>,
+        ) : State
         data class Failed(override val token: Long, val message: String) : State
     }
 
@@ -70,6 +76,7 @@ object ProfileImports {
 
         job = Global.launch {
             val context = Global.application.withAppLocale()
+            val failed = AtomicReference(emptyList<String>())
 
             try {
                 val uuid = withProfile(retry = false) {
@@ -78,6 +85,8 @@ object ProfileImports {
 
                 val profile = import(uuid, true) { status ->
                     runCatching {
+                        failed.updateAndGet { FailedProviders.accumulate(it, status) }
+
                         state_.value = State.Running(token, status)
                     }.onFailure {
                         Log.w("Report import status: $it", it)
@@ -89,9 +98,10 @@ object ProfileImports {
                 AppStore(context).apply {
                     addedProfileName = title
                     addedProfilePending = true
+                    profileProvidersFailed = failed.get().joinToString(", ")
                 }
 
-                state_.value = State.Done(token, uuid, title)
+                state_.value = State.Done(token, uuid, title, failed.get())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -150,6 +160,7 @@ object ProfileImports {
 
         job = Global.launch {
             val context = Global.application.withAppLocale()
+            val failed = AtomicReference(emptyList<String>())
 
             try {
                 withProfile(retry = false) {
@@ -158,6 +169,8 @@ object ProfileImports {
 
                 withProfile(retry = false) {
                     commit(profile.uuid) { status ->
+                        failed.updateAndGet { FailedProviders.accumulate(it, status) }
+
                         state_.value = State.Running(token, status)
                     }
                 }
@@ -166,7 +179,9 @@ object ProfileImports {
                     withProfile { setActive(profile) }
                 }
 
-                state_.value = State.Done(token, profile.uuid, profile.name)
+                AppStore(context).profileProvidersFailed = failed.get().joinToString(", ")
+
+                state_.value = State.Done(token, profile.uuid, profile.name, failed.get())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

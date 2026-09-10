@@ -1027,7 +1027,23 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.showAddedProfile() {
         val store = AppStore(this@MainActivity)
 
-        if (!store.addedProfilePending) return
+        val providers = store.profileProvidersFailed
+
+        if (providers.isNotBlank()) {
+            store.profileProvidersFailed = ""
+        }
+
+        if (!store.addedProfilePending) {
+            if (providers.isNotBlank()) {
+                showToast(
+                    DesignR.string.clod_providers_failed_plural,
+                    ToastDuration.Long,
+                    detail = providers,
+                )
+            }
+
+            return
+        }
 
         store.addedProfilePending = false
 
@@ -1036,6 +1052,16 @@ class MainActivity : BaseActivity<MainDesign>() {
         store.addedProfileName = ""
 
         selectTab(MainTab.Home)
+
+        if (providers.isNotBlank()) {
+            showToast(
+                DesignR.string.clod_sub_added_partial,
+                ToastDuration.Long,
+                detail = listOfNotNull(name.takeIf { it.isNotBlank() }, providers).joinToString(" · "),
+            )
+
+            return
+        }
 
         showToast(
             DesignR.string.clod_sub_added,
