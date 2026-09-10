@@ -217,12 +217,7 @@ object ProfileProcessor {
 
         val now = System.currentTimeMillis()
 
-        val state = readMigration(stateFile, now).let {
-            it.copy(
-                hops = if (it.hops > 0 && now - it.lastAt > MIGRATION_HOPS_WINDOW_MS) 0 else it.hops,
-                history = it.history.filter { visit -> now - visit.at < MIGRATION_HISTORY_WINDOW_MS },
-            )
-        }
+        val state = ageMigrationState(readMigration(stateFile, now), now)
 
         if (state.history.any { it.url == candidate }) {
             Log.w("Migration of $uuid ignored: the address was already left behind, looks like a loop")
@@ -304,11 +299,16 @@ object ProfileProcessor {
         val at: Long,
     )
 
+    internal fun ageMigrationState(state: MigrationState, now: Long): MigrationState =
+        state.copy(
+            hops = if (state.hops > 0 && now - state.lastAt > MIGRATION_HOPS_WINDOW_MS) 0 else state.hops,
+            history = state.history.filter { visit -> now - visit.at < MIGRATION_HISTORY_WINDOW_MS },
+        )
+
     internal fun upgradeMigrationState(raw: MigrationState, now: Long): MigrationState {
         if (raw.lastAt > 0 && raw.previous.isEmpty()) return raw
 
         return raw.copy(
-            lastAt = if (raw.lastAt > 0) raw.lastAt else now,
             history = if (raw.history.isEmpty()) {
                 raw.previous.map { MigrationVisit(it, now) }.takeLast(MAX_MIGRATION_HISTORY)
             } else {

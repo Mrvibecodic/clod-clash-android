@@ -19,11 +19,11 @@ class MigrationStateUpgradeTest {
     }
 
     @Test
-    fun oldHopsKeepCounterAndGetFreshTimestamp() {
+    fun oldHopsKeepCounterAndStayWithoutTimestamp() {
         val upgraded = upgradeMigrationState(MigrationState(hops = 2), now)
 
         assertEquals(2, upgraded.hops)
-        assertEquals(now, upgraded.lastAt)
+        assertEquals(0L, upgraded.lastAt)
         assertEquals(emptyList<MigrationVisit>(), upgraded.history)
     }
 
@@ -35,7 +35,7 @@ class MigrationStateUpgradeTest {
         )
 
         assertEquals(2, upgraded.hops)
-        assertEquals(now, upgraded.lastAt)
+        assertEquals(0L, upgraded.lastAt)
         assertEquals(listOf(MigrationVisit("a", now), MigrationVisit("b", now)), upgraded.history)
         assertEquals(emptyList<String>(), upgraded.previous)
     }
@@ -45,7 +45,7 @@ class MigrationStateUpgradeTest {
         val upgraded = upgradeMigrationState(MigrationState(previous = listOf("a")), now)
 
         assertEquals(0, upgraded.hops)
-        assertEquals(now, upgraded.lastAt)
+        assertEquals(0L, upgraded.lastAt)
         assertEquals(listOf(MigrationVisit("a", now)), upgraded.history)
     }
 
