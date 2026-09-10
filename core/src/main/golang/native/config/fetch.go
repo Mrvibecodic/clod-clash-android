@@ -480,7 +480,7 @@ func FetchAndValid(
 		reportSubscriptionInfo(header, reportStatus)
 
 		applyHeaders(&info, header.Raw, url.String())
-		info.LogoFile = fetchLogo(path, info.LogoURL)
+		info.LogoFile = fetchLogo(path, info.LogoURL, budget)
 		writePanelInfo(path, info)
 	}
 

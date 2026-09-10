@@ -180,3 +180,23 @@ func TestSecureChannelRoundsShareTheAddressWindow(t *testing.T) {
 		t.Fatalf("the address window was exceeded: %s", spent)
 	}
 }
+
+func TestLastConfigurationStepCannotOverrunTheShare(t *testing.T) {
+	const step = 10 * time.Second
+
+	b := New(start)
+
+	if got, ok := b.Window(start.Add(ConfigShare-step), step); !ok || got != step {
+		t.Fatalf("the last step of the configuration phase got %s, %v", got, ok)
+	}
+
+	if _, ok := b.Window(start.Add(ConfigShare-step+time.Second), step); ok {
+		t.Fatal("a step was granted past the configuration share")
+	}
+
+	b.EnterProviderPhase()
+
+	if got := b.Remaining(start.Add(ConfigShare)); got != ProviderShare {
+		t.Fatalf("providers got %s instead of %s", got, ProviderShare)
+	}
+}

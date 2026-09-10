@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cfa/native/app"
+	budgets "cfa/native/config/budget"
 
 	clashHttp "github.com/metacubex/mihomo/component/http"
 )
@@ -32,14 +33,19 @@ var logoExtensions = map[string]string{
 	"image/vnd.microsoft.icon": ".ico",
 }
 
-func fetchLogo(dir string, rawURL string) string {
+func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
 	removeLogos(dir)
 
 	if rawURL == "" {
 		return ""
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), logoTimeout)
+	limit, ok := budget.Window(time.Now(), logoTimeout)
+	if !ok {
+		return ""
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
 	defer cancel()
 
 	response, err := clashHttp.HttpRequest(ctx, rawURL, http.MethodGet, http.Header{
