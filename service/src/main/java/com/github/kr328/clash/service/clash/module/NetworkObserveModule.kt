@@ -448,13 +448,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                             }
                         }
                         probeTicker.onReceive {
-                            val ticksPerProbe = when {
-                                isInteractive() -> 1
-                                store.keepAwake -> IDLE_TICKS_PER_PROBE_KEEP_AWAKE
-                                else -> IDLE_TICKS_PER_PROBE
-                            }
+                            val ticks = ticksPerProbe(isInteractive(), store.keepAwake)
 
-                            if (++idleTicks >= ticksPerProbe) {
+                            if (++idleTicks >= ticks) {
                                 idleTicks = 0
 
                                 probeNodes()
@@ -485,10 +481,6 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         private const val RECOVER_DELAY_MS = 7_000L
 
         private const val PROBE_TICK_MS = 300_000L
-
-        private const val IDLE_TICKS_PER_PROBE = 3
-
-        private const val IDLE_TICKS_PER_PROBE_KEEP_AWAKE = 2
 
         private const val PROBE_MIN_GAP_MS = 3_000L
 
