@@ -217,7 +217,7 @@ object ProfileProcessor {
 
         val now = System.currentTimeMillis()
 
-        val state = readMigration(stateFile).let {
+        val state = readMigration(stateFile, now).let {
             it.copy(
                 hops = if (it.hops > 0 && now - it.lastAt > MIGRATION_HOPS_WINDOW_MS) 0 else it.hops,
                 history = it.history.filter { visit -> now - visit.at < MIGRATION_HISTORY_WINDOW_MS },
@@ -291,17 +291,32 @@ object ProfileProcessor {
     }
 
     @Serializable
-    private data class MigrationState(
+    internal data class MigrationState(
         val hops: Int = 0,
         val history: List<MigrationVisit> = emptyList(),
         val lastAt: Long = 0,
+        val previous: List<String> = emptyList(),
     )
 
     @Serializable
-    private data class MigrationVisit(
+    internal data class MigrationVisit(
         val url: String,
         val at: Long,
     )
+
+    internal fun upgradeMigrationState(raw: MigrationState, now: Long): MigrationState {
+        if (raw.lastAt > 0 && raw.previous.isEmpty()) return raw
+
+        return raw.copy(
+            lastAt = if (raw.lastAt > 0) raw.lastAt else now,
+            history = if (raw.history.isEmpty()) {
+                raw.previous.map { MigrationVisit(it, now) }.takeLast(MAX_MIGRATION_HISTORY)
+            } else {
+                raw.history
+            },
+            previous = emptyList(),
+        )
+    }
 
     suspend fun repair(context: Context) {
         withContext(NonCancellable) {
@@ -328,16 +343,18 @@ object ProfileProcessor {
         }
     }
 
-    private fun readMigration(file: File): MigrationState {
+    internal fun readMigration(file: File, now: Long): MigrationState {
         if (!file.isFile) return MigrationState()
 
-        return try {
+        val raw = try {
             migrationJson.decodeFromString(MigrationState.serializer(), file.readText())
         } catch (e: Exception) {
             Log.w("Read $MIGRATION_FILE: $e", e)
 
-            MigrationState()
+            return MigrationState()
         }
+
+        return upgradeMigrationState(raw, now)
     }
 
     private fun writeMigration(file: File, state: MigrationState) {
