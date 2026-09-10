@@ -54,6 +54,24 @@ jobs:
             exit 1
           }
 
+      - name: Check Measuring Budget Numbers Shared With The Core
+        run: |
+          set -euo pipefail
+          check() {
+            grep -Eq "$2" "$1" || {
+              echo "Цифры бюджета замера задержек в $1 разошлись с копией в другом языке: сверьте healthCheck* в Go и PROBE_*/TOTAL_TIMEOUT_SECONDS в Kotlin" >&2
+              exit 1
+            }
+          }
+          check core/src/main/golang/native/tunnel/connectivity.go 'healthCheckConcurrency += *10$'
+          check core/src/main/golang/native/tunnel/connectivity.go 'healthCheckProbeTimeout += *5 \* time\.Second'
+          check core/src/main/golang/native/tunnel/connectivity.go 'healthCheckTotalTimeout += *45 \* time\.Second'
+          check core/src/main/golang/native/tunnel/connectivity.go 'need := time\.Duration\(count/healthCheckConcurrency\+2\) \* healthCheckProbeTimeout'
+          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'PROBE_CONCURRENCY = 10$'
+          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'PROBE_TIMEOUT_SECONDS = 5$'
+          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'TOTAL_TIMEOUT_SECONDS = 45$'
+          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'val need = \(total / PROBE_CONCURRENCY \+ 2\) \* PROBE_TIMEOUT_SECONDS'
+
       - name: Check Update Budget Numbers Shared With The Core
         run: |
           set -euo pipefail
