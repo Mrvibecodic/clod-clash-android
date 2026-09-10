@@ -140,6 +140,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 download = 0,
                 expire = 0,
                 ageSecretKey = ageSecretKey,
+                touchedAt = System.currentTimeMillis(),
             )
 
             PendingDao().update(newPending)

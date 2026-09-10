@@ -13,6 +13,7 @@ import com.github.kr328.clash.service.data.PendingDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.DraftFreshness
 import com.github.kr328.clash.service.util.directoryLastModified
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.migrationDir
@@ -413,9 +414,16 @@ object ProfileProcessor {
                 for (uuid in PendingDao().queryAllUUIDs()) {
                     val pending = PendingDao().queryByUUID(uuid) ?: continue
                     val dir = context.pendingDir.resolve(uuid.toString())
-                    val touched = maxOf(pending.createdAt, dir.directoryLastModified ?: 0L)
 
-                    if (now - touched < maxAge) continue
+                    val stale = DraftFreshness.stale(
+                        createdAt = pending.createdAt,
+                        touchedAt = pending.touchedAt,
+                        directoryModifiedAt = dir.directoryLastModified ?: 0L,
+                        now = now,
+                        maxAge = maxAge,
+                    )
+
+                    if (!stale) continue
 
                     PendingDao().remove(uuid)
                     dir.deleteRecursively()
