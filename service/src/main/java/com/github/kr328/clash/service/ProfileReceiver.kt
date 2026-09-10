@@ -19,6 +19,7 @@ import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.importedDir
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -62,9 +63,9 @@ class ProfileReceiver : BroadcastReceiver() {
                     Global.launch {
                         try {
                             // The worker could not start (foreground start denied in
-                            // background); try again at the next regular interval
+                            // background)
                             ImportedDao().queryByUUID(uuid)
-                                ?.let { scheduleAfterInterval(context, it) }
+                                ?.let { scheduleRetry(context, it) }
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Exception) {
@@ -134,33 +135,17 @@ class ProfileReceiver : BroadcastReceiver() {
             setAlarm(context, current + interval, intent)
         }
 
-        fun scheduleAfterInterval(context: Context, imported: Imported) {
-            val intent = pendingIntentOf(context, imported)
-
-            cancelAlarm(context, imported)
-
-            if (imported.interval < TimeUnit.MINUTES.toMillis(15))
-                return
-
-            setAlarm(context, System.currentTimeMillis() + imported.interval, intent)
-        }
-
         // Retries back off 15 -> 30 -> 60 ... minutes, capped by the profile interval
         fun scheduleRetry(context: Context, imported: Imported) {
             val intent = pendingIntentOf(context, imported)
 
             cancelAlarm(context, imported)
 
-            if (imported.interval < TimeUnit.MINUTES.toMillis(15))
-                return
-
             val store = ServiceStore(context)
             val attempt = store.profileRetries(imported.uuid) + 1
+            val delay = UpdateSchedule.retryDelay(imported.interval, attempt) ?: return
 
             store.setProfileRetries(imported.uuid, attempt)
-
-            val base = TimeUnit.MINUTES.toMillis(15)
-            val delay = (base shl (attempt - 1).coerceIn(0, 16)).coerceIn(base, imported.interval.coerceAtLeast(base))
 
             Log.i("Retry profile update ${imported.uuid} attempt $attempt in ${delay / 60_000} min")
 
