@@ -7,6 +7,7 @@ import (
 	"unsafe"
 
 	"cfa/native/app"
+	"cfa/native/common/safego"
 	"cfa/native/tunnel"
 )
 
@@ -67,13 +68,23 @@ func queryGroup(name C.c_string, sortMode C.c_string) *C.char {
 
 //export healthCheck
 func healthCheck(completable unsafe.Pointer, name C.c_string) {
-	go func(name string) {
-		tunnel.HealthCheck(name)
+	n := C.GoString(name)
 
-		C.complete(completable, nil)
+	safego.Go("healthCheck", func() {
+		err := func() (err error) {
+			defer safego.GuardWith("healthCheck", func(r any) {
+				err = panicError("healthCheck", r)
+			})()
+
+			tunnel.HealthCheck(n)
+
+			return nil
+		}()
+
+		C.complete(completable, marshalError(err))
 
 		C.release_object(completable)
-	}(C.GoString(name))
+	})
 }
 
 //export testProfileDelays
@@ -95,7 +106,11 @@ func probeCurrentNodes() {
 
 //export recoverDeadNodes
 func recoverDeadNodes(force C.int) {
-	go tunnel.RecoverDeadNodes(force != 0)
+	f := force != 0
+
+	safego.Go("recoverDeadNodes", func() {
+		tunnel.RecoverDeadNodes(f)
+	})
 }
 
 //export notifyNetworkReady
@@ -122,11 +137,22 @@ func queryProviders() *C.char {
 
 //export updateProvider
 func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_string) {
-	go func(pType, name string) {
-		C.complete(completable, marshalError(tunnel.UpdateProvider(pType, name)))
+	t := C.GoString(pType)
+	n := C.GoString(name)
+
+	safego.Go("updateProvider", func() {
+		err := func() (err error) {
+			defer safego.GuardWith("updateProvider", func(r any) {
+				err = panicError("updateProvider", r)
+			})()
+
+			return tunnel.UpdateProvider(t, n)
+		}()
+
+		C.complete(completable, marshalError(err))
 
 		C.release_object(completable)
-	}(C.GoString(pType), C.GoString(name))
+	})
 }
 
 //export suspend

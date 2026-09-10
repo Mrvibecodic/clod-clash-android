@@ -6,21 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"runtime/debug"
 
+	"cfa/native/common/safego"
 	"cfa/native/redact"
-
-	"github.com/metacubex/mihomo/log"
 )
 
 func guard(name string, onPanic func()) func() {
-	return func() {
-		if r := recover(); r != nil {
-			log.Errorln("[APP] %s panicked: %v\n%s", name, r, string(debug.Stack()))
-
-			onPanic()
-		}
-	}
+	return safego.Guard(name, onPanic)
 }
 
 func panicError(name string, r any) error {

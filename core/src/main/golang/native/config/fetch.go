@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"cfa/native/app"
+	"cfa/native/common/safego"
 	"cfa/native/config/sentinel"
 
 	"github.com/metacubex/mihomo/adapter/provider"
@@ -587,7 +588,9 @@ func fetchProviders(rawCfg *config.RawConfig, budget *fetchBudget, reportStatus 
 	for _, job := range jobs {
 		wg.Add(1)
 
-		go func(job providerJob) {
+		job := job
+
+		safego.Go("fetchProvider", func() {
 			defer wg.Done()
 
 			slots <- struct{}{}
@@ -606,7 +609,7 @@ func fetchProviders(rawCfg *config.RawConfig, budget *fetchBudget, reportStatus 
 			}
 
 			reportProvider(reportStatus, "FetchProviders", []string{job.name}, finished, total)
-		}(job)
+		})
 	}
 
 	wg.Wait()

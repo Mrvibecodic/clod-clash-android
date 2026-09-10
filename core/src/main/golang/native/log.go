@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"cfa/native/app"
+	"cfa/native/common/safego"
 	"cfa/native/redact"
 
 	"github.com/metacubex/mihomo/log"
@@ -21,7 +22,7 @@ type message struct {
 }
 
 func init() {
-	go func() {
+	safego.Go("logcatBridge", func() {
 		sub := log.Subscribe()
 		defer log.UnSubscribe(sub)
 
@@ -45,12 +46,12 @@ func init() {
 				C.log_verbose(cPayload)
 			}
 		}
-	}()
+	})
 }
 
 //export subscribeLogcat
 func subscribeLogcat(remote unsafe.Pointer) {
-	go func(remote unsafe.Pointer) {
+	safego.Go("subscribeLogcat", func() {
 		sub := log.Subscribe()
 		defer log.UnSubscribe(sub)
 
@@ -73,7 +74,7 @@ func subscribeLogcat(remote unsafe.Pointer) {
 				break
 			}
 		}
-	}(remote)
+	})
 
 	log.Infoln("[APP] ClodClash %s, logcat level: %s", app.VersionName(), log.Level().String())
 }

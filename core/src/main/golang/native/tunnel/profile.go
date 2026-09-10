@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"cfa/native/common/safego"
 	"cfa/native/config"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
@@ -103,7 +104,9 @@ func TestProfileDelays(path string) map[string]int {
 	for _, proxy := range proxies {
 		wg.Add(1)
 
-		go func(px C.Proxy) {
+		px := proxy
+
+		safego.Go("testProfileDelay", func() {
 			defer wg.Done()
 
 			select {
@@ -130,7 +133,7 @@ func TestProfileDelays(path string) map[string]int {
 			}
 
 			result[px.Name()] = int(delay)
-		}(proxy)
+		})
 	}
 
 	wg.Wait()

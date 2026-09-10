@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"runtime/debug"
 
+	"cfa/native/common/safego"
 	"cfa/native/config"
 	"cfa/native/delegate"
 	"cfa/native/tunnel"
@@ -46,18 +47,18 @@ func reset() {
 	tunnel.ResetStatistic()
 	tunnel.CloseAllConnections()
 
-	go func() {
+	safego.Go("resetGc", func() {
 		runtime.GC()
 		debug.FreeOSMemory()
-	}()
+	})
 }
 
 //export forceGc
 func forceGc() {
-	go func() {
+	safego.Go("forceGc", func() {
 		log.Infoln("[APP] request force GC")
 
 		runtime.GC()
 		debug.FreeOSMemory()
-	}()
+	})
 }

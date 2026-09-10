@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cfa/native/common/safego"
+
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 )
@@ -59,7 +61,7 @@ func NoteNetworkReady() {
 
 func StartHeartbeat() {
 	heartbeatOnce.Do(func() {
-		go heartbeat()
+		safego.Go("heartbeat", heartbeat)
 	})
 }
 

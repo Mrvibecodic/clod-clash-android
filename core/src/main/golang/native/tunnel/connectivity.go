@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cfa/native/common/safego"
 	"cfa/native/config"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
@@ -70,11 +71,11 @@ func CloseProviders() {
 
 	proxies := tunnel.Proxies()
 
-	go func() {
+	safego.Go("closeProviders", func() {
 		for _, p := range proxies {
 			_ = p.Close()
 		}
-	}()
+	})
 }
 
 func healthCheckBudget(count int) time.Duration {
@@ -267,7 +268,9 @@ func HealthCheck(name string) {
 	for _, proxy := range proxies {
 		wg.Add(1)
 
-		go func(px C.Proxy) {
+		px := proxy
+
+		safego.Go("healthCheckProbe", func() {
 			defer wg.Done()
 
 			_, done, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
@@ -285,7 +288,7 @@ func HealthCheck(name string) {
 			}
 
 			alive.Add(1)
-		}(proxy)
+		})
 	}
 
 	wg.Wait()
@@ -347,10 +350,12 @@ func ProbeCurrentNodes() {
 
 		pending.Add(1)
 
-		go func(px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16], group string, reselect bool) {
+		px, group := target, g.Name()
+
+		safego.Go("probeCurrentNode", func() {
 			defer release()
 
-			delay, done, err := probeProxy(ctx, px, url, statusKey, expected)
+			delay, done, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
 			if !done {
 				return
 			}
@@ -359,14 +364,16 @@ func ProbeCurrentNodes() {
 				log.Infoln("Probe after network change: %s failed", px.Name())
 
 				if reselect {
-					go HealthCheck(group)
+					safego.Go("healthCheck", func() {
+						HealthCheck(group)
+					})
 				}
 
 				return
 			}
 
 			log.Infoln("Probe after network change: %s is alive, %d ms", px.Name(), delay)
-		}(target, url, statusKey, expectedStatus, g.Name(), reselect)
+		})
 	}
 
 	release()
@@ -462,7 +469,9 @@ func RecoverDeadNodes(force bool) {
 	for _, t := range targets {
 		wg.Add(1)
 
-		go func(t deadTarget) {
+		t := t
+
+		safego.Go("recoverDeadNode", func() {
 			defer wg.Done()
 
 			delay, done, err := probeProxy(ctx, t.proxy, t.url, t.status, t.expected)
@@ -472,7 +481,7 @@ func RecoverDeadNodes(force bool) {
 
 				log.Infoln("Recover dead nodes: %s alive, %d ms", t.proxy.Name(), delay)
 			}
-		}(t)
+		})
 	}
 
 	wg.Wait()
