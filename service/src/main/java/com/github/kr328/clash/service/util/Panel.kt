@@ -8,13 +8,23 @@ import java.util.UUID
 
 private val json = Json { ignoreUnknownKeys = true }
 
+private const val TITLE_MAX_CHARS = 60
+
+internal fun truncateTitle(value: String): String {
+    if (value.codePointCount(0, value.length) <= TITLE_MAX_CHARS) return value
+
+    return value.substring(0, value.offsetByCodePoints(0, TITLE_MAX_CHARS)).trim() + "…"
+}
+
 fun Context.readPanelInfo(uuid: UUID): PanelInfo? {
     val file = importedDir.resolve(uuid.toString()).resolve("panel.json")
 
     if (!file.isFile) return null
 
     return try {
-        json.decodeFromString(PanelInfo.serializer(), file.readText())
+        json.decodeFromString(PanelInfo.serializer(), file.readText()).let {
+            it.copy(title = truncateTitle(it.title))
+        }
     } catch (e: Exception) {
         Log.w("Read panel.json of $uuid: $e", e)
 

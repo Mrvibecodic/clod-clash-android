@@ -54,6 +54,18 @@ jobs:
             exit 1
           }
 
+      - name: Check Panel Title Limit Shared With The Core
+        run: |
+          set -euo pipefail
+          check() {
+            grep -Eq "$2" "$1" || {
+              echo "Потолок длины названия подписки в $1 разошёлся с копией в другом языке: сверьте titleMaxChars в Go и TITLE_MAX_CHARS в Kotlin" >&2
+              exit 1
+            }
+          }
+          check core/src/main/golang/native/config/panel/panel.go 'titleMaxChars = 60$'
+          check service/src/main/java/com/github/kr328/clash/service/util/Panel.kt 'TITLE_MAX_CHARS = 60$'
+
       - name: Check Measuring Budget Numbers Shared With The Core
         run: |
           set -euo pipefail
