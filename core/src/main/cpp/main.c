@@ -452,7 +452,14 @@ static void call_completable_complete_impl(void *completable, const char *except
                                   (jmethodID) m_completable_complete,
                                   (jobject) o_unit);
 
-        jni_catch_exception(env);
+        if (jni_catch_exception(env)) {
+            (*env)->CallBooleanMethod(env,
+                                      (jobject) completable,
+                                      (jmethodID) m_completable_complete_exceptionally,
+                                      (jobject) o_oom_exception);
+
+            jni_catch_exception(env);
+        }
 
         return;
     }

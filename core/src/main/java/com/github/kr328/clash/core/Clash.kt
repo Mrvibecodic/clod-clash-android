@@ -13,6 +13,21 @@ import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.net.InetSocketAddress
 
+private val boundaryFailure = ClashException("out of memory at the core boundary")
+
+internal fun CompletableDeferred<Unit>.completeFetchResult(error: String?) {
+    val closed = runCatching {
+        if (error != null)
+            completeExceptionally(ClashException(error))
+        else
+            complete(Unit)
+    }.isSuccess
+
+    if (!closed) {
+        runCatching { completeExceptionally(boundaryFailure) }
+    }
+}
+
 object Clash {
     enum class OverrideSlot {
         Persist, Session
@@ -186,10 +201,7 @@ object Clash {
                     }
 
                     override fun complete(error: String?) {
-                        if (error != null)
-                            completeExceptionally(ClashException(error))
-                        else
-                            complete(Unit)
+                        this@apply.completeFetchResult(error)
                     }
                 },
                 path.absolutePath,
