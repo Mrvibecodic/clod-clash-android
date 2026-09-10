@@ -4,6 +4,7 @@ import android.app.Service
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.ServiceLog
+import java.util.concurrent.atomic.AtomicBoolean
 
 class CloseModule(service: Service) : Module<CloseModule.RequestClose>(service) {
     object RequestClose
@@ -13,12 +14,26 @@ class CloseModule(service: Service) : Module<CloseModule.RequestClose>(service) 
             addAction(Intents.ACTION_CLASH_REQUEST_STOP)
         }
 
-        broadcasts.receive()
+        if (!requestedBeforeRuntime.getAndSet(false)) {
+            broadcasts.receive()
+        }
 
         Log.i("User request close")
 
         ServiceLog.mark("stop requested by user")
 
         return enqueueEvent(RequestClose)
+    }
+
+    companion object {
+        private val requestedBeforeRuntime = AtomicBoolean(false)
+
+        fun rememberRequest() {
+            requestedBeforeRuntime.set(true)
+        }
+
+        fun forgetRequests() {
+            requestedBeforeRuntime.set(false)
+        }
     }
 }

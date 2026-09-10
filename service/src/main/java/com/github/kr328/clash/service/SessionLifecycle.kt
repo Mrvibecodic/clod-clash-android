@@ -1,8 +1,16 @@
 package com.github.kr328.clash.service
 
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.SystemClock
 import androidx.core.app.ServiceCompat
+import com.github.kr328.clash.common.compat.registerReceiverCompat
+import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.constants.Permissions
+import com.github.kr328.clash.service.clash.module.CloseModule
 import com.github.kr328.clash.service.clash.module.StaticNotificationModule
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.sendClashStarted
@@ -90,6 +98,8 @@ class SessionLifecycle(
     @Volatile
     private var stopId = -1
 
+    private var stopRequestHolder: BroadcastReceiver? = null
+
     val stopped: Boolean
         get() = stopNotified.get()
 
@@ -162,6 +172,8 @@ class SessionLifecycle(
     }
 
     fun startSession() {
+        holdStopRequests()
+
         stopNotified.set(false)
 
         reason = null
@@ -279,8 +291,39 @@ class SessionLifecycle(
         }
     }
 
+    private fun holdStopRequests() {
+        releaseStopRequests()
+
+        CloseModule.forgetRequests()
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                CloseModule.rememberRequest()
+            }
+        }
+
+        service.registerReceiverCompat(
+            receiver,
+            IntentFilter(Intents.ACTION_CLASH_REQUEST_STOP),
+            Permissions.RECEIVE_SELF_BROADCASTS,
+            null,
+        )
+
+        stopRequestHolder = receiver
+    }
+
+    private fun releaseStopRequests() {
+        stopRequestHolder?.let { receiver ->
+            runCatching { service.unregisterReceiver(receiver) }
+        }
+
+        stopRequestHolder = null
+    }
+
     fun destroy() {
         destroyed = true
+
+        releaseStopRequests()
 
         notifyStopped()
 
