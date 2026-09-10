@@ -85,7 +85,7 @@ object ProfileImports {
 
                 val profile = import(uuid, true) { status ->
                     runCatching {
-                        failed.updateAndGet { FailedProviders.accumulate(it, status) }
+                        FailedProviders.accumulate(failed, status)
 
                         state_.value = State.Running(token, status)
                     }.onFailure {
@@ -169,7 +169,7 @@ object ProfileImports {
 
                 withProfile(retry = false) {
                     commit(profile.uuid) { status ->
-                        failed.updateAndGet { FailedProviders.accumulate(it, status) }
+                        FailedProviders.accumulate(failed, status)
 
                         state_.value = State.Running(token, status)
                     }
