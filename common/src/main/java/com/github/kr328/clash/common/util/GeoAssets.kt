@@ -24,7 +24,7 @@ object GeoAssets {
 
     private const val LOCK_TIMEOUT = 15_000L
     private const val LOCK_INTERVAL = 100L
-    private const val READY_TIMEOUT = 60_000L
+    const val READY_TIMEOUT = 60_000L
     private const val TEMP_MAX_AGE = 3_600_000L
 
     private const val EXTRACTING_MARK = ".extracting"

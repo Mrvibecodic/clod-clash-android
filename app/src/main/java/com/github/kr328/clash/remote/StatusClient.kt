@@ -47,22 +47,25 @@ class StatusClient(private val context: Context) {
         }
     }
 
-    fun updatingProfiles(): Set<UUID>? {
+    fun updatingProfiles(): UpdatingProfiles {
         return try {
             val result = context.contentResolver.call(
                 uri,
                 StatusProvider.METHOD_UPDATING_PROFILES,
                 null,
                 null
-            ) ?: return null
+            ) ?: return UpdatingProfiles.Unavailable
 
-            result.getStringArrayList(StatusProvider.KEY_UPDATING)
-                ?.mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }
-                ?.toSet()
+            val reported = result.getStringArrayList(StatusProvider.KEY_UPDATING)
+                ?: return UpdatingProfiles.Unavailable
+
+            UpdatingProfiles.Known(
+                reported.mapNotNull { runCatching { UUID.fromString(it) }.getOrNull() }.toSet(),
+            )
         } catch (e: Exception) {
             Log.w("Query updating profiles: $e", e)
 
-            null
+            UpdatingProfiles.Unavailable
         }
     }
 
