@@ -140,7 +140,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 ProfileUpdates.running.first { it.isNotEmpty() }
 
                 while (isActive && ProfileUpdates.running.value.isNotEmpty()) {
-                    if (ProfileUpdates.polls(ProfileUpdates.running.value.isEmpty(), activityStarted)) {
+                    if (activityStarted) {
                         reconcileUpdatingProfiles()
                     }
 

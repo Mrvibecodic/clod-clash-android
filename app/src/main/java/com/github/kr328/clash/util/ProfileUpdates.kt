@@ -44,9 +44,6 @@ object ProfileUpdates {
         deadlines.update { (it - uuid).alive(now) }
     }
 
-    fun polls(runningIsEmpty: Boolean, activityStarted: Boolean): Boolean =
-        !runningIsEmpty && activityStarted
-
     fun prune() = prune(SystemClock.elapsedRealtime())
 
     internal fun prune(now: Long) {
