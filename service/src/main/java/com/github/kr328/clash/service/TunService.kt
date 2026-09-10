@@ -8,11 +8,11 @@ import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.SystemClock
-import androidx.core.app.ServiceCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.AccessControlMode
@@ -22,14 +22,11 @@ import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.parseCIDR
 import com.github.kr328.clash.service.util.readTunPrefs
 import com.github.kr328.clash.service.util.resolveTunStack
-import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStarting
-import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicBoolean
 
 class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.Default) {
     private val self: TunService
@@ -39,53 +36,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         super.attachBaseContext(base.withStoredLocale())
     }
 
-    @Volatile
-    private var reason: String? = null
+    private val session = SessionLifecycle(this) { runtime.launch() }
 
-    private var sessionStartedAt: Long = 0
-
-    private var rejected = false
-
-    private val stopNotified = AtomicBoolean(false)
-
-    private var systemStarted = false
-
-    private var startFailed = false
-
-    private var wantedByUser = false
-
-    @Volatile
-    private var lastStartId = -1
-
-    private fun notifyStopped() {
-        if (!stopNotified.compareAndSet(false, true))
-            return
-
-        StatusProvider.serviceReady = false
-        StatusProvider.startupStage = null
-        StatusProvider.serviceRunning = false
-
-        sendClashStopped(reason)
-
-        reason?.let {
-            if (systemStarted) {
-                StaticNotificationModule.notifyStartFailed(this, it)
-            }
-        }
-    }
-
-    private fun notifyReady() {
-        StatusProvider.startupStage = null
-        StatusProvider.serviceReady = true
-
-        ServiceStore(this).stickyRestarts = ""
-
-        StaticNotificationModule.cancelStartFailed(this)
-
-        sendClashStarted()
-    }
-
-    private val runtime = clashRuntime {
+    private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
 
         val close = install(CloseModule(self))
@@ -122,13 +75,13 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                                     opened = true
 
-                                    notifyReady()
+                                    session.notifyReady()
                                 }
 
                                 false
                             }
                             is ConfigurationModule.Event.LoadFailed -> {
-                                reason = it.message
+                                session.reason = it.message
 
                                 true
                             }
@@ -148,7 +101,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         } catch (e: Exception) {
             Log.e("Create clash runtime: ${e.message}", e)
 
-            reason = e.message
+            session.reason = e.message
         } finally {
             withContext(NonCancellable) {
                 val startedAt = SystemClock.elapsedRealtime()
@@ -159,46 +112,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                 Log.i("Tunnel closed in ${SystemClock.elapsedRealtime() - startedAt} ms")
 
-                notifyStopped()
-
-                stopSelfResult(lastStartId)
+                session.finishSession()
             }
         }
-    }
-
-    private fun rejectStart() {
-        rejected = true
-
-        StaticNotificationModule.createNotificationChannel(this)
-
-        if (StaticNotificationModule.notifyRejectedNotification(this)) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        }
-
-        stopSelf()
-    }
-
-    private fun stickyRestartAllowed(): Boolean {
-        if (!wantedByUser) {
-            ServiceLog.mark("sticky restart refused: stopped by user")
-
-            return false
-        }
-
-        val store = ServiceStore(this)
-        val count = store.recordStickyRestart(SystemClock.elapsedRealtime(), STICKY_RESTART_WINDOW_MS)
-
-        if (count >= STICKY_RESTART_LIMIT) {
-            store.stickyRestarts = ""
-
-            reason = getString(R.string.clod_crash_loop, count)
-
-            ServiceLog.mark("sticky restart refused: $count restarts in window")
-
-            return false
-        }
-
-        return true
     }
 
     override fun onCreate() {
@@ -208,87 +124,37 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val alwaysOn = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && isAlwaysOn
 
-        wantedByUser = StatusProvider.shouldStartClashOnBoot
+        session.claimUserIntent()
 
         if (StatusProvider.serviceRunning) {
             if (alwaysOn) {
                 StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_always_on_busy))
             }
 
-            return rejectStart()
+            return session.rejectStart()
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceStore(this).vpnAlwaysOn = if (alwaysOn) 1 else 0
         }
 
-        systemStarted = alwaysOn
+        session.systemStarted = alwaysOn
 
         StaticNotificationModule.createNotificationChannel(this)
 
-        startSession()
-    }
-
-    private fun startSession() {
-        stopNotified.set(false)
-
-        reason = null
-
-        StatusProvider.serviceReady = false
-        StatusProvider.serviceRunning = true
-
-        sessionStartedAt = ServiceStore(this).markSessionStarted()
-
-        if (!StaticNotificationModule.notifyLoadingNotification(this)) {
-            startFailed = true
-
-            return
-        }
-
-        runtime.launch()
+        session.startSession()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ServiceLog.mark(
             "TunService: start command $startId, restarted by system = ${intent == null}, " +
-                "rejected = $rejected, stopped = ${stopNotified.get()}"
+                "rejected = ${session.rejected}, stopped = ${session.stopped}"
         )
 
-        lastStartId = startId
-
-        if (rejected) {
-            stopSelf()
-
-            return super.onStartCommand(intent, flags, startId)
+        return when (session.onStartCommand(intent == null, startId)) {
+            StartCommandOutcome.StopSticky, StartCommandOutcome.StopStartFailed -> START_NOT_STICKY
+            else -> super.onStartCommand(intent, flags, startId)
         }
-
-        if (intent == null) {
-            systemStarted = true
-
-            if (!stickyRestartAllowed()) {
-                notifyStopped()
-
-                stopSelf()
-
-                return START_NOT_STICKY
-            }
-        }
-
-        if (startFailed) {
-            reason = getString(R.string.clod_foreground_denied)
-
-            notifyStopped()
-
-            stopSelf()
-
-            return START_NOT_STICKY
-        }
-
-        if (stopNotified.get()) {
-            startSession()
-        }
-
-        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onRevoke() {
@@ -296,9 +162,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         ServiceLog.mark("TunService: revoked")
 
-        reason = getString(R.string.clod_tun_revoked)
+        session.reason = getString(R.string.clod_tun_revoked)
 
-        systemStarted = false
+        session.systemStarted = false
 
         StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_tun_revoked), R.string.clod_stopped_title)
 
@@ -306,9 +172,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     override fun onDestroy() {
-        ServiceLog.mark("TunService: destroy, rejected = $rejected")
+        ServiceLog.mark("TunService: destroy, rejected = ${session.rejected}")
 
-        if (rejected) {
+        if (session.rejected) {
             super.onDestroy()
 
             return
@@ -318,15 +184,13 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         TunModule.requestStop()
 
-        notifyStopped()
-
-        ServiceStore(this).clearSessionStarted(sessionStartedAt)
+        session.destroy()
 
         cancelAndJoinBlocking()
 
         Log.i(
             "TunService destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms: " +
-                (reason ?: "successfully")
+                (session.reason ?: "successfully")
         )
 
         super.onDestroy()
@@ -461,9 +325,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     companion object {
-        private const val STICKY_RESTART_WINDOW_MS = 10 * 60 * 1000L
-        private const val STICKY_RESTART_LIMIT = 3
-
         private const val TUN_MTU = 9000
         private const val TUN_SUBNET_PREFIX = 30
         private const val TUN_GATEWAY = "172.19.0.1"
