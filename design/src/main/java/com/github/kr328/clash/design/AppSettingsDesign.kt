@@ -87,12 +87,12 @@ class AppSettingsDesign(
 
         state = state.copy(resetEnabled = false)
 
-        behavior.autoRestart = false
-
-        onHideIconChange(false)
-
         launch {
             val prefs = withContext(Dispatchers.IO) {
+                behavior.autoRestart = false
+
+                onHideIconChange(false)
+
                 uiStore.reset()
                 srvStore.reset()
 
@@ -107,7 +107,7 @@ class AppSettingsDesign(
                 applyLocale(languageTags[0])
 
                 state = state.copy(
-                    autoRestart = behavior.autoRestart,
+                    autoRestart = false,
                     darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
                     language = 0,
                     showGroupIcons = uiStore.showGroupIcons,
