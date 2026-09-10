@@ -3,6 +3,7 @@ package com.github.kr328.clash.util
 import android.content.Context
 import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.update.Updater
@@ -141,16 +142,19 @@ object GeoData {
             val proxy = mixedPort?.let {
                 Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", it))
             }
-            val connection = (
-                if (proxy != null) URL(url).openConnection(proxy) else URL(url).openConnection()
-                ) as HttpURLConnection
-
-            connection.apply {
-                connectTimeout = CONNECT_TIMEOUT
-                readTimeout = READ_TIMEOUT
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", Updater.USER_AGENT)
-            }
+            val connection = Redirects.open(
+                url,
+                { address ->
+                    (
+                        if (proxy != null) address.openConnection(proxy) else address.openConnection()
+                        ) as HttpURLConnection
+                },
+                { open ->
+                    open.connectTimeout = CONNECT_TIMEOUT
+                    open.readTimeout = READ_TIMEOUT
+                    open.setRequestProperty("User-Agent", Updater.USER_AGENT)
+                },
+            )
 
             try {
                 if (connection.responseCode !in 200..299) {

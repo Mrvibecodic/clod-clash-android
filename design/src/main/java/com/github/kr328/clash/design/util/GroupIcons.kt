@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.net.Redirects
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -138,13 +139,16 @@ object GroupIcons {
         val temporary = File(target.absolutePath + "." + UUID.randomUUID() + ".tmp")
 
         return try {
-            val connection = parsed.openConnection() as HttpURLConnection
-
-            connection.connectTimeout = TIMEOUT_MILLIS
-            connection.readTimeout = TIMEOUT_MILLIS
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("Accept", "image/*")
-            connection.setRequestProperty("User-Agent", agent)
+            val connection = Redirects.open(
+                parsed.toString(),
+                { address -> address.openConnection() as HttpURLConnection },
+                { open ->
+                    open.connectTimeout = TIMEOUT_MILLIS
+                    open.readTimeout = TIMEOUT_MILLIS
+                    open.setRequestProperty("Accept", "image/*")
+                    open.setRequestProperty("User-Agent", agent)
+                },
+            )
 
             connection.use { open ->
                 if (open.responseCode !in 200..299) return false

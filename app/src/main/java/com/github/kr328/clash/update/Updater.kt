@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.github.kr328.clash.BuildConfig
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.net.Redirects
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -197,12 +198,15 @@ object Updater {
     ): T? {
         for (proxy in routes(mixedPort)) {
             val result = runCatching {
-                val connection = (URL(url).openConnection(proxy) as HttpURLConnection).apply {
-                    connectTimeout = CONNECT_TIMEOUT
-                    readTimeout = READ_TIMEOUT
-                    instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", USER_AGENT)
-                }
+                val connection = Redirects.open(
+                    url,
+                    { address -> address.openConnection(proxy) as HttpURLConnection },
+                    { open ->
+                        open.connectTimeout = CONNECT_TIMEOUT
+                        open.readTimeout = READ_TIMEOUT
+                        open.setRequestProperty("User-Agent", USER_AGENT)
+                    },
+                )
 
                 try {
                     if (connection.responseCode !in 200..299) {
