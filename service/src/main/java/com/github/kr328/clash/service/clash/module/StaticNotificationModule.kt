@@ -18,23 +18,8 @@ import com.github.kr328.clash.service.StatusProvider
 import kotlinx.coroutines.channels.Channel
 
 class StaticNotificationModule(service: Service) : Module<Unit>(service) {
-    private val builder = NotificationCompat.Builder(service, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_logo_service)
-        .setOngoing(true)
-        .setColor(service.getColorCompat(R.color.color_clash))
-        .setOnlyAlertOnce(true)
-        .setShowWhen(false)
+    private val builder = ongoingBuilder(service, R.id.nf_clash_status)
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-        .setContentIntent(
-            PendingIntent.getActivity(
-                service,
-                R.id.nf_clash_status,
-                Intent().setComponent(Components.MAIN_ACTIVITY)
-                    .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-                pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
-            )
-        )
-        .addAction(0, service.getText(R.string.clod_notification_stop), stopIntent(service))
 
     override suspend fun run() {
         val events = receiveBroadcast(capacity = Channel.CONFLATED) {
@@ -63,15 +48,34 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
     companion object {
         const val CHANNEL_ID = "clash_status_channel"
 
-        fun stopIntent(service: Service): PendingIntent {
+        fun stopIntent(service: Service, requestCode: Int = R.id.nf_clash_status): PendingIntent {
             return PendingIntent.getBroadcast(
                 service,
-                R.id.nf_clash_status,
+                requestCode,
                 Intent(Intents.ACTION_CLASH_REQUEST_STOP)
                     .setPackage(service.packageName)
                     .addFlags(Intent.FLAG_RECEIVER_FOREGROUND),
                 pendingIntentFlags(PendingIntent.FLAG_CANCEL_CURRENT)
             )
+        }
+
+        fun ongoingBuilder(service: Service, stopRequestCode: Int): NotificationCompat.Builder {
+            return NotificationCompat.Builder(service, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_logo_service)
+                .setOngoing(true)
+                .setColor(service.getColorCompat(R.color.color_clash))
+                .setOnlyAlertOnce(true)
+                .setShowWhen(false)
+                .setContentIntent(
+                    PendingIntent.getActivity(
+                        service,
+                        R.id.nf_clash_status,
+                        Intent().setComponent(Components.MAIN_ACTIVITY)
+                            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                        pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT)
+                    )
+                )
+                .addAction(0, service.getText(R.string.clod_notification_stop), stopIntent(service, stopRequestCode))
         }
 
         fun createNotificationChannel(service: Service) {
@@ -84,15 +88,9 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
         }
 
         fun notifyLoadingNotification(service: Service): Boolean {
-            val notification =
-                NotificationCompat.Builder(service, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_logo_service)
-                    .setOngoing(true)
-                    .setColor(service.getColorCompat(R.color.color_clash))
-                    .setOnlyAlertOnce(true)
-                    .setShowWhen(false)
-                    .setContentTitle(service.getText(R.string.loading))
-                    .build()
+            val notification = ongoingBuilder(service, R.id.nf_clash_loading_stop)
+                .setContentTitle(service.getText(R.string.loading))
+                .build()
 
             return service.tryStartForegroundCompat(R.id.nf_clash_status, notification)
         }
