@@ -87,6 +87,12 @@ import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
 
 class MainActivity : BaseActivity<MainDesign>() {
+    override fun onProfileUpdateStarted(uuid: UUID?) {
+        super.onProfileUpdateStarted(uuid)
+
+        uuid?.let { ProfileUpdates.start(listOf(it)) }
+    }
+
     override fun onProfileUpdateCompleted(uuid: UUID?, warning: String?) {
         super.onProfileUpdateCompleted(uuid, warning)
 

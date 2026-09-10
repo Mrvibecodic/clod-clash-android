@@ -169,6 +169,10 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileChanged)
     }
 
+    override fun onProfileUpdateStarted(uuid: UUID?) {
+        events.trySend(Event.ProfileUpdateStarted)
+    }
+
     override fun onProfileUpdateCompleted(uuid: UUID?, warning: String?) {
         events.trySend(Event.ProfileUpdateCompleted)
 
@@ -276,6 +280,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         ClashStart,
         ProfileLoaded,
         ProfileChanged,
+        ProfileUpdateStarted,
         ProfileUpdateCompleted,
         ProfileUpdateFailed,
     }

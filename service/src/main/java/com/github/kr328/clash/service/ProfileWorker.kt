@@ -23,6 +23,7 @@ import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
+import com.github.kr328.clash.service.util.sendProfileUpdateStarted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import kotlinx.coroutines.*
 import kotlinx.coroutines.CancellationException
@@ -90,6 +91,8 @@ class ProfileWorker : BaseService() {
         val imported = ImportedDao().queryByUUID(uuid) ?: return
 
         val name = displayProfileName(imported.uuid, imported.name)
+
+        sendProfileUpdateStarted(imported.uuid)
 
         try {
             val failedProviders = processing(name) {
