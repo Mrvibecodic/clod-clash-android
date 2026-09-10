@@ -84,8 +84,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     private var idleTicks = 0
 
-    // Reactions since the last validated network, only touched from the run loop
-    private val reactionMarks = ArrayList<Long>()
+    private val unconfirmed = ReactionSeries(REACTION_WINDOW_MS, REACTION_SERIES_LIMIT)
+
+    private val flaps = ReactionSeries(REACTION_WINDOW_MS, REACTION_FLAP_LIMIT)
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -272,22 +273,26 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         lastResetAt = now
 
-        reactionMarks.removeAll { now - it >= REACTION_WINDOW_MS }
-        reactionMarks.add(now)
+        val unconfirmedMark = unconfirmed.mark(now)
+        val flapMark = flaps.mark(now)
 
-        val series = reactionMarks.size
-        val reset = store.resetConnectionsOnNetworkChange && series < REACTION_SERIES_LIMIT
-        val hold = series < REACTION_FLAP_LIMIT
+        val reset = store.resetConnectionsOnNetworkChange && unconfirmedMark.withinLimit
+        val hold = flapMark.withinLimit
         val awake = isInteractive() || store.keepAwake
 
-        markNetworkEvent(reason, currentNetwork, "reacted=true reset=$reset hold=$hold series=$series probe=${if (awake) "now" else "deferred"}")
+        markNetworkEvent(
+            reason,
+            currentNetwork,
+            "reacted=true reset=$reset hold=$hold unconfirmed=${unconfirmedMark.count} " +
+                "flaps=${flapMark.count} probe=${if (awake) "now" else "deferred"}",
+        )
 
         Clash.notifyNetworkChanged(reset, hold)
 
         if (awake) {
             probeNodes()
 
-            scheduleRecover(scope, force = series == 1)
+            scheduleRecover(scope, force = flapMark.count == 1)
         } else {
             probePending = true
         }
@@ -417,6 +422,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                             handleNetworkChanged(scope, it)
                         }
                         networkReady.onReceive {
+                            unconfirmed.clear()
+
                             Clash.notifyNetworkReady()
 
                             if (SystemClock.elapsedRealtime() - lastResetAt >= RESET_THROTTLE_MS) {
