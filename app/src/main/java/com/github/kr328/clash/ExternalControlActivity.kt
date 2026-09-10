@@ -11,6 +11,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withProfile
@@ -48,7 +49,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                 return finish()
             }
 
-            if (url.length > MAX_URL_LENGTH) {
+            if (url.length > ProfileFields.SOURCE_MAX) {
                 return finish()
             }
 
@@ -177,7 +178,5 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
 
     companion object {
         private const val MAX_NAME_LENGTH = 128
-
-        private const val MAX_URL_LENGTH = 2048
     }
 }

@@ -22,6 +22,7 @@ import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.ActiveProfileAction
 import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.applyDeviceInfo
+import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.readPanelInfo
 import com.github.kr328.clash.service.util.seedSystemDns
@@ -465,17 +466,31 @@ object ProfileProcessor {
     private fun Pending.enforceFieldValid() {
         val scheme = Uri.parse(source)?.scheme?.lowercase(Locale.getDefault())
 
-        when {
-            name.isBlank() -> throw IllegalArgumentException("Empty name")
+        val violation = ProfileFields.violation(
+            name,
+            source,
+            scheme,
+            interval,
+            type != Profile.Type.File,
+        ) ?: return
 
-            source.isEmpty() && type != Profile.Type.File -> throw IllegalArgumentException("Invalid url")
+        throw IllegalArgumentException(
+            when (violation) {
+                ProfileFields.Violation.EmptyName -> "Empty name"
 
-            source.isNotEmpty() && scheme != "https" && scheme != "content" -> throw IllegalArgumentException(
-                "Unsupported url $source"
-            )
+                ProfileFields.Violation.NameTooLong ->
+                    "Name longer than ${ProfileFields.NAME_MAX} characters"
 
-            interval != 0L && TimeUnit.MILLISECONDS.toMinutes(interval) < 15 -> throw IllegalArgumentException("Invalid interval")
-        }
+                ProfileFields.Violation.EmptySource -> "Invalid url"
+
+                ProfileFields.Violation.SourceTooLong ->
+                    "Url longer than ${ProfileFields.SOURCE_MAX} characters"
+
+                ProfileFields.Violation.UnsupportedScheme -> "Unsupported url $source"
+
+                ProfileFields.Violation.ShortInterval -> "Invalid interval"
+            }
+        )
     }
 
 }
