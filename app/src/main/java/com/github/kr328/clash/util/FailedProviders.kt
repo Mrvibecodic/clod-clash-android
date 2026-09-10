@@ -13,6 +13,11 @@ object FailedProviders {
         }
     }
 
+    fun merge(stored: String, collected: List<String>): String =
+        (stored.split(SEPARATOR).map { it.trim() }.filter { it.isNotEmpty() } + collected)
+            .distinct()
+            .joinToString(SEPARATOR)
+
     fun accumulate(collected: List<String>, status: FetchStatus): List<String> {
         if (status.action != FetchStatus.Action.ProviderFailed) {
             return collected
@@ -27,3 +32,5 @@ object FailedProviders {
         return collected + name
     }
 }
+
+private const val SEPARATOR = ", "

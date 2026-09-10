@@ -102,7 +102,7 @@ object ProfileImports {
                 AppStore(context).apply {
                     addedProfileName = title
                     addedProfilePending = true
-                    profileProvidersFailed = failed.get().joinToString(", ")
+                    profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
                 }
 
                 state_.value = State.Done(token, uuid, title, failed.get())
@@ -186,7 +186,9 @@ object ProfileImports {
                     withProfile { setActive(profile) }
                 }
 
-                AppStore(context).profileProvidersFailed = failed.get().joinToString(", ")
+                AppStore(context).apply {
+                    profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
+                }
 
                 state_.value = State.Done(token, profile.uuid, profile.name, failed.get())
             } catch (e: CancellationException) {

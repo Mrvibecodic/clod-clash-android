@@ -103,4 +103,24 @@ class FailedProvidersTest {
 
         assertEquals(listOf("alpha"), collected.get())
     }
+
+    @Test
+    fun `успех не затирает непрочитанный список`() {
+        assertEquals("alpha, beta", FailedProviders.merge("alpha, beta", emptyList()))
+    }
+
+    @Test
+    fun `новые имена добавляются к непрочитанному списку без повторов`() {
+        assertEquals("alpha, beta, gamma", FailedProviders.merge("alpha, beta", listOf("beta", "gamma")))
+    }
+
+    @Test
+    fun `пустой список на пустом хранилище остаётся пустым`() {
+        assertEquals("", FailedProviders.merge("", emptyList()))
+    }
+
+    @Test
+    fun `первые имена ложатся в пустое хранилище`() {
+        assertEquals("alpha", FailedProviders.merge("", listOf("alpha")))
+    }
 }
