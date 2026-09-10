@@ -60,6 +60,7 @@ import com.github.kr328.clash.update.ApkInstaller
 import com.github.kr328.clash.update.UpdatePrompt
 import com.github.kr328.clash.update.UpdateTask
 import com.github.kr328.clash.util.ServiceUnavailableException
+import com.github.kr328.clash.util.shouldAutoHealthCheck
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -184,9 +185,14 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.fetchReliability()
 
-                            if (design.selectedTab == MainTab.Servers && clashRunning &&
-                                proxyGroupNames.isNotEmpty() &&
-                                SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
+                            if (design.selectedTab == MainTab.Servers &&
+                                shouldAutoHealthCheck(
+                                    startedByReload = false,
+                                    groupsKnown = proxyGroupNames.isNotEmpty(),
+                                    readOnly = serversReadOnly,
+                                    sinceLastCheckMs = SystemClock.elapsedRealtime() - lastHealthCheckAt,
+                                    staleMs = HEALTH_STALE_MS,
+                                )
                             ) {
                                 launch { design.runHealthCheck(manual = false) }
                             }
@@ -269,9 +275,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                         MainDesign.Request.ReloadProxies -> {
                             val started = design.reloadProxyGroups()
 
-                            if (!started && clashRunning && offlineGroups.isEmpty() &&
-                                proxyGroupNames.isNotEmpty() &&
-                                SystemClock.elapsedRealtime() - lastHealthCheckAt > HEALTH_STALE_MS
+                            if (
+                                shouldAutoHealthCheck(
+                                    startedByReload = started,
+                                    groupsKnown = proxyGroupNames.isNotEmpty(),
+                                    readOnly = serversReadOnly,
+                                    sinceLastCheckMs = SystemClock.elapsedRealtime() - lastHealthCheckAt,
+                                    staleMs = HEALTH_STALE_MS,
+                                )
                             ) {
                                 launch { design.runHealthCheck(manual = false) }
                             }
