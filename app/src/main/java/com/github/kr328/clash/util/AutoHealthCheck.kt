@@ -1,9 +1,10 @@
 package com.github.kr328.clash.util
 
 internal fun shouldAutoHealthCheck(
+    clashRunning: Boolean,
     startedByReload: Boolean,
     groupsKnown: Boolean,
     readOnly: Boolean,
     sinceLastCheckMs: Long,
     staleMs: Long,
-): Boolean = !startedByReload && groupsKnown && !readOnly && sinceLastCheckMs > staleMs
+): Boolean = clashRunning && !startedByReload && groupsKnown && !readOnly && sinceLastCheckMs > staleMs

@@ -11,6 +11,7 @@ class AutoHealthCheckTest {
     fun `перезагрузка прокси уже начала замер`() {
         assertFalse(
             shouldAutoHealthCheck(
+                clashRunning = true,
                 startedByReload = true,
                 groupsKnown = true,
                 readOnly = false,
@@ -24,6 +25,7 @@ class AutoHealthCheckTest {
     fun `без известных групп замер не начинается`() {
         assertFalse(
             shouldAutoHealthCheck(
+                clashRunning = true,
                 startedByReload = false,
                 groupsKnown = false,
                 readOnly = false,
@@ -37,6 +39,7 @@ class AutoHealthCheckTest {
     fun `список только для чтения замер не начинает`() {
         assertFalse(
             shouldAutoHealthCheck(
+                clashRunning = true,
                 startedByReload = false,
                 groupsKnown = true,
                 readOnly = true,
@@ -50,6 +53,7 @@ class AutoHealthCheckTest {
     fun `ровно на границе троттла замер не начинается`() {
         assertFalse(
             shouldAutoHealthCheck(
+                clashRunning = true,
                 startedByReload = false,
                 groupsKnown = true,
                 readOnly = false,
@@ -63,6 +67,7 @@ class AutoHealthCheckTest {
     fun `на миллисекунду позже границы замер начинается`() {
         assertTrue(
             shouldAutoHealthCheck(
+                clashRunning = true,
                 startedByReload = false,
                 groupsKnown = true,
                 readOnly = false,
@@ -76,10 +81,25 @@ class AutoHealthCheckTest {
     fun `сразу после предыдущего замера новый не начинается`() {
         assertFalse(
             shouldAutoHealthCheck(
+                clashRunning = true,
                 startedByReload = false,
                 groupsKnown = true,
                 readOnly = false,
                 sinceLastCheckMs = 0,
+                staleMs = stale,
+            ),
+        )
+    }
+
+    @Test
+    fun `при выключенном туннеле автоматический замер не начинается`() {
+        assertFalse(
+            shouldAutoHealthCheck(
+                clashRunning = false,
+                startedByReload = false,
+                groupsKnown = true,
+                readOnly = false,
+                sinceLastCheckMs = 1_000_000_000L,
                 staleMs = stale,
             ),
         )

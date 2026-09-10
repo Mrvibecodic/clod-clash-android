@@ -187,6 +187,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             if (design.selectedTab == MainTab.Servers &&
                                 shouldAutoHealthCheck(
+                                    clashRunning = clashRunning,
                                     startedByReload = false,
                                     groupsKnown = proxyGroupNames.isNotEmpty(),
                                     readOnly = serversReadOnly,
@@ -277,6 +278,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             if (
                                 shouldAutoHealthCheck(
+                                    clashRunning = clashRunning,
                                     startedByReload = started,
                                     groupsKnown = proxyGroupNames.isNotEmpty(),
                                     readOnly = serversReadOnly,
