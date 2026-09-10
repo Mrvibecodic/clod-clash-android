@@ -643,15 +643,25 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
     m_open = (*env)->GetStaticMethodID(env, _c_content, "open",
                                        "(Ljava/lang/String;)I");
 
-    o_unit = (*env)->GetStaticObjectField(env, c_unit,
-                                          (*env)->GetStaticFieldID(env, c_unit, "INSTANCE",
-                                                                   "Lkotlin/Unit;"));
+    jfieldID f_unit_instance = (*env)->GetStaticFieldID(env, c_unit, "INSTANCE", "Lkotlin/Unit;");
+
+    if (jni_catch_exception(env) || f_unit_instance == NULL)
+        return JNI_ERR;
+
+    o_unit = (*env)->GetStaticObjectField(env, c_unit, f_unit_instance);
+
+    if (jni_catch_exception(env) || o_unit == NULL)
+        return JNI_ERR;
 
     c_clash_exception = (jclass) new_global(_c_clash_exception);
     c_content = (jclass) new_global(_c_content);
     o_unit = new_global(o_unit);
 
     jstring _oom_message = new_string("out of memory at the core boundary");
+
+    if (jni_catch_exception(env) || _oom_message == NULL)
+        return JNI_ERR;
+
     jthrowable _oom_exception = (jthrowable)
             (*env)->NewObject(env,
                               (jclass) c_clash_exception,
@@ -659,7 +669,7 @@ JNI_OnLoad(JavaVM *vm, void *reserved) {
                               _oom_message
             );
 
-    if (_oom_message == NULL || _oom_exception == NULL)
+    if (jni_catch_exception(env) || _oom_exception == NULL)
         return JNI_ERR;
 
     o_oom_message = new_global(_oom_message);
