@@ -5,12 +5,10 @@ import "C"
 
 import (
 	"runtime"
-	"runtime/debug"
 	"unsafe"
 
+	"cfa/native/common/safego"
 	"cfa/native/config"
-
-	"github.com/metacubex/mihomo/log"
 )
 
 type remoteValidCallback struct {
@@ -23,19 +21,17 @@ func (r *remoteValidCallback) reportStatus(json string) {
 
 //export fetchAndValid
 func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C.int) {
-	go func(path, url string, callback unsafe.Pointer) {
+	p, u := C.GoString(path), C.GoString(url)
+
+	safego.Go("fetchAndValid", func() {
 		cb := &remoteValidCallback{callback: callback}
 
 		err := func() (err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Errorln("[APP] fetchAndValid panicked: %v\n%s", r, string(debug.Stack()))
+			defer safego.GuardWith("fetchAndValid", func(r any) {
+				err = panicError("fetch", r)
+			})()
 
-					err = panicError("fetch", r)
-				}
-			}()
-
-			return config.FetchAndValid(path, url, force != 0, probe != 0, cb.reportStatus)
+			return config.FetchAndValid(p, u, force != 0, probe != 0, cb.reportStatus)
 		}()
 
 		C.fetch_complete(callback, marshalError(err))
@@ -43,7 +39,7 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C
 		C.release_object(callback)
 
 		runtime.GC()
-	}(C.GoString(path), C.GoString(url), callback)
+	})
 }
 
 //export setSecureChannel
@@ -53,17 +49,15 @@ func setSecureChannel(enabled C.int) {
 
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
-	go func(path string) {
+	p := C.GoString(path)
+
+	safego.Go("load", func() {
 		err := func() (err error) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Errorln("[APP] load panicked: %v\n%s", r, string(debug.Stack()))
+			defer safego.GuardWith("load", func(r any) {
+				err = panicError("load", r)
+			})()
 
-					err = panicError("load", r)
-				}
-			}()
-
-			return config.Load(path)
+			return config.Load(p)
 		}()
 
 		C.complete(completable, marshalError(err))
@@ -71,7 +65,7 @@ func load(completable unsafe.Pointer, path C.c_string) {
 		C.release_object(completable)
 
 		runtime.GC()
-	}(C.GoString(path))
+	})
 }
 
 //export readOverride
