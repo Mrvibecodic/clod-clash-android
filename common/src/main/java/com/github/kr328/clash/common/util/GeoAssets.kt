@@ -27,8 +27,6 @@ object GeoAssets {
     const val READY_TIMEOUT = 60_000L
     private const val TEMP_MAX_AGE = 3_600_000L
 
-    private const val EXTRACTING_MARK = ".extracting"
-
     private val names = listOf(
         "geoip.metadb",
         "geosite.dat",
@@ -157,12 +155,34 @@ object GeoAssets {
         }
     }
 
-    private fun dropAbandonedTemp(dir: File) {
-        val deadline = System.currentTimeMillis() - TEMP_MAX_AGE
+    private fun writerAlive(pid: Int): Boolean? {
+        return try {
+            if (!File("/proc/${Process.myPid()}").exists()) null else File("/proc/$pid").exists()
+        } catch (e: Throwable) {
+            null
+        }
+    }
 
-        dir.listFiles { file -> file.name.contains(EXTRACTING_MARK) }
+    private fun dropAbandonedTemp(dir: File) {
+        val now = System.currentTimeMillis()
+        val ownPid = Process.myPid()
+
+        dir.listFiles { file -> file.name.contains(TempArtifacts.MARK) }
             ?.forEach { file ->
-                if (file.lastModified() < deadline) {
+                val alive = TempArtifacts.pidOf(file.name)
+                    ?.takeIf { it != ownPid }
+                    ?.let { writerAlive(it) }
+
+                val deletable = TempArtifacts.deletable(
+                    file.name,
+                    ownPid,
+                    alive,
+                    file.lastModified(),
+                    now,
+                    TEMP_MAX_AGE,
+                )
+
+                if (deletable) {
                     file.delete()
                 }
             }
@@ -186,7 +206,7 @@ object GeoAssets {
                 return@forEach
             }
 
-            val temp = File(dir, "$name$EXTRACTING_MARK.${Process.myPid()}")
+            val temp = File(dir, "$name${TempArtifacts.MARK}.${Process.myPid()}")
 
             try {
                 FileOutputStream(temp).use { output ->

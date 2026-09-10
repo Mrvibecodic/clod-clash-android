@@ -109,9 +109,10 @@ jobs:
       # считалка не должна стоить полного прогона до фидбэка. В том же джобе,
       # а не отдельным: Go на :core тратится один раз на оба шага.
       #
-      # Четыре модуля: :service (пороги напоминаний, разбор panel.json),
+      # Пять модулей: :service (пороги напоминаний, разбор panel.json),
       # :core (упакованный счётчик трафика), :design (размеры, имена файлов
-      # логов, проверки полей ввода), :app (потолки крутилки обновления).
+      # логов, проверки полей ввода), :app (потолки крутилки обновления),
+      # :common (опознание брошенных временных файлов).
       - name: Unit tests
         id: unit-tests
         if: success()
@@ -121,6 +122,7 @@ jobs:
           core:testStandardDebugUnitTest
           design:testStandardDebugUnitTest
           app:testStandardDebugUnitTest
+          common:testStandardDebugUnitTest
 
       - name: Upload Test Report
         uses: actions/upload-artifact@v7
@@ -139,6 +141,8 @@ jobs:
             design/build/test-results/
             app/build/reports/tests/
             app/build/test-results/
+            common/build/reports/tests/
+            common/build/test-results/
 
       - name: Build
         if: success()
