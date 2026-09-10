@@ -10,6 +10,21 @@ android {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    inputs.files(
+        rootProject.layout.projectDirectory.files(
+            "design/src/main/res/values/strings.xml",
+            "design/src/main/res/values-ru/strings.xml",
+            "service/src/main/res/values/strings.xml",
+            "service/src/main/res/values-ru/strings.xml",
+            "common/src/main/res/values/strings.xml",
+            "common/src/main/res/values-ru/strings.xml",
+        ),
+    )
+        .withPropertyName("localeParityStrings")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 dependencies {
     implementation(project(":common"))
     implementation(project(":core"))
