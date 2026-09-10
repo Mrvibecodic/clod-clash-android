@@ -227,7 +227,7 @@ class SessionLifecycle(
             StartCommandOutcome.StopStartFailed -> {
                 reason = service.getString(R.string.clod_foreground_denied)
 
-                notifyStopped()
+                service.sendClashStopped(reason)
 
                 service.stopSelf()
             }
