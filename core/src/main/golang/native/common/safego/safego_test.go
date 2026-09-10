@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/metacubex/mihomo/log"
 )
 
 func TestGoRunsBodyOnce(t *testing.T) {
@@ -76,4 +78,31 @@ func TestGuardSurvivesPanicInOnPanic(t *testing.T) {
 
 		panic("primary")
 	}()
+}
+
+func TestGuardCallsOnPanicWhileLogIsStuck(t *testing.T) {
+	sub := log.Subscribe()
+	defer log.UnSubscribe(sub)
+
+	for i := 0; i < 256; i++ {
+		func() {
+			defer Guard("filler", func() {})()
+
+			panic("filler")
+		}()
+	}
+
+	called := make(chan struct{})
+
+	go func() {
+		defer Guard("guarded", func() { close(called) })()
+
+		panic("boom")
+	}()
+
+	select {
+	case <-called:
+	case <-time.After(5 * time.Second):
+		t.Fatal("onPanic was not called while the log channel was stuck")
+	}
 }
