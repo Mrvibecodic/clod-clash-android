@@ -277,7 +277,7 @@ class ProfileWorker : BaseService() {
     }
 
     companion object {
-        val updating: MutableSet<UUID> = ConcurrentHashMap.newKeySet()
+        val updating: MutableSet<UUID> = Collections.newSetFromMap(ConcurrentHashMap())
 
         private const val SERVICE_CHANNEL = "profile_service_channel"
         private const val STATUS_CHANNEL = "profile_status_channel"

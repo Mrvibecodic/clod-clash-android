@@ -81,6 +81,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -1562,7 +1563,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val providerEvents: SharedFlow<ProviderEvent> = events
 
-        private val busy = ConcurrentHashMap.newKeySet<String>()
+        private val busy: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
 
         private suspend fun updateOne(provider: Provider): String? {
             val key = keyOf(provider)
