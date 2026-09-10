@@ -92,7 +92,7 @@ fun NoServersCard(
 
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = accent.statusContainer(),
+            containerColor = accent.statusContainer(MaterialTheme.colorScheme.background),
         ),
         modifier = modifier.fillMaxWidth(),
     ) {

@@ -69,7 +69,7 @@ private fun delayColor(delay: Int): Color = when {
 }
 
 @Composable
-fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
+fun PingBadge(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
     val color: Color
     val label: String
 
@@ -98,7 +98,7 @@ fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(color.statusContainer())
+            .background(color.statusContainer(on))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
@@ -111,7 +111,7 @@ fun PingBadge(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
 }
 
 @Composable
-fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
+fun DelayPill(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
     if (marksOnly && delay > 0) {
         val failed = delay >= DELAY_UNKNOWN
         val color = if (failed) ClodTheme.extraColors.delaySlow else ClodTheme.extraColors.delayFast
@@ -120,7 +120,7 @@ fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
             modifier = modifier
                 .widthIn(min = 52.dp)
                 .clip(RoundedCornerShape(50))
-                .background(color.statusContainer())
+                .background(color.statusContainer(on))
                 .padding(horizontal = 10.dp, vertical = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
@@ -167,7 +167,7 @@ fun DelayPill(delay: Int, marksOnly: Boolean = false, modifier: Modifier = Modif
         modifier = modifier
             .widthIn(min = 52.dp)
             .clip(RoundedCornerShape(50))
-            .background(color.statusContainer())
+            .background(color.statusContainer(on))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -255,7 +255,15 @@ fun ProxyRow(
             }
         }
         Spacer(Modifier.width(10.dp))
-        DelayPill(delay, marksOnly)
+        DelayPill(
+            delay = delay,
+            on = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceContainerLow
+            },
+            marksOnly = marksOnly,
+        )
         Spacer(Modifier.width(6.dp))
         Box(
             modifier = Modifier

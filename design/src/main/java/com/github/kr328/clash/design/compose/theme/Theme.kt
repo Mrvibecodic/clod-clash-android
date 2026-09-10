@@ -140,9 +140,11 @@ private const val STATUS_CONTAINER_ALPHA = 0.14f
 
 private const val STATUS_TEXT_DARKEN = 0.28f
 
+internal fun statusContainerColor(on: Color, accent: Color, alpha: Float): Color =
+    lerp(on, accent, alpha)
+
 @Composable
-fun Color.statusContainer(): Color =
-    lerp(MaterialTheme.colorScheme.surfaceContainerLow, this, STATUS_CONTAINER_ALPHA)
+fun Color.statusContainer(on: Color): Color = statusContainerColor(on, this, STATUS_CONTAINER_ALPHA)
 
 @Composable
 fun Color.statusText(): Color = if (ClodTheme.extraColors.dark) {

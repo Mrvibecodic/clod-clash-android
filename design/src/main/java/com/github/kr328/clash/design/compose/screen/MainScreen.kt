@@ -558,7 +558,13 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                 leading = painterResource(R.drawable.ic_nav_servers),
                 onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
                 trailing = if (current != null) {
-                    { PingBadge(current.delay, marksOnly = state.active?.panel?.disablePing == true) }
+                    {
+                        PingBadge(
+                            delay = current.delay,
+                            on = MaterialTheme.colorScheme.surfaceContainerLow,
+                            marksOnly = state.active?.panel?.disablePing == true,
+                        )
+                    }
                 } else {
                     null
                 },
@@ -683,7 +689,7 @@ private fun StatusPill(status: ConnectionStatus) {
     val container = if (status == ConnectionStatus.Disconnected) {
         MaterialTheme.colorScheme.surfaceVariant
     } else {
-        accent.statusContainer()
+        accent.statusContainer(MaterialTheme.colorScheme.background)
     }
 
     Row(

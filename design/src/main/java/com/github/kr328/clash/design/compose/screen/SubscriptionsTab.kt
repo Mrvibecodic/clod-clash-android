@@ -315,7 +315,15 @@ private fun SubscriptionCard(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    StatusBadge(status.label(), status.color())
+                    StatusBadge(
+                        text = status.label(),
+                        color = status.color(),
+                        on = if (profile.active) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerLow
+                        },
+                    )
                     Box(
                         modifier = Modifier
                             .padding(start = 8.dp)
@@ -454,6 +462,7 @@ fun ActiveSubscriptionCard(
                     StatusBadge(
                         text = expiryLeft(profile.expire, now) ?: status.label(),
                         color = status.color(),
+                        on = MaterialTheme.colorScheme.surfaceContainerLow,
                     )
                 }
             }
@@ -600,11 +609,11 @@ private fun GroupOption(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-internal fun StatusBadge(text: String, color: Color) {
+internal fun StatusBadge(text: String, color: Color, on: Color) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(50))
-            .background(color.statusContainer())
+            .background(color.statusContainer(on))
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
