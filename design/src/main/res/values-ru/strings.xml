@@ -291,6 +291,7 @@
     <string name="clod_sub_unlimited">безлимит</string>
     <string name="clod_sub_days">%1$d дн</string>
     <string name="clod_delay_ms">%1$d мс</string>
+    <string name="clod_delays_measuring">Измеряем %1$d серверов, до %2$d мин</string>
     <string name="clod_sub_until">до %1$s</string>
     <string name="clod_sub_expired_at">истекла %1$s</string>
     <string name="clod_sub_last_day">меньше суток</string>

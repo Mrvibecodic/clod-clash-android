@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.bidiIsolated
+import com.github.kr328.clash.design.util.measuringMinutes
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.ProxyRow
 import com.github.kr328.clash.design.compose.component.noServersReason
@@ -73,7 +74,17 @@ fun ServersTab(
                 )
                 val count = state.groups.getOrNull(state.selected)?.proxies?.size ?: 0
 
-                if (count > 0) {
+                if (state.testing && state.measuring > 0) {
+                    Text(
+                        text = stringResource(
+                            R.string.clod_delays_measuring,
+                            state.measuring,
+                            measuringMinutes(state.measuring),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (count > 0) {
                     Text(
                         text = pluralStringResource(R.plurals.clod_nodes_count, count, count),
                         style = MaterialTheme.typography.bodySmall,

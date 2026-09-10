@@ -145,6 +145,7 @@ data class ServersState(
     val icons: Map<String, String> = emptyMap(),
     val selected: Int = 0,
     val testing: Boolean = false,
+    val measuring: Int = 0,
     val offline: Boolean = false,
     val readOnly: Boolean = false,
     val favorites: Set<String> = emptySet(),

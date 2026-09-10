@@ -338,6 +338,7 @@
     <string name="clod_sub_unlimited">Unlimited</string>
     <string name="clod_sub_days">%1$d d</string>
     <string name="clod_delay_ms">%1$d ms</string>
+    <string name="clod_delays_measuring">Measuring %1$d servers, up to %2$d min</string>
     <string name="clod_sub_until">until %1$s</string>
     <string name="clod_sub_expired_at">expired %1$s</string>
     <string name="clod_sub_last_day">less than a day</string>

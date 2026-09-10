@@ -41,6 +41,7 @@ import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.applyDynamicShortcuts
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
+import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
@@ -79,9 +80,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.builtins.MapSerializer
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.json.Json
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -151,6 +149,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         launch {
             RoutingDataUpdate.state.collect { design.renderRoutingDataUpdate(it) }
+        }
+
+        launch {
+            OfflineDelays.state.collect { design.renderOfflineDelays(it) }
         }
 
         launch {
@@ -726,15 +728,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         lastHealthCheckAt = SystemClock.elapsedRealtime()
 
         if (offlineGroups.isNotEmpty()) {
-            healthChecking = true
-
-            try {
-                runOfflineHealthCheck(manual)
-            } finally {
-                healthChecking = false
-            }
-
-            drainQueuedHealthCheck()
+            startOfflineHealthCheck(manual)
 
             return
         }
@@ -794,38 +788,40 @@ class MainActivity : BaseActivity<MainDesign>() {
         runHealthCheck(manual = queuedManually)
     }
 
-    private suspend fun MainDesign.runOfflineHealthCheck(manual: Boolean) {
+    private suspend fun MainDesign.startOfflineHealthCheck(manual: Boolean) {
+        if (OfflineDelays.running) return
+
         val active = withProfile { queryActive() } ?: return
 
-        setProxyTesting(true)
+        val total = offlineGroups.flatMap { it.proxies }.distinct().size
 
-        try {
-            val raw = withClash { testProfileDelays(active.uuid) }
+        OfflineDelays.start(active.uuid, total, manual)
+    }
 
-            offlineProfile = active.uuid
-            offlineDelays = try {
-                Json.Default.decodeFromString(DELAYS_SERIALIZER, raw)
-            } catch (e: Exception) {
-                Log.w("Parse offline delays: $e", e)
+    private suspend fun MainDesign.renderOfflineDelays(update: OfflineDelays.State) {
+        when (update) {
+            is OfflineDelays.State.Idle -> Unit
+            is OfflineDelays.State.Running -> setProxyTesting(true, update.total)
+            is OfflineDelays.State.Done -> {
+                if (withProfile { queryActive() }?.uuid == update.profile) {
+                    offlineProfile = update.profile
+                    offlineDelays = update.delays
 
-                emptyMap()
+                    fillOfflineProxyGroup(selectedGroup)
+
+                    if (update.manual) {
+                        if (update.error != null) {
+                            showExceptionToast(update.error)
+                        } else {
+                            notifyDelaysUnavailable(update.delays.values.toList())
+                        }
+                    }
+                }
+
+                setProxyTesting(false)
+
+                OfflineDelays.consume()
             }
-
-            fillOfflineProxyGroup(selectedGroup)
-
-            if (manual) {
-                notifyDelaysUnavailable(offlineDelays.values.toList())
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w("Offline health check: $e", e)
-
-            if (manual) {
-                showExceptionToast(e)
-            }
-        } finally {
-            setProxyTesting(false)
         }
     }
 
@@ -983,7 +979,6 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         private val OFFLINE_SELECTABLE_GROUPS = setOf("select", "url-test", "fallback")
 
-        private val DELAYS_SERIALIZER = MapSerializer(String.serializer(), Int.serializer())
 
         private const val HEALTH_STALE_MS = 300_000L
 
