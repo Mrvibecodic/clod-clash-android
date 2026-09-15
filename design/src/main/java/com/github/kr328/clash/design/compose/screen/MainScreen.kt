@@ -180,9 +180,6 @@ data class MainScreenState(
     val startupStage: String? = null,
     val active: SubscriptionItem? = null,
     val mode: TunnelState.Mode = TunnelState.Mode.Rule,
-    val downloaded: String = "",
-    val uploaded: String = "",
-    val sessionSeconds: Long = 0,
     val selectedTab: MainTab = MainTab.Home,
     val subScreen: SubScreen? = null,
     val servers: ServersState = ServersState(),
@@ -192,6 +189,13 @@ data class MainScreenState(
     val update: UpdateState? = null,
     val notificationPrompt: Boolean = false,
     val reliability: ReliabilityState = ReliabilityState(),
+)
+
+@Immutable
+data class SessionStats(
+    val seconds: Long = 0,
+    val downloaded: String = "",
+    val uploaded: String = "",
 )
 
 sealed interface MainAction {
@@ -266,6 +270,7 @@ fun MainScreen(
     state: MainScreenState,
     onAction: (MainAction) -> Unit,
     modifier: Modifier = Modifier,
+    session: () -> SessionStats = { SessionStats() },
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_LAYOUT_WIDTH_DP
 
@@ -294,13 +299,17 @@ fun MainScreen(
                 MainNavigationRail(state.selectedTab, onAction)
             }
 
-            MainContent(state, onAction)
+            MainContent(state, session, onAction)
         }
     }
 }
 
 @Composable
-private fun MainContent(state: MainScreenState, onAction: (MainAction) -> Unit) {
+private fun MainContent(
+    state: MainScreenState,
+    session: () -> SessionStats,
+    onAction: (MainAction) -> Unit,
+) {
     val tabStates = rememberSaveableStateHolder()
 
     Box(
@@ -336,7 +345,7 @@ private fun MainContent(state: MainScreenState, onAction: (MainAction) -> Unit) 
                             MainTab.Subscriptions ->
                                 SubscriptionsTab(state.subscriptions, onAction)
                             MainTab.More -> MoreTab(state, onAction)
-                            else -> HomeTab(state, onAction)
+                            else -> HomeTab(state, session, onAction)
                         }
                     }
                 }
@@ -445,7 +454,11 @@ private fun MainBottomBar(selected: MainTab, onAction: (MainAction) -> Unit) {
 }
 
 @Composable
-private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
+private fun HomeTab(
+    state: MainScreenState,
+    session: () -> SessionStats,
+    onAction: (MainAction) -> Unit,
+) {
     val powerFocus = remember { FocusRequester() }
     val television = isTelevision()
 
@@ -494,14 +507,12 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PowerButton(
+            SessionPowerButton(
                 status = state.status,
+                connected = connected,
+                session = session,
                 onClick = { onAction(MainAction.ToggleStatus) },
                 modifier = Modifier.focusRequester(powerFocus),
-                diameter = 134.dp,
-                caption = formatSession(state.sessionSeconds).takeIf {
-                    connected && state.sessionSeconds > 0
-                },
             )
             Spacer(Modifier.height(16.dp))
             StatusPill(state.status)
@@ -520,9 +531,8 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                     textAlign = TextAlign.Center,
                 )
             }
-            if (connected && state.downloaded.isNotBlank() && state.uploaded.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                SessionTrafficRow(downloaded = state.downloaded, uploaded = state.uploaded)
+            if (connected) {
+                SessionTraffic(session)
             }
         }
 
@@ -543,6 +553,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
         state.servers.groups.getOrNull(state.servers.selected)?.let { group ->
             val current = remember(group) { group.proxies.firstOrNull { it.name == group.now } }
+            val marksOnly = state.active?.panel?.disablePing == true
 
             SelectorRow(
                 label = stringResource(
@@ -563,7 +574,7 @@ private fun HomeTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
                         PingBadge(
                             delay = current.delay,
                             on = MaterialTheme.colorScheme.surfaceContainerLow,
-                            marksOnly = state.active?.panel?.disablePing == true,
+                            marksOnly = marksOnly,
                         )
                     }
                 } else {
@@ -719,6 +730,35 @@ private fun StatusPill(status: ConnectionStatus) {
             style = MaterialTheme.typography.labelLarge,
             color = accent.statusText(),
         )
+    }
+}
+
+@Composable
+private fun SessionPowerButton(
+    status: ConnectionStatus,
+    connected: Boolean,
+    session: () -> SessionStats,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val seconds = session().seconds
+
+    PowerButton(
+        status = status,
+        onClick = onClick,
+        modifier = modifier,
+        diameter = 134.dp,
+        caption = formatSession(seconds).takeIf { connected && seconds > 0 },
+    )
+}
+
+@Composable
+private fun SessionTraffic(session: () -> SessionStats) {
+    val stats = session()
+
+    if (stats.downloaded.isNotBlank() && stats.uploaded.isNotBlank()) {
+        Spacer(Modifier.height(8.dp))
+        SessionTrafficRow(downloaded = stats.downloaded, uploaded = stats.uploaded)
     }
 }
 

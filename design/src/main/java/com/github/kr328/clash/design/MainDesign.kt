@@ -19,6 +19,7 @@ import com.github.kr328.clash.design.compose.screen.MainAction
 import com.github.kr328.clash.design.compose.screen.MainScreen
 import com.github.kr328.clash.design.compose.screen.MainScreenState
 import com.github.kr328.clash.design.compose.screen.ProxyGroupState
+import com.github.kr328.clash.design.compose.screen.SessionStats
 import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
@@ -82,8 +83,12 @@ class MainDesign(
 
     private var state by mutableStateOf(initial)
 
+    private var session by mutableStateOf(SessionStats())
+
+    private val readSession: () -> SessionStats = { session }
+
     override val root: View = composeRoot(noticeInset = 80.dp) {
-        MainScreen(state = state, onAction = ::onAction)
+        MainScreen(state = state, onAction = ::onAction, session = readSession)
     }
 
     private fun onAction(action: MainAction) {
@@ -237,13 +242,13 @@ class MainDesign(
 
     suspend fun setSessionSeconds(seconds: Long) {
         withContext(Dispatchers.Main) {
-            state = state.copy(sessionSeconds = seconds)
+            session = session.copy(seconds = seconds)
         }
     }
 
     suspend fun setTraffic(value: Traffic) {
         withContext(Dispatchers.Main) {
-            state = state.copy(
+            session = session.copy(
                 downloaded = value.bytesDownload().toBytesString(),
                 uploaded = value.bytesUpload().toBytesString(),
             )

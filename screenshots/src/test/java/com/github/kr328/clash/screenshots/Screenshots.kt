@@ -21,6 +21,7 @@ import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.compose.screen.ProxyGroupState
 import com.github.kr328.clash.design.compose.screen.ServersState
+import com.github.kr328.clash.design.compose.screen.SessionStats
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.SubscriptionsState
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
@@ -114,19 +115,20 @@ abstract class Screenshots(private val locale: String, private val demo: DemoCon
         ),
     )
 
+    private fun session(seconds: Long) = SessionStats(
+        seconds = seconds,
+        downloaded = demo.downloaded,
+        uploaded = demo.uploaded,
+    )
+
     private fun state(
         status: ConnectionStatus = ConnectionStatus.Disconnected,
         tab: MainTab = MainTab.Home,
-        session: Long = 0,
-        traffic: Boolean = false,
     ) = MainScreenState(
         status = status,
         active = subscription,
         mode = TunnelState.Mode.Rule,
         selectedTab = tab,
-        sessionSeconds = session,
-        downloaded = if (traffic) demo.downloaded else "",
-        uploaded = if (traffic) demo.uploaded else "",
         servers = servers,
         subscriptions = SubscriptionsState(profiles = listOf(subscription)),
     )
@@ -157,16 +159,18 @@ abstract class Screenshots(private val locale: String, private val demo: DemoCon
     @Test
     fun connected() = shoot("connected") {
         MainScreen(
-            state = state(status = ConnectionStatus.Connected, session = SESSION_SECONDS, traffic = true),
+            state = state(status = ConnectionStatus.Connected),
             onAction = {},
+            session = { session(SESSION_SECONDS) },
         )
     }
 
     @Test
     fun connectedDark() = shoot("connected-dark", dark = true) {
         MainScreen(
-            state = state(status = ConnectionStatus.Connected, session = SESSION_SECONDS, traffic = true),
+            state = state(status = ConnectionStatus.Connected),
             onAction = {},
+            session = { session(SESSION_SECONDS) },
         )
     }
 
