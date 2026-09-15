@@ -25,8 +25,7 @@ import android.net.Uri
 import android.os.RemoteException
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
-import com.github.kr328.clash.core.model.ProxySort
-import com.github.kr328.clash.core.model.TunnelState
+import com.github.kr328.clash.core.model.ProxyGroupNames
 import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeLocalProxyPort
@@ -656,8 +655,6 @@ class MainActivity : BaseActivity<MainDesign>() {
             HealthProbes.checkedGroups = value
         }
 
-    private var iconGroups: Pair<UUID?, List<String>>? = null
-
     @Volatile
     private var healthChecking = false
 
@@ -694,15 +691,13 @@ class MainActivity : BaseActivity<MainDesign>() {
     private var globalBlockedReported: Boolean = false
 
     private suspend fun MainDesign.reloadProxyGroups(): Boolean {
-        val names = if (clashRunning) withClash { queryProxyGroupNames(true) } else emptyList()
+        val snapshot = if (clashRunning) withClash { queryProxyGroupNames(true) } else ProxyGroupNames()
+        val names = snapshot.names
 
         if (names.isEmpty()) {
             globalSelection = null
 
-            val direct = clashRunning &&
-                withClash { queryTunnelState() }.mode == TunnelState.Mode.Direct
-
-            loadOfflineProxyGroups(readOnly = direct)
+            loadOfflineProxyGroups(readOnly = snapshot.direct)
 
             return false
         }
@@ -713,7 +708,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setProxyGroupNames(names)
 
-        reloadGroupIcons(names)
+        setGroupIcons(if (uiStore.showGroupIcons) snapshot.icons else emptyMap())
 
         reloadProxyGroup(selectedGroup)
 
@@ -854,8 +849,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         proxyGroupNames = offlineGroups.map { it.name }
         healthCheckedGroups = emptyList()
 
-        iconGroups = null
-
         setGroupIcons(emptyMap())
 
         if (active?.uuid != offlineProfile) {
@@ -864,8 +857,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             offlineSelections.clear()
         }
 
+        val saved = if (proxyGroupNames.isEmpty()) emptyMap() else withClash { querySelections() }
+
         proxyGroupNames.forEach { group ->
-            val selected = withClash { querySelection(group) }
+            val selected = saved[group]
 
             if (selected != null) {
                 offlineSelections[group] = selected
@@ -899,47 +894,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                 )
             },
         )
-    }
-
-    private suspend fun MainDesign.reloadGroupIcons(names: List<String>) {
-        if (!uiStore.showGroupIcons) {
-            iconGroups = null
-
-            setGroupIcons(emptyMap())
-
-            return
-        }
-
-        val key = favoritesProfile to names
-
-        if (key == iconGroups) return
-
-        if (names.size == 1 && names.first() == GLOBAL_GROUP) {
-            iconGroups = key
-
-            setGroupIcons(emptyMap())
-
-            return
-        }
-
-        val icons = try {
-            withClash { queryProxyGroup(GLOBAL_GROUP, ProxySort.Default) }
-                .proxies
-                .filter { it.isGroup && it.icon.isNotBlank() && it.name in names }
-                .associate { it.name to it.icon }
-        } catch (e: Exception) {
-            Log.w("Query group icons: $e", e)
-
-            iconGroups = null
-
-            setGroupIcons(emptyMap())
-
-            return
-        }
-
-        iconGroups = key
-
-        setGroupIcons(icons)
     }
 
     private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {

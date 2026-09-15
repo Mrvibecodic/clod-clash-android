@@ -32,7 +32,7 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryTrafficTotal()
     }
 
-    override fun queryProxyGroupNames(excludeNotSelectable: Boolean): List<String> {
+    override fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames {
         return Clash.queryGroupNames(excludeNotSelectable)
     }
 
@@ -82,12 +82,10 @@ class ClashManager(private val context: Context) : IClashManager,
         }
     }
 
-    override suspend fun querySelection(group: String): String? = withContext(selections) {
-        val current = store.activeProfile ?: return@withContext null
+    override suspend fun querySelections(): Map<String, String> = withContext(selections) {
+        val current = store.activeProfile ?: return@withContext emptyMap()
 
-        SelectionDao().querySelections(current)
-            .firstOrNull { it.proxy == group }
-            ?.selected
+        SelectionDao().querySelections(current).associate { it.proxy to it.selected }
     }
 
     override suspend fun testProfileDelays(uuid: UUID): String = withContext(Dispatchers.IO) {

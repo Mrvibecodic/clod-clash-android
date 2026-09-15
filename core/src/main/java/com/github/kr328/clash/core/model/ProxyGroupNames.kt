@@ -6,13 +6,10 @@ import com.github.kr328.clash.core.util.Parcelizer
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class Proxy(
-    val name: String,
-    val title: String,
-    val subtitle: String,
-    val type: String,
-    val delay: Int,
-    val isGroup: Boolean,
+data class ProxyGroupNames(
+    val direct: Boolean = false,
+    val names: List<String> = emptyList(),
+    val icons: Map<String, String> = emptyMap(),
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         Parcelizer.encodeToParcel(serializer(), parcel, this)
@@ -22,12 +19,12 @@ data class Proxy(
         return 0
     }
 
-    companion object CREATOR : Parcelable.Creator<Proxy> {
-        override fun createFromParcel(parcel: Parcel): Proxy {
+    companion object CREATOR : Parcelable.Creator<ProxyGroupNames> {
+        override fun createFromParcel(parcel: Parcel): ProxyGroupNames {
             return Parcelizer.decodeFromParcel(serializer(), parcel)
         }
 
-        override fun newArray(size: Int): Array<Proxy?> {
+        override fun newArray(size: Int): Array<ProxyGroupNames?> {
             return arrayOfNulls(size)
         }
     }

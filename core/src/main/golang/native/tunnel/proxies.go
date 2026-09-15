@@ -26,7 +26,6 @@ type Proxy struct {
 	Title    string `json:"title"`
 	Subtitle string `json:"subtitle"`
 	Type     string `json:"type"`
-	Icon     string `json:"icon,omitempty"`
 	Delay    int    `json:"delay"`
 	IsGroup  bool   `json:"isGroup"`
 }
@@ -54,36 +53,50 @@ func (s *sortableProxyList) Swap(i, j int) {
 	s.list[i], s.list[j] = s.list[j], s.list[i]
 }
 
-func QueryProxyGroupNames(excludeNotSelectable bool) []string {
+type ProxyGroupNames struct {
+	Direct bool              `json:"direct"`
+	Names  []string          `json:"names"`
+	Icons  map[string]string `json:"icons"`
+}
+
+func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 	mode := tunnel.Mode()
 
+	result := &ProxyGroupNames{
+		Direct: mode == tunnel.Direct,
+		Names:  []string{},
+		Icons:  map[string]string{},
+	}
+
 	if mode == tunnel.Direct {
-		return []string{}
+		return result
 	}
 
 	root := tunnel.Proxies()["GLOBAL"]
 	if root == nil {
-		return []string{}
+		return result
 	}
 
 	global, ok := root.Adapter().(outboundgroup.ProxyGroup)
 	if !ok {
-		return []string{}
+		return result
 	}
 
 	if mode == tunnel.Global {
-		return []string{"GLOBAL"}
+		result.Names = []string{"GLOBAL"}
+
+		return result
 	}
 
 	providers := global.Providers()
 	if len(providers) == 0 {
-		return []string{}
+		return result
 	}
 
 	proxies := providers[0].Proxies()
-	result := make([]string, 0, len(proxies))
-
+	all := make([]string, 0, len(proxies))
 	selectable := make([]string, 0, len(proxies))
+	icons := make(map[string]string)
 
 	for _, p := range proxies {
 		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
@@ -95,16 +108,29 @@ func QueryProxyGroupNames(excludeNotSelectable bool) []string {
 			continue
 		}
 
-		result = append(result, p.Name())
+		all = append(all, p.Name())
+
+		if icon := httpsIcon(g.Icon()); icon != "" {
+			icons[p.Name()] = icon
+		}
 
 		if _, ok := g.(outboundgroup.SelectAble); ok {
 			selectable = append(selectable, p.Name())
 		}
 	}
 
+	names := all
 	if excludeNotSelectable && len(selectable) > 0 {
-		return selectable
+		names = selectable
 	}
+
+	for _, name := range names {
+		if icon, ok := icons[name]; ok {
+			result.Icons[name] = icon
+		}
+	}
+
+	result.Names = names
 
 	return result
 }
@@ -244,19 +270,13 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			}
 		}
 
-		group, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
-
-		icon := ""
-		if isGroup {
-			icon = httpsIcon(group.Icon())
-		}
+		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
 		result = append(result, &Proxy{
 			Name:     name,
 			Title:    strings.TrimSpace(title),
 			Subtitle: strings.TrimSpace(subtitle),
 			Type:     p.Type().String(),
-			Icon:     icon,
 			Delay:    int(p.LastDelayForTestUrl(testURL)),
 			IsGroup:  isGroup,
 		})

@@ -9,7 +9,6 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 import java.net.InetSocketAddress
 
@@ -125,17 +124,12 @@ object Clash {
         Bridge.nativeStopHttp()
     }
 
-    fun queryGroupNames(excludeNotSelectable: Boolean): List<String> {
-        val names = CoreJson.decodeFromString(
-            JsonArray.serializer(),
-            Bridge.nativeQueryGroupNames(excludeNotSelectable)
-        )
+    fun queryGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames {
+        return decodeGroupNames(Bridge.nativeQueryGroupNames(excludeNotSelectable))
+    }
 
-        return names.map {
-            require(it.jsonPrimitive.isString)
-
-            it.jsonPrimitive.content
-        }
+    internal fun decodeGroupNames(json: String): ProxyGroupNames {
+        return CoreJson.decodeFromString(ProxyGroupNames.serializer(), json)
     }
 
     fun queryGroup(name: String, sort: ProxySort): ProxyGroup {

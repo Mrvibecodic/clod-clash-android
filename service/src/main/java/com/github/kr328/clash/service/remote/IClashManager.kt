@@ -9,7 +9,7 @@ import java.util.UUID
 interface IClashManager {
     fun queryTunnelState(): TunnelState
     fun queryTrafficTotal(): Long
-    fun queryProxyGroupNames(excludeNotSelectable: Boolean): List<String>
+    fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames
     fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup
     fun queryProviders(): ProviderList
 
@@ -17,7 +17,7 @@ interface IClashManager {
 
     fun rememberSelection(group: String, name: String)
 
-    suspend fun querySelection(group: String): String?
+    suspend fun querySelections(): Map<String, String>
 
     suspend fun healthCheck(group: String)
 

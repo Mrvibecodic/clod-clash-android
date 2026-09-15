@@ -8,6 +8,7 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.ProviderList
 import com.github.kr328.clash.core.model.ProxyGroup
+import com.github.kr328.clash.core.model.ProxyGroupNames
 import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.model.Profile
@@ -61,7 +62,7 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun queryTrafficTotal(): Long =
         guardSync("queryTrafficTotal") { delegate.queryTrafficTotal() }
 
-    override fun queryProxyGroupNames(excludeNotSelectable: Boolean): List<String> =
+    override fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames =
         guardSync("queryProxyGroupNames") { delegate.queryProxyGroupNames(excludeNotSelectable) }
 
     override fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup =
@@ -88,8 +89,8 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun setLogObserver(observer: ILogObserver?) =
         guardSync("setLogObserver") { delegate.setLogObserver(observer) }
 
-    override suspend fun querySelection(group: String): String? =
-        guard { delegate.querySelection(group) }
+    override suspend fun querySelections(): Map<String, String> =
+        guard { delegate.querySelections() }
 
     override suspend fun healthCheck(group: String) =
         guard { delegate.healthCheck(group) }
