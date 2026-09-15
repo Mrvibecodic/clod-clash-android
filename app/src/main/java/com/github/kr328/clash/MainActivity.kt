@@ -58,7 +58,9 @@ import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.update.ApkInstaller
 import com.github.kr328.clash.update.UpdatePrompt
 import com.github.kr328.clash.update.UpdateTask
+import com.github.kr328.clash.util.ServersReload
 import com.github.kr328.clash.util.ServiceUnavailableException
+import com.github.kr328.clash.util.serversReload
 import com.github.kr328.clash.util.shouldAutoHealthCheck
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
@@ -280,7 +282,19 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         MainDesign.Request.ReloadProxies -> {
-                            val started = design.reloadProxyGroups()
+                            val liveGroups = offlineGroups.isEmpty() && proxyGroupNames.isNotEmpty()
+
+                            val started = when (serversReload(panelRunning == clashRunning, liveGroups)) {
+                                ServersReload.Panel -> design.reloadProxyGroups()
+                                ServersReload.SelectedGroup -> {
+                                    design.reloadProxyGroup(design.selectedGroup)
+
+                                    design.reportGlobalRoutingBlocked(proxyGroupNames)
+
+                                    false
+                                }
+                                ServersReload.Nothing -> false
+                            }
 
                             if (
                                 shouldAutoHealthCheck(
@@ -591,6 +605,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private suspend fun MainDesign.fetch() {
+        panelRunning = null
+
         val status = if (clashRunning) null else withContext(Dispatchers.IO) {
             StatusClient(this@MainActivity).status()
         }
@@ -649,6 +665,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var offlineGroups: List<PanelGroup> = emptyList()
 
+    private var panelRunning: Boolean? = null
+
     private var healthCheckedGroups: List<String>
         get() = HealthProbes.checkedGroups
         set(value) {
@@ -691,13 +709,16 @@ class MainActivity : BaseActivity<MainDesign>() {
     private var globalBlockedReported: Boolean = false
 
     private suspend fun MainDesign.reloadProxyGroups(): Boolean {
-        val snapshot = if (clashRunning) withClash { queryProxyGroupNames(true) } else ProxyGroupNames()
+        val running = clashRunning
+        val snapshot = if (running) withClash { queryProxyGroupNames(true) } else ProxyGroupNames()
         val names = snapshot.names
 
         if (names.isEmpty()) {
             globalSelection = null
 
             loadOfflineProxyGroups(readOnly = snapshot.direct)
+
+            panelRunning = running
 
             return false
         }
@@ -713,6 +734,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         reloadProxyGroup(selectedGroup)
 
         reportGlobalRoutingBlocked(names)
+
+        panelRunning = running
 
         if (names != healthCheckedGroups && activityStarted) {
             healthCheckedGroups = names
