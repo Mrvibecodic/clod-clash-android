@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -140,12 +142,12 @@ fun SelectRow(
                 }
             },
             text = {
-                Column {
+                Column(Modifier.selectableGroup()) {
                     options.forEachIndexed { index, option ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .selectable(selected = index == selectedIndex, role = Role.RadioButton) {
                                     picking = false
 
                                     if (index != selectedIndex) onSelect(index)

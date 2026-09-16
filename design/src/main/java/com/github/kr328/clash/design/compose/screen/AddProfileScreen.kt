@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -25,6 +25,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -124,7 +126,10 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onAction(AddProfileAction.SecureChanged(!state.secure)) },
+            .minimumInteractiveComponentSize()
+            .toggleable(value = state.secure, role = Role.Switch) {
+                onAction(AddProfileAction.SecureChanged(it))
+            },
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -142,7 +147,7 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         Spacer(Modifier.width(12.dp))
         Switch(
             checked = state.secure,
-            onCheckedChange = { onAction(AddProfileAction.SecureChanged(it)) },
+            onCheckedChange = null,
         )
     }
     Spacer(Modifier.height(24.dp))

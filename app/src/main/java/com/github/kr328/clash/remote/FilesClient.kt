@@ -6,6 +6,7 @@ import android.content.Context
 import android.net.Uri
 import com.github.kr328.clash.common.constants.Authorities
 import com.github.kr328.clash.design.model.File
+import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.util.copyContentTo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,7 +35,7 @@ class FilesClient(private val context: Context) {
                 ).also {
                     cursor.moveToNext()
                 }
-            }.sortedWith(compareBy({ !it.isDirectory }, { it.name }))
+            }.sortedWith(compareBy<File> { !it.isDirectory }.thenBy(localeCollator()) { it.name })
         } ?: emptyList()
     }
 

@@ -36,6 +36,8 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -83,6 +85,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -1047,7 +1050,7 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
                 }
             },
             text = {
-                Column {
+                Column(Modifier.selectableGroup()) {
                     listOf(
                         TunnelState.Mode.Rule,
                         TunnelState.Mode.Global,
@@ -1056,7 +1059,7 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
+                                .selectable(selected = candidate == mode, role = Role.RadioButton) {
                                     picking = false
                                     onAction(MainAction.SetMode(candidate))
                                 }
