@@ -308,7 +308,9 @@ jobs:
             --slurpfile sums <(
               cd dist && while read -r abi file; do
                 hash=$(awk -v f="$file" '$2 == f {print $1}' SHA256SUMS.txt)
-                jq -n --arg abi "$abi" --arg f "$file" --arg h "$hash" '{abi:$abi, file:$f, sha256:$h}'
+                size=$(stat -c %s "$file")
+                jq -n --arg abi "$abi" --arg f "$file" --arg h "$hash" --argjson s "$size" \
+                  '{abi:$abi, file:$f, sha256:$h, size:$s}'
               done < abis.txt | jq -s .
             ) '
             {
@@ -318,7 +320,7 @@ jobs:
               pub_date: $pub_date,
               platforms: ($sums[0] | map({
                 key: .abi,
-                value: {url: ($base + "/" + .file), sha256: .sha256}
+                value: {url: ($base + "/" + .file), sha256: .sha256, size: .size}
               }) | from_entries)
             }' > dist/latest.json
           cat dist/latest.json

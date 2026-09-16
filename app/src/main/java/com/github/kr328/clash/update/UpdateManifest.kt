@@ -13,6 +13,7 @@ data class UpdateManifest(
     data class Platform(
         val url: String,
         val sha256: String,
+        val size: Long = 0,
     )
 
     fun platformFor(abis: List<String>): Platform? =

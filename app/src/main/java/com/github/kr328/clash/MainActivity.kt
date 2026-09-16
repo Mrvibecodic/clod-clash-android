@@ -1373,12 +1373,14 @@ class MainActivity : BaseActivity<MainDesign>() {
             is UpdateTask.State.Available -> setUpdate(
                 UpdateState(
                     version = state.available.manifest.version,
+                    sizeBytes = state.available.platform.size,
                     notes = state.available.manifest.notes,
                 ),
             )
             is UpdateTask.State.Downloading -> setUpdate(
                 UpdateState(
                     version = state.available.manifest.version,
+                    sizeBytes = state.available.platform.size,
                     notes = state.available.manifest.notes,
                     downloading = true,
                     progress = state.progress,
