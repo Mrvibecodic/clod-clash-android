@@ -114,16 +114,23 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
+                var truncated by remember(message.id) { mutableStateOf(false) }
+
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
+                    onTextLayout = { truncated = it.hasVisualOverflow },
                     modifier = Modifier.weight(1f, fill = false),
                 )
 
+                // «Подробнее» есть смысл показывать, только если в диалоге будет что-то сверх плашки:
+                // другой текст или тот же, но обрезанный шестью строками
                 val actionLabel = message.actionLabel
-                    ?: message.detail?.let { stringResource(R.string.detail) }
+                    ?: message.detail
+                        ?.takeIf { it != message.text || truncated }
+                        ?.let { stringResource(R.string.detail) }
 
                 if (actionLabel != null) {
                     Spacer(Modifier.width(8.dp))
