@@ -96,7 +96,7 @@ class ProfileWorker : BaseService() {
 
         try {
             val failedProviders = processing(name) {
-                ProfileProcessor.update(this, imported.uuid, null)
+                ProfileProcessor.update(this, imported.uuid)
             }
 
             completed(imported.uuid, displayProfileName(imported.uuid, imported.name), failedProviders)

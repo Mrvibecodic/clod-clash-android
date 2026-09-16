@@ -111,9 +111,6 @@ class GuardedProfileManager(private val delegate: IProfileManager) : IProfileMan
         secure: Boolean,
     ): UUID = guard { delegate.create(type, name, source, ageSecretKey, secure) }
 
-    override suspend fun clone(uuid: UUID): UUID =
-        guard { delegate.clone(uuid) }
-
     override suspend fun commit(uuid: UUID, callback: IFetchObserver?) =
         guard { delegate.commit(uuid, callback) }
 

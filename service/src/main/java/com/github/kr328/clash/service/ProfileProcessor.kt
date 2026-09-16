@@ -143,7 +143,7 @@ object ProfileProcessor {
         }
     }
 
-    suspend fun update(context: Context, uuid: UUID, callback: IFetchObserver?): List<String> {
+    suspend fun update(context: Context, uuid: UUID): List<String> {
         return withContext(NonCancellable) {
             processLock.withLock {
                 val snapshot = profileLock.withLock {
@@ -166,7 +166,7 @@ object ProfileProcessor {
                 Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
                 Clash.setSecureChannel(snapshot.secure)
 
-                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, callback)
+                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, null)
                 val subscriptionInfo = fetched.info
 
                 profileLock.withLock {
@@ -194,7 +194,7 @@ object ProfileProcessor {
                     }
                 }
 
-                val migrated = followMigration(context, snapshot.uuid, snapshot.source, callback)
+                val migrated = followMigration(context, snapshot.uuid, snapshot.source)
 
                 (fetched.failedProviders + migrated).distinct()
             }
@@ -205,7 +205,6 @@ object ProfileProcessor {
         context: Context,
         uuid: UUID,
         current: String,
-        callback: IFetchObserver?,
     ): List<String> {
         val profileDir = context.importedDir.resolve(uuid.toString())
         val stateFile = profileDir.resolve(MIGRATION_FILE)
@@ -240,7 +239,7 @@ object ProfileProcessor {
             profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
                 ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
 
-            fetchProfile(context, probe, candidate, true, true, callback)
+            fetchProfile(context, probe, candidate, true, true, null)
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
 
@@ -456,8 +455,8 @@ object ProfileProcessor {
         }
     }
 
-    suspend fun release(context: Context, uuid: UUID): Boolean {
-        return withContext(NonCancellable) {
+    suspend fun release(context: Context, uuid: UUID) {
+        withContext(NonCancellable) {
             profileLock.withLock {
                 PendingDao().remove(uuid)
 

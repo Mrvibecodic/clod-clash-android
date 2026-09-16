@@ -79,33 +79,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
         return uuid
     }
 
-    override suspend fun clone(uuid: UUID): UUID {
-        val newUUID = generateProfileUUID()
-
-        val imported = ImportedDao().queryByUUID(uuid)
-            ?: throw FileNotFoundException("profile $uuid not found")
-
-        val pending = Pending(
-            uuid = newUUID,
-            name = imported.name,
-            type = Profile.Type.File,
-            source = imported.source,
-            interval = imported.interval,
-            upload = imported.upload,
-            total = imported.total,
-            download = imported.download,
-            expire = imported.expire,
-            ageSecretKey = imported.ageSecretKey,
-            secure = imported.secure,
-        )
-
-        cloneImportedFiles(uuid, newUUID)
-
-        PendingDao().insert(pending)
-
-        return newUUID
-    }
-
     override suspend fun patch(uuid: UUID, name: String, source: String, interval: Long, ageSecretKey: String?) {
         val pending = PendingDao().queryByUUID(uuid)
 
@@ -236,12 +209,12 @@ class ProfileManager(private val context: Context) : IProfileManager,
             ?: -1
     }
 
-    private fun cloneImportedFiles(source: UUID, target: UUID = source) {
-        val s = context.importedDir.resolve(source.toString())
-        val t = context.pendingDir.resolve(target.toString())
+    private fun cloneImportedFiles(uuid: UUID) {
+        val s = context.importedDir.resolve(uuid.toString())
+        val t = context.pendingDir.resolve(uuid.toString())
 
         if (!s.exists())
-            throw FileNotFoundException("profile $source not found")
+            throw FileNotFoundException("profile $uuid not found")
 
         t.deleteRecursively()
 
