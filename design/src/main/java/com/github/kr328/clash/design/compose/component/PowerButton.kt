@@ -51,6 +51,9 @@ enum class ConnectionStatus {
 
 private const val FACE_HIGHLIGHT = 0.22f
 
+internal fun powerFaceCenter(accent: Color, dark: Boolean): Color =
+    lerp(accent, if (dark) Color.White else Color.Black, FACE_HIGHLIGHT)
+
 @Composable
 fun PowerButton(
     status: ConnectionStatus,
@@ -94,10 +97,10 @@ fun PowerButton(
         0f
     }
 
-    val faceBrush = remember(animatedAccent) {
+    val faceBrush = remember(animatedAccent, extra.dark) {
         Brush.radialGradient(
             colors = listOf(
-                lerp(animatedAccent, Color.White, FACE_HIGHLIGHT),
+                powerFaceCenter(animatedAccent, extra.dark),
                 animatedAccent,
             ),
         )
@@ -140,7 +143,7 @@ fun PowerButton(
                         R.string.clod_action_connect
                     },
                 ),
-                tint = Color.White,
+                tint = extra.onStatus,
                 modifier = Modifier.size(animatedDiameter * if (caption == null) 0.34f else 0.30f),
             )
             if (caption != null) {
@@ -148,7 +151,7 @@ fun PowerButton(
                 Text(
                     text = caption,
                     style = TimerTextStyle,
-                    color = Color.White,
+                    color = extra.onStatus,
                 )
             }
         }

@@ -80,6 +80,8 @@ internal val LightStatusConnecting = Color(0xFFD97706)
 internal val DarkStatusConnecting = Color(0xFFFBBF24)
 internal val LightStatusStopped = Color(0xFF6B7280)
 internal val DarkStatusStopped = Color(0xFF9CA3AF)
+internal val LightOnStatus = Color(0xFFFFFFFF)
+internal val DarkOnStatus = Color(0xFF0E0E12)
 
 internal val BrandGradientStart = Color(0xFF4F46E5)
 internal val BrandGradientEnd = Color(0xFF7C3AED)
