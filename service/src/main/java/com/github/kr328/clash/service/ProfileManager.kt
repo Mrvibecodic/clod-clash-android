@@ -47,7 +47,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
         type: Profile.Type,
         name: String,
         source: String,
-        ageSecretKey: String?,
         secure: Boolean,
     ): UUID {
         val uuid = generateProfileUUID()
@@ -61,7 +60,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
             total = 0,
             download = 0,
             expire = 0,
-            ageSecretKey = ageSecretKey,
             secure = secure,
         )
 
@@ -79,7 +77,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
         return uuid
     }
 
-    override suspend fun patch(uuid: UUID, name: String, source: String, interval: Long, ageSecretKey: String?) {
+    override suspend fun patch(uuid: UUID, name: String, source: String, interval: Long) {
         val pending = PendingDao().queryByUUID(uuid)
 
         if (pending == null) {
@@ -99,7 +97,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
                     total = 0,
                     download = 0,
                     expire = 0,
-                    ageSecretKey = ageSecretKey,
                     secure = imported.secure,
                 )
             )
@@ -112,7 +109,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 total = 0,
                 download = 0,
                 expire = 0,
-                ageSecretKey = ageSecretKey,
                 touchedAt = System.currentTimeMillis(),
             )
 
@@ -198,7 +194,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
             updatedAt = resolveUpdatedAt(uuid),
             imported = imported != null,
             pending = pending != null,
-            ageSecretKey = if (pending != null) pending.ageSecretKey else imported?.ageSecretKey,
             secure = if (pending != null) pending.secure else imported?.secure ?: false,
         )
     }

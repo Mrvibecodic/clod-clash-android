@@ -37,8 +37,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
     private val store = ServiceStore(service)
     private val reload = Channel<Unit>(Channel.CONFLATED)
 
-    private var loadedSecretKey: String? = null
-
     private fun forgetMissingProfile(missing: UUID): Nothing {
         if (activeProfileGone(store.activeProfile, missing) == ActiveProfileAction.Clear) {
             store.activeProfile = null
@@ -89,10 +87,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 val active = ImportedDao().queryByUUID(current)
                     ?: forgetMissingProfile(current)
 
-                val secretKey = active.ageSecretKey?.takeIf { it.isNotBlank() }
-
-                Clash.setAgeSecretKey(secretKey)
-
                 val first = loaded == null
 
                 if (first) stage(Intents.STAGE_PREPARING)
@@ -130,7 +124,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 }
 
                 loaded = current
-                loadedSecretKey = secretKey
 
                 if (first) stage(Intents.STAGE_SELECTING)
 
@@ -164,8 +157,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 if (!ready || retained == null || current == null || failed == null) {
                     return enqueueEvent(Event.LoadFailed(message))
                 }
-
-                Clash.setAgeSecretKey(loadedSecretKey)
 
                 val rollback = activeProfileRollback(
                     store.activeProfile,

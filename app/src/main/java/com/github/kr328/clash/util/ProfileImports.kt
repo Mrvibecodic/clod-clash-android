@@ -137,7 +137,7 @@ object ProfileImports {
                     }
 
                     if (item.interval > 0) {
-                        withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval, null) }
+                        withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval) }
                     }
 
                     import(uuid, item.active) { status ->
@@ -175,7 +175,7 @@ object ProfileImports {
 
             try {
                 withProfile(retry = false) {
-                    patch(profile.uuid, profile.name, profile.source, profile.interval, profile.ageSecretKey)
+                    patch(profile.uuid, profile.name, profile.source, profile.interval)
                 }
 
                 withProfile(retry = false) {

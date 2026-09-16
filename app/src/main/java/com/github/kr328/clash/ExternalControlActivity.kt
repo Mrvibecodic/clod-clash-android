@@ -72,7 +72,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                         val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
 
                         create(type, name).also {
-                            patch(it, name, url, intervalMs, null)
+                            patch(it, name, url, intervalMs)
                         }
                     }
 

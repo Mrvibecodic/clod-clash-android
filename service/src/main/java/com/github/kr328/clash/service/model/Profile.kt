@@ -25,7 +25,6 @@ data class Profile(
     val updatedAt: Long,
     val imported: Boolean,
     val pending: Boolean,
-    val ageSecretKey: String? = null,
     val secure: Boolean = false,
 ) : Parcelable {
     enum class Type {

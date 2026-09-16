@@ -107,9 +107,8 @@ class GuardedProfileManager(private val delegate: IProfileManager) : IProfileMan
         type: Profile.Type,
         name: String,
         source: String,
-        ageSecretKey: String?,
         secure: Boolean,
-    ): UUID = guard { delegate.create(type, name, source, ageSecretKey, secure) }
+    ): UUID = guard { delegate.create(type, name, source, secure) }
 
     override suspend fun commit(uuid: UUID, callback: IFetchObserver?) =
         guard { delegate.commit(uuid, callback) }
@@ -120,8 +119,8 @@ class GuardedProfileManager(private val delegate: IProfileManager) : IProfileMan
     override suspend fun delete(uuid: UUID) =
         guard { delegate.delete(uuid) }
 
-    override suspend fun patch(uuid: UUID, name: String, source: String, interval: Long, ageSecretKey: String?) =
-        guard { delegate.patch(uuid, name, source, interval, ageSecretKey) }
+    override suspend fun patch(uuid: UUID, name: String, source: String, interval: Long) =
+        guard { delegate.patch(uuid, name, source, interval) }
 
     override suspend fun update(uuid: UUID) =
         guard { delegate.update(uuid) }

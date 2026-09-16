@@ -55,7 +55,6 @@ object ProfileProcessor {
             type == other.type &&
             source == other.source &&
             interval == other.interval &&
-            ageSecretKey == other.ageSecretKey &&
             secure == other.secure
 
     class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
@@ -87,7 +86,6 @@ object ProfileProcessor {
                     pending
                 }
 
-                Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
                 Clash.setSecureChannel(snapshot.secure)
 
                 val force = snapshot.type != Profile.Type.File
@@ -124,7 +122,6 @@ object ProfileProcessor {
                         subscriptionInfo?.subTotal ?: 0,
                         subscriptionInfo?.subExpire ?: 0,
                         old?.createdAt ?: System.currentTimeMillis(),
-                        ageSecretKey = snapshot.ageSecretKey,
                         secure = snapshot.secure
                     )
                     if (old != null) {
@@ -163,7 +160,6 @@ object ProfileProcessor {
                     imported
                 }
 
-                Clash.setAgeSecretKey(snapshot.ageSecretKey?.takeIf { it.isNotBlank() })
                 Clash.setSecureChannel(snapshot.secure)
 
                 val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, null)

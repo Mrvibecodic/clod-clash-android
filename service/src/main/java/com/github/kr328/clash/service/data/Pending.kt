@@ -20,6 +20,8 @@ data class Pending(
     @ColumnInfo(name = "expire") val expire: Long,
     @ColumnInfo(name = "createdAt") val createdAt: Long = System.currentTimeMillis(),
     @ColumnInfo(name = "touchedAt") val touchedAt: Long = 0,
+    // Колонка осталась от отменённого шифрования подписки: значение всегда null, поле держится
+    // только ради совпадения со схемой БД — убирать вместе со следующей миграцией
     @ColumnInfo(name = "ageSecretKey") val ageSecretKey: String? = null,
     @ColumnInfo(name = "secure") val secure: Boolean = false,
 )
