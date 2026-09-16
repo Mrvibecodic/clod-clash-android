@@ -40,7 +40,7 @@
         <item quantity="one">%d day of subscription left</item>
         <item quantity="other">%d days of subscription left</item>
     </plurals>
-    <string name="clod_update_cause_downgrade">The provider redirected the request to an unencrypted address, so it was refused. This is a misconfiguration on the provider side — ask them about it</string>
+    <string name="clod_update_cause_downgrade">The provider redirected the request to an unencrypted address, so it was refused: the subscription and the device details would have travelled in the clear. This is a misconfiguration on the provider side — ask them about it</string>
     <string name="clod_update_cause_clock">The clock on the device is far off, and the provider rejected the request. Set the date and time to automatic and try again</string>
     <string name="clod_update_cause_mismatch">The provider answer failed the secure channel check. Try again; if it repeats, the provider address may have been substituted</string>
     <string name="clod_update_cause_bad_answer">The provider answered with something the secure channel does not understand: the address is not a Clod Clash subscription, or the channel is not supported there</string>
