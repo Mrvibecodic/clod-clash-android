@@ -152,6 +152,10 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 	}
 }
 
+// resolveSelected walks nested groups down to the leaf the group points at:
+// probing a group instead of a node touches the group and disables the lazy
+// health check of the real node. The lookup goes through the members of the
+// group itself, because nodes from proxy providers are not in tunnel.Proxies().
 func resolveSelected(g outboundgroup.ProxyGroup) (string, C.Proxy) {
 	for depth := 0; depth < 16; depth++ {
 		now := g.Now()
@@ -340,6 +344,8 @@ func ProbeCurrentNodes() {
 			continue
 		}
 
+		// A group that reselects its node on failure always gets a probe of its
+		// own: otherwise the dedup by shared leaf would swallow it.
 		reselect := reselectsItself(g)
 
 		key := now + "|" + url

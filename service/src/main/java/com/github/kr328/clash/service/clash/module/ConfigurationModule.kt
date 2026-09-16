@@ -103,9 +103,14 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 if (first) stage(Intents.STAGE_LOADING)
 
+                // Окно мерит только загрузку ядра: один Clash.load(...).await().
+                // Ожидание гео-баз, repair и выбор узлов идут отдельными стадиями
+                // (STAGE_PREPARING / STAGE_SELECTING) и сюда не входят, поэтому
+                // цифру из журнала нельзя противопоставлять жалобе «подключение
+                // применяется N секунд».
                 val applyStartedAt = SystemClock.elapsedRealtime()
 
-                ServiceLog.mark("config: apply window start")
+                ServiceLog.mark("config: core load window start")
 
                 var applyOutcome = "failed"
 
@@ -119,7 +124,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                     throw e
                 } finally {
                     ServiceLog.mark(
-                        "config: apply window end, $applyOutcome, in " +
+                        "config: core load window end, $applyOutcome, in " +
                             "${SystemClock.elapsedRealtime() - applyStartedAt} ms",
                     )
                 }

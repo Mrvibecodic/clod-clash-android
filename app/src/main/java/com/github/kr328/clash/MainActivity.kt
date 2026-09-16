@@ -755,6 +755,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (healthChecking) {
             healthCheckRequested = true
 
+            // Спиннер гаснет по видимой группе, а проверка идёт дальше: без
+            // очереди повторное нажатие не делало бы вообще ничего.
             if (manual) {
                 healthCheckRequestedManually = true
 
@@ -784,6 +786,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                 reloadProxyGroup(selectedGroup)
 
+                // Видимая группа готова; остальные дозамеряются в фоне, пока
+                // healthChecking всё ещё не пускает второй круг
                 setProxyTesting(false)
             }
 

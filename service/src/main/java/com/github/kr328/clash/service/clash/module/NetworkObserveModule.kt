@@ -273,6 +273,12 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         lastResetAt = now
 
+        // Two capped series, both over REACTION_WINDOW_MS. A network that flaps
+        // without validation in between (unconfirmed, cleared on networkReady)
+        // stops tearing connections down from the REACTION_SERIES_LIMIT-th change
+        // on: caches and probes still reset. Any flap (flaps, never cleared) stops
+        // both the teardown and the probe hold from the REACTION_FLAP_LIMIT-th
+        // change on, so a bouncing network cannot postpone the probes forever.
         val unconfirmedMark = unconfirmed.mark(now)
         val flapMark = flaps.mark(now)
 

@@ -399,6 +399,11 @@ static jmethodID m_get_message;
 static jclass c_clash_exception;
 static jclass c_content;
 static jobject o_unit;
+// Built once at load time, when memory is still there: the last resort for
+// completing a Kotlin await (and the fetch callback) when the JVM cannot
+// allocate even the message. Without it an OutOfMemoryError at this boundary
+// would leave the Deferred pending forever, and ProfileProcessor holds its
+// lock across that await.
 static jobject o_oom_message;
 static jobject o_oom_exception;
 

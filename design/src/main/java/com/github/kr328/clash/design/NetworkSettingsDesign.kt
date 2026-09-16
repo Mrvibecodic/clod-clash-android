@@ -49,6 +49,7 @@ class NetworkSettingsDesign(
         ),
     )
 
+    // Стек пришёл из подписки, если выбор в настройках сам по себе дал бы другой результат
     private fun tunStackFromProfile(mode: String): Boolean =
         resolveTunStack(mode, "") != resolveTunStack(mode, profileTunStack)
 
