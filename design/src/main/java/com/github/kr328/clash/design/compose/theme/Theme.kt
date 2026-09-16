@@ -1,8 +1,12 @@
 package com.github.kr328.clash.design.compose.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.ripple.RippleAlpha
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RippleConfiguration
+import androidx.compose.material3.RippleDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -134,6 +138,21 @@ private val DarkExtraColors = ClodExtraColors(
 
 private val LocalClodExtraColors = staticCompositionLocalOf { LightExtraColors }
 
+private const val FOCUS_ALPHA = 0.24f
+
+// Штатная подсветка фокуса (0.10) с дивана не видна; пульт и клавиатура —
+// единственный способ получить фокус, на касания это не влияет.
+private val FocusVisibleRipple = RippleConfiguration(
+    rippleAlpha = RippleDefaults.RippleAlpha.let {
+        RippleAlpha(
+            draggedAlpha = it.draggedAlpha,
+            focusedAlpha = FOCUS_ALPHA,
+            hoveredAlpha = it.hoveredAlpha,
+            pressedAlpha = it.pressedAlpha,
+        )
+    },
+)
+
 object ClodTheme {
     val extraColors: ClodExtraColors
         @Composable get() = LocalClodExtraColors.current
@@ -182,7 +201,8 @@ fun ClodClashTheme(
             colorScheme = colorScheme,
             typography = ClodTypography,
             shapes = ClodShapes,
-            content = content,
-        )
+        ) {
+            CompositionLocalProvider(LocalRippleConfiguration provides FocusVisibleRipple, content = content)
+        }
     }
 }
