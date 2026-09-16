@@ -89,13 +89,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                         }
                         MetaFeatureSettingsDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
-                                defer {
-                                    withClash {
-                                        clearOverride(Clash.OverrideSlot.Persist)
-                                    }
-
-                                    PendingOverride.clearAll()
-                                }
+                                defer { clearPersistedOverride() }
                                 finish()
                             }
                         }

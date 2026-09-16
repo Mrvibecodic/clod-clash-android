@@ -482,6 +482,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             withProfile(retry = false) { delete(request.profile.uuid) }
 
                             uiStore.clearFavorites(request.profile.uuid)
+                            patchSubscriptionGroup(request.profile.uuid, null)
                         }
                         MainDesign.Request.AllowNotifications -> {
                             design.setNotificationPrompt(false)

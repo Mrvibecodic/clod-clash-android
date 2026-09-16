@@ -70,13 +70,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
                         OverrideSettingsDesign.Request.Back -> finish()
                         OverrideSettingsDesign.Request.ResetOverride -> {
                             if (design.requestResetConfirm()) {
-                                defer {
-                                    withClash {
-                                        clearOverride(Clash.OverrideSlot.Persist)
-                                    }
-
-                                    PendingOverride.clearAll()
-                                }
+                                defer { clearPersistedOverride() }
 
                                 finish()
                             }

@@ -16,7 +16,9 @@ import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.store.ServiceStore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,7 +32,7 @@ class AppSettingsDesign(
     private val running: Boolean,
     private val onHideIconChange: (hide: Boolean) -> Unit,
     private val isRunning: () -> Boolean,
-    private val onReset: () -> Unit,
+    private val onReset: suspend () -> Unit,
 ) : Design<AppSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ReCreateAllActivities : Request
@@ -88,6 +90,18 @@ class AppSettingsDesign(
         state = state.copy(resetEnabled = false)
 
         launch {
+            try {
+                onReset()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                state = state.copy(resetEnabled = true)
+
+                showExceptionToast(e)
+
+                return@launch
+            }
+
             val prefs = withContext(Dispatchers.IO) {
                 behavior.autoRestart = false
 
@@ -102,8 +116,6 @@ class AppSettingsDesign(
             }
 
             withContext(Dispatchers.Main) {
-                onReset()
-
                 applyLocale(languageTags[0])
 
                 state = state.copy(

@@ -299,7 +299,9 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         }
     }
 
-    private fun onReset() {
+    private suspend fun onReset() {
+        clearPersistedOverride()
+
         AppStore(this).apply {
             autoCheckUpdate = true
             prereleaseChannel = false
