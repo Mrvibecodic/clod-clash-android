@@ -32,6 +32,7 @@ class MainApplication : Application() {
         Log.i("Process $processName started")
 
         if (processName == packageName) {
+            UiStore(this).darkMode.applyToSystem(this)
             restoreLauncherIconOnTelevision()
 
             Remote.launch()

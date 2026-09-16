@@ -108,6 +108,7 @@ class AppSettingsDesign(
                 onHideIconChange(false)
 
                 uiStore.reset()
+                uiStore.darkMode.applyToSystem(context)
                 srvStore.reset()
 
                 srvStore.appLocale = languageTags[0]
@@ -224,6 +225,7 @@ class AppSettingsDesign(
                 val mode = darkModes.getOrNull(action.index) ?: return
 
                 uiStore.darkMode = mode
+                mode.applyToSystem(context)
 
                 state = state.copy(darkMode = action.index)
 
