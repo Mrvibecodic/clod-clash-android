@@ -84,3 +84,8 @@ func writeOverride(slot C.int, content C.c_string) {
 func clearOverride(slot C.int) {
 	config.ClearOverride(config.OverrideSlot(slot))
 }
+
+//export reloadGeoData
+func reloadGeoData() {
+	config.ReloadGeoData()
+}

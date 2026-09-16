@@ -86,6 +86,9 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun clearOverride(slot: Clash.OverrideSlot) =
         guardSync("clearOverride") { delegate.clearOverride(slot) }
 
+    override fun reloadGeoData() =
+        guardSync("reloadGeoData") { delegate.reloadGeoData() }
+
     override fun setLogObserver(observer: ILogObserver?) =
         guardSync("setLogObserver") { delegate.setLogObserver(observer) }
 

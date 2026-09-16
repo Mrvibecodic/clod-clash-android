@@ -1616,6 +1616,16 @@ class MainActivity : BaseActivity<MainDesign>() {
                 try {
                     val geo = GeoData.update(app, app.activeLocalProxyPort(), running)
 
+                    if (geo.updated.isNotEmpty()) {
+                        try {
+                            withClash { reloadGeoData() }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.w("Reload geo data in core: $e", e)
+                        }
+                    }
+
                     val providersFailed = updatableProviders().mapNotNull {
                         val key = keyOf(it)
 

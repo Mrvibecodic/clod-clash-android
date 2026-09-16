@@ -102,6 +102,10 @@ class ClashManager(private val context: Context) : IClashManager,
         Clash.clearOverride(slot)
     }
 
+    override fun reloadGeoData() {
+        Clash.reloadGeoData()
+    }
+
     override suspend fun healthCheck(group: String) {
         return Clash.healthCheck(group).await()
     }

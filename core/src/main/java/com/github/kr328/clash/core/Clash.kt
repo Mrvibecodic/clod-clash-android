@@ -253,6 +253,10 @@ object Clash {
         Bridge.nativeClearOverride(slot.ordinal)
     }
 
+    fun reloadGeoData() {
+        Bridge.nativeReloadGeoData()
+    }
+
     fun subscribeLogcat(): ReceiveChannel<LogMessage> {
         return Channel<LogMessage>(32).apply {
             Bridge.nativeSubscribeLogcat(object : LogcatInterface {
