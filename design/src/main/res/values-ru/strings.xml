@@ -323,6 +323,11 @@
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_properties_tip_source">Адрес этого профиля задан источником, из которого он пришёл, и здесь не меняется. Имя можно менять когда угодно.</string>
     <string name="clod_properties_tip_file">Это локальный профиль-файл: адреса у него нет, конфигурация правится на экране «Файлы». Имя можно менять когда угодно.</string>
+    <string name="clod_properties_type">Тип профиля: %1$s</string>
+    <string name="clod_profile_type_url">подписка</string>
+    <string name="clod_profile_type_external">из другого приложения</string>
+    <string name="clod_profile_type_file">локальный файл</string>
+    <string name="clod_properties_secure">Защищённое соединение включено. Снять его нельзя — только добавить подписку заново.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
     <string name="clod_no_files">Файлов пока нет</string>
     <string name="clod_section_settings">Приложение</string>

@@ -69,6 +69,10 @@ object ProfileImports {
     fun isCommitting(uuid: UUID): Boolean = committing == uuid && job?.isActive == true
 
     @Synchronized
+    fun runningAddToken(): Long =
+        (state_.value as? State.Running)?.token?.takeIf { committing == null } ?: 0
+
+    @Synchronized
     fun start(source: String, secure: Boolean): Long {
         if (job?.isActive == true) return 0
 

@@ -11,6 +11,7 @@ import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.design.AccessControlDesign
 import com.github.kr328.clash.design.model.AppInfo
+import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.AccessControlMode
@@ -172,14 +173,22 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         initialMode?.let { outState.putString("initialMode", it.name) }
     }
 
+    override fun onDestroy() {
+        if (!isChangingConfigurations) retainedApps = null
+        super.onDestroy()
+    }
+
     private suspend fun loadApps(selected: Set<String>): List<AppInfo> {
         val chosen = selected.toSet()
+        val reverse = uiStore.accessControlReverse
+        val sort = uiStore.accessControlSort
+        val systemApp = uiStore.accessControlSystemApp
+
+        retainedApps
+            ?.takeIf { it.sort == sort && it.reverse == reverse && it.systemApp == systemApp }
+            ?.let { return it.apps }
 
         return withContext(Dispatchers.IO) {
-            val reverse = uiStore.accessControlReverse
-            val sort = uiStore.accessControlSort
-            val systemApp = uiStore.accessControlSystemApp
-
             val base = compareByDescending<AppInfo> { it.packageName in chosen }
             val comparator = if (reverse) base.thenDescending(sort) else base.then(sort)
 
@@ -204,6 +213,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                 }
                 .sortedWith(comparator)
                 .toList()
+                .also { retainedApps = RetainedApps(sort, reverse, systemApp, it) }
         }
     }
 
@@ -212,3 +222,12 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             return applicationInfo?.flags?.and(ApplicationInfo.FLAG_SYSTEM) != 0
         }
 }
+
+private data class RetainedApps(
+    val sort: AppInfoSort,
+    val reverse: Boolean,
+    val systemApp: Boolean,
+    val apps: List<AppInfo>,
+)
+
+private var retainedApps: RetainedApps? = null

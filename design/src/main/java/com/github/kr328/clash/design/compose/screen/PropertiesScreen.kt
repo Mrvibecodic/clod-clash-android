@@ -36,6 +36,7 @@ import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.design.util.ValidatorNotBlank
+import com.github.kr328.clash.service.model.Profile
 
 @Immutable
 data class FetchProgress(
@@ -48,13 +49,23 @@ data class PropertiesState(
     val name: String = "",
     val url: String = "",
     val intervalMinutes: String = "",
-    val urlEditable: Boolean = true,
-    val intervalEditable: Boolean = true,
+    val type: Profile.Type = Profile.Type.Url,
+    val secure: Boolean = false,
     val processing: FetchProgress? = null,
     val confirmingExit: Boolean = false,
-)
+) {
+    val urlEditable: Boolean
+        get() = type == Profile.Type.Url
 
-fun isHttpUrl(value: String): Boolean = ValidatorHttpUrl(value)
+    val intervalEditable: Boolean
+        get() = type != Profile.Type.File
+}
+
+fun isValidSource(type: Profile.Type, source: String): Boolean = when (type) {
+    Profile.Type.Url -> ValidatorHttpUrl(source)
+    Profile.Type.External -> source.isNotBlank()
+    Profile.Type.File -> true
+}
 
 const val MIN_INTERVAL_MINUTES = 15L
 
@@ -109,10 +120,7 @@ fun PropertiesScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Column(modifier = Modifier.padding(horizontal = 18.dp)) {
-                Tip(
-                    urlEditable = state.urlEditable,
-                    intervalEditable = state.intervalEditable,
-                )
+                Tip(type = state.type, secure = state.secure)
 
                 Spacer(Modifier.height(16.dp))
 
@@ -137,8 +145,7 @@ fun PropertiesScreen(
 
                 Spacer(Modifier.height(12.dp))
 
-                val urlBroken = state.urlEditable && state.url.isNotBlank() &&
-                    !ValidatorHttpUrl(state.url)
+                val urlBroken = state.url.isNotBlank() && !isValidSource(state.type, state.url)
 
                 OutlinedTextField(
                     value = state.url,
@@ -224,7 +231,7 @@ fun PropertiesScreen(
 }
 
 @Composable
-private fun Tip(urlEditable: Boolean, intervalEditable: Boolean) {
+private fun Tip(type: Profile.Type, secure: Boolean) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -239,17 +246,42 @@ private fun Tip(urlEditable: Boolean, intervalEditable: Boolean) {
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(10.dp))
-            Text(
-                text = stringResource(
-                    when {
-                        urlEditable -> R.string.clod_properties_tip
-                        intervalEditable -> R.string.clod_properties_tip_source
-                        else -> R.string.clod_properties_tip_file
-                    },
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column {
+                Text(
+                    text = stringResource(
+                        R.string.clod_properties_type,
+                        stringResource(
+                            when (type) {
+                                Profile.Type.Url -> R.string.clod_profile_type_url
+                                Profile.Type.External -> R.string.clod_profile_type_external
+                                Profile.Type.File -> R.string.clod_profile_type_file
+                            },
+                        ),
+                    ),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(
+                        when (type) {
+                            Profile.Type.Url -> R.string.clod_properties_tip
+                            Profile.Type.External -> R.string.clod_properties_tip_source
+                            Profile.Type.File -> R.string.clod_properties_tip_file
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (secure) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.clod_properties_secure),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }

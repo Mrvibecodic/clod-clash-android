@@ -10,8 +10,8 @@ import com.github.kr328.clash.design.compose.screen.FetchProgress
 import com.github.kr328.clash.design.compose.screen.PropertiesAction
 import com.github.kr328.clash.design.compose.screen.PropertiesScreen
 import com.github.kr328.clash.design.compose.screen.PropertiesState
+import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
-import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.design.util.ValidatorNotBlank
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.CancellableContinuation
@@ -50,8 +50,8 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
                 name = value.name,
                 url = value.source,
                 intervalMinutes = if (minutes == 0L) "" else minutes.toString(),
-                urlEditable = value.type == Profile.Type.Url,
-                intervalEditable = value.type != Profile.Type.File,
+                type = value.type,
+                secure = value.secure,
             )
         }
 
@@ -60,7 +60,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
 
     val draftValid: Boolean
         get() = ValidatorNotBlank(state.name) &&
-            (!state.urlEditable || ValidatorHttpUrl(state.url)) &&
+            isValidSource(state.type, state.url) &&
             ValidatorAutoUpdateInterval(state.intervalMinutes)
 
     private fun onAction(action: PropertiesAction) {

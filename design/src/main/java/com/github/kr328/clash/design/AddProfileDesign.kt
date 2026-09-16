@@ -17,6 +17,7 @@ class AddProfileDesign(
     context: Context,
     initialUrl: String = "",
     initialSecure: Boolean = false,
+    initialError: String? = null,
 ) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
         data class Submit(val url: String, val secure: Boolean) : Request
@@ -24,13 +25,18 @@ class AddProfileDesign(
         data object OtherWays : Request
     }
 
-    private var state by mutableStateOf(AddProfileState(url = initialUrl, secure = initialSecure))
+    private var state by mutableStateOf(
+        AddProfileState(url = initialUrl, secure = initialSecure, error = initialError),
+    )
 
     val url: String
         get() = state.url
 
     val secure: Boolean
         get() = state.secure
+
+    val error: String?
+        get() = state.error
 
     override val root: View = composeRoot {
         AddProfileScreen(state = state, onAction = ::onAction)

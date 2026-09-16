@@ -7,7 +7,7 @@ import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.design.PropertiesDesign
 import com.github.kr328.clash.design.compose.screen.MIN_INTERVAL_MINUTES
-import com.github.kr328.clash.design.compose.screen.isHttpUrl
+import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.displayProfileName
@@ -147,10 +147,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
             profile.name.isBlank() -> {
                 showToast(R.string.empty_name, ToastDuration.Long)
             }
-            profile.type != Profile.Type.File && profile.source.isBlank() -> {
-                showToast(R.string.invalid_url, ToastDuration.Long)
-            }
-            profile.type == Profile.Type.Url && !isHttpUrl(profile.source) -> {
+            !isValidSource(profile.type, profile.source) -> {
                 showToast(R.string.invalid_url, ToastDuration.Long)
             }
             profile.interval != 0L &&

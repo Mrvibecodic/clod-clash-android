@@ -23,12 +23,13 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
     private var token: Long = 0
 
     override suspend fun main() {
-        token = restored?.getLong(KEY_TOKEN) ?: 0
+        token = restored?.getLong(KEY_TOKEN) ?: ProfileImports.runningAddToken()
 
         val design = AddProfileDesign(
             this,
             restored?.getString(KEY_URL).orEmpty(),
             restored?.getBoolean(KEY_SECURE) ?: false,
+            restored?.getString(KEY_ERROR),
         )
 
         setContentDesign(design)
@@ -85,6 +86,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         design?.let {
             outState.putString(KEY_URL, it.url)
             outState.putBoolean(KEY_SECURE, it.secure)
+            outState.putString(KEY_ERROR, it.error)
         }
     }
 
@@ -147,5 +149,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         private const val KEY_URL = "url"
         private const val KEY_SECURE = "secure"
         private const val KEY_TOKEN = "token"
+        private const val KEY_ERROR = "error"
     }
 }
