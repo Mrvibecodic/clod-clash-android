@@ -21,6 +21,8 @@ func (r *remoteValidCallback) reportStatus(json string) {
 
 //export fetchAndValid
 func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C.int) {
+	defer guard("fetchAndValid", func() {})()
+
 	p, u := C.GoString(path), C.GoString(url)
 
 	safego.Go("fetchAndValid", func() {
@@ -44,11 +46,15 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C
 
 //export setSecureChannel
 func setSecureChannel(enabled C.int) {
+	defer guard("setSecureChannel", func() {})()
+
 	config.SetSecureChannel(enabled != 0)
 }
 
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
+	defer guard("load", func() {})()
+
 	p := C.GoString(path)
 
 	safego.Go("load", func() {
@@ -75,6 +81,8 @@ func readOverride(slot C.int) *C.char {
 
 //export writeOverride
 func writeOverride(slot C.int, content C.c_string) {
+	defer guard("writeOverride", func() {})()
+
 	c := C.GoString(content)
 
 	config.WriteOverride(config.OverrideSlot(slot), c)
@@ -82,10 +90,14 @@ func writeOverride(slot C.int, content C.c_string) {
 
 //export clearOverride
 func clearOverride(slot C.int) {
+	defer guard("clearOverride", func() {})()
+
 	config.ClearOverride(config.OverrideSlot(slot))
 }
 
 //export reloadGeoData
 func reloadGeoData() {
+	defer guard("reloadGeoData", func() {})()
+
 	config.ReloadGeoData()
 }

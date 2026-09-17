@@ -132,7 +132,8 @@ object Clash {
     }
 
     fun queryGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames {
-        return decodeGroupNames(Bridge.nativeQueryGroupNames(excludeNotSelectable))
+        return Bridge.nativeQueryGroupNames(excludeNotSelectable)?.let(::decodeGroupNames)
+            ?: ProxyGroupNames()
     }
 
     internal fun decodeGroupNames(json: String): ProxyGroupNames {
@@ -223,8 +224,9 @@ object Clash {
     }
 
     fun queryProviders(): List<Provider> {
-        val providers =
-            CoreJson.decodeFromString(JsonArray.serializer(), Bridge.nativeQueryProviders())
+        val json = Bridge.nativeQueryProviders() ?: return emptyList()
+
+        val providers = CoreJson.decodeFromString(JsonArray.serializer(), json)
 
         return List(providers.size) {
             CoreJson.decodeFromJsonElement(Provider.serializer(), providers[it])

@@ -1,6 +1,7 @@
 package safego
 
 import (
+	"bytes"
 	"runtime/debug"
 	"sync"
 
@@ -74,13 +75,37 @@ func writeReport(report panicReport) {
 		_ = recover()
 	}()
 
-	if len(report.stack) == 0 {
-		log.Errorln("[APP] %s panicked: %v", report.name, report.cause)
+	log.Errorln("[APP] %s panicked: %v", report.name, report.cause)
 
-		return
+	for _, part := range stackParts(report.stack, stackPartSize) {
+		log.Errorln("[APP] %s stack:\n%s", report.name, part)
+	}
+}
+
+// Системный журнал Android режет запись примерно на четырёх килобайтах, а стек
+// паники длиннее: он уходит частями, разрезанными по границам строк.
+const stackPartSize = 3000
+
+func stackParts(stack []byte, size int) []string {
+	var parts []string
+
+	for len(stack) > 0 {
+		end := len(stack)
+
+		if end > size {
+			end = size
+
+			if cut := bytes.LastIndexByte(stack[:end], '\n'); cut > 0 {
+				end = cut + 1
+			}
+		}
+
+		parts = append(parts, string(stack[:end]))
+
+		stack = stack[end:]
 	}
 
-	log.Errorln("[APP] %s panicked: %v\n%s", report.name, report.cause, string(report.stack))
+	return parts
 }
 
 func Go(name string, body func()) {

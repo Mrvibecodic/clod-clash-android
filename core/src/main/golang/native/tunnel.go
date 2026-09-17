@@ -24,6 +24,8 @@ func queryTunnelState() *C.char {
 
 //export queryNow
 func queryNow(upload, download *C.uint64_t) {
+	defer guard("queryNow", func() {})()
+
 	up, down := tunnel.Now()
 
 	*upload = C.uint64_t(up)
@@ -32,6 +34,8 @@ func queryNow(upload, download *C.uint64_t) {
 
 //export queryTotal
 func queryTotal(upload, download *C.uint64_t) {
+	defer guard("queryTotal", func() {})()
+
 	up, down := tunnel.Total()
 
 	*upload = C.uint64_t(up)
@@ -39,12 +43,16 @@ func queryTotal(upload, download *C.uint64_t) {
 }
 
 //export queryGroupNames
-func queryGroupNames(excludeNotSelectable C.int) *C.char {
+func queryGroupNames(excludeNotSelectable C.int) (result *C.char) {
+	defer guard("queryGroupNames", func() {})()
+
 	return marshalJson(tunnel.QueryProxyGroupNames(excludeNotSelectable != 0))
 }
 
 //export queryGroup
-func queryGroup(name C.c_string, sortMode C.c_string) *C.char {
+func queryGroup(name C.c_string, sortMode C.c_string) (result *C.char) {
+	defer guard("queryGroup", func() {})()
+
 	n := C.GoString(name)
 	s := C.GoString(sortMode)
 
@@ -68,6 +76,8 @@ func queryGroup(name C.c_string, sortMode C.c_string) *C.char {
 
 //export healthCheck
 func healthCheck(completable unsafe.Pointer, name C.c_string) {
+	defer guard("healthCheck", func() {})()
+
 	n := C.GoString(name)
 
 	safego.Go("healthCheck", func() {
@@ -88,7 +98,9 @@ func healthCheck(completable unsafe.Pointer, name C.c_string) {
 }
 
 //export testProfileDelays
-func testProfileDelays(path C.c_string) *C.char {
+func testProfileDelays(path C.c_string) (result *C.char) {
+	defer guard("testProfileDelays", func() {})()
+
 	return marshalJson(tunnel.TestProfileDelays(C.GoString(path)))
 }
 
@@ -101,11 +113,15 @@ func notifyNetworkChanged(closeConnections C.int, holdProbes C.int) {
 
 //export probeCurrentNodes
 func probeCurrentNodes() {
+	defer guard("probeCurrentNodes", func() {})()
+
 	tunnel.ProbeCurrentNodes()
 }
 
 //export recoverDeadNodes
 func recoverDeadNodes(force C.int) {
+	defer guard("recoverDeadNodes", func() {})()
+
 	f := force != 0
 
 	safego.Go("recoverDeadNodes", func() {
@@ -115,6 +131,8 @@ func recoverDeadNodes(force C.int) {
 
 //export notifyNetworkReady
 func notifyNetworkReady() {
+	defer guard("notifyNetworkReady", func() {})()
+
 	tunnel.NoteNetworkReady()
 }
 
@@ -129,12 +147,16 @@ func patchSelector(selector, name C.c_string) (result C.int) {
 }
 
 //export queryProviders
-func queryProviders() *C.char {
+func queryProviders() (result *C.char) {
+	defer guard("queryProviders", func() {})()
+
 	return marshalJson(tunnel.QueryProviders())
 }
 
 //export updateProvider
 func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_string) {
+	defer guard("updateProvider", func() {})()
+
 	t := C.GoString(pType)
 	n := C.GoString(name)
 
@@ -155,5 +177,7 @@ func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_strin
 
 //export suspend
 func suspend(suspended C.int) {
+	defer guard("suspend", func() {})()
+
 	tunnel.Suspend(suspended != 0)
 }

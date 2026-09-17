@@ -51,6 +51,8 @@ func init() {
 
 //export subscribeLogcat
 func subscribeLogcat(remote unsafe.Pointer) {
+	defer guard("subscribeLogcat", func() {})()
+
 	safego.Go("subscribeLogcat", func() {
 		sub := log.Subscribe()
 

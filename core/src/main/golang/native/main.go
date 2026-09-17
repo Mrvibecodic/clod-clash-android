@@ -55,6 +55,8 @@ func reset() {
 
 //export forceGc
 func forceGc() {
+	defer guard("forceGc", func() {})()
+
 	safego.Go("forceGc", func() {
 		log.Infoln("[APP] request force GC")
 

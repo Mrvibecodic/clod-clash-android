@@ -3,6 +3,7 @@ package safego
 import (
 	"errors"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -144,5 +145,38 @@ func TestGuardDoesNotBlockOrLeakWhileLogIsStuck(t *testing.T) {
 
 	if after := runtime.NumGoroutine(); after > before+1 {
 		t.Fatalf("goroutines grew from %d to %d while the log channel was stuck", before, after)
+	}
+}
+
+func TestStackPartsKeepEveryByteWithinTheSizeAndCutAtLineEnds(t *testing.T) {
+	lines := strings.Repeat("goroutine frame line\n", 500)
+	stack := lines + strings.Repeat("x", 250)
+
+	parts := stackParts([]byte(stack), 100)
+
+	if joined := strings.Join(parts, ""); joined != stack {
+		t.Fatalf("parts lost or reordered bytes: got %d bytes, want %d", len(joined), len(stack))
+	}
+
+	offset := 0
+
+	for i, part := range parts {
+		if len(part) == 0 || len(part) > 100 {
+			t.Fatalf("part %d has %d bytes, want 1..100", i, len(part))
+		}
+
+		offset += len(part)
+
+		if offset <= len(lines) && !strings.HasSuffix(part, "\n") {
+			t.Fatalf("part %d is cut in the middle of a line", i)
+		}
+	}
+
+	if got := stackParts([]byte("\n"+strings.Repeat("x", 250)), 100); strings.Join(got, "") != "\n"+strings.Repeat("x", 250) {
+		t.Fatalf("leading newline before a long line lost bytes: %q", got)
+	}
+
+	if got := stackParts(nil, 100); len(got) != 0 {
+		t.Fatalf("empty stack gave %d parts", len(got))
 	}
 }
