@@ -183,38 +183,48 @@ func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.
 	}
 }
 
-func PatchSelector(selector, name string) bool {
+// Исходы PatchSelector. Нулевое значение — «не получилось, запомненный выбор
+// не трогать»: его же отдаёт мост, если вызов упал.
+const (
+	PatchFailed     = 0
+	PatchDone       = 1
+	PatchNoSelector = 2
+)
+
+func PatchSelector(selector, name string) int {
 	p := tunnel.Proxies()[selector]
 
 	if p == nil {
 		log.Warnln("Patch selector `%s`: not found", selector)
 
-		return false
+		return PatchNoSelector
 	}
 
 	g, ok := p.Adapter().(outboundgroup.ProxyGroup)
 	if !ok {
 		log.Warnln("Patch selector `%s`: invalid type %s", selector, p.Type().String())
 
-		return false
+		return PatchNoSelector
 	}
 
 	s, ok := g.(outboundgroup.SelectAble)
 	if !ok {
 		log.Warnln("Patch selector `%s`: invalid type %s", selector, p.Type().String())
 
-		return false
+		return PatchNoSelector
 	}
 
 	if err := s.Set(name); err != nil {
 		log.Warnln("Patch selector `%s`: %s", selector, err.Error())
+
+		return PatchFailed
 	}
 
 	log.Infoln("Patch selector %s -> %s", selector, name)
 
 	closeConnByGroup(selector)
 
-	return true
+	return PatchDone
 }
 
 func httpsIcon(raw string) string {

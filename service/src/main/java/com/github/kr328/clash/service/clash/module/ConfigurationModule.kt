@@ -129,7 +129,9 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 withContext(Selections.queue) {
                     val remove = SelectionDao().querySelections(active.uuid)
-                        .filterNot { Clash.patchSelector(it.proxy, it.selected) }
+                        .filter {
+                            Clash.patchSelector(it.proxy, it.selected) == Clash.PatchResult.NoSelector
+                        }
                         .map { it.proxy }
 
                     SelectionDao().removeSelections(active.uuid, remove)

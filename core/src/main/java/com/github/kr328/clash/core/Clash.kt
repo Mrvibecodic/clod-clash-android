@@ -33,6 +33,12 @@ object Clash {
         Persist, Session
     }
 
+    // Порядок — числа исхода из ядра. Failed — нулевое значение: его же мост
+    // отдаёт, когда вызов в ядре упал; запомненный выбор при нём не трогают.
+    enum class PatchResult {
+        Failed, Done, NoSelector
+    }
+
     internal val CoreJson = Json {
         ignoreUnknownKeys = true
         encodeDefaults = false
@@ -169,8 +175,10 @@ object Clash {
         return Bridge.nativeTestProfileDelays(path.absolutePath) ?: "{}"
     }
 
-    fun patchSelector(selector: String, name: String): Boolean {
-        return Bridge.nativePatchSelector(selector, name)
+    fun patchSelector(selector: String, name: String): PatchResult {
+        return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(selector, name)) {
+            PatchResult.Failed
+        }
     }
 
     fun setSecureChannel(enabled: Boolean) {

@@ -266,7 +266,7 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeNotifyNetworkReady(JNIEnv *
     notifyNetworkReady();
 }
 
-JNIEXPORT jboolean JNICALL
+JNIEXPORT jint JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
                                                                    jstring selector, jstring name) {
     TRACE_METHOD();
@@ -274,7 +274,7 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, 
     scoped_string _selector = get_string(selector);
     scoped_string _name = get_string(name);
 
-    return (jboolean) patchSelector(_selector, _name);
+    return (jint) patchSelector(_selector, _name);
 }
 
 JNIEXPORT void JNICALL

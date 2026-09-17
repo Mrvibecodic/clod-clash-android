@@ -119,15 +119,13 @@ func notifyNetworkReady() {
 }
 
 //export patchSelector
-func patchSelector(selector, name C.c_string) C.int {
+func patchSelector(selector, name C.c_string) (result C.int) {
+	defer guard("patchSelector", func() {})()
+
 	s := C.GoString(selector)
 	n := C.GoString(name)
 
-	if tunnel.PatchSelector(s, n) {
-		return 1
-	}
-
-	return 0
+	return C.int(tunnel.PatchSelector(s, n))
 }
 
 //export queryProviders
