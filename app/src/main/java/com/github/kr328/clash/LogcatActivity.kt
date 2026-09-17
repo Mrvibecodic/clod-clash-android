@@ -132,6 +132,18 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                 }
                 if (activityStarted) {
                     ticker.onReceive {
+                        // Запись закончилась сама (предел размера, ошибка записи):
+                        // файл уже в списке журналов
+                        if (!LogcatService.running) {
+                            if (!isFinishing) {
+                                startActivity(LogsActivity::class.intent)
+
+                                finish()
+                            }
+
+                            return@onReceive
+                        }
+
                         val snapshot = logcat.snapshot(initial) ?: return@onReceive
 
                         design.patchMessages(snapshot.messages, snapshot.removed)

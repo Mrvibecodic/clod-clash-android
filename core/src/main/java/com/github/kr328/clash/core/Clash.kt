@@ -4,6 +4,7 @@ import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.core.model.*
 import com.github.kr328.clash.core.util.parseInetSocketAddress
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.serialization.builtins.serializer
@@ -260,7 +261,12 @@ object Clash {
     fun subscribeLogcat(): ReceiveChannel<LogMessage> {
         return Channel<LogMessage>(32).apply {
             Bridge.nativeSubscribeLogcat(object : LogcatInterface {
+                // Исключение отсюда — единственный выход горутины подписки в
+                // ядре: по нему она снимает подписку и отпускает этот объект
+                @OptIn(DelicateCoroutinesApi::class)
                 override fun received(jsonPayload: String) {
+                    check(!isClosedForSend) { "logcat channel closed" }
+
                     trySend(CoreJson.decodeFromString(LogMessage.serializer(), jsonPayload))
                 }
             })

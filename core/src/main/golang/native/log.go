@@ -53,7 +53,19 @@ func init() {
 func subscribeLogcat(remote unsafe.Pointer) {
 	safego.Go("subscribeLogcat", func() {
 		sub := log.Subscribe()
-		defer log.UnSubscribe(sub)
+
+		// Ядро раздаёт строки под замком и ждёт каждого подписчика: если буфер
+		// никто не вычитывает, UnSubscribe этот замок не получит никогда
+		defer func() {
+			safego.Go("drainLogcat", func() {
+				for range sub {
+				}
+			})
+
+			log.UnSubscribe(sub)
+
+			log.Debugln("Logcat subscriber closed")
+		}()
 
 		for msg := range sub {
 			if !logfilter.Passes(msg.Payload, msg.LogLevel, log.Level()) {
@@ -68,8 +80,6 @@ func subscribeLogcat(remote unsafe.Pointer) {
 
 			if C.logcat_received(remote, marshalJson(rMsg)) != 0 {
 				C.release_object(remote)
-
-				log.Debugln("Logcat subscriber closed")
 
 				break
 			}
