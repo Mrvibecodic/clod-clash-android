@@ -766,6 +766,8 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
+        // Штамп до замера не даёт возврату на экран поставить второй круг в
+        // очередь; замер, упавший с ошибкой, его снимает
         lastHealthCheckAt = SystemClock.elapsedRealtime()
 
         if (offlineGroups.isNotEmpty()) {
@@ -806,6 +808,8 @@ class MainActivity : BaseActivity<MainDesign>() {
             throw e
         } catch (e: Exception) {
             Log.w("Health check: $e", e)
+
+            lastHealthCheckAt = 0
 
             if (manual) {
                 showExceptionToast(e)

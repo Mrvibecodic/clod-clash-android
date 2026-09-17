@@ -10,6 +10,7 @@ import (
 
 	"cfa/native/common/safego"
 	"cfa/native/config"
+	"cfa/native/probeoutcome"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/adapter/provider"
@@ -120,6 +121,13 @@ func TestProfileDelays(path string) map[string]int {
 			defer cancelProbe()
 
 			delay, err := px.URLTest(probe, url, nil)
+
+			// Отмена и истёкший бюджет — не приговор узлу: он остаётся
+			// непроверенным, как и в замере при работающем туннеле
+			switch probeoutcome.Classify(err, ctx.Err()) {
+			case probeoutcome.Superseded, probeoutcome.Expired:
+				return
+			}
 
 			mu.Lock()
 			defer mu.Unlock()
