@@ -71,6 +71,11 @@ int logcat_received(void *logcat_interface, char *payload) {
 int open_content(char *url, char *error, int error_length) {
     TRACE_METHOD();
 
+    // Буфер приходит не обнулённым, а сообщение копируется без последнего байта:
+    // конец строки ставится здесь, один раз для любого исхода
+    error[0] = 0;
+    error[error_length - 1] = 0;
+
     int result = open_content_func(url, error, error_length);
 
     free(url);

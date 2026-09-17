@@ -3,12 +3,13 @@ package app
 import (
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
 var appVersionName string
 var platformVersion int
-var installedAppsUid = map[int]string{}
+var installedAppsUid atomic.Pointer[map[int]string]
 
 func ApplyVersionName(versionName string) {
 	appVersionName = versionName
@@ -41,11 +42,16 @@ func NotifyInstallAppsChanged(uidList string) {
 		}
 	}
 
-	installedAppsUid = uids
+	installedAppsUid.Store(&uids)
 }
 
 func QueryAppByUid(uid int) string {
-	return installedAppsUid[uid]
+	uids := installedAppsUid.Load()
+	if uids == nil {
+		return ""
+	}
+
+	return (*uids)[uid]
 }
 
 func NotifyTimeZoneChanged(name string, offset int) {

@@ -2,16 +2,23 @@ package app
 
 import (
 	"net"
+	"sync/atomic"
 	"syscall"
 
 	"cfa/native/platform"
 )
 
-var markSocketImpl func(fd int)
-var querySocketUidImpl func(protocol int, source, target string) int
+// Пара колбэков сессии меняется со стороны JNI, а читается на каждом
+// соединении: подменяется целиком, чтобы никто не увидел половину от новой.
+type tunContext struct {
+	markSocket     func(fd int)
+	querySocketUid func(protocol int, source, target string) int
+}
+
+var tunCallbacks atomic.Pointer[tunContext]
 
 func MarkSocket(fd int) {
-	markSocketImpl(fd)
+	tunCallbacks.Load().markSocket(fd)
 }
 
 func QuerySocketUid(source, target net.Addr) int {
@@ -30,7 +37,7 @@ func QuerySocketUid(source, target net.Addr) int {
 		return platform.QuerySocketUidFromProcFs(source, target)
 	}
 
-	return querySocketUidImpl(protocol, source.String(), target.String())
+	return tunCallbacks.Load().querySocketUid(protocol, source.String(), target.String())
 }
 
 func ApplyTunContext(markSocket func(fd int), querySocketUid func(int, string, string) int) {
@@ -42,8 +49,7 @@ func ApplyTunContext(markSocket func(fd int), querySocketUid func(int, string, s
 		querySocketUid = func(int, string, string) int { return -1 }
 	}
 
-	markSocketImpl = markSocket
-	querySocketUidImpl = querySocketUid
+	tunCallbacks.Store(&tunContext{markSocket: markSocket, querySocketUid: querySocketUid})
 }
 
 func init() {
