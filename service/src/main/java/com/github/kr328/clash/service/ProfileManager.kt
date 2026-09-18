@@ -34,7 +34,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 ProfileProcessor.repair(context)
                 ProfileProcessor.releaseStale(context, STALE_PENDING_MS)
 
-                ProfileReceiver.rescheduleAll(context)
+                ProfileUpdates.scheduleAll(context)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -136,7 +136,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
 
     override suspend fun delete(uuid: UUID) {
         ImportedDao().queryByUUID(uuid)?.also {
-            ProfileReceiver.cancelNext(context, it)
+            ProfileUpdates.cancel(context, it)
         }
 
         ProfileProcessor.delete(context, uuid)
@@ -220,9 +220,9 @@ class ProfileManager(private val context: Context) : IProfileManager,
         val imported = ImportedDao().queryByUUID(uuid) ?: return
 
         if (startImmediately) {
-            ProfileReceiver.schedule(context, imported)
+            ProfileUpdates.updateNow(context, imported)
         } else {
-            ProfileReceiver.scheduleNext(context, imported)
+            ProfileUpdates.schedule(context, imported)
         }
     }
 

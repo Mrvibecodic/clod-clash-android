@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.work.Configuration
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.currentProcessName
 import com.github.kr328.clash.common.compat.isTelevision
@@ -14,7 +15,11 @@ import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 
 @Suppress("unused")
-class MainApplication : Application() {
+class MainApplication : Application(), Configuration.Provider {
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setDefaultProcessName("$packageName:background")
+            .build()
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)

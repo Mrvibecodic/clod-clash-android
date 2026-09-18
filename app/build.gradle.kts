@@ -35,6 +35,7 @@ dependencies {
     // lifecycleScope в мастерах профиля), поэтому зависимость объявлена явно, а не
     // подобрана транзитивно: иначе её версия зависит от того, кто ещё в графе.
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.work.runtime)
     implementation(libs.quickie.bundled)
     implementation(libs.kotlin.serialization.json)
 

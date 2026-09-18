@@ -23,7 +23,7 @@ class StatusProvider : ContentProvider() {
             }
             METHOD_UPDATING_PROFILES -> {
                 return Bundle().apply {
-                    putStringArrayList(KEY_UPDATING, ArrayList(ProfileWorker.updating.map { it.toString() }))
+                    putStringArrayList(KEY_UPDATING, ArrayList(ProfileUpdateWorker.updating.map { it.toString() }))
                 }
             }
             else -> super.call(method, arg, extras)

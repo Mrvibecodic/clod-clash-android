@@ -205,17 +205,7 @@ class ServiceStore(context: Context) {
         return "at" + (System.currentTimeMillis() - SystemClock.elapsedRealtime()) / 60_000L
     }
 
-    fun profileRetries(uuid: UUID): Int =
-        preferences.getInt(KEY_PROFILE_RETRIES + uuid, 0)
-
-    fun setProfileRetries(uuid: UUID, count: Int) {
-        preferences.edit {
-            if (count > 0) putInt(KEY_PROFILE_RETRIES + uuid, count) else remove(KEY_PROFILE_RETRIES + uuid)
-        }
-    }
-
     companion object {
         private const val KEY_ACTIVE_PROFILE = "active_profile"
-        private const val KEY_PROFILE_RETRIES = "profile_retries_"
     }
 }

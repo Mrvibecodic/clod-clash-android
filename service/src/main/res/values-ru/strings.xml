@@ -12,7 +12,6 @@
     <string name="clod_crash_loop">Система перезапустила службу %1$d раза подряд. Автоперезапуск приостановлен — откройте приложение и подключитесь снова</string>
     <string name="clod_foreground_denied">Система не разрешила запустить службу в фоне. Откройте приложение и подключитесь снова</string>
     <string name="clod_always_on_busy">Постоянный VPN не может запуститься, пока включён режим «только прокси». Отключите постоянный VPN или включите «Маршрутизировать системный трафик»</string>
-    <string name="profile_service_status">Статус сервиса профиля</string>
     <string name="profile_process_status">Статус обработки профиля</string>
     <string name="profile_process_result">Результат обработки профиля</string>
     <string name="profile_process_error">Ошибки обновления подписки</string>
@@ -30,7 +29,6 @@
     <string name="profiles_and_providers">Профили и провайдеры</string>
     <string name="configuration_yaml">Configuration.yaml</string>
     <string name="provider_files">Файлы провайдера</string>
-    <string name="profile_updater">Обновление профиля</string>
     <string name="profile_updating">Профиль обновляется</string>
 
     <string name="clod_alert_channel">Напоминания о подписке</string>

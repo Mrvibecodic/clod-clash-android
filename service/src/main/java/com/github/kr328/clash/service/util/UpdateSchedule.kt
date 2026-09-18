@@ -12,4 +12,17 @@ object UpdateSchedule {
         return (MIN_INTERVAL shl (attempt - 1).coerceIn(0, 16))
             .coerceIn(MIN_INTERVAL, interval.coerceAtLeast(MIN_INTERVAL))
     }
+
+    fun retryWithinPeriod(interval: Long, attempt: Int): Boolean {
+        val delay = retryDelay(interval, attempt) ?: return false
+
+        return delay < interval
+    }
+
+    fun firstDelay(interval: Long, updatedAt: Long, now: Long): Long {
+        if (updatedAt <= 0)
+            return 0
+
+        return (interval - (now - updatedAt)).coerceIn(0, interval)
+    }
 }

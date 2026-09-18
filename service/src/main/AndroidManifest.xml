@@ -9,7 +9,6 @@
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application>
         <service
@@ -38,14 +37,6 @@
             android:name=".RemoteService"
             android:exported="false"
             android:process=":background" />
-        <service
-            android:name=".ProfileWorker"
-            android:exported="false"
-            android:process=":background"
-            android:foregroundServiceType="specialUse">
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="vpn_tunnel_and_proxy_core"/>
-        </service>
 
         <provider
             android:name=".FilesProvider"
@@ -69,6 +60,32 @@
             android:exported="false"
             android:process=":background" />
 
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                tools:node="remove" />
+        </provider>
+        <service
+            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+            android:process=":background"
+            tools:node="merge" />
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:process=":background"
+            tools:node="merge" />
+        <receiver
+            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+            android:process=":background"
+            tools:node="merge" />
+        <receiver
+            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+            android:process=":background"
+            tools:node="merge" />
+
         <receiver
             android:name=".ProfileReceiver"
             android:enabled="true"
@@ -76,11 +93,7 @@
             android:permission="${applicationId}.permission.RECEIVE_BROADCASTS"
             android:process=":background">
             <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.TIME_SET" />
-                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
-                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>
