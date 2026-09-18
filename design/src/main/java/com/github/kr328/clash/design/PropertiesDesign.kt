@@ -40,6 +40,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
             name = state.name,
             source = state.url,
             interval = TimeUnit.MINUTES.toMillis(state.intervalMinutes.toLongOrNull() ?: 0),
+            intervalManual = state.intervalManual,
         )
         set(value) {
             base = value
@@ -50,6 +51,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
                 name = value.name,
                 url = value.source,
                 intervalMinutes = if (minutes == 0L) "" else minutes.toString(),
+                intervalManual = value.intervalManual,
                 type = value.type,
                 secure = value.secure,
             )
@@ -70,8 +72,15 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
             PropertiesAction.BrowseFiles -> request(Request.BrowseFiles)
             is PropertiesAction.NameChanged -> state = state.copy(name = action.value)
             is PropertiesAction.UrlChanged -> state = state.copy(url = action.value)
-            is PropertiesAction.IntervalChanged ->
-                state = state.copy(intervalMinutes = action.value.filter { it.isDigit() })
+            is PropertiesAction.IntervalChanged -> {
+                val minutes = action.value.filter { it.isDigit() }
+
+                if (minutes != state.intervalMinutes) {
+                    state = state.copy(intervalMinutes = minutes, intervalManual = true)
+                }
+            }
+
+            PropertiesAction.IntervalFromPanel -> state = state.copy(intervalManual = false)
 
             PropertiesAction.ConfirmExit -> resumeExit(true)
             PropertiesAction.CancelExit -> resumeExit(false)

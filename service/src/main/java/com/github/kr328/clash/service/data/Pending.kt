@@ -24,4 +24,5 @@ data class Pending(
     // только ради совпадения со схемой БД — убирать вместе со следующей миграцией
     @ColumnInfo(name = "ageSecretKey") val ageSecretKey: String? = null,
     @ColumnInfo(name = "secure") val secure: Boolean = false,
+    @ColumnInfo(name = "intervalManual") val intervalManual: Boolean = false,
 )

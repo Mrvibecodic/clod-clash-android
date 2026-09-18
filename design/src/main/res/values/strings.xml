@@ -354,6 +354,8 @@
     <string name="clod_section_connection">Connection</string>
     <string name="clod_help_notice">Clod Clash is free software. Support for the subscription itself comes from whoever issued you the link — not from us.</string>
     <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
+    <string name="clod_interval_by_panel">Set by the subscription panel; changes with the next update</string>
+    <string name="clod_interval_from_panel">Use the panel value</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_properties_tip_source">The address of this profile is set by the source it came from and cannot be changed here. The name can be changed at any time.</string>
     <string name="clod_properties_tip_file">This profile is a local file: it has no address, and its configuration is edited on the Files screen. The name can be changed at any time.</string>

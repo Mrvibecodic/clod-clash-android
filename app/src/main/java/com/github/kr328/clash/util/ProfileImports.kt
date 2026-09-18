@@ -50,6 +50,7 @@ object ProfileImports {
         val name: String,
         val source: String,
         val interval: Long,
+        val intervalManual: Boolean,
         val secure: Boolean,
         val active: Boolean,
     )
@@ -136,8 +137,8 @@ object ProfileImports {
                         create(Profile.Type.Url, item.name, item.source, secure = item.secure)
                     }
 
-                    if (item.interval > 0) {
-                        withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval) }
+                    if (item.intervalManual) {
+                        withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval, true) }
                     }
 
                     import(uuid, item.active) { status ->
@@ -175,7 +176,7 @@ object ProfileImports {
 
             try {
                 withProfile(retry = false) {
-                    patch(profile.uuid, profile.name, profile.source, profile.interval)
+                    patch(profile.uuid, profile.name, profile.source, profile.interval, profile.intervalManual)
                 }
 
                 withProfile(retry = false) {

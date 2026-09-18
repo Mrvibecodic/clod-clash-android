@@ -92,7 +92,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                             if (saves) {
                                 withContext(NonCancellable) {
                                     withProfile(retry = false) {
-                                        patch(profile.uuid, profile.name, profile.source, profile.interval)
+                                        patch(profile.uuid, profile.name, profile.source, profile.interval, profile.intervalManual)
                                     }
                                 }
                             }

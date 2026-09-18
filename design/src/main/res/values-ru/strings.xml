@@ -320,6 +320,8 @@
     <string name="hide_from_recents_title">Скрыть из недавних</string>
     <string name="hide_from_recents_desc">Не показывать приложение на экране недавних</string>
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
+    <string name="clod_interval_by_panel">Задаёт панель подписки; меняется при следующем обновлении</string>
+    <string name="clod_interval_from_panel">Как в панели</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_properties_tip_source">Адрес этого профиля задан источником, из которого он пришёл, и здесь не меняется. Имя можно менять когда угодно.</string>
     <string name="clod_properties_tip_file">Это локальный профиль-файл: адреса у него нет, конфигурация правится на экране «Файлы». Имя можно менять когда угодно.</string>

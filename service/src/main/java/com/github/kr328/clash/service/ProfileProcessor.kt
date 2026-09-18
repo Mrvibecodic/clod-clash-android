@@ -56,7 +56,8 @@ object ProfileProcessor {
             type == other.type &&
             source == other.source &&
             interval == other.interval &&
-            secure == other.secure
+            secure == other.secure &&
+            intervalManual == other.intervalManual
 
     class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
 
@@ -109,7 +110,7 @@ object ProfileProcessor {
                     )
 
                     val old = ImportedDao().queryByUUID(snapshot.uuid)
-                    val manual = UpdateSchedule.manualInterval(old?.interval, old?.intervalManual ?: false, snapshot.interval)
+                    val manual = snapshot.intervalManual
                     val updateInterval = UpdateSchedule.effectiveInterval(manual, subscriptionInfo?.subUpdateInterval, snapshot.interval)
                     val new = Imported(
                         snapshot.uuid,

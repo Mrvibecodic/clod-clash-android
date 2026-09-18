@@ -49,6 +49,7 @@ data class PropertiesState(
     val name: String = "",
     val url: String = "",
     val intervalMinutes: String = "",
+    val intervalManual: Boolean = false,
     val type: Profile.Type = Profile.Type.Url,
     val secure: Boolean = false,
     val processing: FetchProgress? = null,
@@ -76,6 +77,7 @@ sealed interface PropertiesAction {
     data class NameChanged(val value: String) : PropertiesAction
     data class UrlChanged(val value: String) : PropertiesAction
     data class IntervalChanged(val value: String) : PropertiesAction
+    data object IntervalFromPanel : PropertiesAction
     data object ConfirmExit : PropertiesAction
     data object CancelExit : PropertiesAction
 }
@@ -181,10 +183,11 @@ fun PropertiesScreen(
                     isError = intervalBroken,
                     supportingText = {
                         Text(
-                            if (intervalBroken) {
-                                stringResource(R.string.at_least_15_minutes)
-                            } else {
-                                stringResource(R.string.auto_update_minutes)
+                            when {
+                                intervalBroken -> stringResource(R.string.at_least_15_minutes)
+                                state.intervalEditable && !state.intervalManual ->
+                                    stringResource(R.string.clod_interval_by_panel)
+                                else -> stringResource(R.string.auto_update_minutes)
                             },
                         )
                     },
@@ -194,6 +197,15 @@ fun PropertiesScreen(
                     ),
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+                if (state.intervalEditable && state.intervalManual) {
+                    TextButton(
+                        onClick = { onAction(PropertiesAction.IntervalFromPanel) },
+                        enabled = !processing,
+                    ) {
+                        Text(stringResource(R.string.clod_interval_from_panel))
+                    }
+                }
 
                 Spacer(Modifier.height(16.dp))
             }

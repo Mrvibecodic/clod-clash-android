@@ -228,11 +228,12 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             ProfileImports.Item(
                 name = item.name,
                 source = source,
-                interval = if (item.intervalManual != false && item.interval > 0) {
+                interval = if (item.interval > 0) {
                     maxOf(item.interval, TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES))
                 } else {
                     0L
                 },
+                intervalManual = item.intervalManual ?: (item.interval > 0),
                 secure = item.secure,
                 active = item.active,
             )
