@@ -19,6 +19,20 @@ object UpdateSchedule {
         return delay < interval
     }
 
+    fun manualInterval(previous: Long?, previousManual: Boolean, draft: Long): Boolean {
+        if (previous == null)
+            return draft != 0L
+
+        return previousManual || draft != previous
+    }
+
+    fun effectiveInterval(manual: Boolean, panel: Long?, own: Long): Long {
+        if (manual || panel == null)
+            return own
+
+        return panel
+    }
+
     fun firstDelay(interval: Long, updatedAt: Long, now: Long): Long {
         if (updatedAt <= 0)
             return 0

@@ -195,6 +195,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
             imported = imported != null,
             pending = pending != null,
             secure = if (pending != null) pending.secure else imported?.secure ?: false,
+            intervalManual = imported?.intervalManual ?: false,
         )
     }
 

@@ -26,6 +26,7 @@ data class Profile(
     val imported: Boolean,
     val pending: Boolean,
     val secure: Boolean = false,
+    val intervalManual: Boolean = false,
 ) : Parcelable {
     enum class Type {
         File, Url, External

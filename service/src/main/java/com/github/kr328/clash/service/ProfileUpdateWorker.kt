@@ -78,10 +78,6 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
             completed(imported.uuid, context.displayProfileName(imported.uuid, imported.name), failedProviders)
 
-            if (!periodic) {
-                ProfileUpdates.schedule(context, imported)
-            }
-
             Result.success()
         } catch (e: CancellationException) {
             throw e
@@ -101,6 +97,14 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             throw e
         } catch (e: Exception) {
             Log.w("Subscription alerts of $uuid: $e", e)
+        }
+
+        if (result is Result.Success) {
+            val stored = ImportedDao().queryByUUID(uuid) ?: imported
+
+            if (!periodic || stored.interval != imported.interval) {
+                ProfileUpdates.schedule(context, stored)
+            }
         }
 
         return result

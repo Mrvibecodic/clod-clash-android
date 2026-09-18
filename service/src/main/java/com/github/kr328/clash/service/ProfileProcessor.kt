@@ -15,6 +15,7 @@ import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.DraftFreshness
 import com.github.kr328.clash.service.util.directoryLastModified
+import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.migrationDir
 import com.github.kr328.clash.service.util.pendingDir
@@ -108,9 +109,8 @@ object ProfileProcessor {
                     )
 
                     val old = ImportedDao().queryByUUID(snapshot.uuid)
-                    val updateInterval = subscriptionInfo?.subUpdateInterval
-                        ?.takeIf { old == null && snapshot.interval == 0L }
-                        ?: snapshot.interval
+                    val manual = UpdateSchedule.manualInterval(old?.interval, old?.intervalManual ?: false, snapshot.interval)
+                    val updateInterval = UpdateSchedule.effectiveInterval(manual, subscriptionInfo?.subUpdateInterval, snapshot.interval)
                     val new = Imported(
                         snapshot.uuid,
                         snapshot.name,
@@ -122,7 +122,8 @@ object ProfileProcessor {
                         subscriptionInfo?.subTotal ?: 0,
                         subscriptionInfo?.subExpire ?: 0,
                         old?.createdAt ?: System.currentTimeMillis(),
-                        secure = snapshot.secure
+                        secure = snapshot.secure,
+                        intervalManual = manual,
                     )
                     if (old != null) {
                         ImportedDao().update(new)
@@ -175,15 +176,25 @@ object ProfileProcessor {
                         )
 
                         val upload = subscriptionInfo?.subUpload
-                        if (upload != null) {
-                            ImportedDao().update(
-                                imported.copy(
-                                    upload = upload,
-                                    download = subscriptionInfo.subDownload ?: 0,
-                                    total = subscriptionInfo.subTotal ?: 0,
-                                    expire = subscriptionInfo.subExpire ?: 0,
-                                )
+                        val refreshed = if (upload != null) {
+                            imported.copy(
+                                upload = upload,
+                                download = subscriptionInfo.subDownload ?: 0,
+                                total = subscriptionInfo.subTotal ?: 0,
+                                expire = subscriptionInfo.subExpire ?: 0,
                             )
+                        } else {
+                            imported
+                        }
+                        val stored = refreshed.copy(
+                            interval = UpdateSchedule.effectiveInterval(
+                                imported.intervalManual,
+                                subscriptionInfo?.subUpdateInterval,
+                                imported.interval,
+                            ),
+                        )
+                        if (stored != imported) {
+                            ImportedDao().update(stored)
                         }
 
                         context.sendProfileChanged(snapshot.uuid)

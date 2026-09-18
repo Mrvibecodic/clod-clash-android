@@ -93,3 +93,43 @@ class UpdateSchedulePeriodTest {
         assertEquals(hours6, UpdateSchedule.firstDelay(hours6, now + hours6, now))
     }
 }
+
+class UpdateScheduleIntervalOwnerTest {
+    private val hours6 = TimeUnit.HOURS.toMillis(6)
+    private val hours12 = TimeUnit.HOURS.toMillis(12)
+
+    @Test
+    fun `a new subscription with an empty interval follows the panel`() {
+        assertFalse(UpdateSchedule.manualInterval(null, false, 0))
+    }
+
+    @Test
+    fun `a new subscription with an interval typed in is manual`() {
+        assertTrue(UpdateSchedule.manualInterval(null, false, hours6))
+    }
+
+    @Test
+    fun `saving the same interval again keeps the panel in charge`() {
+        assertFalse(UpdateSchedule.manualInterval(hours6, false, hours6))
+    }
+
+    @Test
+    fun `changing the interval by hand takes it away from the panel for good`() {
+        assertTrue(UpdateSchedule.manualInterval(hours6, false, hours12))
+        assertTrue(UpdateSchedule.manualInterval(hours12, true, hours12))
+        assertTrue(UpdateSchedule.manualInterval(hours6, true, 0))
+    }
+
+    @Test
+    fun `the panel value is used only when the interval is not manual`() {
+        assertEquals(hours12, UpdateSchedule.effectiveInterval(false, hours12, hours6))
+        assertEquals(0, UpdateSchedule.effectiveInterval(false, 0, hours6))
+        assertEquals(hours6, UpdateSchedule.effectiveInterval(true, hours12, hours6))
+    }
+
+    @Test
+    fun `without a panel value the own interval stays`() {
+        assertEquals(hours6, UpdateSchedule.effectiveInterval(false, null, hours6))
+        assertEquals(0, UpdateSchedule.effectiveInterval(false, null, 0))
+    }
+}
