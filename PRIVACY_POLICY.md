@@ -97,8 +97,8 @@ The VPN permission is required to create the tunnel; notification permission is 
 foreground service notification and for subscription and update notices. The app also declares
 `QUERY_ALL_PACKAGES`, because the per-app tunnel screen has to list the applications installed
 on the device — that list is read locally and never sent anywhere; `REQUEST_INSTALL_PACKAGES`,
-to install an app update it has downloaded; and permissions for exact alarms and battery
-optimisation, used for scheduled subscription refreshes. Camera access comes from the QR
+to install an app update it has downloaded; and the battery optimisation permission, used for
+scheduled subscription refreshes. Camera access comes from the QR
 scanner and is used only to read a subscription code; the image is not stored or transmitted.
 The app requests no location, contacts or microphone access.
 
