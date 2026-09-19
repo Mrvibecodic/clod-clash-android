@@ -15,6 +15,12 @@ class ValidatorTest {
         assertFalse(ValidatorFileName("a%b"))
         assertFalse(ValidatorFileName("a&b"))
         assertFalse(ValidatorFileName("a\nb"))
+        assertFalse(ValidatorFileName("."))
+        assertFalse(ValidatorFileName(".."))
+        assertFalse(ValidatorFileName("..."))
+        assertTrue(ValidatorFileName(".hidden.yaml"))
+        assertTrue(ValidatorFileName("a".repeat(255)))
+        assertFalse(ValidatorFileName("a".repeat(256)))
 
         assertFalse(ValidatorFileName("   "))
         assertFalse(ValidatorFileName(""))

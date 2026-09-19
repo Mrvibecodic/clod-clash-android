@@ -6,8 +6,19 @@ object Paths {
     const val CONFIGURATION_ID = "config.yaml"
     const val PROVIDERS_ID = "providers"
 
+    fun isChild(parent: String, child: String): Boolean {
+        val parentSegments = segments(parent)
+        val childSegments = segments(child)
+
+        return childSegments.size >= parentSegments.size &&
+            childSegments.subList(0, parentSegments.size) == parentSegments
+    }
+
+    private fun segments(path: String): List<String> =
+        path.split("/").filter { it.isNotBlank() && it != "." && it != ".." }
+
     fun resolve(path: String): Path {
-        val segments = path.split("/").filter { it.isNotBlank() && it != "." && it != ".." }
+        val segments = segments(path)
 
         return when (segments.size) {
             0 -> Path(

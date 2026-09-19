@@ -2,7 +2,9 @@ package com.github.kr328.clash.service.document
 
 import android.content.Context
 import android.provider.DocumentsContract
+import com.github.kr328.clash.common.util.PatternFileName
 import com.github.kr328.clash.service.R
+import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
@@ -10,7 +12,6 @@ import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
 import java.io.FileNotFoundException
-import java.util.*
 
 class Picker(private val context: Context) {
     suspend fun list(path: Path): List<Document> {
@@ -44,88 +45,89 @@ class Picker(private val context: Context) {
                 DocumentsContract.Document.MIME_TYPE_DIR,
                 0,
                 0,
-                setOf(Flag.Virtual),
+                emptySet(),
             )
         }
 
-        if (writable) {
-            cloneToPending(path.uuid)
+        val pending = PendingDao().queryByUUID(path.uuid)
+        val imported = ImportedDao().queryByUUID(path.uuid)
+
+        val name = pending?.name ?: imported?.name ?: throw FileNotFoundException("profile not found")
+        val type = pending?.type ?: imported?.type ?: throw FileNotFoundException("profile not found")
+
+        if (path.scope == Path.Scope.Configuration && path.relative != null)
+            throw FileNotFoundException("invalid path")
+
+        val storedDir = if (pending != null) {
+            context.pendingDir.resolve(path.uuid.toString())
+        } else {
+            context.importedDir.resolve(path.uuid.toString())
         }
 
-        val imported = ImportedDao().queryByUUID(path.uuid)
-        val pending = PendingDao().queryByUUID(path.uuid)
-
-        if (path.scope == null) {
-            if (writable)
+        if (writable) {
+            if (path.scope == null || (path.scope == Path.Scope.Configuration && type != Profile.Type.File))
                 throw IllegalArgumentException("invalid open mode")
 
+            val fileName = path.relative?.lastOrNull()
+
+            if (fileName != null && !PatternFileName.matches(fileName) &&
+                !storedDir.resolve("providers").resolve(path.relative.joinToString(separator = "/")).exists()
+            ) {
+                throw IllegalArgumentException("invalid name $fileName")
+            }
+
+            if (pending == null)
+                cloneToPending(imported ?: throw FileNotFoundException("profile not found"))
+        }
+
+        val profileDir = if (writable) context.pendingDir.resolve(path.uuid.toString()) else storedDir
+
+        if (path.scope == null) {
             return VirtualDocument(
                 id = path.uuid.toString(),
-                name = pending?.name ?: imported?.name
-                ?: throw FileNotFoundException("profile not found"),
+                name = name,
                 mimeType = DocumentsContract.Document.MIME_TYPE_DIR,
                 size = 0,
                 updatedAt = 0,
-                flags = setOf(Flag.Virtual),
+                flags = emptySet(),
             )
         }
 
         if (path.relative == null) {
             if (path.scope == Path.Scope.Configuration) {
-                val type = pending?.type ?: imported?.type
-                ?: throw FileNotFoundException("profile not found")
-
-                if (writable && type != Profile.Type.File)
-                    throw IllegalArgumentException("invalid open mode")
-
                 val flags: Set<Flag> = if (type == Profile.Type.Url)
                     emptySet()
                 else
                     setOf(Flag.Writable)
 
                 return FileDocument(
-                    file = when {
-                        pending != null -> context.pendingDir.resolve(pending.uuid.toString())
-                        imported != null -> context.importedDir.resolve(imported.uuid.toString())
-                        else -> throw FileNotFoundException("profile not found")
-                    }.resolve("config.yaml"),
+                    file = profileDir.resolve("config.yaml"),
                     flags = flags,
                     idOverride = Paths.CONFIGURATION_ID,
                     nameOverride = context.getString(R.string.configuration_yaml)
                 )
             } else {
                 return FileDocument(
-                    file = when {
-                        pending != null -> context.pendingDir.resolve(pending.uuid.toString())
-                        imported != null -> context.importedDir.resolve(imported.uuid.toString())
-                        else -> throw FileNotFoundException("profile not found")
-                    }.resolve("providers"),
+                    file = profileDir.resolve("providers"),
                     idOverride = Paths.PROVIDERS_ID,
                     nameOverride = context.getString(R.string.provider_files),
-                    flags = setOf(Flag.Virtual)
+                    flags = emptySet()
                 )
             }
         }
 
-        if (path.scope != Path.Scope.Providers)
-            throw FileNotFoundException("invalid path")
-
         return FileDocument(
-            file = when {
-                pending != null -> context.pendingDir.resolve(pending.uuid.toString())
-                imported != null -> context.importedDir.resolve(imported.uuid.toString())
-                else -> throw FileNotFoundException("profile not found")
-            }.resolve("providers").resolve(path.relative.joinToString(separator = "/")),
+            file = profileDir.resolve("providers").resolve(path.relative.joinToString(separator = "/")),
             flags = setOf(Flag.Writable, Flag.Deletable)
         )
     }
 
-    private suspend fun cloneToPending(uuid: UUID) {
-        if (PendingDao().queryByUUID(uuid) != null)
-            return
+    private suspend fun cloneToPending(imported: Imported) {
+        val source = context.importedDir.resolve(imported.uuid.toString())
+        val target = context.pendingDir.resolve(imported.uuid.toString())
 
-        val imported =
-            ImportedDao().queryByUUID(uuid) ?: throw FileNotFoundException("profile not found")
+        target.deleteRecursively()
+        source.copyRecursively(target)
 
         PendingDao().insert(
             Pending(
@@ -134,16 +136,13 @@ class Picker(private val context: Context) {
                 imported.type,
                 imported.source,
                 imported.interval,
-                0,0,0,0,
+                imported.upload,
+                imported.download,
+                imported.total,
+                imported.expire,
                 secure = imported.secure,
                 intervalManual = imported.intervalManual,
             )
         )
-
-        val source = context.importedDir.resolve(uuid.toString())
-        val target = context.pendingDir.resolve(uuid.toString())
-
-        target.deleteRecursively()
-        source.copyRecursively(target)
     }
 }

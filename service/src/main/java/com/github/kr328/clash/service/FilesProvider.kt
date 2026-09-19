@@ -2,7 +2,7 @@ package com.github.kr328.clash.service
 
 import android.database.Cursor
 import android.database.MatrixCursor
-import android.os.Build
+import android.database.sqlite.SQLiteException
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract.Root
@@ -34,9 +34,6 @@ class FilesProvider : DocumentsProvider() {
             Root.COLUMN_DOCUMENT_ID,
             Root.COLUMN_MIME_TYPES
         )
-
-        private val FLAG_VIRTUAL: Int =
-            if (Build.VERSION.SDK_INT >= 24) D.FLAG_VIRTUAL_DOCUMENT else 0
     }
 
     private val picker: Picker by lazy {
@@ -102,7 +99,12 @@ class FilesProvider : DocumentsProvider() {
             if (parent == null)
                 throw IllegalArgumentException("unable to rename $document")
 
-            if (!document.file.renameTo(parent.resolve(name)))
+            val target = parent.resolve(name)
+
+            if (name != document.file.name && target.exists())
+                throw IllegalArgumentException("already exists $name")
+
+            if (!document.file.renameTo(target))
                 throw IllegalArgumentException("unable to rename $document")
 
             path.copy(relative = path.relative.dropLast(1) + name).toString()
@@ -115,35 +117,27 @@ class FilesProvider : DocumentsProvider() {
         sortOrder: String?
     ): Cursor {
         return runBlocking {
-            try {
-                val doc = parentDocumentId ?: "/"
-                val path = Paths.resolve(doc)
-                val documents = picker.list(path)
+            val doc = parentDocumentId ?: "/"
+            val path = Paths.resolve(doc)
+            val documents = query { picker.list(path) }
 
-                MatrixCursor(resolveDocumentProjection(projection)).apply {
-                    documents.forEach {
-                        newRow().applyDocument(it)
-                            .add(D.COLUMN_DOCUMENT_ID, "$doc/${it.id}")
-                    }
+            MatrixCursor(resolveDocumentProjection(projection)).apply {
+                documents.forEach {
+                    newRow().applyDocument(it)
+                        .add(D.COLUMN_DOCUMENT_ID, "$doc/${it.id}")
                 }
-            } catch (e: Exception) {
-                MatrixCursor(resolveDocumentProjection(projection))
             }
         }
     }
 
     override fun queryDocument(documentId: String?, projection: Array<out String>?): Cursor {
         return runBlocking {
-            try {
-                val doc = documentId ?: "/"
-                val path = Paths.resolve(doc)
-                val document = picker.pick(path, false)
+            val doc = documentId ?: "/"
+            val path = Paths.resolve(doc)
+            val document = query { picker.pick(path, false) }
 
-                MatrixCursor(resolveDocumentProjection(projection)).apply {
-                    newRow().applyDocument(document).add(D.COLUMN_DOCUMENT_ID, doc)
-                }
-            } catch (e: Exception) {
-                MatrixCursor(resolveDocumentProjection(projection))
+            MatrixCursor(resolveDocumentProjection(projection)).apply {
+                newRow().applyDocument(document).add(D.COLUMN_DOCUMENT_ID, doc)
             }
         }
     }
@@ -172,7 +166,7 @@ class FilesProvider : DocumentsProvider() {
         if (parentDocumentId == null || documentId == null)
             return false
 
-        return documentId.startsWith(parentDocumentId)
+        return Paths.isChild(parentDocumentId, documentId)
     }
 
     private fun MatrixCursor.RowBuilder.applyDocument(document: Document): MatrixCursor.RowBuilder {
@@ -182,7 +176,6 @@ class FilesProvider : DocumentsProvider() {
             flags = when (it) {
                 Flag.Writable -> flags or D.FLAG_SUPPORTS_WRITE
                 Flag.Deletable -> flags or D.FLAG_SUPPORTS_DELETE
-                Flag.Virtual -> flags or FLAG_VIRTUAL
             }
         }
 
@@ -193,6 +186,24 @@ class FilesProvider : DocumentsProvider() {
         add(D.COLUMN_FLAGS, flags)
 
         return this
+    }
+
+    private suspend fun <T> query(block: suspend () -> T): T {
+        try {
+            return block()
+        } catch (e: FileNotFoundException) {
+            throw IllegalStateException(e.message, e)
+        } catch (e: IllegalArgumentException) {
+            throw e
+        } catch (e: IllegalStateException) {
+            throw e
+        } catch (e: SecurityException) {
+            throw e
+        } catch (e: SQLiteException) {
+            throw e
+        } catch (e: Exception) {
+            throw IllegalStateException(e.toString(), e)
+        }
     }
 
     private fun resolveDocumentProjection(projection: Array<out String>?): Array<out String> {

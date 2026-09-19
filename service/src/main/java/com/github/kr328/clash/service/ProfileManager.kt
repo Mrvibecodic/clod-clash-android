@@ -177,10 +177,10 @@ class ProfileManager(private val context: Context) : IProfileManager,
         val type = pending?.type ?: imported?.type ?: return null
         val source = pending?.source ?: imported?.source ?: return null
         val interval = pending?.interval ?: imported?.interval ?: return null
-        val upload = pending?.upload ?: imported?.upload ?: return null
-        val download = pending?.download ?: imported?.download ?: return null
-        val total = pending?.total ?: imported?.total ?: return null
-        val expire = pending?.expire ?: imported?.expire ?: return null
+        val upload = imported?.upload ?: pending?.upload ?: return null
+        val download = imported?.download ?: pending?.download ?: return null
+        val total = imported?.total ?: pending?.total ?: return null
+        val expire = imported?.expire ?: pending?.expire ?: return null
 
         return Profile(
             uuid = uuid,
@@ -202,8 +202,8 @@ class ProfileManager(private val context: Context) : IProfileManager,
     }
 
     private fun resolveUpdatedAt(uuid: UUID): Long {
-        return context.pendingDir.resolve(uuid.toString()).directoryLastModified
-            ?: context.importedDir.resolve(uuid.toString()).directoryLastModified
+        return context.importedDir.resolve(uuid.toString()).directoryLastModified
+            ?: context.pendingDir.resolve(uuid.toString()).directoryLastModified
             ?: -1
     }
 
