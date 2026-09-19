@@ -5,6 +5,7 @@ package com.github.kr328.clash.remote
 import android.content.Context
 import android.net.Uri
 import com.github.kr328.clash.common.constants.Authorities
+import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.model.File
 import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.util.copyContentTo
@@ -36,7 +37,7 @@ class FilesClient(private val context: Context) {
                     cursor.moveToNext()
                 }
             }.sortedWith(compareBy<File> { !it.isDirectory }.thenBy(localeCollator()) { it.name })
-        } ?: emptyList()
+        } ?: throw IllegalStateException(context.getString(R.string.clod_service_unavailable))
     }
 
     suspend fun renameDocument(documentId: String, name: String) = withContext(Dispatchers.IO) {

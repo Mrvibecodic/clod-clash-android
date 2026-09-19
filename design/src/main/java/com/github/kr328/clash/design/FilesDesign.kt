@@ -24,6 +24,7 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         data class ExportFile(val file: File) : Request
 
         data object PopStack : Request
+        data object Refresh : Request
     }
 
     private var state by mutableStateOf(FilesState(currentTime = System.currentTimeMillis()))
@@ -42,6 +43,7 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         when (action) {
             FilesAction.Back -> requests.trySend(Request.PopStack)
             FilesAction.New -> requests.trySend(Request.ImportFile(null))
+            FilesAction.Retry -> requests.trySend(Request.Refresh)
             FilesAction.CloseMenu -> state = state.copy(menuFor = null)
             is FilesAction.More -> state = state.copy(menuFor = action.file)
             is FilesAction.Open -> {
@@ -66,7 +68,13 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
 
     suspend fun swapFiles(files: List<File>, currentInBaseDir: Boolean) {
         withContext(Dispatchers.Main) {
-            state = state.copy(files = files, loaded = true, inBaseDir = currentInBaseDir)
+            state = state.copy(files = files, loaded = true, inBaseDir = currentInBaseDir, error = null)
+        }
+    }
+
+    suspend fun showError(message: String) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(files = emptyList(), loaded = true, error = message)
         }
     }
 

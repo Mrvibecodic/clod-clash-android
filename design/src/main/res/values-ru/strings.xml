@@ -332,6 +332,8 @@
     <string name="clod_properties_secure">Защищённое соединение включено. Снять его нельзя — только добавить подписку заново.</string>
     <string name="clod_no_logs">Сохранённых логов пока нет</string>
     <string name="clod_no_files">Файлов пока нет</string>
+    <string name="clod_files_error">Не удалось прочитать файлы: %1$s</string>
+    <string name="clod_retry">Повторить</string>
     <string name="clod_section_settings">Приложение</string>
     <string name="clod_section_support">Помощь</string>
     <string name="clod_settings_app_title">Внешний вид и поведение</string>

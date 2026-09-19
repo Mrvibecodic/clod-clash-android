@@ -366,6 +366,8 @@
     <string name="clod_properties_secure">Secure connection is on. It cannot be turned off — only by adding the subscription again.</string>
     <string name="clod_no_logs">No saved logs yet</string>
     <string name="clod_no_files">No files yet</string>
+    <string name="clod_files_error">Could not read the files: %1$s</string>
+    <string name="clod_retry">Retry</string>
     <string name="clod_section_settings">App</string>
     <string name="clod_section_support">Help</string>
     <string name="clod_settings_app_title">Look and behavior</string>

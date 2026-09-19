@@ -14,6 +14,7 @@ import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.util.DraftGate
 import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.withProfile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -135,7 +136,20 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         design?.apply {
             launch {
                 if (!progressing) {
-                    if (original == profile || requestExitWithoutSaving())
+                    val stored = try {
+                        withProfile(retry = false) { queryByUUID(profile.uuid) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        null
+                    }
+                    val silent = DraftGate.exitsSilently(
+                        changed = original != profile,
+                        imported = stored?.imported == true,
+                        draft = stored?.pending == true,
+                    )
+
+                    if (silent || requestExitWithoutSaving())
                         finish()
                 }
             }

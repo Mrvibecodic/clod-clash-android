@@ -15,6 +15,7 @@ import com.github.kr328.clash.remote.FilesClient
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.util.fileName
 import com.github.kr328.clash.util.withProfile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 import java.util.*
@@ -37,7 +38,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         this.stack = stack
 
         design.configurationEditable = profile.type != Profile.Type.Url
-        design.fetch(client, stack, root)
+        design.refresh(client, stack, root)
 
         setContentDesign(design)
 
@@ -48,7 +49,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                 events.onReceive {
                     when (it) {
                         Event.ActivityStart, Event.ActivityStop -> {
-                            design.fetch(client, stack, root)
+                            design.refresh(client, stack, root)
                         }
                         else -> Unit
                     }
@@ -63,6 +64,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                                     stack.pop()
                                 }
                             }
+                            FilesDesign.Request.Refresh -> Unit
                             is FilesDesign.Request.OpenDirectory -> {
                                 stack.push(it.file.id)
                             }
@@ -114,7 +116,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                         design.showExceptionToast(e)
                     }
 
-                    design.fetch(client, stack, root)
+                    design.refresh(client, stack, root)
                 }
                 if (activityStarted) {
                     ticker.onReceive {
@@ -133,6 +135,16 @@ class FilesActivity : BaseActivity<FilesDesign>() {
 
     override fun onBackPressed() {
         design?.requests?.trySend(FilesDesign.Request.PopStack)
+    }
+
+    private suspend fun FilesDesign.refresh(client: FilesClient, stack: Stack<String>, root: String) {
+        try {
+            fetch(client, stack, root)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            showError(e.message ?: e.toString())
+        }
     }
 
     private suspend fun FilesDesign.fetch(client: FilesClient, stack: Stack<String>, root: String) {

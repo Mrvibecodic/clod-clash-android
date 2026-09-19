@@ -18,6 +18,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -45,11 +46,13 @@ data class FilesState(
     val configurationEditable: Boolean = false,
     val currentTime: Long = 0,
     val menuFor: File? = null,
+    val error: String? = null,
 )
 
 sealed interface FilesAction {
     data object Back : FilesAction
     data object New : FilesAction
+    data object Retry : FilesAction
     data class Open(val file: File) : FilesAction
     data class More(val file: File) : FilesAction
     data object CloseMenu : FilesAction
@@ -86,7 +89,26 @@ fun FilesScreen(
         },
     ) { padding ->
         LazyColumn(contentPadding = padding) {
-            if (state.loaded && state.files.isEmpty()) {
+            if (state.error != null) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.clod_files_error, state.error),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                        )
+                        TextButton(onClick = { onAction(FilesAction.Retry) }) {
+                            Text(text = stringResource(R.string.clod_retry))
+                        }
+                    }
+                }
+            } else if (state.loaded && state.files.isEmpty()) {
                 item {
                     Text(
                         text = stringResource(R.string.clod_no_files),
