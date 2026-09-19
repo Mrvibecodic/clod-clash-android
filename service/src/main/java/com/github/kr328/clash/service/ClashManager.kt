@@ -114,6 +114,10 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.healthCheck(group).await()
     }
 
+    override suspend fun healthCheckGroups(groups: List<String>, exclude: List<String>, force: Boolean) {
+        return Clash.healthCheckGroups(groups, exclude, force).await()
+    }
+
     override suspend fun updateProvider(type: Provider.Type, name: String) {
         return Clash.updateProvider(type, name).await()
     }

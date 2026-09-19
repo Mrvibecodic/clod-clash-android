@@ -20,6 +20,7 @@ interface IClashManager {
     suspend fun querySelections(): Map<String, String>
 
     suspend fun healthCheck(group: String)
+    suspend fun healthCheckGroups(groups: List<String>, exclude: List<String>, force: Boolean)
 
     suspend fun testProfileDelays(uuid: UUID): String
     suspend fun updateProvider(type: Provider.Type, name: String)

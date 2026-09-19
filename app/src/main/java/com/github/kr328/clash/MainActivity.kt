@@ -76,7 +76,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -793,10 +792,10 @@ class MainActivity : BaseActivity<MainDesign>() {
                 setProxyTesting(false)
             }
 
-            coroutineScope {
-                proxyGroupNames.filter { it != first }.forEach { group ->
-                    launch { withClash { healthCheck(group) } }
-                }
+            val others = proxyGroupNames.filter { it != first }
+
+            if (others.isNotEmpty()) {
+                withClash { healthCheckGroups(others, listOfNotNull(first), manual) }
             }
 
             val delays = reloadProxyGroup(selectedGroup)
@@ -805,6 +804,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                 notifyDelaysUnavailable(delays)
             }
         } catch (e: CancellationException) {
+            lastHealthCheckAt = 0
+
             throw e
         } catch (e: Exception) {
             Log.w("Health check: $e", e)
