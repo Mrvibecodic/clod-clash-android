@@ -4,6 +4,7 @@ package main
 import "C"
 
 import (
+	"encoding/json"
 	"unsafe"
 
 	"cfa/native/app"
@@ -86,9 +87,38 @@ func healthCheck(completable unsafe.Pointer, name C.c_string) {
 				err = panicError("healthCheck", r)
 			})()
 
-			tunnel.HealthCheck(n)
+			return tunnel.HealthCheck(n)
+		}()
 
-			return nil
+		C.complete(completable, marshalError(err))
+
+		C.release_object(completable)
+	})
+}
+
+//export healthCheckGroups
+func healthCheckGroups(completable unsafe.Pointer, request C.c_string) {
+	defer guard("healthCheckGroups", func() {})()
+
+	r := C.GoString(request)
+
+	safego.Go("healthCheckGroups", func() {
+		err := func() (err error) {
+			defer safego.GuardWith("healthCheckGroups", func(r any) {
+				err = panicError("healthCheckGroups", r)
+			})()
+
+			var req struct {
+				Groups  []string `json:"groups"`
+				Exclude []string `json:"exclude"`
+				Force   bool     `json:"force"`
+			}
+
+			if err := json.Unmarshal([]byte(r), &req); err != nil {
+				return err
+			}
+
+			return tunnel.HealthCheckGroups(req.Groups, req.Exclude, req.Force)
 		}()
 
 		C.complete(completable, marshalError(err))

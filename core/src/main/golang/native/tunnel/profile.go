@@ -111,8 +111,8 @@ func TestProfileDelays(path string) map[string]int {
 			defer wg.Done()
 
 			select {
-			case probeSlots <- struct{}{}:
-				defer func() { <-probeSlots }()
+			case screenProbes.slots <- struct{}{}:
+				defer func() { <-screenProbes.slots }()
 			case <-ctx.Done():
 				return
 			}

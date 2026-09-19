@@ -7,6 +7,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -149,6 +150,17 @@ object Clash {
     fun healthCheck(name: String): CompletableDeferred<Unit> {
         return CompletableDeferred<Unit>().apply {
             Bridge.nativeHealthCheck(this, name)
+        }
+    }
+
+    @Serializable
+    private class HealthCheckRequest(val groups: List<String>, val exclude: List<String>, val force: Boolean)
+
+    fun healthCheckGroups(groups: List<String>, exclude: List<String>, force: Boolean): CompletableDeferred<Unit> {
+        val request = CoreJson.encodeToString(HealthCheckRequest.serializer(), HealthCheckRequest(groups, exclude, force))
+
+        return CompletableDeferred<Unit>().apply {
+            Bridge.nativeHealthCheckGroups(this, request)
         }
     }
 

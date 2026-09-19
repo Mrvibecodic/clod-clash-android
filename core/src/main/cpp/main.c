@@ -197,6 +197,18 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheck(JNIEnv *env, jo
     healthCheck(_completable, _name);
 }
 
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckGroups(JNIEnv *env, jobject thiz,
+                                                                       jobject completable,
+                                                                       jstring request) {
+    TRACE_METHOD();
+
+    jobject _completable = new_global(completable);
+    scoped_string _request = get_string(request);
+
+    healthCheckGroups(_completable, _request);
+}
+
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeTestProfileDelays(JNIEnv *env, jobject thiz,
                                                                       jstring path) {

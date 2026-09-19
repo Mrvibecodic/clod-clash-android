@@ -3,6 +3,7 @@ package tunnel
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -26,6 +27,8 @@ const (
 	healthCheckProbeTimeout = 5 * time.Second
 
 	healthCheckTotalTimeout = 45 * time.Second
+
+	healthCheckFreshWindow = 60 * time.Second
 )
 
 type probeResult struct {
@@ -35,12 +38,19 @@ type probeResult struct {
 	err     error
 }
 
+type probePool struct {
+	tag   string
+	slots chan struct{}
+}
+
 var (
 	probeMu       sync.Mutex
 	probeRoot     context.Context
 	probeAbort    context.CancelFunc
 	probeInflight = map[string]*probeResult{}
-	probeSlots    = make(chan struct{}, healthCheckConcurrency)
+
+	screenProbes  = &probePool{tag: "screen", slots: make(chan struct{}, healthCheckConcurrency)}
+	serviceProbes = &probePool{tag: "service", slots: make(chan struct{}, healthCheckConcurrency)}
 )
 
 func probeContext() context.Context {
@@ -89,8 +99,8 @@ func healthCheckBudget(count int) time.Duration {
 	return need
 }
 
-func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) (uint16, probeoutcome.Outcome, error) {
-	key := px.Name() + "|" + url + "|" + statusKey
+func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) (uint16, probeoutcome.Outcome, error) {
+	key := pool.tag + "|" + px.Name() + "|" + url + "|" + statusKey
 
 	for {
 		probeMu.Lock()
@@ -133,8 +143,8 @@ func probeProxy(ctx context.Context, px C.Proxy, url string, statusKey string, e
 		}
 
 		select {
-		case probeSlots <- struct{}{}:
-			defer func() { <-probeSlots }()
+		case pool.slots <- struct{}{}:
+			defer func() { <-pool.slots }()
 		case <-ctx.Done():
 			own.err = ctx.Err()
 			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
@@ -240,49 +250,177 @@ func GroupTestURL(g outboundgroup.ProxyGroup) string {
 	return url
 }
 
-func HealthCheck(name string) {
+func HealthCheck(name string) error {
+	return healthCheckGroup(screenProbes, name)
+}
+
+func healthCheckGroup(pool *probePool, name string) error {
 	p := tunnel.Proxies()[name]
 
 	if p == nil {
 		log.Warnln("Request health check for `%s`: not found", name)
 
-		return
+		return nil
 	}
 
 	g, ok := p.Adapter().(outboundgroup.ProxyGroup)
 	if !ok {
 		log.Warnln("Request health check for `%s`: invalid type %s", name, p.Type().String())
 
-		return
+		return nil
 	}
 
 	proxies := g.Proxies()
 	if len(proxies) == 0 {
 		log.Warnln("Request health check for `%s`: group is empty", name)
 
-		return
+		return nil
 	}
 
 	url, statusKey, expectedStatus := groupCheckOptions(g)
 
+	targets := make([]checkTarget, 0, len(proxies))
+
+	for _, px := range proxies {
+		targets = append(targets, checkTarget{px, url, statusKey, expectedStatus})
+	}
+
 	log.Infoln("Health check `%s`: %d proxies via %s", name, len(proxies), url)
 
-	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(proxies)))
+	checked, alive := probeTargets(pool, "Health check `"+name+"`", targets)
+
+	log.Infoln(
+		"Health check `%s`: %d alive of %d checked, %d of %d not checked",
+		name, alive, checked, len(proxies)-checked, len(proxies),
+	)
+
+	if checked == 0 {
+		return errNothingChecked
+	}
+
+	return nil
+}
+
+type checkTarget struct {
+	proxy    C.Proxy
+	url      string
+	status   string
+	expected utils.IntRanges[uint16]
+}
+
+func (t checkTarget) key() string {
+	return t.proxy.Name() + "|" + t.url + "|" + t.status
+}
+
+var errNothingChecked = errors.New("health check interrupted: no node was checked")
+
+func groupTargets(name string) []checkTarget {
+	p := tunnel.Proxies()[name]
+	if p == nil {
+		return nil
+	}
+
+	g, ok := p.Adapter().(outboundgroup.ProxyGroup)
+	if !ok {
+		return nil
+	}
+
+	url, statusKey, expectedStatus := groupCheckOptions(g)
+
+	targets := []checkTarget{}
+
+	for _, px := range g.Proxies() {
+		if _, isGroup := px.Adapter().(outboundgroup.ProxyGroup); isGroup {
+			continue
+		}
+
+		targets = append(targets, checkTarget{px, url, statusKey, expectedStatus})
+	}
+
+	return targets
+}
+
+func probedRecently(px C.Proxy, url string, now time.Time) bool {
+	history := px.ExtraDelayHistories()[url].History
+	if len(history) == 0 {
+		return false
+	}
+
+	last := history[len(history)-1]
+
+	return last.Delay > 0 && !last.Time.After(now) && now.Sub(last.Time) < healthCheckFreshWindow
+}
+
+func HealthCheckGroups(names []string, exclude []string, force bool) error {
+	seen := map[string]bool{}
+
+	for _, name := range exclude {
+		for _, t := range groupTargets(name) {
+			seen[t.key()] = true
+		}
+	}
+
+	targets := []checkTarget{}
+	skipped := 0
+	now := time.Now()
+
+	for _, name := range names {
+		for _, t := range groupTargets(name) {
+			key := t.key()
+
+			if seen[key] {
+				continue
+			}
+
+			seen[key] = true
+
+			if !force && probedRecently(t.proxy, t.url, now) {
+				skipped++
+
+				continue
+			}
+
+			targets = append(targets, t)
+		}
+	}
+
+	log.Infoln("Health check of %d groups: %d nodes to probe, %d fresh", len(names), len(targets), skipped)
+
+	if len(targets) == 0 {
+		return nil
+	}
+
+	checked, alive := probeTargets(screenProbes, "Health check", targets)
+
+	log.Infoln(
+		"Health check of %d groups: %d alive of %d checked, %d of %d not checked",
+		len(names), alive, checked, len(targets)-checked, len(targets),
+	)
+
+	if checked == 0 {
+		return errNothingChecked
+	}
+
+	return nil
+}
+
+func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int) {
+	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(targets)))
 	defer cancel()
 
 	var checked, alive atomic.Int32
 
 	wg := &sync.WaitGroup{}
 
-	for _, proxy := range proxies {
+	for _, target := range targets {
 		wg.Add(1)
 
-		px := proxy
+		t := target
 
 		safego.Go("healthCheckProbe", func() {
 			defer wg.Done()
 
-			_, outcome, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
+			_, outcome, err := probeProxy(ctx, pool, t.proxy, t.url, t.status, t.expected)
 
 			if outcome == probeoutcome.Superseded || outcome == probeoutcome.Expired {
 				return
@@ -291,7 +429,7 @@ func HealthCheck(name string) {
 			checked.Add(1)
 
 			if err != nil {
-				log.Debugln("Health check `%s`: %s failed: %s", name, px.Name(), err.Error())
+				log.Debugln("%s: %s failed: %s", what, t.proxy.Name(), err.Error())
 
 				return
 			}
@@ -302,10 +440,7 @@ func HealthCheck(name string) {
 
 	wg.Wait()
 
-	log.Infoln(
-		"Health check `%s`: %d alive of %d checked, %d of %d not checked",
-		name, alive.Load(), checked.Load(), int32(len(proxies))-checked.Load(), len(proxies),
-	)
+	return int(checked.Load()), int(alive.Load())
 }
 
 func ProbeCurrentNodes() {
@@ -366,7 +501,7 @@ func ProbeCurrentNodes() {
 		safego.Go("probeCurrentNode", func() {
 			defer release()
 
-			delay, outcome, err := probeProxy(ctx, px, url, statusKey, expectedStatus)
+			delay, outcome, err := probeProxy(ctx, serviceProbes, px, url, statusKey, expectedStatus)
 
 			switch outcome {
 			case probeoutcome.Alive:
@@ -381,7 +516,7 @@ func ProbeCurrentNodes() {
 
 				if reselect {
 					safego.Go("healthCheck", func() {
-						HealthCheck(group)
+						_ = healthCheckGroup(serviceProbes, group)
 					})
 				}
 			}
@@ -407,13 +542,6 @@ var (
 	recoverLastAt atomic.Int64
 )
 
-type deadTarget struct {
-	proxy    C.Proxy
-	url      string
-	status   string
-	expected utils.IntRanges[uint16]
-}
-
 func RecoverDeadNodes(force bool) {
 	if !config.IsLoaded() {
 		return
@@ -429,7 +557,7 @@ func RecoverDeadNodes(force bool) {
 		return
 	}
 
-	targets := []deadTarget{}
+	targets := []checkTarget{}
 	seen := map[string]bool{}
 
 	for _, p := range tunnel.Proxies() {
@@ -459,7 +587,7 @@ func RecoverDeadNodes(force bool) {
 
 			seen[key] = true
 
-			targets = append(targets, deadTarget{px, url, statusKey, expected})
+			targets = append(targets, checkTarget{px, url, statusKey, expected})
 		}
 	}
 
@@ -486,7 +614,7 @@ func RecoverDeadNodes(force bool) {
 		safego.Go("recoverDeadNode", func() {
 			defer wg.Done()
 
-			delay, outcome, _ := probeProxy(ctx, t.proxy, t.url, t.status, t.expected)
+			delay, outcome, _ := probeProxy(ctx, serviceProbes, t.proxy, t.url, t.status, t.expected)
 
 			if outcome == probeoutcome.Alive {
 				revived.Add(1)
