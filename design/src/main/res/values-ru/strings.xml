@@ -313,6 +313,7 @@
     <string name="tun_stack_system">Системный</string>
     <string name="tun_stack_gvisor">gVisor</string>
     <string name="tun_stack_mixed">Смешанный</string>
+    <string name="tun_stack_mips">MIPS</string>
     <string name="clod_tun_stack_effective">Фактический стек</string>
     <string name="clod_tun_stack_from_profile">%1$s — из подписки</string>
     <string name="hide_app_icon_title">Скрыть значок</string>

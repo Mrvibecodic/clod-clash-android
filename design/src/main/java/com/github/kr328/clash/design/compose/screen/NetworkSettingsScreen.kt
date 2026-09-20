@@ -153,6 +153,7 @@ fun NetworkSettingsScreen(
                     stringResource(R.string.tun_stack_system),
                     stringResource(R.string.tun_stack_gvisor),
                     stringResource(R.string.tun_stack_mixed),
+                    stringResource(R.string.tun_stack_mips),
                 ),
                 selectedIndex = state.tunStack,
                 enabled = vpnOptions,
@@ -161,6 +162,7 @@ fun NetworkSettingsScreen(
             val effectiveStack = when (state.effectiveTunStack) {
                 "gvisor" -> stringResource(R.string.tun_stack_gvisor)
                 "mixed" -> stringResource(R.string.tun_stack_mixed)
+                "mips" -> stringResource(R.string.tun_stack_mips)
                 else -> stringResource(R.string.tun_stack_system)
             }
             ReadOnlyRow(

@@ -27,4 +27,12 @@ class TunStackTest {
         assertEquals("mixed", resolveTunStack("", "mixed"))
         assertEquals("system", resolveTunStack("", ""))
     }
+
+    @Test
+    fun mipsIsAcceptedAsExplicitChoice() {
+        assertEquals("mips", resolveTunStack("mips", ""))
+        assertEquals("mips", resolveTunStack("mips", "system"))
+        assertEquals("system", resolveTunStack("system", "mips"))
+        assertEquals("system", resolveTunStack("auto", "mips"))
+    }
 }

@@ -213,6 +213,7 @@
     <string name="tun_stack_system">System Stack</string>
     <string name="tun_stack_gvisor">Gvisor Stack</string>
     <string name="tun_stack_mixed">Mixed Stack</string>
+    <string name="tun_stack_mips">Mips Stack</string>
     <string name="clod_tun_stack_effective">Stack in use</string>
     <string name="clod_tun_stack_from_profile">%1$s — from the subscription</string>
 
