@@ -12,7 +12,7 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.Collections
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 object GroupIcons {
     private const val DIRECTORY = "group-icons"
@@ -23,19 +23,30 @@ object GroupIcons {
     private const val MEMORY_LIMIT = 48
     private const val RETRY_DELAY_MILLIS = 60_000L
 
-    private val memory = Collections.synchronizedMap(
-        object : LinkedHashMap<String, ImageBitmap>(0, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>): Boolean {
-                return size > MEMORY_LIMIT
+    private const val KEYS_LIMIT = 256
+
+    private const val CACHE_LIMIT_BYTES = 8L * 1024 * 1024
+    private const val CACHE_KEEP_MILLIS = 24L * 60 * 60 * 1000
+    private const val TEMPORARY_SUFFIX = ".tmp"
+    private const val TEMPORARY_MAX_AGE_MILLIS = 60L * 60 * 1000
+
+    private fun <V> bounded(limit: Int): MutableMap<String, V> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, V>(0, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, V>): Boolean {
+                return size > limit
             }
         },
     )
 
-    private val broken = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    private val memory = bounded<ImageBitmap>(MEMORY_LIMIT)
 
-    private val retryAfter = ConcurrentHashMap<String, Long>()
+    private val broken = bounded<Boolean>(KEYS_LIMIT)
 
-    private val localKeys = ConcurrentHashMap<String, String>()
+    private val retryAfter = bounded<Long>(KEYS_LIMIT)
+
+    private val localKeys = bounded<String>(KEYS_LIMIT)
+
+    private val pruned = AtomicBoolean(false)
 
     @Volatile
     private var agent: String? = null
@@ -43,7 +54,9 @@ object GroupIcons {
     fun load(context: Context, url: String): ImageBitmap? {
         memory[url]?.let { return it }
 
-        if (url in broken) return null
+        prune(context)
+
+        if (broken.containsKey(url)) return null
 
         val file = cacheFile(context, url)
 
@@ -62,7 +75,7 @@ object GroupIcons {
 
             decodeScaled(file).also { decoded ->
                 if (decoded == null) {
-                    broken.add(url)
+                    broken[url] = true
 
                     file.delete()
                 }
@@ -72,6 +85,40 @@ object GroupIcons {
         memory[url] = bitmap
 
         return bitmap
+    }
+
+    // Каталог значков держится в пределах объёма: один проход на запуск, от старых
+    // к свежим, файлы моложе суток не трогаются. Отдельно уходят хвосты прерванных
+    // загрузок: переименования не было, и раньше такой файл не убирал никто.
+    private fun prune(context: Context) {
+        if (!pruned.compareAndSet(false, true)) return
+
+        runCatching {
+            val directory = File(context.cacheDir, DIRECTORY)
+            val files = directory.listFiles()?.filter { it.isFile } ?: return
+
+            val now = System.currentTimeMillis()
+
+            val kept = files.filterNot { file ->
+                file.name.endsWith(TEMPORARY_SUFFIX) &&
+                    now - file.lastModified() > TEMPORARY_MAX_AGE_MILLIS &&
+                    file.delete()
+            }
+
+            var total = kept.sumOf { it.length() }
+
+            for (file in kept.sortedBy { it.lastModified() }) {
+                if (total <= CACHE_LIMIT_BYTES) break
+
+                if (now - file.lastModified() < CACHE_KEEP_MILLIS) break
+
+                val size = file.length()
+
+                if (file.delete()) {
+                    total -= size
+                }
+            }
+        }
     }
 
     private fun cacheFile(context: Context, url: String): File {
