@@ -110,7 +110,8 @@ class MainDesign(
                 state = state.copy(subScreen = action.screen)
 
                 when (action.screen) {
-                    SubScreen.About -> request(Request.LoadAbout)
+                    SubScreen.About ->
+                        if (state.about.coreVersion.isBlank()) request(Request.LoadAbout)
                     SubScreen.RoutingData -> request(Request.LoadRoutingData)
                 }
             }
@@ -375,21 +376,9 @@ class MainDesign(
         }
     }
 
-    suspend fun setAbout(
-        versionName: String,
-        coreVersion: String,
-        autoCheckUpdate: Boolean,
-        prerelease: Boolean,
-    ) {
+    suspend fun setCoreVersion(coreVersion: String) {
         withContext(Dispatchers.Main) {
-            state = state.copy(
-                about = state.about.copy(
-                    versionName = versionName,
-                    coreVersion = coreVersion,
-                    autoCheckUpdate = autoCheckUpdate,
-                    prerelease = prerelease,
-                ),
-            )
+            state = state.copy(about = state.about.copy(coreVersion = coreVersion))
         }
     }
 

@@ -30,6 +30,7 @@ import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
+import com.github.kr328.clash.design.compose.screen.AboutState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.model.globalRoutingBlocked
 import com.github.kr328.clash.design.model.ToggleIntent
@@ -552,7 +553,15 @@ class MainActivity : BaseActivity<MainDesign>() {
                             startActivity(MetaFeatureSettingsActivity::class.intent)
                         MainDesign.Request.OpenHelp ->
                             startActivity(HelpActivity::class.intent)
-                        MainDesign.Request.LoadAbout -> design.loadAbout()
+                        MainDesign.Request.LoadAbout -> launch {
+                            try {
+                                design.loadCoreVersion()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Log.w("Load core version: $e", e)
+                            }
+                        }
                         is MainDesign.Request.SetAutoCheckUpdate ->
                             withContext(Dispatchers.IO) {
                                 AppStore(this@MainActivity).autoCheckUpdate = request.enabled
@@ -1450,19 +1459,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
-    private suspend fun MainDesign.loadAbout() {
-        withContext(Dispatchers.IO) {
-            val store = AppStore(this@MainActivity)
-
-            setAbout(
-                versionName = packageManager.getPackageInfo(packageName, 0).versionName.orEmpty(),
-                coreVersion = Bridge.nativeCoreVersion()
+    private suspend fun MainDesign.loadCoreVersion() {
+        setCoreVersion(
+            withContext(Dispatchers.IO) {
+                Bridge.nativeCoreVersion()
                     .substringBefore('_')
-                    .removePrefix("v"),
-                autoCheckUpdate = store.autoCheckUpdate,
-                prerelease = store.prereleaseChannel,
-            )
-        }
+                    .removePrefix("v")
+            },
+        )
     }
 
     private suspend fun MainDesign.loadRoutingData() {
@@ -1660,13 +1664,20 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private fun restoredState(): MainScreenState {
-        val bundle = restored ?: return MainScreenState()
+        val store = AppStore(this)
+        val about = AboutState(
+            autoCheckUpdate = store.autoCheckUpdate,
+            prerelease = store.prereleaseChannel,
+        )
+
+        val bundle = restored ?: return MainScreenState(about = about)
 
         return MainScreenState(
             selectedTab = bundle.getString(KEY_TAB)?.let { MainTab.valueOf(it) } ?: MainTab.Home,
             subScreen = bundle.getString(KEY_SUB_SCREEN)?.let { SubScreen.valueOf(it) },
             servers = ServersState(selected = bundle.getInt(KEY_GROUP)),
             subscriptions = SubscriptionsState(selectedGroup = bundle.getString(KEY_SUB_GROUP)),
+            about = about,
         )
     }
 
