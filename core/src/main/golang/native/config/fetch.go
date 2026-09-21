@@ -20,6 +20,7 @@ import (
 	"cfa/native/app"
 	"cfa/native/common/safego"
 	budgets "cfa/native/config/budget"
+	"cfa/native/config/delivery"
 	"cfa/native/config/sentinel"
 
 	"github.com/metacubex/mihomo/adapter/provider"
@@ -157,9 +158,22 @@ func (b *directBudget) close() {
 }
 
 func openUrl(ctx context.Context, direct *directBudget, url string, device bool) (io.ReadCloser, fetchHeader, error) {
-	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(device), nil)
+	options := []clashHttp.Option{}
+	bypassed := false
 
-	if err != nil && device && !refusedByRedirectPolicy(err) {
+	if device && keptOutOfTunnel(url) {
+		if ctxDirect, ok := direct.start(); ok {
+			log.Infoln("The rules of the profile keep the subscription address out of the tunnel, requesting it directly")
+
+			ctx = ctxDirect
+			options = append(options, clashHttp.WithSpecialProxy(directOutbound))
+			bypassed = true
+		}
+	}
+
+	response, err := clashHttp.HttpRequest(ctx, url, http.MethodGet, subscriptionHeaders(device), nil, options...)
+
+	if err != nil && device && !bypassed && !refusedByRedirectPolicy(err) {
 		tunnelErr := err
 
 		direct, ok := direct.start()
@@ -199,7 +213,20 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 		return nil, fetchHeader{}, fmt.Errorf("server answered with status %d", response.StatusCode)
 	}
 
-	return response.Body, fetchHeader{
+	body := io.ReadCloser(response.Body)
+
+	if device {
+		guarded, err := delivery.Guard(response.Body)
+		if err != nil {
+			_ = response.Body.Close()
+
+			return nil, fetchHeader{}, err
+		}
+
+		body = guarded
+	}
+
+	return body, fetchHeader{
 		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
 		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
 		Raw:                   map[string][]string(response.Header),
