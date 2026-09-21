@@ -84,12 +84,12 @@ class ServiceStore(context: Context) {
     )
 
     var clashStartedAt: Long by store.long(
-        key = "clash_started_at",
+        key = KEY_CLASH_STARTED_AT,
         defaultValue = 0L
     )
 
     var clashStartedElapsed: Long by store.long(
-        key = "clash_started_elapsed",
+        key = KEY_CLASH_STARTED_ELAPSED,
         defaultValue = 0L
     )
 
@@ -165,9 +165,14 @@ class ServiceStore(context: Context) {
 
     fun markSessionStarted(): Long {
         val startedAt = System.currentTimeMillis()
+        val elapsed = SystemClock.elapsedRealtime()
 
-        clashStartedAt = startedAt
-        clashStartedElapsed = SystemClock.elapsedRealtime()
+        // Отметка ставится перед самым подъёмом туннеля, и отложенная запись теряется,
+        // если процесс не переживёт старт: пишем синхронно и обе величины разом.
+        preferences.edit(commit = true) {
+            putLong(KEY_CLASH_STARTED_AT, startedAt)
+            putLong(KEY_CLASH_STARTED_ELAPSED, elapsed)
+        }
 
         return startedAt
     }
@@ -207,5 +212,9 @@ class ServiceStore(context: Context) {
 
     companion object {
         private const val KEY_ACTIVE_PROFILE = "active_profile"
+
+        private const val KEY_CLASH_STARTED_AT = "clash_started_at"
+
+        private const val KEY_CLASH_STARTED_ELAPSED = "clash_started_elapsed"
     }
 }
