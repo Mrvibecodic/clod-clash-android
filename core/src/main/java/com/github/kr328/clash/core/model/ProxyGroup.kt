@@ -13,7 +13,7 @@ data class ProxyGroup(
     val now: String,
 ) : Parcelable {
     class SliceProxyList(data: List<Proxy>) : List<Proxy> by data, Parcelable {
-        constructor(parcel: Parcel) : this(Proxy.createListFromParcelSlice(parcel, 0, 50))
+        constructor(parcel: Parcel) : this(Proxy.createListFromParcelSlice(parcel, 0, PROXY_SLICE))
 
         override fun describeContents(): Int {
             return 0
@@ -24,6 +24,10 @@ data class ProxyGroup(
         }
 
         companion object CREATOR : Parcelable.Creator<SliceProxyList> {
+            // Узел — шесть коротких полей. Сотня штук это десятки килобайт при пределе
+            // межпроцессной посылки около мегабайта: запас держим и на длинные имена.
+            private const val PROXY_SLICE = 100
+
             override fun createFromParcel(parcel: Parcel): SliceProxyList {
                 return SliceProxyList(parcel)
             }

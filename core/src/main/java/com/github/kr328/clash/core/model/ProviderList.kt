@@ -6,7 +6,7 @@ import com.github.kr328.clash.common.util.createListFromParcelSlice
 import com.github.kr328.clash.common.util.writeToParcelSlice
 
 class ProviderList(data: List<Provider>) : List<Provider> by data, Parcelable {
-    constructor(parcel: Parcel) : this(Provider.createListFromParcelSlice(parcel, 0, 20))
+    constructor(parcel: Parcel) : this(Provider.createListFromParcelSlice(parcel, 0, PROVIDER_SLICE))
 
     override fun describeContents(): Int {
         return 0
@@ -17,6 +17,9 @@ class ProviderList(data: List<Provider>) : List<Provider> by data, Parcelable {
     }
 
     companion object CREATOR : Parcelable.Creator<ProviderList> {
+        // Провайдер — четыре коротких поля, запас до предела посылки тот же.
+        private const val PROVIDER_SLICE = 50
+
         override fun createFromParcel(parcel: Parcel): ProviderList {
             return ProviderList(parcel)
         }
