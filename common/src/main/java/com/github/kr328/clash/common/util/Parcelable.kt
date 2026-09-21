@@ -3,7 +3,7 @@ package com.github.kr328.clash.common.util
 import android.os.Binder
 import android.os.Parcel
 import android.os.Parcelable
-import com.github.kr328.clash.common.log.Log
+import android.os.RemoteException
 
 private class SliceParcelableListBpBinder(val list: List<Parcelable>, val flags: Int) : Binder() {
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, tFlags: Int): Boolean {
@@ -67,24 +67,24 @@ fun <T : Parcelable> Parcelable.Creator<T>.createListFromParcelSlice(
                     flags
                 )
             ) {
-                Log.w("Slice list transaction failed at $offset of $total")
-
-                break
+                // Оборвать чтение молча нельзя: короткий список от полного
+                // неотличим, и вызывающий примет обрывок за настоящий состав.
+                throw RemoteException("slice list rejected at $offset of $total")
             }
 
+            // Отрицательная длина приходит, когда отдающая сторона упала на записи
+            // порции: сдвиг назад увёл бы чтение в вечный круг.
             val size = reply.readInt()
+
+            if (size <= 0) {
+                throw RemoteException("slice list truncated at $offset of $total")
+            }
 
             repeat(size) {
                 result.add(createFromParcel(reply))
             }
 
             offset += size
-
-            if (size == 0) {
-                Log.w("Slice list truncated at $offset of $total")
-
-                break
-            }
         } finally {
             data.recycle()
             reply.recycle()
