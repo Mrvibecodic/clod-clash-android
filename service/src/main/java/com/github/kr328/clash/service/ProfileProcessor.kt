@@ -138,6 +138,8 @@ object ProfileProcessor {
 
                     context.sendProfileChanged(snapshot.uuid)
                 }
+
+                followMigration(context, snapshot.uuid, snapshot.source, callback)
             }
         }
     }
@@ -213,6 +215,20 @@ object ProfileProcessor {
         context: Context,
         uuid: UUID,
         current: String,
+        callback: IFetchObserver? = null,
+    ): List<String> = try {
+        migrateToOfferedAddress(context, uuid, current, callback)
+    } catch (e: Exception) {
+        Log.w("Follow the address of $uuid offered by the provider: $e", e)
+
+        emptyList()
+    }
+
+    private suspend fun migrateToOfferedAddress(
+        context: Context,
+        uuid: UUID,
+        current: String,
+        callback: IFetchObserver?,
     ): List<String> {
         val profileDir = context.importedDir.resolve(uuid.toString())
         val stateFile = profileDir.resolve(MIGRATION_FILE)
@@ -247,7 +263,7 @@ object ProfileProcessor {
             profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
                 ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
 
-            fetchProfile(context, probe, candidate, true, true, null)
+            fetchProfile(context, probe, candidate, true, true, callback)
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
 
