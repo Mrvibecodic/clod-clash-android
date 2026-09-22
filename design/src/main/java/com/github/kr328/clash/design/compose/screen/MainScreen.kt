@@ -196,7 +196,6 @@ data class SubscriptionsState(
 @Immutable
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
-    val running: Boolean = false,
     val startupStage: String? = null,
     val active: SubscriptionItem? = null,
     val profileMode: ProfileMode = ProfileMode(),
@@ -235,6 +234,7 @@ sealed interface MainAction {
     data class SetMode(val mode: TunnelState.Mode?) : MainAction
     data class SelectTab(val tab: MainTab) : MainAction
     data class SelectGroup(val index: Int) : MainAction
+    data class OpenGroup(val index: Int) : MainAction
     data class SelectProxy(val name: String) : MainAction
     data class ToggleFavorite(val name: String) : MainAction
 
@@ -532,7 +532,7 @@ private fun HomeTab(
         ) {
             SessionPowerButton(
                 status = state.status,
-                intent = toggleIntent(state.status, state.running),
+                intent = toggleIntent(state.status),
                 connected = connected,
                 session = session,
                 onClick = { onAction(MainAction.ToggleStatus) },
@@ -666,10 +666,10 @@ private fun HomeRouteRow(
             val index = groups.indexOfFirst { it.name == group }
 
             if (index >= 0) {
-                onAction(MainAction.SelectGroup(index))
+                onAction(MainAction.OpenGroup(index))
+            } else {
+                onAction(MainAction.SelectTab(MainTab.Servers))
             }
-
-            onAction(MainAction.SelectTab(MainTab.Servers))
         },
         trailing = if (delay != null) {
             {

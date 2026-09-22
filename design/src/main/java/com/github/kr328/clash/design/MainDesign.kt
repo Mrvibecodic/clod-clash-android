@@ -156,6 +156,10 @@ class MainDesign(
                 state = state.copy(servers = state.servers.copy(selected = action.index))
                 request(Request.ReloadGroup(action.index))
             }
+            is MainAction.OpenGroup -> {
+                state = state.copy(servers = state.servers.copy(selected = action.index))
+                onAction(MainAction.SelectTab(MainTab.Servers))
+            }
             is MainAction.SelectProxy -> {
                 val group = state.servers.groups.getOrNull(state.servers.selected)
 
@@ -215,7 +219,6 @@ class MainDesign(
         withContext(Dispatchers.Main) {
             state = state.copy(
                 status = if (running) ConnectionStatus.Connected else ConnectionStatus.Disconnected,
-                running = running,
                 startupStage = null,
             )
         }
@@ -274,9 +277,6 @@ class MainDesign(
 
     val status: ConnectionStatus
         get() = state.status
-
-    val running: Boolean
-        get() = state.running
 
     val selectedTab: MainTab
         get() = state.selectedTab

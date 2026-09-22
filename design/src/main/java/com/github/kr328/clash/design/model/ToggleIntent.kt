@@ -10,11 +10,11 @@ enum class ToggleIntent {
     Ignore,
 }
 
-fun toggleIntent(status: ConnectionStatus, running: Boolean): ToggleIntent = when (status) {
+fun toggleIntent(status: ConnectionStatus): ToggleIntent = when (status) {
     ConnectionStatus.Connecting -> ToggleIntent.Stop
     ConnectionStatus.Connected -> ToggleIntent.Stop
     ConnectionStatus.Disconnecting -> ToggleIntent.Ignore
-    ConnectionStatus.Disconnected -> if (running) ToggleIntent.Stop else ToggleIntent.Start
+    ConnectionStatus.Disconnected -> ToggleIntent.Start
 }
 
 @StringRes

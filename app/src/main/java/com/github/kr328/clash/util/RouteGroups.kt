@@ -21,3 +21,6 @@ internal suspend fun loadRouteGroups(
         if (next >= 0) pending.addLast(next)
     }
 }
+
+internal fun offlineNow(type: String, saved: String?, proxies: List<String>): String =
+    saved ?: if (type == "select") proxies.firstOrNull().orEmpty() else ""

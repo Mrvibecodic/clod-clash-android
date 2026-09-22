@@ -59,4 +59,22 @@ class RouteGroupsTest {
         assertEquals(emptyList<String>(), loads(emptyMap(), roots = emptyList(), loaded = 0))
         assertEquals(emptyList<String>(), loads(emptyMap(), roots = listOf("Gone"), loaded = 0))
     }
+
+    @Test
+    fun `без сохранённого выбора select-группа показывает первый узел, как выберет ядро`() {
+        assertEquals("DE", offlineNow("select", null, listOf("DE", "NL")))
+    }
+
+    @Test
+    fun `сохранённый выбор главнее первого узла`() {
+        assertEquals("NL", offlineNow("select", "NL", listOf("DE", "NL")))
+        assertEquals("NL", offlineNow("url-test", "NL", listOf("DE", "NL")))
+    }
+
+    @Test
+    fun `автоматическая группа без выбора и пустая группа остаются без сервера`() {
+        assertEquals("", offlineNow("url-test", null, listOf("DE", "NL")))
+        assertEquals("", offlineNow("fallback", null, listOf("DE", "NL")))
+        assertEquals("", offlineNow("select", null, emptyList()))
+    }
 }

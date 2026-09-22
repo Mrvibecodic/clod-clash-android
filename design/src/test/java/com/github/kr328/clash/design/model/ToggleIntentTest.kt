@@ -10,51 +10,35 @@ import org.junit.Test
 class ToggleIntentTest {
     @Test
     fun connectingStops() {
-        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Connecting, false))
-        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Connecting, true))
+        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Connecting))
     }
 
     @Test
     fun connectedStops() {
-        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Connected, false))
-        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Connected, true))
+        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Connected))
     }
 
     @Test
     fun disconnectingIgnores() {
-        assertEquals(ToggleIntent.Ignore, toggleIntent(ConnectionStatus.Disconnecting, false))
-        assertEquals(ToggleIntent.Ignore, toggleIntent(ConnectionStatus.Disconnecting, true))
+        assertEquals(ToggleIntent.Ignore, toggleIntent(ConnectionStatus.Disconnecting))
     }
 
     @Test
     fun disconnectedStarts() {
-        assertEquals(ToggleIntent.Start, toggleIntent(ConnectionStatus.Disconnected, false))
-    }
-
-    @Test
-    fun disconnectedWithLiveServiceStops() {
-        assertEquals(ToggleIntent.Stop, toggleIntent(ConnectionStatus.Disconnected, true))
+        assertEquals(ToggleIntent.Start, toggleIntent(ConnectionStatus.Disconnected))
     }
 
     @Test
     fun disconnectingIsDisabledAndSaysDisconnecting() {
-        val intent = toggleIntent(ConnectionStatus.Disconnecting, true)
+        val intent = toggleIntent(ConnectionStatus.Disconnecting)
 
         assertFalse(intent.enabled)
         assertEquals(R.string.clod_status_disconnecting, intent.label())
     }
 
     @Test
-    fun disconnectedWithLiveServiceSaysDisconnect() {
-        val intent = toggleIntent(ConnectionStatus.Disconnected, true)
-
-        assertTrue(intent.enabled)
-        assertEquals(R.string.clod_action_disconnect, intent.label())
-    }
-
-    @Test
     fun connectingSaysDisconnect() {
-        val intent = toggleIntent(ConnectionStatus.Connecting, false)
+        val intent = toggleIntent(ConnectionStatus.Connecting)
 
         assertTrue(intent.enabled)
         assertEquals(R.string.clod_action_disconnect, intent.label())
@@ -62,7 +46,7 @@ class ToggleIntentTest {
 
     @Test
     fun disconnectedSaysConnect() {
-        val intent = toggleIntent(ConnectionStatus.Disconnected, false)
+        val intent = toggleIntent(ConnectionStatus.Disconnected)
 
         assertTrue(intent.enabled)
         assertEquals(R.string.clod_action_connect, intent.label())

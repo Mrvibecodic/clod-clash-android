@@ -46,6 +46,7 @@ import com.github.kr328.clash.util.applyDynamicShortcuts
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
 import com.github.kr328.clash.util.loadRouteGroups
+import com.github.kr328.clash.util.offlineNow
 import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
@@ -284,7 +285,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 design.requests.onReceive { request ->
                     when (request) {
                         MainDesign.Request.ToggleStatus -> {
-                            when (toggleIntent(design.status, design.running)) {
+                            when (toggleIntent(design.status)) {
                                 ToggleIntent.Start -> design.startClash()
                                 ToggleIntent.Stop -> requestStopClash()
                                 ToggleIntent.Ignore -> Unit
@@ -799,7 +800,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             if (first != null) {
                 withClash { healthCheck(first) }
 
-                reloadProxyGroup(selectedGroup)
+                loadProxyGroup(selectedGroup)
 
                 // Видимая группа готова; остальные дозамеряются в фоне, пока
                 // healthChecking всё ещё не пускает второй круг
@@ -934,7 +935,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         val group = offlineGroups.getOrNull(index) ?: return null
 
         val readOnly = serversReadOnly
-        val now = offlineSelections[group.name].orEmpty()
+        val now = offlineNow(group.type, offlineSelections[group.name], group.proxies)
 
         setProxyGroup(
             index = index,
