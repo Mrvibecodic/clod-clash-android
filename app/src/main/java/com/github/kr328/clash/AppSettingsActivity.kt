@@ -12,6 +12,7 @@ import com.github.kr328.clash.common.util.componentName
 import com.github.kr328.clash.design.AppSettingsDesign
 import com.github.kr328.clash.design.AppSettingsPrefs
 import com.github.kr328.clash.design.R as DesignR
+import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
@@ -72,6 +73,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                             DesignR.string.clod_providers_failed_plural,
                             ToastDuration.Long,
                             detail = state.failedProviders.joinToString(", "),
+                            kind = NoticeKind.Error,
                         )
                     }
                 }

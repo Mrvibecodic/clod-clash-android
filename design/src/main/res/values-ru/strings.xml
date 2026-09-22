@@ -66,7 +66,7 @@
     <string name="initializing">Инициализация</string>
     <string name="verifying">Проверка</string>
 
-    <string name="new_profile">Новый профиль</string>
+    <string name="new_profile">Новая подписка</string>
 
     <string name="sort">Сортировка</string>
     <string name="default_">По умолчанию</string>
@@ -450,7 +450,7 @@
     <string name="clod_delay_failed">Не удалось проверить серверы</string>
     <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных узлов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
     <string name="clod_override_pending_lost">Несохранённые правки пропали, пока приложение было в фоне</string>
-    <string name="clod_override_mode_shadowed">Для подписки «%1$s» во вкладке «Ещё» выбран режим «%2$s» — он главнее</string>
+    <string name="clod_override_mode_shadowed">Для подписки «%1$s» во вкладке «Ещё» выбран «%2$s» — он главнее</string>
     <string name="clod_language_title">Язык</string>
     <string name="clod_language_system">Как в системе</string>
     <string name="clod_group_icons_title">Иконки групп</string>

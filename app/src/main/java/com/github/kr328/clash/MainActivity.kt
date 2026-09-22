@@ -68,6 +68,7 @@ import com.github.kr328.clash.util.ServersReload
 import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.serversReload
 import com.github.kr328.clash.util.shouldAutoHealthCheck
+import com.github.kr328.clash.util.showFailure
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -122,14 +123,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             design.fetch()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: ServiceUnavailableException) {
-            Log.w("Main first fetch: $e")
-
-            design.showToast(e.message.orEmpty(), ToastDuration.Long)
         } catch (e: Exception) {
             Log.w("Main first fetch: $e", e)
 
-            design.showExceptionToast(e)
+            design.showFailure(e)
         }
 
         if (restored == null && !design.hasProfiles) {
@@ -437,7 +434,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 } catch (e: Exception) {
                                     targets.forEach { ProfileUpdates.finish(it) }
 
-                                    design.showExceptionToast(e, ServiceR.string.update_failure)
+                                    design.showFailure(e, ServiceR.string.update_failure)
                                 }
                             }
                         }
@@ -473,7 +470,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 } catch (e: Exception) {
                                     ProfileUpdates.finish(uuid)
 
-                                    design.showExceptionToast(e, ServiceR.string.update_failure)
+                                    design.showFailure(e, ServiceR.string.update_failure)
                                 }
                             }
                         }
@@ -604,7 +601,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             } catch (e: ServiceUnavailableException) {
                 Log.w("Main loop: $e")
 
-                design.showToast(e.message.orEmpty(), ToastDuration.Long)
+                design.showFailure(e)
             } catch (e: RemoteException) {
                 Log.w("Main loop: $e", e)
 
@@ -828,7 +825,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             lastHealthCheckAt = 0
 
             if (manual) {
-                showExceptionToast(e, DesignR.string.clod_delay_failed)
+                showFailure(e, DesignR.string.clod_delay_failed)
             }
         } finally {
             healthChecking = false
@@ -874,7 +871,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                     if (update.manual) {
                         if (update.error != null) {
-                            showExceptionToast(update.error, DesignR.string.clod_delay_failed)
+                            showFailure(update.error, DesignR.string.clod_delay_failed)
                         } else {
                             notifyDelaysUnavailable(update.delays.values.toList())
                         }
@@ -1086,6 +1083,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     DesignR.string.clod_providers_failed_plural,
                     ToastDuration.Long,
                     detail = providers,
+                    kind = NoticeKind.Error,
                 )
             }
 

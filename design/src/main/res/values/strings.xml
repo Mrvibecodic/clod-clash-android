@@ -68,7 +68,7 @@
     <string name="initializing">Initializing</string>
     <string name="verifying">Verifying</string>
 
-    <string name="new_profile">New Profile</string>
+    <string name="new_profile">New subscription</string>
 
     <string name="sort">Sort</string>
     <string name="default_">Default</string>
@@ -463,7 +463,7 @@
     <string name="clod_delay_failed">Could not test the servers</string>
     <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded nodes. Traffic is blocked, not sent directly. Update the subscription</string>
     <string name="clod_override_pending_lost">Unsaved changes were lost while the app was in the background</string>
-    <string name="clod_override_mode_shadowed">The “%2$s” mode is chosen for the “%1$s” subscription on the More tab — it takes precedence</string>
+    <string name="clod_override_mode_shadowed">“%2$s” is chosen for the “%1$s” subscription on the More tab — it takes precedence</string>
     <string name="clod_language_title">Language</string>
     <string name="clod_language_system">System default</string>
     <string name="clod_group_icons_title">Group icons</string>
