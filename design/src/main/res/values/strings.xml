@@ -410,7 +410,12 @@
     <string name="clod_mode_locked">%s · set by your provider</string>
     <string name="clod_mode_locked_hint">Your provider has fixed the routing mode for this subscription. It cannot be changed in the app.</string>
     <string name="clod_mode_locked_toast">The routing mode is set by your provider</string>
-    <string name="clod_mode_session_only">Applies until the service restarts; pin it in the override</string>
+    <string name="clod_mode_as_subscription">As in subscription</string>
+    <string name="clod_mode_chosen">%s · chosen by you</string>
+    <string name="clod_mode_from_subscription">%s · from the subscription</string>
+    <string name="clod_mode_from_override">%s · from the override</string>
+    <string name="clod_mode_saved">Saved for this subscription</string>
+    <string name="clod_mode_saved_offline">Saved for this subscription; it will be applied when you connect</string>
     <string name="clod_select_failed">Could not select this server. Update the subscription and try again.</string>
     <string name="clod_test_delays">Test delays</string>
     <string name="clod_no_servers">No servers</string>
@@ -458,6 +463,7 @@
     <string name="clod_delay_failed">Could not test the servers</string>
     <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded nodes. Traffic is blocked, not sent directly. Update the subscription</string>
     <string name="clod_override_pending_lost">Unsaved changes were lost while the app was in the background</string>
+    <string name="clod_override_mode_shadowed">The “%2$s” mode is chosen for the “%1$s” subscription on the More tab — it takes precedence</string>
     <string name="clod_language_title">Language</string>
     <string name="clod_language_system">System default</string>
     <string name="clod_group_icons_title">Group icons</string>

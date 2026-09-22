@@ -8,14 +8,15 @@ import com.github.kr328.clash.service.data.migrations.MIGRATIONS
 import androidx.room.Database as DB
 
 @DB(
-    version = 7,
-    entities = [Imported::class, Pending::class, Selection::class],
+    version = 8,
+    entities = [Imported::class, Pending::class, Selection::class, ModeChoice::class],
     exportSchema = false,
 )
 abstract class Database : RoomDatabase() {
     abstract fun openImportedDao(): ImportedDao
     abstract fun openPendingDao(): PendingDao
     abstract fun openSelectionProxyDao(): SelectionDao
+    abstract fun openModeChoiceDao(): ModeChoiceDao
 
     companion object {
         val database: Database by lazy { open(Global.application) }

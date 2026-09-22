@@ -88,6 +88,13 @@ func writeOverride(slot C.int, content C.c_string) {
 	config.WriteOverride(config.OverrideSlot(slot), c)
 }
 
+//export queryModeOf
+func queryModeOf(path, session C.c_string) *C.char {
+	defer guard("queryModeOf", func() {})()
+
+	return marshalJson(config.QueryMode(C.GoString(path), C.GoString(session)))
+}
+
 //export clearOverride
 func clearOverride(slot C.int) {
 	defer guard("clearOverride", func() {})()

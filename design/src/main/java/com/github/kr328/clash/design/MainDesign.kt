@@ -5,6 +5,7 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.Traffic
 import com.github.kr328.clash.core.model.TunnelState
@@ -61,7 +62,7 @@ class MainDesign(
         data class SelectProxy(val index: Int, val name: String) : Request
         data class ToggleFavorite(val name: String) : Request
         data object UrlTest : Request
-        data class PatchMode(val mode: TunnelState.Mode) : Request
+        data class PatchMode(val mode: TunnelState.Mode?) : Request
 
         data class OpenUrl(val url: String) : Request
         data object CheckUpdate : Request
@@ -259,9 +260,9 @@ class MainDesign(
         }
     }
 
-    suspend fun setMode(mode: TunnelState.Mode) {
+    suspend fun setMode(mode: ProfileMode) {
         withContext(Dispatchers.Main) {
-            state = state.copy(mode = mode)
+            state = state.copy(profileMode = mode)
         }
     }
 

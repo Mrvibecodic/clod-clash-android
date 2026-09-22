@@ -28,6 +28,10 @@ interface IClashManager {
     fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride
     fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride)
     fun clearOverride(slot: Clash.OverrideSlot)
+
+    suspend fun queryProfileMode(): ProfileMode
+    suspend fun setProfileMode(mode: TunnelState.Mode?)
+
     fun reloadGeoData()
 
     fun setLogObserver(observer: ILogObserver?)

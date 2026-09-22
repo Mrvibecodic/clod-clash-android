@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/metacubex/mihomo/config"
+	"github.com/metacubex/mihomo/tunnel"
 
 	"cfa/native/config/panel"
 )
@@ -10,6 +11,34 @@ type (
 	PanelInfo  = panel.Info
 	PanelGroup = panel.Group
 )
+
+type ModeState struct {
+	Mode   string           `json:"mode,omitempty"`
+	Source panel.ModeSource `json:"source"`
+}
+
+func modeName(mode *tunnel.TunnelMode) *string {
+	if mode == nil {
+		return nil
+	}
+
+	name := mode.String()
+
+	return &name
+}
+
+func QueryMode(profileDir, session string) ModeState {
+	info := readPanelInfo(profileDir)
+
+	mode, source := panel.ResolveMode(
+		info.Mode,
+		modeName(overrideMode(ReadOverride(OverrideSlotPersist))),
+		modeName(overrideMode(session)),
+		modeLocked(info),
+	)
+
+	return ModeState{Mode: mode, Source: source}
+}
 
 func readPanelInfo(dir string) PanelInfo {
 	return panel.Read(dir)
@@ -23,7 +52,7 @@ func applyHeaders(info *PanelInfo, header map[string][]string, current string) {
 	panel.ApplyHeaders(info, header, current)
 }
 
-func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
+func applyGroups(info *PanelInfo, cfg *config.RawConfig, template tunnel.TunnelMode) {
 	if cfg == nil {
 		return
 	}
@@ -88,4 +117,5 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 
 	info.Groups = groups
 	info.Main = panel.MainGroup(groups, cfg.Rule)
+	info.Mode = template.String()
 }

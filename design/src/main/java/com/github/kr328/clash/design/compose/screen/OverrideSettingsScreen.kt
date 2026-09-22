@@ -8,6 +8,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
@@ -40,8 +42,12 @@ data class OverrideSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
     val modeLocked: Boolean = false,
+    val modeShadow: ModeShadow? = null,
     val confirmingReset: Boolean = false,
 )
+
+@Immutable
+data class ModeShadow(val profile: String, val mode: TunnelState.Mode)
 
 @Composable
 fun OverrideSettingsScreen(
@@ -211,6 +217,18 @@ fun OverrideSettingsScreen(
                         changed()
                     },
                 )
+                state.modeShadow?.let { shadow ->
+                    Text(
+                        text = stringResource(
+                            R.string.clod_override_mode_shadowed,
+                            shadow.profile,
+                            modeLabel(shadow.mode),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 12.dp),
+                    )
+                }
             }
             SelectRow(
                 title = stringResource(R.string.log_level),

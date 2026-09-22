@@ -16,7 +16,6 @@ import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
-import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
@@ -374,16 +373,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     ToastDuration.Long,
                                 )
                             } else {
-                                withClash {
-                                    val override = queryOverride(Clash.OverrideSlot.Session)
-
-                                    override.mode = request.mode
-
-                                    patchOverride(Clash.OverrideSlot.Session, override)
-                                }
+                                withClash { setProfileMode(request.mode) }
 
                                 design.showToast(
-                                    DesignR.string.clod_mode_session_only,
+                                    if (clashRunning) {
+                                        DesignR.string.clod_mode_saved
+                                    } else {
+                                        DesignR.string.clod_mode_saved_offline
+                                    },
                                     ToastDuration.Short,
                                 )
 
@@ -650,10 +647,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         fetchSession()
 
-        val state = withClash {
-            queryTunnelState()
-        }
-        setMode(state.mode)
+        setMode(withClash { queryProfileMode() })
 
         val profiles = withProfile { queryAll() }
         val groups = querySubscriptionGroups()

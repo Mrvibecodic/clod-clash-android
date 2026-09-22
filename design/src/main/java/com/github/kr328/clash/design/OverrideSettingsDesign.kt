@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.kr328.clash.core.model.ConfigurationOverride
+import com.github.kr328.clash.design.compose.screen.ModeShadow
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsAction
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsScreen
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsState
@@ -18,6 +19,7 @@ class OverrideSettingsDesign(
     context: Context,
     private val configuration: ConfigurationOverride,
     modeLocked: Boolean = false,
+    modeShadow: ModeShadow? = null,
 ) : Design<OverrideSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ResetOverride : Request
@@ -25,7 +27,7 @@ class OverrideSettingsDesign(
     }
 
     private var state by mutableStateOf(
-        OverrideSettingsState(configuration, modeLocked = modeLocked),
+        OverrideSettingsState(configuration, modeLocked = modeLocked, modeShadow = modeShadow),
     )
 
     override val root: View = composeRoot {

@@ -65,6 +65,8 @@ type Info struct {
 	Groups []Group `json:"groups,omitempty"`
 
 	Main string `json:"main,omitempty"`
+
+	Mode string `json:"mode,omitempty"`
 }
 
 type Group struct {

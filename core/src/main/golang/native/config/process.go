@@ -17,6 +17,7 @@ import (
 	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/tunnel"
 )
 
 var processors = []processor{
@@ -34,23 +35,44 @@ var processors = []processor{
 
 type processor func(cfg *config.RawConfig, profileDir string) error
 
+func overrideMode(content string) *tunnel.TunnelMode {
+	var slot struct {
+		Mode *tunnel.TunnelMode `json:"mode"`
+	}
+
+	if err := json.Unmarshal([]byte(content), &slot); err != nil {
+		return nil
+	}
+
+	return slot.Mode
+}
+
+func modeLocked(info panel.Info) bool {
+	return info.LockMode != nil && *info.LockMode
+}
+
 func patchOverride(cfg *config.RawConfig, profileDir string) error {
-	mode := cfg.Mode
+	template := cfg.Mode
 	nameServers := cfg.DNS.NameServer
 
-	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotPersist))).Decode(cfg); err != nil {
+	persist := ReadOverride(OverrideSlotPersist)
+	session := ReadOverride(OverrideSlotSession)
+
+	if err := json.NewDecoder(strings.NewReader(persist)).Decode(cfg); err != nil {
 		log.Warnln("Apply persist override: %s", err.Error())
 	}
-	if err := json.NewDecoder(strings.NewReader(ReadOverride(OverrideSlotSession))).Decode(cfg); err != nil {
+	if err := json.NewDecoder(strings.NewReader(session)).Decode(cfg); err != nil {
 		log.Warnln("Apply session override: %s", err.Error())
 	}
 
-	// The provider pinned the mode: the override slots must not win over the subscription.
-	if locked := panel.Read(profileDir).LockMode; locked != nil && *locked && cfg.Mode != mode {
-		log.Warnln("Ignore override mode %s: the mode is locked by the subscription", cfg.Mode.String())
+	mode, source := panel.ResolveMode(template, overrideMode(persist), overrideMode(session), modeLocked(panel.Read(profileDir)))
 
-		cfg.Mode = mode
+	// The provider pinned the mode: the override slots must not win over the subscription.
+	if source == panel.ModeLocked && cfg.Mode != mode {
+		log.Warnln("Ignore override mode %s: the mode is locked by the subscription", cfg.Mode.String())
 	}
+
+	cfg.Mode = mode
 
 	// An empty list from the override would make the core reject the profile.
 	if len(cfg.DNS.NameServer) == 0 && len(nameServers) > 0 {

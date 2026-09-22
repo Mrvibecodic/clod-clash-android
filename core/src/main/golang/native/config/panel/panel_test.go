@@ -965,3 +965,17 @@ func TestMainGroupSurvivesPanelFile(t *testing.T) {
 		t.Fatalf("пустая главная группа не должна писаться: %s", bytes)
 	}
 }
+
+func TestTemplateModeSurvivesPanelFile(t *testing.T) {
+	dir := t.TempDir()
+
+	Write(dir, Info{Mode: "global"})
+
+	if got := Read(dir).Mode; got != "global" {
+		t.Fatalf("режим шаблона не пережил запись: %q", got)
+	}
+
+	if bytes, _ := json.Marshal(Info{}); strings.Contains(string(bytes), `"mode"`) {
+		t.Fatalf("пустой режим шаблона не должен писаться: %s", bytes)
+	}
+}

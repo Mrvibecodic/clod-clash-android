@@ -32,7 +32,7 @@ func logDns(cfg *config.RawConfig) {
 	}
 }
 
-func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
+func unmarshalProfile(profilePath string) (*config.RawConfig, error) {
 	configPath := P.Join(profilePath, "config.yaml")
 
 	configData, err := os.ReadFile(configPath)
@@ -40,7 +40,11 @@ func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
 		return nil, err
 	}
 
-	rawConfig, err := config.UnmarshalRawConfig(configData)
+	return config.UnmarshalRawConfig(configData)
+}
+
+func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
+	rawConfig, err := unmarshalProfile(profilePath)
 	if err != nil {
 		return nil, err
 	}

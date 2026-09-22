@@ -4,6 +4,8 @@ import android.content.Context
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.*
+import com.github.kr328.clash.service.data.ModeChoice
+import com.github.kr328.clash.service.data.ModeChoiceDao
 import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.data.Selections
@@ -12,6 +14,7 @@ import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendOverrideChanged
+import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ReceiveChannel
 import java.util.UUID
@@ -96,6 +99,27 @@ class ClashManager(private val context: Context) : IClashManager,
 
     override fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride) {
         Clash.patchOverride(slot, configuration)
+
+        context.sendOverrideChanged()
+    }
+
+    override suspend fun queryProfileMode(): ProfileMode = withContext(Dispatchers.IO) {
+        val current = store.activeProfile ?: return@withContext ProfileMode()
+
+        Clash.queryModeOf(
+            context.importedDir.resolve(current.toString()),
+            sessionOverrideFor(ModeChoiceDao().queryChoice(current)),
+        )
+    }
+
+    override suspend fun setProfileMode(mode: TunnelState.Mode?) = withContext(Dispatchers.IO) {
+        val current = store.activeProfile ?: return@withContext
+
+        if (mode == null) {
+            ModeChoiceDao().removeChoice(current)
+        } else {
+            ModeChoiceDao().setChoice(ModeChoice(current, mode))
+        }
 
         context.sendOverrideChanged()
     }

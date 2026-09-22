@@ -54,6 +54,7 @@ object Bridge {
     external fun nativeReadOverride(slot: Int): String
     external fun nativeWriteOverride(slot: Int, content: String)
     external fun nativeClearOverride(slot: Int)
+    external fun nativeQueryModeOf(path: String, session: String): String?
     external fun nativeReloadGeoData()
     external fun nativeSubscribeLogcat(callback: LogcatInterface)
     external fun nativeCoreVersion(): String

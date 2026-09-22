@@ -96,6 +96,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.toBytesString
@@ -198,7 +199,7 @@ data class MainScreenState(
     val running: Boolean = false,
     val startupStage: String? = null,
     val active: SubscriptionItem? = null,
-    val mode: TunnelState.Mode = TunnelState.Mode.Rule,
+    val profileMode: ProfileMode = ProfileMode(),
     val selectedTab: MainTab = MainTab.Home,
     val subScreen: SubScreen? = null,
     val servers: ServersState = ServersState(),
@@ -208,7 +209,10 @@ data class MainScreenState(
     val update: UpdateState? = null,
     val notificationPrompt: Boolean = false,
     val reliability: ReliabilityState = ReliabilityState(),
-)
+) {
+    val mode: TunnelState.Mode
+        get() = profileMode.mode ?: TunnelState.Mode.Rule
+}
 
 @Immutable
 data class SessionStats(
@@ -228,7 +232,7 @@ sealed interface MainAction {
     data class OpenSubScreen(val screen: SubScreen) : MainAction
     data object CloseSubScreen : MainAction
     data object TestDelays : MainAction
-    data class SetMode(val mode: TunnelState.Mode) : MainAction
+    data class SetMode(val mode: TunnelState.Mode?) : MainAction
     data class SelectTab(val tab: MainTab) : MainAction
     data class SelectGroup(val index: Int) : MainAction
     data class SelectProxy(val name: String) : MainAction
@@ -1112,15 +1116,21 @@ fun modeLabel(mode: TunnelState.Mode): String = stringResource(
 )
 
 @Composable
-private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainAction) -> Unit) {
+private fun ModeRow(mode: ProfileMode, locked: Boolean, onAction: (MainAction) -> Unit) {
     var picking by rememberSaveable { mutableStateOf(false) }
+
+    val label = mode.mode?.let { modeLabel(it) }
+    val choice = if (mode.source == ProfileMode.Source.Choice) mode.mode else null
 
     ActionRow(
         title = stringResource(R.string.clod_mode),
-        subtitle = if (locked) {
-            stringResource(R.string.clod_mode_locked, modeLabel(mode))
-        } else {
-            modeLabel(mode)
+        subtitle = when {
+            mode.source == ProfileMode.Source.Locked ->
+                stringResource(R.string.clod_mode_locked, label ?: stringResource(R.string.clod_mode_as_subscription))
+            label == null -> stringResource(R.string.clod_mode_as_subscription)
+            mode.source == ProfileMode.Source.Choice -> stringResource(R.string.clod_mode_chosen, label)
+            mode.source == ProfileMode.Source.Override -> stringResource(R.string.clod_mode_from_override, label)
+            else -> stringResource(R.string.clod_mode_from_subscription, label)
         },
         icon = painterResource(R.drawable.ic_baseline_vpn_lock),
         onClick = { picking = true },
@@ -1153,6 +1163,7 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
             text = {
                 Column(Modifier.selectableGroup()) {
                     listOf(
+                        null,
                         TunnelState.Mode.Rule,
                         TunnelState.Mode.Global,
                         TunnelState.Mode.Direct,
@@ -1160,16 +1171,22 @@ private fun ModeRow(mode: TunnelState.Mode, locked: Boolean, onAction: (MainActi
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .selectable(selected = candidate == mode, role = Role.RadioButton) {
+                                .selectable(selected = candidate == choice, role = Role.RadioButton) {
                                     picking = false
                                     onAction(MainAction.SetMode(candidate))
                                 }
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RadioButton(selected = candidate == mode, onClick = null)
+                            RadioButton(selected = candidate == choice, onClick = null)
                             Spacer(Modifier.width(12.dp))
-                            Text(modeLabel(candidate))
+                            Text(
+                                if (candidate == null) {
+                                    stringResource(R.string.clod_mode_as_subscription)
+                                } else {
+                                    modeLabel(candidate)
+                                },
+                            )
                         }
                     }
                 }
@@ -1231,7 +1248,7 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 
             SectionHeader(stringResource(R.string.clod_section_connection))
             ModeRow(
-                mode = state.mode,
+                mode = state.profileMode,
                 locked = state.active?.panel?.lockMode == true,
                 onAction = onAction,
             )

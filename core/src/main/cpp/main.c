@@ -365,6 +365,23 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeWriteOverride(JNIEnv *env, 
     writeOverride(slot, _content);
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryModeOf(JNIEnv *env, jobject thiz,
+                                                                 jstring path,
+                                                                 jstring session) {
+    TRACE_METHOD();
+
+    scoped_string _path = get_string(path);
+    scoped_string _session = get_string(session);
+
+    scoped_string response = queryModeOf(_path, _session);
+
+    if (response == NULL)
+        return NULL;
+
+    return new_string(response);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeClearOverride(JNIEnv *env, jobject thiz,
                                                                    jint slot) {

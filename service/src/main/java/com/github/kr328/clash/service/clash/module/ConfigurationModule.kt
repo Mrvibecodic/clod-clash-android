@@ -11,6 +11,7 @@ import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.data.ImportedDao
+import com.github.kr328.clash.service.data.ModeChoiceDao
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.data.Selections
 import com.github.kr328.clash.service.store.ServiceStore
@@ -22,6 +23,7 @@ import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendProfileLoadFailed
 import com.github.kr328.clash.service.util.sendProfileLoaded
+import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
@@ -96,6 +98,11 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 ProfileProcessor.repair(service)
 
                 if (first) stage(Intents.STAGE_LOADING)
+
+                Clash.patchOverride(
+                    Clash.OverrideSlot.Session,
+                    sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid)),
+                )
 
                 // Окно мерит только загрузку ядра: один Clash.load(...).await().
                 // Ожидание гео-баз, repair и выбор узлов идут отдельными стадиями

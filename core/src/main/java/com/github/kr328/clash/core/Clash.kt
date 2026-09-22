@@ -272,6 +272,17 @@ object Clash {
         )
     }
 
+    fun queryModeOf(path: File, session: ConfigurationOverride): ProfileMode {
+        return Bridge.nativeQueryModeOf(
+            path.absolutePath,
+            CoreJson.encodeToString(ConfigurationOverride.serializer(), session),
+        )?.let(::decodeProfileMode) ?: ProfileMode()
+    }
+
+    internal fun decodeProfileMode(json: String): ProfileMode {
+        return CoreJson.decodeFromString(ProfileMode.serializer(), json)
+    }
+
     fun clearOverride(slot: OverrideSlot) {
         Bridge.nativeClearOverride(slot.ordinal)
     }

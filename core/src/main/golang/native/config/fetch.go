@@ -513,13 +513,19 @@ func FetchAndValid(
 
 	defer runtime.GC()
 
-	rawCfg, err := UnmarshalAndPatch(path)
+	rawCfg, err := unmarshalProfile(path)
 	if err != nil {
 		return err
 	}
 
+	template := rawCfg.Mode
+
+	if err := process(rawCfg, path); err != nil {
+		return err
+	}
+
 	panelInfo := readPanelInfo(path)
-	applyGroups(&panelInfo, rawCfg)
+	applyGroups(&panelInfo, rawCfg, template)
 
 	report := sentinel.Inspect(rawCfg.Proxy)
 

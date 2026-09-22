@@ -43,6 +43,12 @@ private val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+private val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("CREATE TABLE IF NOT EXISTS `profile_modes` (`uuid` TEXT NOT NULL, `mode` TEXT NOT NULL, PRIMARY KEY(`uuid`), FOREIGN KEY(`uuid`) REFERENCES `imported`(`uuid`) ON UPDATE CASCADE ON DELETE CASCADE )")
+    }
+}
+
 val MIGRATIONS: Array<Migration> = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
@@ -50,4 +56,5 @@ val MIGRATIONS: Array<Migration> = arrayOf(
     MIGRATION_4_5,
     MIGRATION_5_6,
     MIGRATION_6_7,
+    MIGRATION_7_8,
 )

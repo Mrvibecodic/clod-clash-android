@@ -5,6 +5,7 @@ import android.os.NetworkOnMainThreadException
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.ProviderList
 import com.github.kr328.clash.core.model.ProxyGroup
@@ -94,6 +95,12 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
 
     override suspend fun querySelections(): Map<String, String> =
         guard { delegate.querySelections() }
+
+    override suspend fun queryProfileMode(): ProfileMode =
+        guard { delegate.queryProfileMode() }
+
+    override suspend fun setProfileMode(mode: TunnelState.Mode?) =
+        guard { delegate.setProfileMode(mode) }
 
     override suspend fun healthCheck(group: String) =
         guard { delegate.healthCheck(group) }

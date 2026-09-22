@@ -3,11 +3,14 @@ package com.github.kr328.clash
 import android.os.Bundle
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.design.OverrideSettingsDesign
+import com.github.kr328.clash.design.compose.screen.ModeShadow
 import com.github.kr328.clash.design.model.PendingRestore
 import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
@@ -30,8 +33,20 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
         this.configuration = configuration
         val service = ServiceStore(this)
 
-        val modeLocked = withProfile { queryActive() }
-            ?.let { queryPanelInfo(it.uuid)?.lockMode } == true
+        val active = withProfile { queryActive() }
+        val panel = active?.let { queryPanelInfo(it.uuid) }
+
+        val modeLocked = panel?.lockMode == true
+
+        val choice = withClash { queryProfileMode() }
+            .takeIf { it.source == ProfileMode.Source.Choice }
+            ?.mode
+
+        val modeShadow = if (active != null && choice != null) {
+            ModeShadow(profileDisplayName(panel, active.name), choice)
+        } else {
+            null
+        }
 
         if (modeLocked) {
             configuration.mode = null
@@ -49,6 +64,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             this,
             configuration,
             modeLocked = modeLocked,
+            modeShadow = modeShadow,
         )
 
         setContentDesign(design)
