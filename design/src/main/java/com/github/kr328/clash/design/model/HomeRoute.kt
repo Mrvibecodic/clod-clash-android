@@ -14,7 +14,7 @@ sealed interface HomeRoute {
 
     data class Bypass(val group: String) : HomeRoute
 
-    data class Blocked(val group: String, val title: String) : HomeRoute
+    data class Blocked(val group: String) : HomeRoute
 }
 
 fun mainGroupOf(names: List<String>, main: String?): String? =
@@ -49,7 +49,7 @@ fun homeRoute(
     while (true) {
         val now = current.now
 
-        if (now in BLOCKING_SELECTIONS) return HomeRoute.Blocked(root.name, now)
+        if (now in BLOCKING_SELECTIONS) return HomeRoute.Blocked(root.name)
         if (now == DIRECT_SELECTION) return HomeRoute.Bypass(root.name)
 
         val next = byName[now]

@@ -88,7 +88,17 @@ class HomeRouteTest {
     @Test
     fun `DIRECT показывается без пинга, REJECT отдельно`() {
         assertEquals(HomeRoute.Bypass("Local"), homeRoute(Mode.Rule, template, "Local", readOnly = false))
-        assertEquals(HomeRoute.Blocked("Ads", "REJECT"), homeRoute(Mode.Rule, template, "Ads", readOnly = false))
+        assertEquals(HomeRoute.Blocked("Ads"), homeRoute(Mode.Rule, template, "Ads", readOnly = false))
+    }
+
+    @Test
+    fun `главная группа, упёршаяся в блокировку, помечается блокировкой без пинга`() {
+        val blocked = listOf(
+            group("Proxy", "Ads", node("Ads", 40, isGroup = true)),
+            group("Ads", "REJECT-DROP", node("REJECT-DROP", 0)),
+        )
+
+        assertEquals(HomeRoute.Blocked("Proxy"), homeRoute(Mode.Rule, blocked, "Proxy", readOnly = false))
     }
 
     @Test

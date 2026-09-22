@@ -511,6 +511,7 @@
     <string name="clod_home_selected_server">Выбран сервер</string>
     <string name="clod_home_direct">Напрямую, без серверов</string>
     <string name="clod_home_bypass">Напрямую</string>
+    <string name="clod_home_blocked">Блокируется</string>
     <string name="clod_section_configuration">Конфигурация</string>
     <string name="clod_data_title">Базы и провайдеры</string>
     <string name="clod_just_now">только что</string>

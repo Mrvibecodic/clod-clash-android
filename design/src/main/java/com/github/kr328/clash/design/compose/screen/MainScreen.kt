@@ -658,7 +658,7 @@ private fun HomeRouteRow(
         label = label,
         value = when (route) {
             is HomeRoute.Server -> (route.title ?: stringResource(R.string.proxy)).bidiIsolated()
-            is HomeRoute.Blocked -> route.title.bidiIsolated()
+            is HomeRoute.Blocked -> stringResource(R.string.clod_home_blocked)
             else -> stringResource(R.string.clod_home_bypass)
         },
         leading = leading,

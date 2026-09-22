@@ -516,6 +516,7 @@
     <string name="clod_home_selected_server">Selected server</string>
     <string name="clod_home_direct">Direct, no servers</string>
     <string name="clod_home_bypass">Direct</string>
+    <string name="clod_home_blocked">Blocked</string>
     <string name="clod_section_configuration">Configuration</string>
     <string name="clod_data_title">Routing data and providers</string>
     <string name="clod_just_now">Just now</string>
