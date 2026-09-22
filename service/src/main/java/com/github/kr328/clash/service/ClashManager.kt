@@ -109,16 +109,12 @@ class ClashManager(private val context: Context) : IClashManager,
         )
     }
 
-    override suspend fun setProfileMode(mode: TunnelState.Mode?) = withContext(Dispatchers.IO) {
+    override suspend fun setProfileMode(mode: TunnelState.Mode) = withContext(Dispatchers.IO) {
         val current = store.activeProfile ?: return@withContext
 
         if (!modeChoiceChanged(ModeChoiceDao().queryChoice(current), mode)) return@withContext
 
-        if (mode == null) {
-            ModeChoiceDao().removeChoice(current)
-        } else {
-            ModeChoiceDao().setChoice(ModeChoice(current, mode))
-        }
+        ModeChoiceDao().setChoice(ModeChoice(current, mode))
 
         context.sendOverrideChanged()
     }

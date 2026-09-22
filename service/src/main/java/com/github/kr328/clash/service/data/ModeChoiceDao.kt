@@ -10,9 +10,6 @@ interface ModeChoiceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setChoice(choice: ModeChoice)
 
-    @Query("DELETE FROM profile_modes WHERE uuid = :uuid")
-    suspend fun removeChoice(uuid: UUID)
-
     @Query("SELECT mode FROM profile_modes WHERE uuid = :uuid")
     suspend fun queryChoice(uuid: UUID): TunnelState.Mode?
 }

@@ -410,7 +410,6 @@
     <string name="clod_mode_locked">%s · set by your provider</string>
     <string name="clod_mode_locked_hint">Your provider has fixed the routing mode for this subscription. It cannot be changed in the app.</string>
     <string name="clod_mode_locked_toast">The routing mode is set by your provider</string>
-    <string name="clod_mode_as_subscription">As in subscription</string>
     <string name="clod_mode_chosen">%s · chosen by you</string>
     <string name="clod_mode_from_subscription">%s · from the subscription</string>
     <string name="clod_mode_from_override">%s · from the override</string>

@@ -119,8 +119,10 @@ import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.design.model.HomeRoute
 import com.github.kr328.clash.design.model.ToggleIntent
 import com.github.kr328.clash.design.model.homeExtras
+import com.github.kr328.clash.design.model.effectiveMode
 import com.github.kr328.clash.design.model.homeRoute
 import com.github.kr328.clash.design.model.providerLinks
+import com.github.kr328.clash.design.model.shouldSaveModePick
 import com.github.kr328.clash.design.model.toggleIntent
 import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.GroupIcons
@@ -231,7 +233,7 @@ sealed interface MainAction {
     data class OpenSubScreen(val screen: SubScreen) : MainAction
     data object CloseSubScreen : MainAction
     data object TestDelays : MainAction
-    data class SetMode(val mode: TunnelState.Mode?) : MainAction
+    data class SetMode(val mode: TunnelState.Mode) : MainAction
     data class SelectTab(val tab: MainTab) : MainAction
     data class SelectGroup(val index: Int) : MainAction
     data class OpenGroup(val index: Int) : MainAction
@@ -1119,16 +1121,14 @@ fun modeLabel(mode: TunnelState.Mode): String = stringResource(
 private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
     var picking by rememberSaveable { mutableStateOf(false) }
 
-    val label = mode.mode?.let { modeLabel(it) }
-    val choice = if (mode.source == ProfileMode.Source.Choice) mode.mode else null
+    val acting = effectiveMode(mode)
+    val label = modeLabel(acting)
     val locked = mode.source == ProfileMode.Source.Locked
 
     ActionRow(
         title = stringResource(R.string.clod_mode),
         subtitle = when {
-            locked ->
-                stringResource(R.string.clod_mode_locked, label ?: stringResource(R.string.clod_mode_as_subscription))
-            label == null -> stringResource(R.string.clod_mode_as_subscription)
+            locked -> stringResource(R.string.clod_mode_locked, label)
             mode.source == ProfileMode.Source.Choice -> stringResource(R.string.clod_mode_chosen, label)
             mode.source == ProfileMode.Source.Override -> stringResource(R.string.clod_mode_from_override, label)
             else -> stringResource(R.string.clod_mode_from_subscription, label)
@@ -1164,7 +1164,6 @@ private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
             text = {
                 Column(Modifier.selectableGroup()) {
                     listOf(
-                        null,
                         TunnelState.Mode.Rule,
                         TunnelState.Mode.Global,
                         TunnelState.Mode.Direct,
@@ -1172,22 +1171,18 @@ private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .selectable(selected = candidate == choice, role = Role.RadioButton) {
+                                .selectable(selected = candidate == acting, role = Role.RadioButton) {
                                     picking = false
-                                    onAction(MainAction.SetMode(candidate))
+                                    if (shouldSaveModePick(mode, candidate)) {
+                                        onAction(MainAction.SetMode(candidate))
+                                    }
                                 }
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RadioButton(selected = candidate == choice, onClick = null)
+                            RadioButton(selected = candidate == acting, onClick = null)
                             Spacer(Modifier.width(12.dp))
-                            Text(
-                                if (candidate == null) {
-                                    stringResource(R.string.clod_mode_as_subscription)
-                                } else {
-                                    modeLabel(candidate)
-                                },
-                            )
+                            Text(modeLabel(candidate))
                         }
                     }
                 }

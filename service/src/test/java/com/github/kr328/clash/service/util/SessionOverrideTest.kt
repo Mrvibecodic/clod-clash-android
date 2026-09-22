@@ -22,7 +22,7 @@ class SessionOverrideTest {
 
     @Test
     fun repeatingTheStoredChoiceChangesNothing() {
-        for (mode in listOf(null, TunnelState.Mode.Rule, TunnelState.Mode.Global, TunnelState.Mode.Direct)) {
+        for (mode in listOf(TunnelState.Mode.Rule, TunnelState.Mode.Global, TunnelState.Mode.Direct)) {
             assertFalse(modeChoiceChanged(mode, mode))
         }
     }
@@ -30,7 +30,6 @@ class SessionOverrideTest {
     @Test
     fun anotherChoiceIsAChange() {
         assertTrue(modeChoiceChanged(null, TunnelState.Mode.Global))
-        assertTrue(modeChoiceChanged(TunnelState.Mode.Global, null))
         assertTrue(modeChoiceChanged(TunnelState.Mode.Rule, TunnelState.Mode.Direct))
     }
 }

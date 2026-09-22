@@ -96,7 +96,7 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override suspend fun queryProfileMode(): ProfileMode =
         guard { delegate.queryProfileMode() }
 
-    override suspend fun setProfileMode(mode: TunnelState.Mode?) =
+    override suspend fun setProfileMode(mode: TunnelState.Mode) =
         guard { delegate.setProfileMode(mode) }
 
     override suspend fun healthCheck(group: String) =

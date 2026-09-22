@@ -62,7 +62,7 @@ class MainDesign(
         data class SelectProxy(val index: Int, val name: String) : Request
         data class ToggleFavorite(val name: String) : Request
         data object UrlTest : Request
-        data class PatchMode(val mode: TunnelState.Mode?) : Request
+        data class PatchMode(val mode: TunnelState.Mode) : Request
 
         data class OpenUrl(val url: String) : Request
         data object CheckUpdate : Request

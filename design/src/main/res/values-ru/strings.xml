@@ -378,7 +378,6 @@
     <string name="clod_mode_locked">%s · задан вашим сервисом</string>
     <string name="clod_mode_locked_hint">Режим маршрутизации для этой подписки задан вашим сервисом и в приложении не меняется.</string>
     <string name="clod_mode_locked_toast">Режим задан вашим сервисом</string>
-    <string name="clod_mode_as_subscription">Как в подписке</string>
     <string name="clod_mode_chosen">%s · выбран вами</string>
     <string name="clod_mode_from_subscription">%s · из подписки</string>
     <string name="clod_mode_from_override">%s · из переопределения</string>
