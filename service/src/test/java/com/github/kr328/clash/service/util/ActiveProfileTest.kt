@@ -40,4 +40,17 @@ class ActiveProfileTest {
     fun rollbackSkipsWithoutRetained() {
         assertEquals(ActiveProfileAction.Keep, activeProfileRollback(b, b, null, true))
     }
+
+    @Test
+    fun selectSetsOnlyWhenPointerMoves() {
+        assertEquals(ActiveProfileAction.Keep, activeProfileSelect(a, a, true))
+        assertEquals(ActiveProfileAction.Set, activeProfileSelect(b, a, true))
+        assertEquals(ActiveProfileAction.Set, activeProfileSelect(null, a, true))
+    }
+
+    @Test
+    fun selectSkipsMissingProfile() {
+        assertEquals(ActiveProfileAction.Keep, activeProfileSelect(null, a, false))
+        assertEquals(ActiveProfileAction.Keep, activeProfileSelect(b, a, false))
+    }
 }

@@ -22,6 +22,7 @@ import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.ActiveProfileAction
 import com.github.kr328.clash.service.util.activeProfileGone
+import com.github.kr328.clash.service.util.activeProfileSelect
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.service.util.processingDir
@@ -492,9 +493,9 @@ object ProfileProcessor {
     suspend fun active(context: Context, uuid: UUID) {
         withContext(NonCancellable) {
             profileLock.withLock {
-                if (ImportedDao().exists(uuid)) {
-                    val store = ServiceStore(context)
+                val store = ServiceStore(context)
 
+                if (activeProfileSelect(store.activeProfile, uuid, ImportedDao().exists(uuid)) == ActiveProfileAction.Set) {
                     store.activeProfile = uuid
 
                     context.sendProfileChanged(uuid)

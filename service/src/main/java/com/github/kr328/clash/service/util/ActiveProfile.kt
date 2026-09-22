@@ -6,10 +6,14 @@ enum class ActiveProfileAction {
     Keep,
     Clear,
     Restore,
+    Set,
 }
 
 fun activeProfileGone(stored: UUID?, gone: UUID): ActiveProfileAction =
     if (stored == gone) ActiveProfileAction.Clear else ActiveProfileAction.Keep
+
+fun activeProfileSelect(stored: UUID?, requested: UUID, exists: Boolean): ActiveProfileAction =
+    if (exists && stored != requested) ActiveProfileAction.Set else ActiveProfileAction.Keep
 
 fun activeProfileRollback(
     stored: UUID?,
