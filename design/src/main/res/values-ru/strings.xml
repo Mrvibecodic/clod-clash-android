@@ -317,7 +317,7 @@
     <string name="clod_tun_stack_effective">Фактический стек</string>
     <string name="clod_tun_stack_from_profile">%1$s — из подписки</string>
     <string name="hide_app_icon_title">Скрыть значок</string>
-    <string name="hide_app_icon_desc">Убрать значок приложения из списка программ</string>
+    <string name="hide_app_icon_desc">Убрать значок приложения из списка программ. Открыть его потом можно долгим нажатием на плитку в шторке</string>
     <string name="hide_from_recents_title">Скрыть из недавних</string>
     <string name="hide_from_recents_desc">Не показывать приложение на экране недавних</string>
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>

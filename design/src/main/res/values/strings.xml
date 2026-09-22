@@ -294,7 +294,7 @@
     <string name="external_control_stopped">Clod Clash is off</string>
 
     <string name="hide_app_icon_title">Hide App Icon</string>
-    <string name="hide_app_icon_desc">Hide the app icon from the launcher</string>
+    <string name="hide_app_icon_desc">Hide the app icon from the launcher. Afterwards open the app by pressing and holding its quick settings tile</string>
     <string name="hide_from_recents_title">Hide from Recents</string>
     <string name="hide_from_recents_desc">Hide app from the Recent apps screen</string>
     <string name="import_from_qr_no_permission">Camera access is restricted. Please enable it in Settings.</string>
