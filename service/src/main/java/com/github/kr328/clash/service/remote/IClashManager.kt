@@ -7,7 +7,6 @@ import java.util.UUID
 
 @BinderInterface
 interface IClashManager {
-    fun queryTunnelState(): TunnelState
     fun queryTrafficTotal(): Long
     fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames
     fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup

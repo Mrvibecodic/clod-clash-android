@@ -57,9 +57,6 @@ class GuardedRemoteService(private val delegate: IRemoteService) : IRemoteServic
 }
 
 class GuardedClashManager(private val delegate: IClashManager) : IClashManager by delegate {
-    override fun queryTunnelState(): TunnelState =
-        guardSync("queryTunnelState") { delegate.queryTunnelState() }
-
     override fun queryTrafficTotal(): Long =
         guardSync("queryTrafficTotal") { delegate.queryTrafficTotal() }
 

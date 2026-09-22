@@ -12,17 +12,6 @@ import (
 	"cfa/native/tunnel"
 )
 
-//export queryTunnelState
-func queryTunnelState() *C.char {
-	mode := tunnel.QueryMode()
-
-	response := &struct {
-		Mode string `json:"mode"`
-	}{mode}
-
-	return marshalJson(response)
-}
-
 //export queryNow
 func queryNow(upload, download *C.uint64_t) {
 	defer guard("queryNow", func() {})()

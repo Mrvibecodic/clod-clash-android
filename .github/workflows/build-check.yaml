@@ -286,7 +286,7 @@ jobs:
           ls "$dir"/classes*.dex >/dev/null
           cat "$dir"/classes*.dex > "$RUNNER_TEMP/all.dex"
           fail=0
-          for sym in com/github/kr328/clash/core/bridge/Bridge nativeStartTun nativeStopTun nativeQueryTunnelState; do
+          for sym in com/github/kr328/clash/core/bridge/Bridge nativeStartTun nativeStopTun nativeQueryModeOf; do
             grep -aq "$sym" "$RUNNER_TEMP/all.dex" || { echo "::error::$sym не найден в dex после R8"; fail=1; }
           done
           [ $fail -eq 0 ]

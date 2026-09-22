@@ -13,7 +13,6 @@ object Bridge {
     external fun nativeReset()
     external fun nativeForceGc()
     external fun nativeSuspend(suspend: Boolean)
-    external fun nativeQueryTunnelState(): String
     external fun nativeQueryTrafficNow(): Long
     external fun nativeQueryTrafficTotal(): Long
     external fun nativeNotifyDnsChanged(dnsList: String)

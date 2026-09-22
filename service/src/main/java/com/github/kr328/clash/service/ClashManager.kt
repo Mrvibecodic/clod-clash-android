@@ -28,10 +28,6 @@ class ClashManager(private val context: Context) : IClashManager,
     private var logReceiver: ReceiveChannel<LogMessage>? = null
     private var markReceiver: Job? = null
 
-    override fun queryTunnelState(): TunnelState {
-        return Clash.queryTunnelState()
-    }
-
     override fun queryTrafficTotal(): Long {
         return Clash.queryTrafficTotal()
     }

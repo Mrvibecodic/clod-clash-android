@@ -59,12 +59,6 @@ object Clash {
         Bridge.nativeSuspend(suspended)
     }
 
-    fun queryTunnelState(): TunnelState {
-        val json = Bridge.nativeQueryTunnelState()
-
-        return CoreJson.decodeFromString(TunnelState.serializer(), json)
-    }
-
     fun queryTrafficNow(): Traffic {
         return Bridge.nativeQueryTrafficNow()
     }

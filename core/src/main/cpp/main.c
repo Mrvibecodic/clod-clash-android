@@ -43,18 +43,6 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeSuspend(JNIEnv *env, jobjec
     suspend((int) suspended);
 }
 
-JNIEXPORT jstring JNICALL
-Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryTunnelState(JNIEnv *env, jobject thiz) {
-    TRACE_METHOD();
-
-    scoped_string response = queryTunnelState();
-
-    if (response == NULL)
-        return NULL;
-
-    return new_string(response);
-}
-
 JNIEXPORT jlong JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryTrafficNow(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
