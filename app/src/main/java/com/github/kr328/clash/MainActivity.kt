@@ -446,7 +446,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 withProfile { setActive(profile) }
                             } else {
                                 design.showToast(
-                                    resId = DesignR.string.active_unsaved_tips,
+                                    resId = DesignR.string.clod_sub_draft_activate,
                                     duration = ToastDuration.Long,
                                     actionLabel = DesignR.string.edit,
                                     onAction = {
@@ -970,7 +970,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         showToast(
             resId = DesignR.string.clod_global_nothing_to_use,
             duration = ToastDuration.Long,
-            actionLabel = DesignR.string.profiles,
+            actionLabel = DesignR.string.clod_tab_subscriptions,
             onAction = { launch { selectTab(MainTab.Subscriptions) } },
         )
     }
@@ -1340,9 +1340,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         if (active == null || !active.imported) {
             showToast(
-                resId = DesignR.string.no_profile_selected,
+                resId = DesignR.string.clod_sub_not_selected,
                 duration = ToastDuration.Long,
-                actionLabel = DesignR.string.profiles,
+                actionLabel = DesignR.string.clod_tab_subscriptions,
                 onAction = { launch { selectTab(MainTab.Subscriptions) } },
             )
 

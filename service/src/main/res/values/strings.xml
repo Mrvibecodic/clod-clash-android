@@ -4,8 +4,8 @@
     <string name="clash_service_status_channel">Tunnel status</string>
     <string name="clod_tun_start_failed">Could not bring the tunnel up. Try connecting again</string>
     <string name="clod_tun_revoked">Another app or the system took the VPN permission — the tunnel is closed and traffic goes around it. Connect again once the other VPN is off</string>
-    <string name="clod_profile_load_failed">Failed to apply the profile «%1$s»: %2$s. «%3$s» keeps running. Check your own edits in the override, if you made any</string>
-    <string name="clod_profile_reload_failed">Failed to apply the profile «%1$s»: %2$s. The previous configuration keeps running. Check your own edits in the override, if you made any</string>
+    <string name="clod_profile_load_failed">Failed to apply the subscription «%1$s»: %2$s. «%3$s» keeps running. Check your own edits in the override, if you made any</string>
+    <string name="clod_profile_reload_failed">Failed to apply the subscription «%1$s»: %2$s. The previous configuration keeps running. Check your own edits in the override, if you made any</string>
     <string name="clod_start_failed">Clod Clash could not start</string>
     <string name="clod_stopped_title">Clod Clash stopped</string>
     <string name="clod_tun_establish_rejected">The system did not allow the tunnel to be created. Try connecting again</string>

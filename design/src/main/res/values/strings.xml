@@ -7,7 +7,6 @@
     <string name="rule_mode">Rule Mode</string>
     <string name="global_mode">Global Mode</string>
 
-    <string name="profiles">Profiles</string>
 
     <string name="logs">Logs</string>
     <string name="settings">Settings</string>
@@ -53,7 +52,6 @@
     <string name="export">Export</string>
     <string name="import_">Import</string>
     <string name="properties">Properties</string>
-    <string name="active_unsaved_tips">Profile needs to be saved before activation</string>
 
     <string name="exit_without_save">Exit without Save</string>
     <string name="exit_without_save_warning">All changed will *LOST*</string>
@@ -221,7 +219,6 @@
     <string name="allow_selected_apps">Allow selected apps</string>
     <string name="deny_selected_apps">Deny selected apps</string>
 
-    <string name="no_profile_selected">No profile selected</string>
 
     <string name="providers">Providers</string>
 
@@ -317,8 +314,8 @@
     <string name="clod_status_connected">Connected</string>
     <string name="clod_status_connecting">Connecting\u2026</string>
     <string name="clod_stage_starting">Starting the service\u2026</string>
-    <string name="clod_stage_preparing">Preparing the profile and route databases\u2026</string>
-    <string name="clod_stage_loading">Loading the profile into the core\u2026</string>
+    <string name="clod_stage_preparing">Preparing the subscription and routing databases\u2026</string>
+    <string name="clod_stage_loading">Loading the subscription into the core\u2026</string>
     <string name="clod_stage_selecting">Restoring the selected servers\u2026</string>
     <string name="clod_stage_tunnel">Opening the VPN tunnel\u2026</string>
     <string name="clod_status_disconnecting">Disconnecting\u2026</string>
@@ -334,6 +331,7 @@
     <string name="clod_sub_added_partial">Subscription added, but some provider lists were not downloaded</string>
     <string name="clod_providers_failed_plural">Some provider lists were not downloaded</string>
     <string name="clod_sub_draft">Not loaded</string>
+    <string name="clod_sub_draft_activate">This subscription isn’t loaded yet. Save it to select it</string>
     <string name="clod_sub_active">Active</string>
     <string name="clod_sub_expiring">Expiring</string>
     <string name="clod_sub_exhausted">Out of traffic</string>
@@ -353,6 +351,7 @@
     <string name="clod_sub_updating">Updating</string>
     <string name="clod_sub_nothing_to_update">Nothing to update</string>
     <string name="clod_no_subscriptions">No subscriptions</string>
+    <string name="clod_sub_not_selected">No subscription selected</string>
     <string name="clod_no_subscriptions_hint">Add a subscription link — your provider issues it.</string>
     <string name="clod_section_connection">Connection</string>
     <string name="clod_help_notice">Clod Clash is free software. Support for the subscription itself comes from whoever issued you the link — not from us.</string>
@@ -444,7 +443,7 @@
     </plurals>
     <string name="clod_favorite_add">Add to favorites</string>
     <string name="clod_favorite_remove">Remove from favorites</string>
-    <string name="clod_servers_direct">Direct mode is on: traffic goes past the servers, so picking one changes nothing. Switch the mode on the home screen.</string>
+    <string name="clod_servers_direct">“Direct Mode” is on: traffic goes past the servers, so picking one changes nothing. The mode is shown in the More tab and can be switched there unless your provider has set it.</string>
     <string name="clod_one_per_line">One per line</string>
     <string name="clod_key_value_per_line">One «key = value» pair per line</string>
     <string name="clod_hwid_title">Identify this device</string>

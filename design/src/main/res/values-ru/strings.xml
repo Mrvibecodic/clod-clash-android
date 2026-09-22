@@ -6,7 +6,6 @@
     <string name="rule_mode">Режим правил</string>
     <string name="global_mode">Глобальный режим</string>
 
-    <string name="profiles">Профили</string>
 
     <string name="logs">Логи</string>
     <string name="settings">Настройки</string>
@@ -51,7 +50,6 @@
     <string name="export">Экспорт</string>
     <string name="import_">Импорт</string>
     <string name="properties">Свойства</string>
-    <string name="active_unsaved_tips">Профиль должен быть сохранён перед активацией</string>
 
     <string name="exit_without_save">Выйти без сохранения</string>
     <string name="exit_without_save_warning">Все изменения будут ПОТЕРЯНЫ</string>
@@ -196,7 +194,6 @@
     <string name="allow_selected_apps">Разрешить выбранные приложения</string>
     <string name="deny_selected_apps">Запретить выбранные приложения</string>
 
-    <string name="no_profile_selected">Профиль не выбран</string>
 
     <string name="providers">Провайдеры</string>
 
@@ -269,8 +266,8 @@
     <string name="clod_status_connected">Подключено</string>
     <string name="clod_status_connecting">Подключение\u2026</string>
     <string name="clod_stage_starting">Запуск службы\u2026</string>
-    <string name="clod_stage_preparing">Подготовка профиля и баз маршрутизации\u2026</string>
-    <string name="clod_stage_loading">Загрузка профиля в ядро\u2026</string>
+    <string name="clod_stage_preparing">Подготовка подписки и баз маршрутизации\u2026</string>
+    <string name="clod_stage_loading">Загрузка подписки в ядро\u2026</string>
     <string name="clod_stage_selecting">Восстановление выбранных серверов\u2026</string>
     <string name="clod_stage_tunnel">Открытие VPN-туннеля\u2026</string>
     <string name="clod_status_disconnecting">Отключение\u2026</string>
@@ -286,6 +283,7 @@
     <string name="clod_sub_added_partial">Подписка добавлена, но часть провайдеров не скачалась</string>
     <string name="clod_providers_failed_plural">Часть провайдеров не скачалась</string>
     <string name="clod_sub_draft">Не загружена</string>
+    <string name="clod_sub_draft_activate">Подписка ещё не загружена. Сохраните её, чтобы выбрать</string>
     <string name="clod_sub_active">Активна</string>
     <string name="clod_sub_expiring">Истекает</string>
     <string name="clod_sub_exhausted">Трафик кончился</string>
@@ -305,6 +303,7 @@
     <string name="clod_sub_updating">Обновляется</string>
     <string name="clod_sub_nothing_to_update">Нечего обновлять</string>
     <string name="clod_no_subscriptions">Подписок нет</string>
+    <string name="clod_sub_not_selected">Подписка не выбрана</string>
     <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
     <string name="clod_section_connection">Подключение</string>
     <string name="clod_help_notice">Clod Clash — свободное приложение. Поддержку по самой подписке оказывает тот, кто выдал вам ссылку, а не мы.</string>
@@ -414,7 +413,7 @@
     </plurals>
     <string name="clod_favorite_add">В избранное</string>
     <string name="clod_favorite_remove">Убрать из избранного</string>
-    <string name="clod_servers_direct">Включён режим «Прямое соединение»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим переключается на главном экране.</string>
+    <string name="clod_servers_direct">Включён «Прямой режим»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим показан во вкладке «Ещё» и переключается там, если его не задал ваш сервис.</string>
     <string name="clod_one_per_line">По одному в строке</string>
     <string name="clod_key_value_per_line">По паре «ключ = значение» в строке</string>
 <string name="secret">Секрет</string>
