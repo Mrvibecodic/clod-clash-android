@@ -126,7 +126,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
     @Serializable
     private data class Backup(
-        val version: Int = BACKUP_VERSION,
+        val version: Int = 0,
         val profiles: List<BackupProfile> = emptyList(),
     )
 
@@ -141,6 +141,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         }
 
         val backup = Backup(
+            version = BACKUP_VERSION,
             profiles = profiles.map {
                 BackupProfile(
                     name = it.name,
@@ -212,7 +213,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         val wanted = backup.profiles.filter { it.source.isNotBlank() }
 
-        if (backup.version > BACKUP_VERSION || wanted.isEmpty()) {
+        if (backup.version !in 1..BACKUP_VERSION || wanted.isEmpty()) {
             design.showToast(DesignR.string.clod_backup_invalid, ToastDuration.Long)
 
             return

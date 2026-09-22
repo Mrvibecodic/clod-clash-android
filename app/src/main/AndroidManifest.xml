@@ -20,9 +20,6 @@
 
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS"
-        tools:ignore="ProtectedPermissions" />
-
     <application
         android:name=".MainApplication"
         android:allowBackup="true"
