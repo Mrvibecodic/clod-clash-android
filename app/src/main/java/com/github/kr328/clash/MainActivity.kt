@@ -463,15 +463,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                             launch {
                                 val uuid = request.profile.uuid
 
-                                if (!request.profile.imported) {
-                                    design.showToast(
-                                        DesignR.string.clod_sub_draft,
-                                        ToastDuration.Long,
-                                    )
-
-                                    return@launch
-                                }
-
                                 ProfileUpdates.start(listOf(uuid))
 
                                 try {
@@ -899,7 +890,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }
-        offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }
+        offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }.map { group ->
+            group.copy(proxies = group.proxies.filterNot { panel?.hides(it) == true })
+        }
         proxyGroupNames = offlineGroups.map { it.name }
         healthCheckedGroups = emptyList()
 

@@ -2,6 +2,7 @@ package com.github.kr328.clash.design.compose
 
 import com.github.kr328.clash.design.compose.component.NoServersReason
 import com.github.kr328.clash.design.compose.component.noServersReason
+import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 import org.junit.Assert.assertEquals
@@ -97,5 +98,22 @@ class NoServersReasonTest {
         )
 
         assertNull(reason)
+    }
+
+    @Test
+    fun expiryIsJudgedByPanelClock() {
+        val deviceNow = System.currentTimeMillis()
+        val item = SubscriptionItem(
+            profile = profile(expire = deviceNow + TimeUnit.HOURS.toMillis(12)),
+            panel = PanelInfo(
+                noServers = true,
+                clockSkew = TimeUnit.DAYS.toSeconds(1),
+                clockSkewAt = deviceNow / 1000,
+            ),
+        )
+
+        val reason = noServersReason(item.profile, item.panel, item.panelNow())
+
+        assertEquals(NoServersReason.Expired, reason)
     }
 }

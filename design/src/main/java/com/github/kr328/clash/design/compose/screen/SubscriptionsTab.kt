@@ -236,7 +236,7 @@ private fun SubscriptionCard(
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
-    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
+    val now = remember(profile) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
     var menuOpen by rememberSaveable { mutableStateOf(false) }
@@ -352,7 +352,7 @@ private fun SubscriptionCard(
                             )
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            if (profile.type != Profile.Type.File) {
+                            if (item.updatable) {
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.update)) },
                                     enabled = !updating,
@@ -438,7 +438,7 @@ fun ActiveSubscriptionCard(
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
-    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
+    val now = remember(profile) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val critical = status != SubscriptionState.Active
 

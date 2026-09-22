@@ -319,7 +319,7 @@ class MainDesign(
                         it[index] = it[index].copy(
                             now = now,
                             selectable = selectable,
-                            proxies = proxies,
+                            proxies = proxies.filterNot { state.active?.panel?.hides(it.name) == true },
                         )
                     },
                 ),

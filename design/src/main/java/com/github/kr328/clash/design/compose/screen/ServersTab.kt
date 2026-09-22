@@ -55,7 +55,7 @@ fun ServersTab(
     active: SubscriptionItem?,
     onAction: (MainAction) -> Unit,
 ) {
-    val noServers = noServersReason(active?.profile, active?.panel)
+    val noServers = active?.let { noServersReason(it.profile, it.panel, it.panelNow()) }
 
     val descriptions = active?.panel?.descriptions.orEmpty()
 
@@ -156,21 +156,11 @@ fun ServersTab(
             return@Column
         }
 
-        val sentinels = active?.panel?.sentinels.orEmpty()
-
-        val proxies = remember(group.proxies, state.favorites, sentinels) {
-            val hidden = sentinels.toSet()
-
-            val visible = if (hidden.isEmpty()) {
+        val proxies = remember(group.proxies, state.favorites) {
+            if (state.favorites.isEmpty()) {
                 group.proxies
             } else {
-                group.proxies.filterNot { it.name in hidden }
-            }
-
-            if (state.favorites.isEmpty()) {
-                visible
-            } else {
-                visible.sortedByDescending { it.name in state.favorites }
+                group.proxies.sortedByDescending { it.name in state.favorites }
             }
         }
 

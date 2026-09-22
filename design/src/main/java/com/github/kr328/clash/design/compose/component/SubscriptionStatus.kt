@@ -70,7 +70,7 @@ fun Profile.trafficLimit(): TrafficLimit = when {
     else -> TrafficLimit.Unknown
 }
 
-fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.currentTimeMillis()): NoServersReason? {
+fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long): NoServersReason? {
     when (panel?.hwidState) {
         HWID_LIMIT_REACHED -> return NoServersReason.DeviceLimit
         HWID_NOT_SUPPORTED -> return NoServersReason.DeviceNotIdentified

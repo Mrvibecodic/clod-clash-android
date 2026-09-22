@@ -51,6 +51,8 @@ data class PanelInfo(
         return if (age in 0..MAX_CLOCK_SKEW_AGE_SECONDS) clockSkew * 1000 else 0
     }
 
+    fun hides(name: String): Boolean = name in sentinels
+
     val isEmpty: Boolean
         get() = title.isBlank() && announce.isBlank() && promo.isBlank() &&
             portalUrl.isBlank() && logoFile.isBlank() && groups.isEmpty()

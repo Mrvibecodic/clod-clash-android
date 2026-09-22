@@ -136,4 +136,19 @@ class PanelInfoTest {
     fun `служебные поля пустоту не отменяют`() {
         assertTrue(PanelInfo(refillDate = 1_700_000_000, hwidMaxDevices = 3).isEmpty)
     }
+
+    @Test
+    fun `служебный узел панели скрыт, обычный виден`() {
+        val info = PanelInfo(sentinels = listOf("заглушка"))
+
+        assertTrue(info.hides("заглушка"))
+        assertFalse(info.hides("Нидерланды 01"))
+    }
+
+    @Test
+    fun `при показе заглушек панель ничего не скрывает`() {
+        val info = PanelInfo(sentinels = emptyList())
+
+        assertFalse(info.hides("заглушка"))
+    }
 }

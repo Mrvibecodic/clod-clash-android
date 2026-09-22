@@ -21,11 +21,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -121,7 +123,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 enum class MainTab {
     Home,
@@ -165,7 +166,10 @@ data class SubscriptionItem(
     val title: String
         get() = profileDisplayName(panel, profile.name)
 
-    fun panelClockSkew(): Long = panel?.clockSkewMillis() ?: 0
+    val updatable: Boolean
+        get() = profile.imported && profile.type != Profile.Type.File
+
+    fun panelNow(): Long = System.currentTimeMillis() + (panel?.clockSkewMillis() ?: 0)
 }
 
 @Immutable
@@ -491,7 +495,7 @@ private fun HomeTab(
     ) {
         MainHeader(
             active = state.active,
-            updating = state.subscriptions.updating,
+            updatingUuids = state.subscriptions.updatingUuids,
             onAction = onAction,
         )
 
@@ -500,7 +504,7 @@ private fun HomeTab(
 
             ActiveSubscriptionCard(
                 item = active,
-                showActions = noServersReason(active.profile, active.panel) == null,
+                showActions = noServersReason(active.profile, active.panel, active.panelNow()) == null,
                 onAction = onAction,
             )
         }
@@ -594,7 +598,7 @@ private fun HomeTab(
 @Composable
 private fun MainHeader(
     active: SubscriptionItem?,
-    updating: Boolean,
+    updatingUuids: Set<UUID>,
     onAction: (MainAction) -> Unit,
 ) {
     val profileName = active?.title
@@ -638,18 +642,20 @@ private fun MainHeader(
                 SubscriptionSummary(active)
             }
         }
-        SyncIconButton(
-            spinning = updating,
-            contentDescription = stringResource(R.string.clod_refresh_profile),
-            onClick = { onAction(MainAction.UpdateAllProfiles) },
-        )
+        if (active != null && active.updatable) {
+            SyncIconButton(
+                spinning = active.profile.uuid in updatingUuids,
+                contentDescription = stringResource(R.string.clod_refresh_profile),
+                onClick = { onAction(MainAction.UpdateProfile(active.profile)) },
+            )
+        }
     }
 }
 
 @Composable
 private fun SubscriptionSummary(item: SubscriptionItem) {
     val profile = item.profile
-    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
+    val now = remember(profile) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
 
@@ -800,14 +806,17 @@ private fun SessionTrafficRow(downloaded: String, uploaded: String) {
 @Composable
 private fun QuotaCards(item: SubscriptionItem) {
     val profile = item.profile
-    val now = remember(profile) { System.currentTimeMillis() + item.panelClockSkew() }
+    val now = remember(profile) { item.panelNow() }
 
     if (subscriptionState(profile, now) != SubscriptionState.Active) return
     if (profile.total <= 0L && profile.expire <= 0L) return
 
     val used = profile.usedTraffic()
 
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = Modifier.height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         if (profile.total > 0) {
             val left = (profile.total - used).coerceAtLeast(0)
 
@@ -819,19 +828,21 @@ private fun QuotaCards(item: SubscriptionItem) {
                     R.string.clod_quota_left,
                     left.toBytesString(),
                 ),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
             )
         }
         if (profile.expire > 0) {
-            val leftMillis = (profile.expire - now).coerceAtLeast(0)
-
             QuotaCard(
                 label = stringResource(R.string.clod_quota_expiry),
                 value = expiryLeft(profile.expire, now)
                     ?: stringResource(R.string.clod_sub_expired),
-                progress = (leftMillis.toFloat() / TimeUnit.DAYS.toMillis(30)).coerceIn(0f, 1f),
+                progress = null,
                 note = expiryDate(profile.expire, now),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
             )
         }
     }
@@ -841,7 +852,7 @@ private fun QuotaCards(item: SubscriptionItem) {
 private fun QuotaCard(
     label: String,
     value: String,
-    progress: Float,
+    progress: Float?,
     note: String,
     modifier: Modifier = Modifier,
 ) {
@@ -865,15 +876,17 @@ private fun QuotaCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(50)),
-            )
+            if (progress != null) {
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(50)),
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Text(
                 text = note,
@@ -905,7 +918,7 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
     val panel = active.panel ?: return
     val notice = panel.announce.takeIf { it.isNotBlank() } ?: panel.promo
     val noticeUrl = if (panel.announce.isNotBlank()) panel.announceUrl else panel.promoUrl
-    val reason = noServersReason(active.profile, panel)
+    val reason = noServersReason(active.profile, panel, active.panelNow())
 
     if (notice.isBlank() && reason == null) return
 
