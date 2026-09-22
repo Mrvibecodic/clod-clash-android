@@ -31,8 +31,6 @@ data class PanelInfo(
 
     val migrateUrl: String = "",
 
-    val lockMode: Boolean? = null,
-
     val noServers: Boolean = false,
 
     val sentinels: List<String> = emptyList(),

@@ -31,12 +31,11 @@ class PanelInfoTest {
     }
 
     @Test
-    fun `молчание панели о напоминаниях и режиме — это null, а не пустота`() {
+    fun `молчание панели о напоминаниях — это null, а не пустота`() {
         val info = decode("{}")
 
         assertNull(info.notifyExpireDays)
         assertNull(info.notifyTrafficPercent)
-        assertNull(info.lockMode)
     }
 
     @Test

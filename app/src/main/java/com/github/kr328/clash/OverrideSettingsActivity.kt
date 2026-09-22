@@ -36,9 +36,11 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }
 
-        val modeLocked = panel?.lockMode == true
+        val profileMode = withClash { queryProfileMode() }
 
-        val choice = withClash { queryProfileMode() }
+        val modeLocked = profileMode.source == ProfileMode.Source.Locked
+
+        val choice = profileMode
             .takeIf { it.source == ProfileMode.Source.Choice }
             ?.mode
 

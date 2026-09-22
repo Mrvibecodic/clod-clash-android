@@ -6,6 +6,7 @@ import android.os.Looper
 import android.widget.Toast
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.remote.IClashManager
@@ -19,7 +20,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 
-class ServiceUnavailableException(message: String) : IOException(message)
+class ServiceUnavailableException(message: String) : IOException(message), HumanMessage
 
 private const val REMOTE_WAIT_MS = 20_000L
 private const val REMOTE_RETRY_DELAY_MS = 500L

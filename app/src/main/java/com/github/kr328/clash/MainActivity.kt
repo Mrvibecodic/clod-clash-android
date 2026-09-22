@@ -68,7 +68,6 @@ import com.github.kr328.clash.util.ServersReload
 import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.serversReload
 import com.github.kr328.clash.util.shouldAutoHealthCheck
-import com.github.kr328.clash.util.showFailure
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
@@ -126,7 +125,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: Exception) {
             Log.w("Main first fetch: $e", e)
 
-            design.showFailure(e)
+            design.showExceptionToast(e)
         }
 
         if (restored == null && !design.hasProfiles) {
@@ -434,7 +433,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 } catch (e: Exception) {
                                     targets.forEach { ProfileUpdates.finish(it) }
 
-                                    design.showFailure(e, ServiceR.string.update_failure)
+                                    design.showExceptionToast(e, ServiceR.string.update_failure)
                                 }
                             }
                         }
@@ -470,7 +469,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 } catch (e: Exception) {
                                     ProfileUpdates.finish(uuid)
 
-                                    design.showFailure(e, ServiceR.string.update_failure)
+                                    design.showExceptionToast(e, ServiceR.string.update_failure)
                                 }
                             }
                         }
@@ -601,7 +600,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             } catch (e: ServiceUnavailableException) {
                 Log.w("Main loop: $e")
 
-                design.showFailure(e)
+                design.showExceptionToast(e)
             } catch (e: RemoteException) {
                 Log.w("Main loop: $e", e)
 
@@ -827,7 +826,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             lastHealthCheckAt = 0
 
             if (manual) {
-                showFailure(e, DesignR.string.clod_delay_failed)
+                showExceptionToast(e, DesignR.string.clod_delay_failed)
             }
         } finally {
             healthChecking = false
@@ -873,7 +872,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                     if (update.manual) {
                         if (update.error != null) {
-                            showFailure(update.error, DesignR.string.clod_delay_failed)
+                            showExceptionToast(update.error, DesignR.string.clod_delay_failed)
                         } else {
                             notifyDelaysUnavailable(update.delays.values.toList())
                         }
