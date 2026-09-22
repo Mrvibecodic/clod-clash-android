@@ -16,7 +16,6 @@ import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
 import com.github.kr328.clash.common.compat.isSystemBarsTranslucentCompat
 import com.github.kr328.clash.common.util.AppLocale
 import com.github.kr328.clash.common.util.Redact
-import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.model.DarkMode
@@ -211,7 +210,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
         if (reason != null && activityStarted) {
             launch {
-                design?.showExceptionToast(ClashException(reason))
+                design?.showExceptionToast(reason)
             }
         }
     }
@@ -237,7 +236,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
             NotificationManagerCompat.from(this).cancel(ServiceR.id.nf_clash_start_failed)
 
             launch {
-                design?.showExceptionToast(ClashException(cause))
+                design?.showExceptionToast(cause)
             }
         }
     }

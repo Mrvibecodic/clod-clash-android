@@ -171,7 +171,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
             design.showToast(DesignR.string.clod_backup_saved, ToastDuration.Long)
         } catch (e: Exception) {
-            design.showExceptionToast(e)
+            design.showExceptionToast(e, DesignR.string.clod_export_failed)
         }
     }
 

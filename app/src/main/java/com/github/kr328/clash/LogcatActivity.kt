@@ -91,7 +91,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
                             design.showToast(R.string.file_exported, ToastDuration.Long)
                         } catch (e: Exception) {
-                            design.showExceptionToast(e)
+                            design.showExceptionToast(e, R.string.clod_export_failed)
                         }
                     }
                 }

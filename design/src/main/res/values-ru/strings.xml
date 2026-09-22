@@ -223,6 +223,7 @@
     <string name="clod_external_control_title">Разрешить внешнее управление</string>
     <string name="clod_external_control_summary">Другие приложения смогут включать и выключать туннель — для автоматизации вроде Tasker. Свои ярлыки, плитка в шторке и виджет работают в любом случае.</string>
     <string name="clod_service_unavailable">Фоновая служба не отвечает. Попробуйте ещё раз, а если повторяется — откройте приложение заново</string>
+    <string name="clod_action_failed">Не получилось выполнить действие</string>
     <string name="clod_external_control_refused">Внешнее управление выключено. Включите его в настройках, раздел «Приложение».</string>
     <string name="clod_sub_menu">Действия с подпиской</string>
 
@@ -369,6 +370,7 @@
     <string name="clod_update_check">Проверить обновление</string>
     <string name="clod_update_none">Установлена последняя версия</string>
     <string name="clod_update_check_failed">Не удалось проверить обновления</string>
+    <string name="clod_update_failed_generic">Не удалось установить обновление</string>
     <string name="clod_update_permission">Разрешите приложению установку, чтобы оно могло обновить себя. Система откроет свой экран — включите там переключатель.</string>
     <string name="clod_update_confirm_channel">Обновление</string>
     <string name="clod_update_confirm_title">Обновление готово к установке</string>
@@ -441,6 +443,7 @@
     <string name="clod_profile_update_notify_title">Успешные обновления подписки</string>
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
     <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
+    <string name="clod_delay_failed">Не удалось проверить серверы</string>
     <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных узлов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
     <string name="clod_override_pending_lost">Несохранённые правки пропали, пока приложение было в фоне</string>
     <string name="clod_language_title">Язык</string>
@@ -452,6 +455,7 @@
     <string name="clod_backup_import_title">Восстановить подписки</string>
     <string name="clod_backup_import_summary">Добавить подписки из сохранённого файла</string>
     <string name="clod_backup_saved">Копия сохранена</string>
+    <string name="clod_export_failed">Не удалось сохранить файл</string>
     <string name="clod_backup_empty">Нет подписок со ссылкой</string>
     <string name="clod_backup_invalid">Это не файл с копией подписок</string>
     <string name="clod_backup_restored">Восстановлено %1$d из %2$d</string>

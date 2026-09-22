@@ -88,6 +88,7 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
+import com.github.kr328.clash.service.R as ServiceR
 
 class MainActivity : BaseActivity<MainDesign>() {
     override fun onProfileUpdateStarted(uuid: UUID?) {
@@ -117,6 +118,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             design.fetch()
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ServiceUnavailableException) {
+            Log.w("Main first fetch: $e")
+
+            design.showToast(e.message.orEmpty(), ToastDuration.Long)
         } catch (e: Exception) {
             Log.w("Main first fetch: $e", e)
 
@@ -430,7 +435,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 } catch (e: Exception) {
                                     targets.forEach { ProfileUpdates.finish(it) }
 
-                                    design.showExceptionToast(e)
+                                    design.showExceptionToast(e, ServiceR.string.update_failure)
                                 }
                             }
                         }
@@ -475,7 +480,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 } catch (e: Exception) {
                                     ProfileUpdates.finish(uuid)
 
-                                    design.showExceptionToast(e)
+                                    design.showExceptionToast(e, ServiceR.string.update_failure)
                                 }
                             }
                         }
@@ -827,7 +832,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             lastHealthCheckAt = 0
 
             if (manual) {
-                showExceptionToast(e)
+                showExceptionToast(e, DesignR.string.clod_delay_failed)
             }
         } finally {
             healthChecking = false
@@ -873,7 +878,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                     if (update.manual) {
                         if (update.error != null) {
-                            showExceptionToast(update.error)
+                            showExceptionToast(update.error, DesignR.string.clod_delay_failed)
                         } else {
                             notifyDelaysUnavailable(update.delays.values.toList())
                         }
@@ -1429,7 +1434,12 @@ class MainActivity : BaseActivity<MainDesign>() {
                 UpdateTask.dismiss()
             }
             is UpdateTask.State.Failed -> {
-                showExceptionToast(state.reason)
+                showToast(
+                    DesignR.string.clod_update_failed_generic,
+                    ToastDuration.Long,
+                    detail = Redact.text(state.reason),
+                    kind = NoticeKind.Error,
+                )
 
                 UpdateTask.dismiss()
             }
