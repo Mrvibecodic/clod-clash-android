@@ -1,5 +1,6 @@
 package com.github.kr328.clash.util
 
+import com.github.kr328.clash.service.model.PanelGroup
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -76,5 +77,15 @@ class RouteGroupsTest {
         assertEquals("", offlineNow("url-test", null, listOf("DE", "NL")))
         assertEquals("", offlineNow("fallback", null, listOf("DE", "NL")))
         assertEquals("", offlineNow("select", null, emptyList()))
+    }
+
+    @Test
+    fun `служебный узел первым выбирается, как у ядра, но в списке не показывается`() {
+        val group = PanelGroup(name = "Proxy", type = "select", proxies = listOf("Осталось 5 дней", "DE", "NL"))
+
+        val shown = offlineGroup(group, null) { it == "Осталось 5 дней" }
+
+        assertEquals("Осталось 5 дней", shown.now)
+        assertEquals(listOf("DE", "NL"), shown.proxies)
     }
 }

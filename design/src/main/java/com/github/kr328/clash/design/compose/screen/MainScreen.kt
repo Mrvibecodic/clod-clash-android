@@ -212,7 +212,7 @@ data class MainScreenState(
     val reliability: ReliabilityState = ReliabilityState(),
 ) {
     val mode: TunnelState.Mode
-        get() = profileMode.mode ?: TunnelState.Mode.Rule
+        get() = effectiveMode(profileMode)
 }
 
 @Immutable

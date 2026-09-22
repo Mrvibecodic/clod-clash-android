@@ -5,7 +5,9 @@ import android.net.Uri
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.FetchStatus
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
@@ -66,6 +68,11 @@ object ProfileProcessor {
 
     private val profileLock = Mutex()
     private val processLock = Mutex()
+
+    suspend fun queryMode(context: Context, uuid: UUID, session: ConfigurationOverride): ProfileMode =
+        profileLock.withLock {
+            Clash.queryModeOf(context.importedDir.resolve(uuid.toString()), session)
+        }
 
     suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver? = null) {
         withContext(NonCancellable) {

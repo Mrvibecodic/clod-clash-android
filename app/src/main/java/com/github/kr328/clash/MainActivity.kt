@@ -46,7 +46,7 @@ import com.github.kr328.clash.util.applyDynamicShortcuts
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
 import com.github.kr328.clash.util.loadRouteGroups
-import com.github.kr328.clash.util.offlineNow
+import com.github.kr328.clash.util.offlineGroup
 import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
@@ -672,6 +672,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var offlineGroups: List<PanelGroup> = emptyList()
 
+    private var offlineHides: (String) -> Boolean = { false }
+
     private var mainGroup: String? = null
 
     private var panelRunning: Boolean? = null
@@ -853,7 +855,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val active = withProfile { queryActive() } ?: return
 
-        val total = offlineGroups.flatMap { it.proxies }.distinct().size
+        val total = offlineGroups.flatMap { it.proxies }.filterNot(offlineHides).distinct().size
 
         OfflineDelays.start(active.uuid, total, manual)
     }
@@ -890,9 +892,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }
-        offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }.map { group ->
-            group.copy(proxies = group.proxies.filterNot { panel?.hides(it) == true })
-        }
+        offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }
+        offlineHides = { panel?.hides(it) == true }
         proxyGroupNames = offlineGroups.map { it.name }
         mainGroup = mainGroupOf(proxyGroupNames, panel?.main)
         healthCheckedGroups = emptyList()
@@ -932,13 +933,13 @@ class MainActivity : BaseActivity<MainDesign>() {
         val group = offlineGroups.getOrNull(index) ?: return null
 
         val readOnly = serversReadOnly
-        val now = offlineNow(group.type, offlineSelections[group.name], group.proxies)
+        val shown = offlineGroup(group, offlineSelections[group.name], offlineHides)
 
         setProxyGroup(
             index = index,
-            now = now,
+            now = shown.now,
             selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
-            proxies = group.proxies.distinct().map { name ->
+            proxies = shown.proxies.map { name ->
                 Proxy(
                     name = name,
                     title = name,
@@ -950,7 +951,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             },
         )
 
-        return now
+        return shown.now
     }
 
     private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {

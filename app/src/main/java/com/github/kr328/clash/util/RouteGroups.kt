@@ -1,5 +1,7 @@
 package com.github.kr328.clash.util
 
+import com.github.kr328.clash.service.model.PanelGroup
+
 internal suspend fun loadRouteGroups(
     names: List<String>,
     roots: List<String>,
@@ -24,3 +26,8 @@ internal suspend fun loadRouteGroups(
 
 internal fun offlineNow(type: String, saved: String?, proxies: List<String>): String =
     saved ?: if (type == "select") proxies.firstOrNull().orEmpty() else ""
+
+internal data class OfflineGroup(val now: String, val proxies: List<String>)
+
+internal fun offlineGroup(group: PanelGroup, saved: String?, hides: (String) -> Boolean): OfflineGroup =
+    OfflineGroup(offlineNow(group.type, saved, group.proxies), group.proxies.filterNot(hides).distinct())

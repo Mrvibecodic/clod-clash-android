@@ -103,8 +103,9 @@ class ClashManager(private val context: Context) : IClashManager,
     override suspend fun queryProfileMode(): ProfileMode = withContext(Dispatchers.IO) {
         val current = store.activeProfile ?: return@withContext ProfileMode()
 
-        Clash.queryModeOf(
-            context.importedDir.resolve(current.toString()),
+        ProfileProcessor.queryMode(
+            context,
+            current,
             sessionOverrideFor(ModeChoiceDao().queryChoice(current)),
         )
     }
