@@ -100,6 +100,14 @@ jobs:
           check app/src/main/java/com/github/kr328/clash/util/ProfileUpdates.kt 'FETCH_BUDGET = TimeUnit\.SECONDS\.toMillis\(180\)'
           check app/src/main/java/com/github/kr328/clash/util/ProfileUpdates.kt 'MIGRATION_PROBE_BUDGET = TimeUnit\.SECONDS\.toMillis\(60\)'
 
+      - name: Check Prerelease Channel Key Kept As Stored
+        run: |
+          set -euo pipefail
+          grep -Eq 'key = "nightly_channel",$' app/src/main/java/com/github/kr328/clash/store/AppStore.kt || {
+            echo "Ключ канала пре-релизов в хранилище намеренно не совпадает с именем свойства prereleaseChannel: переименование потеряет настройку у всех, кто её включал" >&2
+            exit 1
+          }
+
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
