@@ -401,6 +401,9 @@
     <string name="clod_update_none">You are on the latest version</string>
     <string name="clod_update_check_failed">Could not check for updates</string>
     <string name="clod_update_permission">Allow installation so the app can update itself. The system will open its own screen — turn the switch on there.</string>
+    <string name="clod_update_confirm_channel">Update</string>
+    <string name="clod_update_confirm_title">Update ready to install</string>
+    <string name="clod_update_confirm_text">Tap to confirm the installation</string>
     <string name="clod_mode">Mode</string>
     <string name="clod_mode_locked">%s · set by your provider</string>
     <string name="clod_mode_locked_hint">Your provider has fixed the routing mode for this subscription. It cannot be changed in the app.</string>

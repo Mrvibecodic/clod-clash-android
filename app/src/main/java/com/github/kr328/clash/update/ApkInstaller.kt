@@ -1,5 +1,6 @@
 package com.github.kr328.clash.update
 
+import android.app.ActivityManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -8,11 +9,21 @@ import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.core.app.NotificationChannelCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.util.withAppLocale
 import java.io.File
+import com.github.kr328.clash.design.R as DesignR
+import com.github.kr328.clash.service.R as ServiceR
 
 object ApkInstaller {
     private const val TAG = "ApkInstaller"
+
+    private const val CONFIRM_CHANNEL = "update_confirm_channel"
+    private const val CONFIRM_NOTIFICATION_ID = 0x7702
 
     const val ACTION_INSTALL_STATUS = "install_status"
 
@@ -71,8 +82,62 @@ object ApkInstaller {
         } catch (e: Throwable) {
             runCatching { installer.abandonSession(sessionId) }
 
+            apk.delete()
+
             throw e
         }
+    }
+
+    private fun hasVisibleActivity(): Boolean {
+        val state = ActivityManager.RunningAppProcessInfo()
+
+        ActivityManager.getMyMemoryState(state)
+
+        return state.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+    }
+
+    private fun notifyConfirm(base: Context, confirm: Intent): Boolean {
+        val context = base.withAppLocale()
+
+        val manager = NotificationManagerCompat.from(context)
+
+        if (!manager.areNotificationsEnabled()) return false
+
+        manager.createNotificationChannel(
+            NotificationChannelCompat.Builder(
+                CONFIRM_CHANNEL,
+                NotificationManagerCompat.IMPORTANCE_HIGH,
+            ).setName(context.getString(DesignR.string.clod_update_confirm_channel)).build()
+        )
+
+        val channel = manager.getNotificationChannelCompat(CONFIRM_CHANNEL)
+
+        if (channel != null && channel.importance == NotificationManagerCompat.IMPORTANCE_NONE) {
+            return false
+        }
+
+        val notification = NotificationCompat.Builder(context, CONFIRM_CHANNEL)
+            .setSmallIcon(ServiceR.drawable.ic_logo_service)
+            .setContentTitle(context.getString(DesignR.string.clod_update_confirm_title))
+            .setContentText(context.getString(DesignR.string.clod_update_confirm_text))
+            .setAutoCancel(true)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    context,
+                    CONFIRM_NOTIFICATION_ID,
+                    confirm,
+                    pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
+                ),
+            )
+            .build()
+
+        return runCatching { manager.notify(CONFIRM_NOTIFICATION_ID, notification) }.isSuccess
+    }
+
+    private fun finish(context: Context) {
+        NotificationManagerCompat.from(context).cancel(CONFIRM_NOTIFICATION_ID)
+
+        File(context.cacheDir, "update.apk").delete()
     }
 
     class ResultReceiver : BroadcastReceiver() {
@@ -86,18 +151,39 @@ object ApkInstaller {
                         intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                     }
 
-                    confirm?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    confirm?.let(context::startActivity)
+                    if (confirm == null) return
+
+                    confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+                    if (hasVisibleActivity()) {
+                        context.startActivity(confirm)
+
+                        return
+                    }
+
+                    if (notifyConfirm(context, confirm)) return
+
+                    Log.w("$TAG: подтверждение установки показать негде")
+
+                    val session = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+                    if (session >= 0) {
+                        runCatching {
+                            context.packageManager.packageInstaller.abandonSession(session)
+                        }
+                    }
+
+                    finish(context)
                 }
 
                 PackageInstaller.STATUS_SUCCESS -> {
                     Log.i("$TAG: обновление установлено")
-                    File(context.cacheDir, "update.apk").delete()
+                    finish(context)
                 }
 
                 else -> {
                     val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                     Log.w("$TAG: установка не удалась, status=$status, $message")
+                    finish(context)
                 }
             }
         }
