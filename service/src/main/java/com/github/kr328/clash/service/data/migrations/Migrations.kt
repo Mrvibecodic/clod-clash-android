@@ -36,10 +36,18 @@ private val MIGRATION_5_6 = object : Migration(5, 6) {
     }
 }
 
+private val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(database: SupportSQLiteDatabase) {
+        database.execSQL("ALTER TABLE imported ADD COLUMN quota INTEGER NOT NULL DEFAULT 0")
+        database.execSQL("UPDATE imported SET quota = 1 WHERE type = 'Url' AND (upload + download + total + expire) > 0")
+    }
+}
+
 val MIGRATIONS: Array<Migration> = arrayOf(
     MIGRATION_1_2,
     MIGRATION_2_3,
     MIGRATION_3_4,
     MIGRATION_4_5,
     MIGRATION_5_6,
+    MIGRATION_6_7,
 )

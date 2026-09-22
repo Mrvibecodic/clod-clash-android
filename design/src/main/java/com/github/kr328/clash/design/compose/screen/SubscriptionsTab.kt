@@ -63,6 +63,8 @@ import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
+import com.github.kr328.clash.design.compose.component.TrafficLimit
+import com.github.kr328.clash.design.compose.component.trafficLimit
 import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
@@ -385,28 +387,31 @@ private fun SubscriptionCard(
                     }
                 }
 
-                Spacer(Modifier.height(6.dp))
+                val traffic = trafficText(profile, used)
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (profile.total > 0) {
-                            used.toBytesString() + " / " + profile.total.toBytesString()
+                if (traffic != null || profile.expire > 0) {
+                    Spacer(Modifier.height(6.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (traffic != null) {
+                            Text(
+                                text = traffic,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                            )
                         } else {
-                            used.toBytesString() + " · " +
-                                stringResource(R.string.clod_sub_unlimited)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (profile.expire > 0) {
-                        Text(
-                            text = expiryLeft(profile.expire, now)
-                                ?: expiryDate(profile.expire, now),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = status.color().statusText(),
-                            fontWeight = FontWeight.Medium,
-                        )
+                            Spacer(Modifier.weight(1f))
+                        }
+                        if (profile.expire > 0) {
+                            Text(
+                                text = expiryLeft(profile.expire, now)
+                                    ?: expiryDate(profile.expire, now),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = status.color().statusText(),
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                     }
                 }
 
@@ -473,17 +478,18 @@ fun ActiveSubscriptionCard(
             Spacer(Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (profile.total > 0) {
-                        used.toBytesString() + " / " + profile.total.toBytesString()
-                    } else {
-                        used.toBytesString() + " · " +
-                            stringResource(R.string.clod_sub_unlimited)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
+                val traffic = trafficText(profile, used)
+
+                if (traffic != null) {
+                    Text(
+                        text = traffic,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
                 if (profile.expire > 0) {
                     Text(
                         text = expiryDate(profile.expire, now),
@@ -542,6 +548,13 @@ fun ActiveSubscriptionCard(
             }
         }
     }
+}
+
+@Composable
+private fun trafficText(profile: Profile, used: Long): String? = when (val limit = profile.trafficLimit()) {
+    is TrafficLimit.Limited -> used.toBytesString() + " / " + limit.total.toBytesString()
+    TrafficLimit.Unlimited -> used.toBytesString() + " · " + stringResource(R.string.clod_sub_unlimited)
+    TrafficLimit.Unknown -> if (used > 0) used.toBytesString() else null
 }
 
 @Composable

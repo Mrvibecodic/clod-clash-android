@@ -126,6 +126,7 @@ object ProfileProcessor {
                         old?.createdAt ?: System.currentTimeMillis(),
                         secure = snapshot.secure,
                         intervalManual = manual,
+                        quota = subscriptionInfo?.subUpload != null,
                     )
                     if (old != null) {
                         ImportedDao().update(new)
@@ -186,6 +187,7 @@ object ProfileProcessor {
                                 download = subscriptionInfo.subDownload ?: 0,
                                 total = subscriptionInfo.subTotal ?: 0,
                                 expire = subscriptionInfo.subExpire ?: 0,
+                                quota = true,
                             )
                         } else {
                             imported
@@ -287,6 +289,7 @@ object ProfileProcessor {
                     download = info?.subDownload ?: imported.download,
                     total = info?.subTotal ?: imported.total,
                     expire = info?.subExpire ?: imported.expire,
+                    quota = info?.subUpload != null || imported.quota,
                 ),
             )
 

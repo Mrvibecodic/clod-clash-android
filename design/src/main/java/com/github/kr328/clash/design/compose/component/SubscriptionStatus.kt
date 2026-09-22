@@ -58,6 +58,18 @@ fun Profile.usedTraffic(): Long {
     return if (sum < 0) Long.MAX_VALUE else sum
 }
 
+sealed interface TrafficLimit {
+    data class Limited(val total: Long) : TrafficLimit
+    data object Unlimited : TrafficLimit
+    data object Unknown : TrafficLimit
+}
+
+fun Profile.trafficLimit(): TrafficLimit = when {
+    total > 0 -> TrafficLimit.Limited(total)
+    quota -> TrafficLimit.Unlimited
+    else -> TrafficLimit.Unknown
+}
+
 fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long = System.currentTimeMillis()): NoServersReason? {
     when (panel?.hwidState) {
         HWID_LIMIT_REACHED -> return NoServersReason.DeviceLimit
