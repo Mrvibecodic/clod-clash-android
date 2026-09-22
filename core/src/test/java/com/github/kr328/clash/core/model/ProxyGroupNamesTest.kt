@@ -3,6 +3,7 @@ package com.github.kr328.clash.core.model
 import com.github.kr328.clash.core.Clash
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,6 +26,15 @@ class ProxyGroupNamesTest {
         assertFalse(decoded.direct)
         assertEquals(listOf("Auto", "Proxy", "GLOBAL"), decoded.names)
         assertEquals(mapOf("Proxy" to "https://example/p.png"), decoded.icons)
+    }
+
+    @Test
+    fun `main group comes from the core and is absent in direct mode`() {
+        val rule = Clash.decodeGroupNames("""{"direct":false,"names":["Auto","Proxy"],"icons":{},"main":"Proxy"}""")
+        val direct = Clash.decodeGroupNames("""{"direct":true,"names":[],"icons":{}}""")
+
+        assertEquals("Proxy", rule.main)
+        assertNull(direct.main)
     }
 
     @Test

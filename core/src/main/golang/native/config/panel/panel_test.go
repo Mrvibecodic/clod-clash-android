@@ -2,6 +2,7 @@ package panel
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"reflect"
 	"strings"
@@ -924,5 +925,43 @@ func TestTitleBoundaryLengths(t *testing.T) {
 
 	if got := []rune(truncate(over, titleMaxChars)); len(got) != titleMaxChars+1 {
 		t.Fatalf("название длиной %d дало %d рун", titleMaxChars+1, len(got))
+	}
+}
+
+func TestMainGroupFollowsMatchRule(t *testing.T) {
+	list := []Group{{Name: "Auto"}, {Name: "Proxy"}, {Name: "YouTube"}}
+
+	cases := []struct {
+		rules []string
+		want  string
+	}{
+		{[]string{"DOMAIN-SUFFIX,youtube.com,YouTube", "MATCH,Proxy"}, "Proxy"},
+		{[]string{"MATCH,Hidden"}, "Auto"},
+		{[]string{"MATCH,DIRECT"}, "Auto"},
+		{nil, "Auto"},
+	}
+
+	for _, c := range cases {
+		if got := MainGroup(list, c.rules); got != c.want {
+			t.Fatalf("MainGroup(%v) = %q, want %q", c.rules, got, c.want)
+		}
+	}
+
+	if got := MainGroup(nil, []string{"MATCH,Proxy"}); got != "" {
+		t.Fatalf("без групп главной нет, получено %q", got)
+	}
+}
+
+func TestMainGroupSurvivesPanelFile(t *testing.T) {
+	dir := t.TempDir()
+
+	Write(dir, Info{Groups: []Group{{Name: "Auto"}, {Name: "Proxy"}}, Main: "Proxy"})
+
+	if got := Read(dir).Main; got != "Proxy" {
+		t.Fatalf("главная группа не пережила запись: %q", got)
+	}
+
+	if bytes, _ := json.Marshal(Info{}); strings.Contains(string(bytes), `"main"`) {
+		t.Fatalf("пустая главная группа не должна писаться: %s", bytes)
 	}
 }

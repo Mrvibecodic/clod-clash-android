@@ -91,3 +91,44 @@ func TestStringsReadsBothShapes(t *testing.T) {
 		t.Fatalf("Strings(string) = %v, want nil", got)
 	}
 }
+
+func TestMainIsTheMatchTargetGroup(t *testing.T) {
+	cases := []struct {
+		names  []string
+		target string
+		want   string
+	}{
+		{[]string{"A", "B"}, "B", "B"},
+		{[]string{"A", "B"}, "DIRECT", "A"},
+		{[]string{"A", "B"}, "", "A"},
+		{[]string{"GLOBAL"}, "Proxy", "GLOBAL"},
+		{nil, "B", ""},
+		{[]string{}, "", ""},
+	}
+
+	for _, c := range cases {
+		if got := Main(c.names, c.target); got != c.want {
+			t.Fatalf("Main(%v, %q) = %q, want %q", c.names, c.target, got, c.want)
+		}
+	}
+}
+
+func TestMatchTargetTakesTheFirstMatchRule(t *testing.T) {
+	cases := []struct {
+		rules []string
+		want  string
+	}{
+		{[]string{"DOMAIN-SUFFIX,youtube.com,YouTube", "MATCH,Proxy"}, "Proxy"},
+		{[]string{" match , Proxy "}, "Proxy"},
+		{[]string{"MATCH,Proxy", "MATCH,Other"}, "Proxy"},
+		{[]string{"DOMAIN,match.example,Ads", "GEOIP,RU,DIRECT"}, ""},
+		{[]string{"MATCH"}, ""},
+		{nil, ""},
+	}
+
+	for _, c := range cases {
+		if got := MatchTarget(c.rules); got != c.want {
+			t.Fatalf("MatchTarget(%v) = %q, want %q", c.rules, got, c.want)
+		}
+	}
+}

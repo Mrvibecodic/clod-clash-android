@@ -87,4 +87,5 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig) {
 	}
 
 	info.Groups = groups
+	info.Main = panel.MainGroup(groups, cfg.Rule)
 }

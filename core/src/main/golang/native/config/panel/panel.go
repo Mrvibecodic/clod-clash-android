@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"cfa/native/config/groups"
 )
 
 type Info struct {
@@ -61,12 +63,23 @@ type Info struct {
 	DisablePing bool `json:"disablePing,omitempty"`
 
 	Groups []Group `json:"groups,omitempty"`
+
+	Main string `json:"main,omitempty"`
 }
 
 type Group struct {
 	Name    string   `json:"name"`
 	Type    string   `json:"type"`
 	Proxies []string `json:"proxies,omitempty"`
+}
+
+func MainGroup(list []Group, rules []string) string {
+	names := make([]string, 0, len(list))
+	for _, group := range list {
+		names = append(names, group.Name)
+	}
+
+	return groups.Main(names, groups.MatchTarget(rules))
 }
 
 const panelFileName = "panel.json"

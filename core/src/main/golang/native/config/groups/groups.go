@@ -80,3 +80,30 @@ func Strings(value any) []string {
 
 	return nil
 }
+
+func MatchTarget(rules []string) string {
+	for _, rule := range rules {
+		parts := strings.Split(rule, ",")
+		if len(parts) < 2 || !strings.EqualFold(strings.TrimSpace(parts[0]), "MATCH") {
+			continue
+		}
+
+		return strings.TrimSpace(parts[1])
+	}
+
+	return ""
+}
+
+func Main(names []string, matchTarget string) string {
+	if len(names) == 0 {
+		return ""
+	}
+
+	for _, name := range names {
+		if name == matchTarget {
+			return name
+		}
+	}
+
+	return names[0]
+}

@@ -42,6 +42,8 @@ data class PanelInfo(
     val disablePing: Boolean = false,
 
     val groups: List<PanelGroup> = emptyList(),
+
+    val main: String? = null,
 ) {
     fun clockSkewMillis(): Long {
         if (clockSkew == 0L || clockSkewAt == 0L) return 0

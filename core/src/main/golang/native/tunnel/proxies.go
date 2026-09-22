@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 
+	"cfa/native/config/groups"
+
 	"github.com/dlclark/regexp2"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
@@ -57,6 +59,7 @@ type ProxyGroupNames struct {
 	Direct bool              `json:"direct"`
 	Names  []string          `json:"names"`
 	Icons  map[string]string `json:"icons"`
+	Main   string            `json:"main,omitempty"`
 }
 
 func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
@@ -84,6 +87,7 @@ func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 
 	if mode == tunnel.Global {
 		result.Names = []string{"GLOBAL"}
+		result.Main = groups.Main(result.Names, matchTarget())
 
 		return result
 	}
@@ -131,8 +135,19 @@ func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 	}
 
 	result.Names = names
+	result.Main = groups.Main(names, matchTarget())
 
 	return result
+}
+
+func matchTarget() string {
+	for _, rule := range tunnel.Rules() {
+		if rule.RuleType() == C.MATCH {
+			return rule.Adapter()
+		}
+	}
+
+	return ""
 }
 
 func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {

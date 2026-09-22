@@ -59,6 +59,12 @@ class PanelInfoTest {
     }
 
     @Test
+    fun `главная группа читается из panel json, а у старого файла её нет`() {
+        assertEquals("Proxy", decode("""{"groups":[{"name":"Auto"},{"name":"Proxy"}],"main":"Proxy"}""").main)
+        assertNull(decode("""{"groups":[{"name":"Auto"},{"name":"Proxy"}]}""").main)
+    }
+
+    @Test
     fun `ссылки провайдера читаются теми же именами, что пишет ядро`() {
         val info = decode(
             """{"portalUrl":"https://provider.example/cabinet",""" +
