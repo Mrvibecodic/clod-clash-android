@@ -729,6 +729,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         val snapshot = if (running) withClash { queryProxyGroupNames(true) } else ProxyGroupNames()
         val names = snapshot.names
 
+        setAllGroupsOnHome(uiStore.showAllGroupsOnHome)
+
         if (names.isEmpty()) {
             globalSelection = null
 
@@ -1012,7 +1014,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         return group
     }
 
-    private fun homeGroups(): List<String> = listOfNotNull(mainGroup)
+    private fun homeGroups(): List<String> =
+        if (uiStore.showAllGroupsOnHome) proxyGroupNames else listOfNotNull(mainGroup)
 
     private companion object {
         private const val DELAY_UNKNOWN = 0xffff

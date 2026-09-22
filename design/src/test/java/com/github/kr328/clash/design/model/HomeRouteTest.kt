@@ -103,4 +103,26 @@ class HomeRouteTest {
         assertEquals(HomeRoute.None, homeRoute(Mode.Rule, cold, "Gone", false))
         assertEquals(HomeRoute.None, homeRoute(Mode.Rule, cold, null, false))
     }
+
+    @Test
+    fun `остальные группы идут под главной, REJECT скрыт, DIRECT без пинга`() {
+        assertEquals(
+            listOf(
+                HomeRoute.Server("Auto", germany, 80),
+                HomeRoute.Server("YouTube", netherlands, 95),
+                HomeRoute.Server("Telegram", germany, 80),
+                HomeRoute.Bypass("Local"),
+            ),
+            homeExtras(Mode.Rule, template, "Proxy", readOnly = false),
+        )
+    }
+
+    @Test
+    fun `в прямом и глобальном режиме дополнительных строк нет`() {
+        val global = listOf(group("GLOBAL", "Proxy", node("Proxy", 120, isGroup = true)))
+
+        assertEquals(emptyList<HomeRoute>(), homeExtras(Mode.Direct, template, "Proxy", readOnly = true))
+        assertEquals(emptyList<HomeRoute>(), homeExtras(Mode.Rule, template, "Proxy", readOnly = true))
+        assertEquals(emptyList<HomeRoute>(), homeExtras(Mode.Global, global, "GLOBAL", readOnly = false))
+    }
 }

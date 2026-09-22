@@ -317,6 +317,12 @@ class MainDesign(
         }
     }
 
+    suspend fun setAllGroupsOnHome(enabled: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(servers = state.servers.copy(allOnHome = enabled))
+        }
+    }
+
     suspend fun setGroupIcons(icons: Map<String, String>) {
         withContext(Dispatchers.Main) {
             state = state.copy(servers = state.servers.copy(icons = icons))

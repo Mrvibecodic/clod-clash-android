@@ -20,6 +20,16 @@ sealed interface HomeRoute {
 fun mainGroupOf(names: List<String>, main: String?): String? =
     main?.takeIf { it in names } ?: names.firstOrNull()
 
+fun homeExtras(
+    mode: TunnelState.Mode,
+    groups: List<ProxyGroupState>,
+    main: String?,
+    readOnly: Boolean,
+): List<HomeRoute> = groups
+    .filter { it.name != main }
+    .map { homeRoute(mode, groups, it.name, readOnly) }
+    .filter { it is HomeRoute.Server || it is HomeRoute.Bypass }
+
 fun homeRoute(
     mode: TunnelState.Mode,
     groups: List<ProxyGroupState>,

@@ -55,6 +55,7 @@ class AppSettingsDesign(
             darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
             language = currentLanguage(),
             showGroupIcons = uiStore.showGroupIcons,
+            showAllGroupsOnHome = uiStore.showAllGroupsOnHome,
             hideAppIcon = uiStore.hideAppIcon,
             canHideAppIcon = canHideAppIcon,
             hideFromRecents = uiStore.hideFromRecents,
@@ -124,6 +125,7 @@ class AppSettingsDesign(
                     darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
                     language = 0,
                     showGroupIcons = uiStore.showGroupIcons,
+                    showAllGroupsOnHome = uiStore.showAllGroupsOnHome,
                     hideAppIcon = false,
                     hideFromRecents = uiStore.hideFromRecents,
                     allowExternalControl = uiStore.allowExternalControl,
@@ -220,6 +222,11 @@ class AppSettingsDesign(
                 uiStore.showGroupIcons = action.enabled
 
                 state = state.copy(showGroupIcons = action.enabled)
+            }
+            is AppSettingsAction.SetShowAllGroupsOnHome -> {
+                uiStore.showAllGroupsOnHome = action.enabled
+
+                state = state.copy(showAllGroupsOnHome = action.enabled)
             }
             is AppSettingsAction.SetDarkMode -> {
                 val mode = darkModes.getOrNull(action.index) ?: return

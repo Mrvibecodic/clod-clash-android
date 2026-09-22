@@ -37,6 +37,7 @@ data class AppSettingsState(
     val darkMode: Int = 0,
     val language: Int = 0,
     val showGroupIcons: Boolean = true,
+    val showAllGroupsOnHome: Boolean = false,
     val hideAppIcon: Boolean = false,
     val canHideAppIcon: Boolean = true,
     val hideFromRecents: Boolean = false,
@@ -57,6 +58,7 @@ sealed interface AppSettingsAction {
     data class SetDarkMode(val index: Int) : AppSettingsAction
     data class SetLanguage(val index: Int) : AppSettingsAction
     data class SetShowGroupIcons(val enabled: Boolean) : AppSettingsAction
+    data class SetShowAllGroupsOnHome(val enabled: Boolean) : AppSettingsAction
     data class SetHideAppIcon(val enabled: Boolean) : AppSettingsAction
     data class SetHideFromRecents(val enabled: Boolean) : AppSettingsAction
     data class SetAllowExternalControl(val enabled: Boolean) : AppSettingsAction
@@ -125,6 +127,13 @@ fun AppSettingsScreen(
                 icon = painterResource(R.drawable.ic_nav_servers),
                 checked = state.showGroupIcons,
                 onCheckedChange = { onAction(AppSettingsAction.SetShowGroupIcons(it)) },
+            )
+            SwitchRow(
+                title = stringResource(R.string.clod_all_groups_home_title),
+                subtitle = stringResource(R.string.clod_all_groups_home_summary),
+                icon = painterResource(R.drawable.ic_nav_home),
+                checked = state.showAllGroupsOnHome,
+                onCheckedChange = { onAction(AppSettingsAction.SetShowAllGroupsOnHome(it)) },
             )
             if (state.canHideAppIcon) {
                 SwitchRow(

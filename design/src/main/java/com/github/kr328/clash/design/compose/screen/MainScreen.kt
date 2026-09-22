@@ -83,6 +83,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -108,6 +109,7 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
+import com.github.kr328.clash.design.compose.component.rememberGroupIcon
 import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
@@ -115,6 +117,7 @@ import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.design.model.HomeRoute
 import com.github.kr328.clash.design.model.ToggleIntent
+import com.github.kr328.clash.design.model.homeExtras
 import com.github.kr328.clash.design.model.homeRoute
 import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.design.model.toggleIntent
@@ -155,6 +158,7 @@ data class ServersState(
     val icons: Map<String, String> = emptyMap(),
     val selected: Int = 0,
     val main: String? = null,
+    val allOnHome: Boolean = false,
     val testing: Boolean = false,
     val measuring: Int = 0,
     val offline: Boolean = false,
@@ -585,6 +589,33 @@ private fun HomeTab(
             marksOnly = state.active?.panel?.disablePing == true,
             onAction = onAction,
         )
+
+        if (state.servers.allOnHome) {
+            val extras = remember(state.mode, state.servers) {
+                homeExtras(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly)
+            }
+
+            extras.forEach { route ->
+                val group = when (route) {
+                    is HomeRoute.Server -> route.group
+                    is HomeRoute.Bypass -> route.group
+                    else -> return@forEach
+                }
+                val icon = rememberGroupIcon(state.servers.icons[group])
+                val iconPainter = remember(icon) { icon?.let(::BitmapPainter) }
+
+                Spacer(Modifier.height(8.dp))
+
+                HomeRouteRow(
+                    route = route,
+                    label = group.bidiIsolated(),
+                    leading = iconPainter ?: painterResource(R.drawable.ic_nav_servers),
+                    groups = state.servers.groups,
+                    marksOnly = state.active?.panel?.disablePing == true,
+                    onAction = onAction,
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
     }

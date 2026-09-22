@@ -462,6 +462,8 @@
     <string name="clod_language_system">System default</string>
     <string name="clod_group_icons_title">Group icons</string>
     <string name="clod_group_icons_summary">Show icons provided by the subscription next to group names</string>
+    <string name="clod_all_groups_home_title">All groups on Home</string>
+    <string name="clod_all_groups_home_summary">Show the selected server of every group</string>
     <string name="clod_backup_export_title">Back up subscriptions</string>
     <string name="clod_backup_export_summary">Save subscription links to a file. Keep it private: the links give access to your subscriptions</string>
     <string name="clod_backup_import_title">Restore subscriptions</string>

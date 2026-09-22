@@ -43,6 +43,11 @@ class UiStore(context: Context) {
         defaultValue = true
     )
 
+    var showAllGroupsOnHome: Boolean by store.boolean(
+        key = "show_all_groups_on_home",
+        defaultValue = false
+    )
+
     var darkMode: DarkMode by store.enum(
         key = "dark_mode",
         defaultValue = DarkMode.Auto,
@@ -132,6 +137,7 @@ class UiStore(context: Context) {
             "enable_vpn",
             "dark_mode",
             "show_group_icons",
+            "show_all_groups_on_home",
             HIDE_APP_ICON,
             "hide_from_recents",
             "allow_external_control",

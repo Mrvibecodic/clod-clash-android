@@ -449,6 +449,8 @@
     <string name="clod_language_system">Как в системе</string>
     <string name="clod_group_icons_title">Иконки групп</string>
     <string name="clod_group_icons_summary">Показывать значки из подписки рядом с названиями групп</string>
+    <string name="clod_all_groups_home_title">Все группы на Главной</string>
+    <string name="clod_all_groups_home_summary">Показывать выбранный сервер каждой группы</string>
     <string name="clod_backup_export_title">Сохранить подписки</string>
     <string name="clod_backup_export_summary">Сохранить ссылки подписок в файл. Не передавайте его: по ссылкам открывается доступ к подпискам</string>
     <string name="clod_backup_import_title">Восстановить подписки</string>
