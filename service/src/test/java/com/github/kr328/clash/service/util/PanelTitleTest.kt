@@ -1,5 +1,6 @@
 package com.github.kr328.clash.service.util
 
+import com.github.kr328.clash.service.model.PanelInfo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -54,5 +55,12 @@ class PanelTitleTest {
 
         assertEquals(max, once.dropLast(1).codePointCount(0, once.length - 1))
         assertEquals("🙃".repeat(max) + "…", once)
+    }
+
+    @Test
+    fun `имя подписки берётся из панели, иначе сохранённое`() {
+        assertEquals("a", profileDisplayName(null, "a"))
+        assertEquals("a", profileDisplayName(PanelInfo(title = " "), "a"))
+        assertEquals("T", profileDisplayName(PanelInfo(title = "T"), "a"))
     }
 }

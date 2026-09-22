@@ -6,6 +6,7 @@ import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
+import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.store.AppStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -102,7 +103,7 @@ object ProfileImports {
                     }
                 }
 
-                val title = context.queryPanelInfo(uuid)?.title?.takeIf { it.isNotBlank() } ?: profile.name
+                val title = profileDisplayName(context.queryPanelInfo(uuid), profile.name)
 
                 AppStore(context).apply {
                     addedProfileName = title

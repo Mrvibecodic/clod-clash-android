@@ -175,12 +175,14 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 Log.w("Profile ${failed.name} failed to load, keeping $retainedName: $message")
 
+                val failedName = service.displayProfileName(failed.uuid, failed.name)
+
                 service.sendProfileLoadFailed(
                     current,
                     if (current == retained)
-                        service.getString(R.string.clod_profile_reload_failed, failed.name, message)
+                        service.getString(R.string.clod_profile_reload_failed, failedName, message)
                     else
-                        service.getString(R.string.clod_profile_load_failed, failed.name, message, retainedName)
+                        service.getString(R.string.clod_profile_load_failed, failedName, message, retainedName)
                 )
             }
         }

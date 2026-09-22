@@ -245,7 +245,7 @@ private fun SubscriptionCard(
         AlertDialog(
             onDismissRequest = { deleting = false },
             title = { Text(stringResource(R.string.delete)) },
-            text = { Text(stringResource(R.string.clod_sub_delete_message, profile.name.bidiIsolated())) },
+            text = { Text(stringResource(R.string.clod_sub_delete_message, item.title.bidiIsolated())) },
             confirmButton = {
                 TextButton(
                     onClick = {

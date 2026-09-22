@@ -9,6 +9,7 @@ import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
 import java.io.FileNotFoundException
@@ -52,7 +53,7 @@ class Picker(private val context: Context) {
         val pending = PendingDao().queryByUUID(path.uuid)
         val imported = ImportedDao().queryByUUID(path.uuid)
 
-        val name = pending?.name ?: imported?.name ?: throw FileNotFoundException("profile not found")
+        val name = context.displayProfileName(path.uuid, pending?.name ?: imported?.name ?: throw FileNotFoundException("profile not found"))
         val type = pending?.type ?: imported?.type ?: throw FileNotFoundException("profile not found")
 
         if (path.scope == Path.Scope.Configuration && path.relative != null)

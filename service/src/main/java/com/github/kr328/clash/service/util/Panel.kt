@@ -42,6 +42,9 @@ fun Context.profileLogoFile(uuid: UUID, panel: PanelInfo?): String? {
     return file.takeIf { it.isFile }?.absolutePath
 }
 
+fun profileDisplayName(panel: PanelInfo?, name: String): String =
+    panel?.title?.takeIf { it.isNotBlank() } ?: name
+
 fun Context.displayProfileName(uuid: UUID, fallback: String): String {
-    return readPanelInfo(uuid)?.title?.takeIf { it.isNotBlank() } ?: fallback
+    return profileDisplayName(readPanelInfo(uuid), fallback)
 }

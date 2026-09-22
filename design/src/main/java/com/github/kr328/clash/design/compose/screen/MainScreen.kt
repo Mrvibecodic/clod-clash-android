@@ -115,6 +115,7 @@ import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.GroupIcons
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.profileDisplayName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -162,7 +163,7 @@ data class SubscriptionItem(
     val logoPath: String? = null,
 ) {
     val title: String
-        get() = panel?.title?.takeIf { it.isNotBlank() } ?: profile.name
+        get() = profileDisplayName(panel, profile.name)
 
     fun panelClockSkew(): Long = panel?.clockSkewMillis() ?: 0
 }
