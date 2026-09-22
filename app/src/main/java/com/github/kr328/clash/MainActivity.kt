@@ -383,7 +383,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
                         MainDesign.Request.CheckUpdate ->
-                            UpdateTask.check(this@MainActivity, manual = true)
+                            if (UpdateTask.state.value is UpdateTask.State.Checking) {
+                                UpdateTask.cancel()
+                            } else {
+                                UpdateTask.check(this@MainActivity, manual = true)
+                            }
 
                         MainDesign.Request.UpdateNow -> design.launchUpdate()
                         MainDesign.Request.UpdateSkip -> {

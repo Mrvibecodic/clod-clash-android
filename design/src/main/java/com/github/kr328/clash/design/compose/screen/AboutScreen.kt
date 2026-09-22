@@ -89,7 +89,6 @@ fun AboutScreen(
 
             Button(
                 onClick = { onAction(MainAction.CheckUpdate) },
-                enabled = !state.checking,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (state.checking) {
@@ -100,7 +99,11 @@ fun AboutScreen(
                     )
                     Spacer(Modifier.width(10.dp))
                 }
-                Text(stringResource(R.string.clod_update_check))
+                Text(
+                    stringResource(
+                        if (state.checking) R.string.cancel else R.string.clod_update_check,
+                    ),
+                )
             }
         }
 

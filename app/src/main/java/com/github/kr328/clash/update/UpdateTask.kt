@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -48,6 +49,8 @@ object UpdateTask {
 
         job = Global.launch {
             val outcome = UpdatePrompt.check(app, manual, app.activeLocalProxyPort())
+
+            ensureActive()
 
             current.value = when (outcome) {
                 is UpdatePrompt.Outcome.Ready -> State.Available(outcome.available)
@@ -96,6 +99,16 @@ object UpdateTask {
                 },
             )
         }
+    }
+
+    fun cancel() {
+        val checking = current.value
+
+        if (checking !is State.Checking) return
+
+        job?.cancel()
+
+        current.compareAndSet(checking, State.Idle)
     }
 
     fun dismiss() {
