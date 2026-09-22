@@ -178,14 +178,14 @@ class AppSettingsDesign(
     }
 
     private fun notificationsBlocked(): Boolean {
-        if (!uiStore.notificationsAsked)
+        if (!uiStore.notificationsRequested)
             return false
 
         return !NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
     private fun askNotificationsIfNeeded(enabled: Boolean) {
-        if (!enabled || uiStore.notificationsAsked)
+        if (!enabled || uiStore.notificationsRequested)
             return
 
         if (NotificationManagerCompat.from(context).areNotificationsEnabled())

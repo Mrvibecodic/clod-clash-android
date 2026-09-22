@@ -279,7 +279,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             Log.w("Request notifications: $e", e)
         }
 
-        uiStore.notificationsAsked = true
+        uiStore.notificationsRequested = true
 
         design?.refreshNotifications()
     }

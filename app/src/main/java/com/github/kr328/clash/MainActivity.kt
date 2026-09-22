@@ -35,6 +35,7 @@ import com.github.kr328.clash.design.compose.screen.AboutState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.model.globalRoutingBlocked
 import com.github.kr328.clash.design.model.ToggleIntent
+import com.github.kr328.clash.design.model.notificationPromptDue
 import com.github.kr328.clash.design.model.toggleIntent
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
@@ -500,7 +501,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             launch {
                                 requestNotifications()
 
-                                uiStore.notificationsAsked = true
+                                uiStore.notificationsRequested = true
 
                                 if (!clashRunning) {
                                     design.startClash()
@@ -508,7 +509,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         MainDesign.Request.SkipNotifications -> {
-                            uiStore.notificationsAsked = true
+                            uiStore.notificationsSnoozedAt = System.currentTimeMillis()
+                            uiStore.notificationsSnoozes += 1
 
                             design.setNotificationPrompt(false)
 
@@ -1223,13 +1225,16 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
             return false
 
-        if (uiStore.notificationsAsked)
-            return false
-
-        return ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.POST_NOTIFICATIONS,
-        ) != PackageManager.PERMISSION_GRANTED
+        return notificationPromptDue(
+            granted = ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED,
+            requested = uiStore.notificationsRequested,
+            snoozedAt = uiStore.notificationsSnoozedAt,
+            snoozes = uiStore.notificationsSnoozes,
+            now = System.currentTimeMillis(),
+        )
     }
 
     private suspend fun requestNotifications() {

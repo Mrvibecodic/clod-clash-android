@@ -62,9 +62,19 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
-    var notificationsAsked: Boolean by store.boolean(
+    var notificationsRequested: Boolean by store.boolean(
         key = "notifications_asked",
         defaultValue = false,
+    )
+
+    var notificationsSnoozedAt: Long by store.long(
+        key = "notifications_snoozed_at",
+        defaultValue = 0L,
+    )
+
+    var notificationsSnoozes: Int by store.int(
+        key = "notifications_snoozes",
+        defaultValue = 0,
     )
 
     var allowExternalControl: Boolean by store.boolean(
@@ -131,6 +141,8 @@ class UiStore(context: Context) {
             "access_control_reverse",
             "access_control_system_app",
             "notifications_asked",
+            "notifications_snoozed_at",
+            "notifications_snoozes",
             "reliability_asked",
         )
 
