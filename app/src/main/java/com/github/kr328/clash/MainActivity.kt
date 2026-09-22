@@ -25,6 +25,7 @@ import android.net.Uri
 import android.os.RemoteException
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
+import com.github.kr328.clash.core.model.ProxyGroup
 import com.github.kr328.clash.core.model.ProxyGroupNames
 import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
@@ -34,6 +35,7 @@ import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.compose.screen.AboutState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.model.globalRoutingBlocked
+import com.github.kr328.clash.design.model.mainGroupOf
 import com.github.kr328.clash.design.model.ToggleIntent
 import com.github.kr328.clash.design.model.notificationPromptDue
 import com.github.kr328.clash.design.model.toggleIntent
@@ -43,6 +45,7 @@ import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.applyDynamicShortcuts
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
+import com.github.kr328.clash.util.loadRouteGroups
 import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
@@ -53,7 +56,6 @@ import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.querySubscriptionGroups
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.screen.MainScreenState
-import com.github.kr328.clash.design.compose.screen.ServersState
 import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionsState
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -111,7 +113,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     override suspend fun main() {
-        val design = MainDesign(this, restoredState())
+        val design = MainDesign(this, restoredState(), restored?.getString(KEY_GROUP))
 
         setContentDesign(design)
 
@@ -677,6 +679,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var offlineGroups: List<PanelGroup> = emptyList()
 
+    private var mainGroup: String? = null
+
     private var panelRunning: Boolean? = null
 
     private var healthCheckedGroups: List<String>
@@ -738,8 +742,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         proxyGroupNames = names
         offlineGroups = emptyList()
         serversReadOnly = false
+        mainGroup = mainGroupOf(names, snapshot.main)
 
-        setProxyGroupNames(names)
+        setProxyGroupNames(names, main = mainGroup)
 
         setGroupIcons(if (uiStore.showGroupIcons) snapshot.icons else emptyMap())
 
@@ -894,6 +899,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             group.copy(proxies = group.proxies.filterNot { panel?.hides(it) == true })
         }
         proxyGroupNames = offlineGroups.map { it.name }
+        mainGroup = mainGroupOf(proxyGroupNames, panel?.main)
         healthCheckedGroups = emptyList()
 
         setGroupIcons(emptyMap())
@@ -916,19 +922,26 @@ class MainActivity : BaseActivity<MainDesign>() {
             }
         }
 
-        setProxyGroupNames(proxyGroupNames, offline = true, readOnly = readOnly)
+        setProxyGroupNames(proxyGroupNames, offline = true, readOnly = readOnly, main = mainGroup)
 
         fillOfflineProxyGroup(selectedGroup)
     }
 
     private suspend fun MainDesign.fillOfflineProxyGroup(index: Int) {
-        val group = offlineGroups.getOrNull(index) ?: return
+        val now = fillOfflineGroup(index)
+
+        loadRouteGroups(proxyGroupNames, homeGroups(), index, now) { fillOfflineGroup(it) }
+    }
+
+    private suspend fun MainDesign.fillOfflineGroup(index: Int): String? {
+        val group = offlineGroups.getOrNull(index) ?: return null
 
         val readOnly = serversReadOnly
+        val now = offlineSelections[group.name].orEmpty()
 
         setProxyGroup(
             index = index,
-            now = offlineSelections[group.name].orEmpty(),
+            now = now,
             selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
             proxies = group.proxies.distinct().map { name ->
                 Proxy(
@@ -941,6 +954,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                 )
             },
         )
+
+        return now
     }
 
     private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {
@@ -977,7 +992,15 @@ class MainActivity : BaseActivity<MainDesign>() {
             return offlineDelays.values.toList()
         }
 
-        val name = proxyGroupNames.getOrNull(index) ?: return emptyList()
+        val group = loadProxyGroup(index)
+
+        loadRouteGroups(proxyGroupNames, homeGroups(), index, group?.now) { loadProxyGroup(it)?.now }
+
+        return group?.proxies.orEmpty().filter { !it.isGroup }.map { it.delay }
+    }
+
+    private suspend fun MainDesign.loadProxyGroup(index: Int): ProxyGroup? {
+        val name = proxyGroupNames.getOrNull(index) ?: return null
         val group = withClash { queryProxyGroup(name, uiStore.proxySort) }
 
         if (name == GLOBAL_GROUP) {
@@ -986,8 +1009,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
 
-        return group.proxies.filter { !it.isGroup }.map { it.delay }
+        return group
     }
+
+    private fun homeGroups(): List<String> = listOfNotNull(mainGroup)
 
     private companion object {
         private const val DELAY_UNKNOWN = 0xffff
@@ -1690,7 +1715,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         return MainScreenState(
             selectedTab = bundle.getString(KEY_TAB)?.let { MainTab.valueOf(it) } ?: MainTab.Home,
             subScreen = bundle.getString(KEY_SUB_SCREEN)?.let { SubScreen.valueOf(it) },
-            servers = ServersState(selected = bundle.getInt(KEY_GROUP)),
             subscriptions = SubscriptionsState(selectedGroup = bundle.getString(KEY_SUB_GROUP)),
             about = about,
         )
@@ -1703,7 +1727,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         outState.putString(KEY_TAB, design.selectedTab.name)
         outState.putString(KEY_SUB_SCREEN, design.subScreen?.name)
-        outState.putInt(KEY_GROUP, design.selectedGroup)
+        outState.putString(KEY_GROUP, design.selectedGroupName)
         outState.putString(KEY_SUB_GROUP, design.selectedSubscriptionGroup)
     }
 

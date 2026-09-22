@@ -83,6 +83,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -112,7 +113,9 @@ import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
+import com.github.kr328.clash.design.model.HomeRoute
 import com.github.kr328.clash.design.model.ToggleIntent
+import com.github.kr328.clash.design.model.homeRoute
 import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.design.model.toggleIntent
 import com.github.kr328.clash.design.util.bidiIsolated
@@ -151,6 +154,7 @@ data class ServersState(
     val groups: List<ProxyGroupState> = emptyList(),
     val icons: Map<String, String> = emptyMap(),
     val selected: Int = 0,
+    val main: String? = null,
     val testing: Boolean = false,
     val measuring: Int = 0,
     val offline: Boolean = false,
@@ -563,40 +567,87 @@ private fun HomeTab(
             }
         }
 
-        state.servers.groups.getOrNull(state.servers.selected)?.let { group ->
-            val current = remember(group) { group.proxies.firstOrNull { it.name == group.now } }
-            val marksOnly = state.active?.panel?.disablePing == true
-
-            SelectorRow(
-                label = stringResource(
-                    if (connected) {
-                        R.string.clod_home_connected_to
-                    } else {
-                        R.string.clod_home_selected_server
-                    },
-                ),
-                value = (
-                    current?.title
-                        ?: group.now.ifBlank { stringResource(R.string.proxy) }
-                    ).bidiIsolated(),
-                leading = painterResource(R.drawable.ic_nav_servers),
-                onClick = { onAction(MainAction.SelectTab(MainTab.Servers)) },
-                trailing = if (current != null) {
-                    {
-                        PingBadge(
-                            delay = current.delay,
-                            on = MaterialTheme.colorScheme.surfaceContainerLow,
-                            marksOnly = marksOnly,
-                        )
-                    }
-                } else {
-                    null
-                },
-            )
+        val route = remember(state.mode, state.servers) {
+            homeRoute(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly)
         }
+
+        HomeRouteRow(
+            route = route,
+            label = stringResource(
+                if (connected) {
+                    R.string.clod_home_connected_to
+                } else {
+                    R.string.clod_home_selected_server
+                },
+            ),
+            leading = painterResource(R.drawable.ic_nav_servers),
+            groups = state.servers.groups,
+            marksOnly = state.active?.panel?.disablePing == true,
+            onAction = onAction,
+        )
 
         Spacer(Modifier.height(24.dp))
     }
+}
+
+@Composable
+private fun HomeRouteRow(
+    route: HomeRoute,
+    label: String,
+    leading: Painter,
+    groups: List<ProxyGroupState>,
+    marksOnly: Boolean,
+    onAction: (MainAction) -> Unit,
+) {
+    if (route is HomeRoute.Direct) {
+        SelectorRow(
+            label = stringResource(R.string.clod_mode),
+            value = stringResource(R.string.clod_home_direct),
+            leading = painterResource(R.drawable.ic_baseline_vpn_lock),
+            onClick = { onAction(MainAction.SelectTab(MainTab.More)) },
+        )
+
+        return
+    }
+
+    val group = when (route) {
+        is HomeRoute.Server -> route.group
+        is HomeRoute.Bypass -> route.group
+        is HomeRoute.Blocked -> route.group
+        HomeRoute.Direct, HomeRoute.None -> return
+    }
+
+    val delay = (route as? HomeRoute.Server)?.delay
+
+    SelectorRow(
+        label = label,
+        value = when (route) {
+            is HomeRoute.Server -> (route.title ?: stringResource(R.string.proxy)).bidiIsolated()
+            is HomeRoute.Blocked -> route.title.bidiIsolated()
+            else -> stringResource(R.string.clod_home_bypass)
+        },
+        leading = leading,
+        onClick = {
+            val index = groups.indexOfFirst { it.name == group }
+
+            if (index >= 0) {
+                onAction(MainAction.SelectGroup(index))
+            }
+
+            onAction(MainAction.SelectTab(MainTab.Servers))
+        },
+        trailing = if (delay != null) {
+            {
+                PingBadge(
+                    delay = delay,
+                    on = MaterialTheme.colorScheme.surfaceContainerLow,
+                    marksOnly = marksOnly,
+                )
+            }
+        } else {
+            null
+        },
+    )
 }
 
 @Composable

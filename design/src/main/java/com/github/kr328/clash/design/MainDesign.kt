@@ -25,6 +25,7 @@ import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.model.RoutingDataMerge
+import com.github.kr328.clash.design.model.groupIndexOf
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
@@ -35,6 +36,7 @@ import kotlinx.coroutines.withContext
 class MainDesign(
     context: Context,
     initial: MainScreenState = MainScreenState(),
+    private var restoredGroup: String? = null,
 ) : Design<MainDesign.Request>(context) {
     sealed interface Request {
         data object ToggleStatus : Request
@@ -266,6 +268,9 @@ class MainDesign(
     val selectedGroup: Int
         get() = state.servers.selected
 
+    val selectedGroupName: String?
+        get() = state.servers.groups.getOrNull(state.servers.selected)?.name ?: restoredGroup
+
     val status: ConnectionStatus
         get() = state.status
 
@@ -285,8 +290,10 @@ class MainDesign(
         names: List<String>,
         offline: Boolean = false,
         readOnly: Boolean = false,
+        main: String? = null,
     ) {
         withContext(Dispatchers.Main) {
+            val selectedName = selectedGroupName
             val previous = state.servers.groups.associateBy { it.name }
             val groups = names.map { name ->
                 previous[name] ?: ProxyGroupState(
@@ -299,11 +306,14 @@ class MainDesign(
             state = state.copy(
                 servers = state.servers.copy(
                     groups = groups,
-                    selected = state.servers.selected.coerceIn(0, maxOf(groups.size - 1, 0)),
+                    selected = groupIndexOf(names, selectedName, state.servers.selected),
+                    main = main,
                     offline = offline,
                     readOnly = readOnly,
                 ),
             )
+
+            if (names.isNotEmpty()) restoredGroup = null
         }
     }
 

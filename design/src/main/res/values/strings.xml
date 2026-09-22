@@ -506,6 +506,8 @@
     <string name="clod_secure_channel_hint">The provider must support it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
     <string name="clod_home_connected_to">Connected to</string>
     <string name="clod_home_selected_server">Selected server</string>
+    <string name="clod_home_direct">Direct, no servers</string>
+    <string name="clod_home_bypass">Direct</string>
     <string name="clod_section_configuration">Configuration</string>
     <string name="clod_data_title">Routing data and providers</string>
     <string name="clod_just_now">Just now</string>

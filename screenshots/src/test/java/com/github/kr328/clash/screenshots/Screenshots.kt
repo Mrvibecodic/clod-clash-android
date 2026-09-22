@@ -113,6 +113,7 @@ abstract class Screenshots(private val locale: String, private val demo: DemoCon
                 },
             ),
         ),
+        main = "Servers",
     )
 
     private fun session(seconds: Long) = SessionStats(
