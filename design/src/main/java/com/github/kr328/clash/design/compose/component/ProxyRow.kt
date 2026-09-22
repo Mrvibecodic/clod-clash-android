@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -208,7 +209,7 @@ fun ProxyRow(
                     MaterialTheme.colorScheme.surfaceContainerLow
                 },
             )
-            .clickable {
+            .selectable(selected = selected, role = Role.RadioButton) {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
                 onClick()

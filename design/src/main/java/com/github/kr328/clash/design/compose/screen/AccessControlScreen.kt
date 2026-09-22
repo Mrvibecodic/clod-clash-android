@@ -52,6 +52,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -324,19 +328,21 @@ private fun AccessControlMenu(
         CheckableItem(
             title = stringResource(R.string.system_apps),
             checked = state.systemApps,
+            toggle = true,
         ) {
             pick(AccessControlAction.SystemApps(!state.systemApps))
         }
 
         MenuSection(stringResource(R.string.sort))
         for (sort in AppInfoSort.entries) {
-            CheckableItem(title = sort.title(), checked = state.sort == sort) {
+            CheckableItem(title = sort.title(), checked = state.sort == sort, toggle = false) {
                 pick(AccessControlAction.Sort(sort))
             }
         }
         CheckableItem(
             title = stringResource(R.string.reverse),
             checked = state.reverse,
+            toggle = true,
         ) {
             pick(AccessControlAction.Reverse(!state.reverse))
         }
@@ -378,8 +384,15 @@ private fun MenuSection(title: String) {
 }
 
 @Composable
-private fun CheckableItem(title: String, checked: Boolean, onClick: () -> Unit) {
+private fun CheckableItem(title: String, checked: Boolean, toggle: Boolean, onClick: () -> Unit) {
     DropdownMenuItem(
+        modifier = Modifier.semantics {
+            if (toggle) {
+                toggleableState = ToggleableState(checked)
+            } else {
+                selected = checked
+            }
+        },
         text = { Text(title) },
         onClick = onClick,
         trailingIcon = {

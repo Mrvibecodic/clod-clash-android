@@ -2,7 +2,6 @@ package com.github.kr328.clash.design.compose.screen
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -212,7 +211,9 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
         }
 
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .selectableGroup(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -289,7 +290,9 @@ private fun SubscriptionCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .clickable { onAction(MainAction.ActivateProfile(profile)) },
+            .selectable(selected = profile.active, role = Role.RadioButton) {
+                onAction(MainAction.ActivateProfile(profile))
+            },
     ) {
         Row {
             Box(

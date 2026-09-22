@@ -212,6 +212,7 @@ class MainDesign(
         withContext(Dispatchers.Main) {
             state = state.copy(
                 status = if (running) ConnectionStatus.Connected else ConnectionStatus.Disconnected,
+                running = running,
                 startupStage = null,
             )
         }
@@ -267,6 +268,9 @@ class MainDesign(
 
     val status: ConnectionStatus
         get() = state.status
+
+    val running: Boolean
+        get() = state.running
 
     val selectedTab: MainTab
         get() = state.selectedTab

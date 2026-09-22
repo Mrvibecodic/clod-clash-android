@@ -282,7 +282,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 design.requests.onReceive { request ->
                     when (request) {
                         MainDesign.Request.ToggleStatus -> {
-                            when (toggleIntent(design.status, clashRunning)) {
+                            when (toggleIntent(design.status, design.running)) {
                                 ToggleIntent.Start -> design.startClash()
                                 ToggleIntent.Stop -> requestStopClash()
                                 ToggleIntent.Ignore -> Unit

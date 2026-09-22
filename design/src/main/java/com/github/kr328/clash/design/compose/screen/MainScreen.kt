@@ -112,7 +112,9 @@ import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
+import com.github.kr328.clash.design.model.ToggleIntent
 import com.github.kr328.clash.design.model.providerLinks
+import com.github.kr328.clash.design.model.toggleIntent
 import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.GroupIcons
 import com.github.kr328.clash.service.model.PanelInfo
@@ -185,6 +187,7 @@ data class SubscriptionsState(
 @Immutable
 data class MainScreenState(
     val status: ConnectionStatus = ConnectionStatus.Disconnected,
+    val running: Boolean = false,
     val startupStage: String? = null,
     val active: SubscriptionItem? = null,
     val mode: TunnelState.Mode = TunnelState.Mode.Rule,
@@ -517,6 +520,7 @@ private fun HomeTab(
         ) {
             SessionPowerButton(
                 status = state.status,
+                intent = toggleIntent(state.status, state.running),
                 connected = connected,
                 session = session,
                 onClick = { onAction(MainAction.ToggleStatus) },
@@ -746,6 +750,7 @@ private fun StatusPill(status: ConnectionStatus) {
 @Composable
 private fun SessionPowerButton(
     status: ConnectionStatus,
+    intent: ToggleIntent,
     connected: Boolean,
     session: () -> SessionStats,
     onClick: () -> Unit,
@@ -755,9 +760,9 @@ private fun SessionPowerButton(
 
     PowerButton(
         status = status,
+        intent = intent,
         onClick = onClick,
         modifier = modifier,
-        diameter = 134.dp,
         caption = formatSession(seconds).takeIf { connected && seconds > 0 },
     )
 }
