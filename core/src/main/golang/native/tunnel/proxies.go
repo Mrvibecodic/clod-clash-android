@@ -100,6 +100,7 @@ func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 	proxies := providers[0].Proxies()
 	all := make([]string, 0, len(proxies))
 	selectable := make([]string, 0, len(proxies))
+	candidates := make([]groups.Candidate, 0, len(proxies))
 	icons := make(map[string]string)
 
 	for _, p := range proxies {
@@ -118,9 +119,12 @@ func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 			icons[p.Name()] = icon
 		}
 
-		if _, ok := g.(outboundgroup.SelectAble); ok {
+		_, canSelect := g.(outboundgroup.SelectAble)
+		if canSelect {
 			selectable = append(selectable, p.Name())
 		}
+
+		candidates = append(candidates, groups.Candidate{Name: p.Name(), Selectable: canSelect})
 	}
 
 	names := all
@@ -135,7 +139,7 @@ func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 	}
 
 	result.Names = names
-	result.Main = groups.Main(names, matchTarget())
+	result.Main = groups.MainOf(candidates, matchTarget())
 
 	return result
 }

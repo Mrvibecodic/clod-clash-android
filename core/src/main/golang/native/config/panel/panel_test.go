@@ -952,6 +952,30 @@ func TestMainGroupFollowsMatchRule(t *testing.T) {
 	}
 }
 
+func TestMainGroupSkipsGroupsWithoutChoice(t *testing.T) {
+	list := []Group{
+		{Name: "Balance", Type: "load-balance"},
+		{Name: "Proxy", Type: "select"},
+		{Name: "Auto", Type: "url-test"},
+		{Name: "Chain", Type: "relay"},
+	}
+
+	cases := []struct {
+		rules []string
+		want  string
+	}{
+		{[]string{"MATCH,Auto"}, "Auto"},
+		{[]string{"MATCH,Balance"}, "Proxy"},
+		{[]string{"MATCH,Chain"}, "Proxy"},
+	}
+
+	for _, c := range cases {
+		if got := MainGroup(list, c.rules); got != c.want {
+			t.Fatalf("MainGroup(%v) = %q, want %q", c.rules, got, c.want)
+		}
+	}
+}
+
 func TestMainGroupSurvivesPanelFile(t *testing.T) {
 	dir := t.TempDir()
 
@@ -975,7 +999,9 @@ func TestTemplateModeSurvivesPanelFile(t *testing.T) {
 		t.Fatalf("режим шаблона не пережил запись: %q", got)
 	}
 
-	if bytes, _ := json.Marshal(Info{}); strings.Contains(string(bytes), `"mode"`) {
-		t.Fatalf("пустой режим шаблона не должен писаться: %s", bytes)
+	Write(dir, Info{})
+
+	if got := Read(dir).Mode; got != "rule" {
+		t.Fatalf("пустой режим шаблона пишется как режим по правилам, получено %q", got)
 	}
 }

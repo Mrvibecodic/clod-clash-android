@@ -5,3 +5,6 @@ import com.github.kr328.clash.core.model.TunnelState
 
 fun sessionOverrideFor(choice: TunnelState.Mode?): ConfigurationOverride =
     ConfigurationOverride(mode = choice)
+
+fun modeChoiceChanged(stored: TunnelState.Mode?, requested: TunnelState.Mode?): Boolean =
+    stored != requested

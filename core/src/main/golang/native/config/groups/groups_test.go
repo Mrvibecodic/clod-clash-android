@@ -113,6 +113,41 @@ func TestMainIsTheMatchTargetGroup(t *testing.T) {
 	}
 }
 
+func TestMainOfPrefersSelectableGroups(t *testing.T) {
+	cases := []struct {
+		list   []Candidate
+		target string
+		want   string
+	}{
+		{[]Candidate{{"Balance", false}, {"Proxy", true}}, "Balance", "Proxy"},
+		{[]Candidate{{"Balance", false}, {"Proxy", true}}, "", "Proxy"},
+		{[]Candidate{{"Proxy", true}, {"Auto", true}}, "Auto", "Auto"},
+		{[]Candidate{{"Balance", false}, {"Chain", false}}, "Chain", "Chain"},
+		{[]Candidate{{"Balance", false}, {"Chain", false}}, "", "Balance"},
+		{nil, "Proxy", ""},
+	}
+
+	for _, c := range cases {
+		if got := MainOf(c.list, c.target); got != c.want {
+			t.Fatalf("MainOf(%v, %q) = %q, want %q", c.list, c.target, got, c.want)
+		}
+	}
+}
+
+func TestSelectableTypeMatchesTheCore(t *testing.T) {
+	for _, kind := range []string{"select", "url-test", "fallback"} {
+		if !SelectableType(kind) {
+			t.Fatalf("%s должна считаться группой с выбором", kind)
+		}
+	}
+
+	for _, kind := range []string{"load-balance", "relay", "", "Select"} {
+		if SelectableType(kind) {
+			t.Fatalf("%q не должна считаться группой с выбором", kind)
+		}
+	}
+}
+
 func TestMatchTargetTakesTheFirstMatchRule(t *testing.T) {
 	cases := []struct {
 		rules []string

@@ -13,6 +13,7 @@ import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.modeChoiceChanged
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.*
@@ -114,6 +115,8 @@ class ClashManager(private val context: Context) : IClashManager,
 
     override suspend fun setProfileMode(mode: TunnelState.Mode?) = withContext(Dispatchers.IO) {
         val current = store.activeProfile ?: return@withContext
+
+        if (!modeChoiceChanged(ModeChoiceDao().queryChoice(current), mode)) return@withContext
 
         if (mode == null) {
             ModeChoiceDao().removeChoice(current)

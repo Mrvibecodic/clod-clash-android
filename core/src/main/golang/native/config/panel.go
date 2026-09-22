@@ -28,7 +28,14 @@ func modeName(mode *tunnel.TunnelMode) *string {
 }
 
 func QueryMode(profileDir, session string) ModeState {
-	info := readPanelInfo(profileDir)
+	info := panel.ReadWithMode(profileDir, func() string {
+		cfg, err := unmarshalProfile(profileDir)
+		if err != nil {
+			return ""
+		}
+
+		return cfg.Mode.String()
+	})
 
 	mode, source := panel.ResolveMode(
 		info.Mode,

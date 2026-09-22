@@ -65,14 +65,19 @@ func patchOverride(cfg *config.RawConfig, profileDir string) error {
 		log.Warnln("Apply session override: %s", err.Error())
 	}
 
-	mode, source := panel.ResolveMode(template, overrideMode(persist), overrideMode(session), modeLocked(panel.Read(profileDir)))
+	mode, source := panel.ResolveMode(
+		template.String(),
+		modeName(overrideMode(persist)),
+		modeName(overrideMode(session)),
+		modeLocked(panel.Read(profileDir)),
+	)
 
 	// The provider pinned the mode: the override slots must not win over the subscription.
-	if source == panel.ModeLocked && cfg.Mode != mode {
+	if source == panel.ModeLocked && cfg.Mode.String() != mode {
 		log.Warnln("Ignore override mode %s: the mode is locked by the subscription", cfg.Mode.String())
 	}
 
-	cfg.Mode = mode
+	cfg.Mode = tunnel.ModeMapping[mode]
 
 	// An empty list from the override would make the core reject the profile.
 	if len(cfg.DNS.NameServer) == 0 && len(nameServers) > 0 {

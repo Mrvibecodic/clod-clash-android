@@ -76,12 +76,12 @@ type Group struct {
 }
 
 func MainGroup(list []Group, rules []string) string {
-	names := make([]string, 0, len(list))
+	candidates := make([]groups.Candidate, 0, len(list))
 	for _, group := range list {
-		names = append(names, group.Name)
+		candidates = append(candidates, groups.Candidate{Name: group.Name, Selectable: groups.SelectableType(group.Type)})
 	}
 
-	return groups.Main(names, groups.MatchTarget(rules))
+	return groups.MainOf(candidates, groups.MatchTarget(rules))
 }
 
 const panelFileName = "panel.json"
@@ -110,6 +110,8 @@ func Read(dir string) Info {
 }
 
 func Write(dir string, info Info) {
+	info.Mode = templateMode(info.Mode)
+
 	bytes, err := json.Marshal(&info)
 	if err != nil {
 		return

@@ -1116,16 +1116,17 @@ fun modeLabel(mode: TunnelState.Mode): String = stringResource(
 )
 
 @Composable
-private fun ModeRow(mode: ProfileMode, locked: Boolean, onAction: (MainAction) -> Unit) {
+private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
     var picking by rememberSaveable { mutableStateOf(false) }
 
     val label = mode.mode?.let { modeLabel(it) }
     val choice = if (mode.source == ProfileMode.Source.Choice) mode.mode else null
+    val locked = mode.source == ProfileMode.Source.Locked
 
     ActionRow(
         title = stringResource(R.string.clod_mode),
         subtitle = when {
-            mode.source == ProfileMode.Source.Locked ->
+            locked ->
                 stringResource(R.string.clod_mode_locked, label ?: stringResource(R.string.clod_mode_as_subscription))
             label == null -> stringResource(R.string.clod_mode_as_subscription)
             mode.source == ProfileMode.Source.Choice -> stringResource(R.string.clod_mode_chosen, label)
@@ -1247,11 +1248,12 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
             ProviderLinksSection(state.active, onAction)
 
             SectionHeader(stringResource(R.string.clod_section_connection))
-            ModeRow(
-                mode = state.profileMode,
-                locked = state.active?.panel?.lockMode == true,
-                onAction = onAction,
-            )
+            if (state.active != null) {
+                ModeRow(
+                    mode = state.profileMode,
+                    onAction = onAction,
+                )
+            }
             ActionRow(
                 title = stringResource(R.string.clod_apps),
                 subtitle = stringResource(R.string.clod_apps_subtitle),

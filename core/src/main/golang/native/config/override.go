@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"sync"
 
 	"github.com/metacubex/mihomo/constant"
 )
@@ -16,7 +17,10 @@ const (
 const defaultPersistOverride = `{}`
 const defaultSessionOverride = `{}`
 
-var sessionOverride = defaultSessionOverride
+var (
+	sessionLock     sync.RWMutex
+	sessionOverride = defaultSessionOverride
+)
 
 func overridePersistPath() string {
 	return constant.Path.Resolve("override.json")
@@ -32,6 +36,9 @@ func ReadOverride(slot OverrideSlot) string {
 
 		return string(buf)
 	case OverrideSlotSession:
+		sessionLock.RLock()
+		defer sessionLock.RUnlock()
+
 		return sessionOverride
 	}
 
@@ -72,7 +79,9 @@ func WriteOverride(slot OverrideSlot, content string) {
 			_ = os.Remove(tmp)
 		}
 	case OverrideSlotSession:
+		sessionLock.Lock()
 		sessionOverride = content
+		sessionLock.Unlock()
 	}
 }
 
@@ -81,6 +90,8 @@ func ClearOverride(slot OverrideSlot) {
 	case OverrideSlotPersist:
 		_ = os.Remove(overridePersistPath())
 	case OverrideSlotSession:
+		sessionLock.Lock()
 		sessionOverride = defaultSessionOverride
+		sessionLock.Unlock()
 	}
 }

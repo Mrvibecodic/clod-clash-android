@@ -9,7 +9,20 @@ const (
 	ModeLocked   ModeSource = "locked"
 )
 
-func ResolveMode[M comparable](template M, persist, choice *M, locked bool) (M, ModeSource) {
+const DefaultMode = "rule"
+
+func templateMode(mode string) string {
+	switch mode {
+	case "rule", "global", "direct":
+		return mode
+	}
+
+	return DefaultMode
+}
+
+func ResolveMode(template string, persist, choice *string, locked bool) (string, ModeSource) {
+	template = templateMode(template)
+
 	switch {
 	case locked:
 		return template, ModeLocked
@@ -20,4 +33,16 @@ func ResolveMode[M comparable](template M, persist, choice *M, locked bool) (M, 
 	}
 
 	return template, ModeTemplate
+}
+
+func ReadWithMode(dir string, subscription func() string) Info {
+	info := Read(dir)
+
+	if info.Mode == "" {
+		info.Mode = templateMode(subscription())
+
+		Write(dir, info)
+	}
+
+	return info
 }

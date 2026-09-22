@@ -107,3 +107,34 @@ func Main(names []string, matchTarget string) string {
 
 	return names[0]
 }
+
+type Candidate struct {
+	Name       string
+	Selectable bool
+}
+
+func SelectableType(kind string) bool {
+	switch kind {
+	case "select", "url-test", "fallback":
+		return true
+	}
+
+	return false
+}
+
+func MainOf(list []Candidate, matchTarget string) string {
+	names := make([]string, 0, len(list))
+	for _, candidate := range list {
+		if candidate.Selectable {
+			names = append(names, candidate.Name)
+		}
+	}
+
+	if len(names) == 0 {
+		for _, candidate := range list {
+			names = append(names, candidate.Name)
+		}
+	}
+
+	return Main(names, matchTarget)
+}

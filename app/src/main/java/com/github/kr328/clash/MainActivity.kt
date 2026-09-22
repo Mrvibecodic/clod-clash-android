@@ -22,6 +22,7 @@ import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
 import android.os.RemoteException
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.ProxyGroup
@@ -364,8 +365,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         is MainDesign.Request.PatchMode -> {
-                            val locked = withProfile { queryActive() }
-                                ?.let { queryPanelInfo(it.uuid)?.lockMode } == true
+                            val locked = withClash { queryProfileMode() }.source ==
+                                ProfileMode.Source.Locked
 
                             if (locked) {
                                 design.showToast(
