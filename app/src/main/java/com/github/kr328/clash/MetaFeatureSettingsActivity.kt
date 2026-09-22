@@ -10,6 +10,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
+import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.model.PendingRestore
 import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -206,6 +207,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     R.string.geofile_unknown_db_format_message,
                     target.extensions.joinToString("/"),
                 ),
+                kind = NoticeKind.Error,
             )
 
             return

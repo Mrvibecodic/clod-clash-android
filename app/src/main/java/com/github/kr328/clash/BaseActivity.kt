@@ -18,6 +18,7 @@ import com.github.kr328.clash.common.util.AppLocale
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.design.Design
+import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -196,6 +197,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
                 message = human ?: getString(ServiceR.string.update_failure),
                 duration = ToastDuration.Long,
                 detail = Redact.text(reason),
+                kind = NoticeKind.Error,
             )
         }
     }

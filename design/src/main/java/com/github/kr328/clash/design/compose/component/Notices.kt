@@ -38,6 +38,13 @@ import kotlinx.coroutines.delay
 private const val NOTICE_SHORT_MILLIS = 2500L
 private const val NOTICE_LONG_MILLIS = 5000L
 
+enum class NoticeKind { Info, Error }
+
+internal fun noticeDetailTitle(kind: NoticeKind): Int = when (kind) {
+    NoticeKind.Info -> R.string.detail
+    NoticeKind.Error -> R.string.error
+}
+
 @Immutable
 data class Notice(
     val id: Long,
@@ -46,6 +53,7 @@ data class Notice(
     val detail: String?,
     val actionLabel: String?,
     val onAction: (() -> Unit)?,
+    val kind: NoticeKind,
 )
 
 @Stable
@@ -61,10 +69,11 @@ class NoticeState {
         detail: String? = null,
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
+        kind: NoticeKind = NoticeKind.Info,
     ) {
         counter += 1
 
-        current = Notice(counter, text, longDuration, detail, actionLabel, onAction)
+        current = Notice(counter, text, longDuration, detail, actionLabel, onAction, kind)
     }
 
     fun dismiss(id: Long) {
@@ -79,7 +88,7 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
     val notice = state.current
 
     var shown by remember { mutableStateOf<Notice?>(null) }
-    var detail by remember { mutableStateOf<String?>(null) }
+    var detail by remember { mutableStateOf<Notice?>(null) }
 
     LaunchedEffect(notice?.id) {
         val active = notice ?: return@LaunchedEffect
@@ -144,7 +153,7 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
                             if (handler != null) {
                                 handler()
                             } else {
-                                detail = message.detail
+                                detail = message.takeIf { it.detail != null }
                             }
                         },
                     ) {
@@ -158,10 +167,12 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
         }
     }
 
-    detail?.let { text ->
+    detail?.let { opened ->
+        val text = opened.detail ?: return@let
+
         AlertDialog(
             onDismissRequest = { detail = null },
-            title = { Text(stringResource(R.string.error)) },
+            title = { Text(stringResource(noticeDetailTitle(opened.kind))) },
             text = { Text(text) },
             confirmButton = {
                 TextButton(onClick = { detail = null }) { Text(stringResource(R.string.ok)) }

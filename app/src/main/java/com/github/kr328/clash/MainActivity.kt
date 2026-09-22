@@ -30,6 +30,7 @@ import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
+import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.compose.screen.AboutState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.model.globalRoutingBlocked
@@ -1085,11 +1086,11 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
-        showToast(
-            DesignR.string.clod_sub_added,
-            ToastDuration.Long,
-            detail = name.takeIf { it.isNotBlank() },
-        )
+        if (name.isNotBlank()) {
+            showToast(getString(DesignR.string.clod_sub_added_named, name), ToastDuration.Long)
+        } else {
+            showToast(DesignR.string.clod_sub_added, ToastDuration.Long)
+        }
     }
 
     private fun watchStart() {
@@ -1421,6 +1422,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         DesignR.string.clod_update_check_failed,
                         ToastDuration.Long,
                         detail = state.reason,
+                        kind = NoticeKind.Error,
                     )
                 }
 
@@ -1507,6 +1509,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 DesignR.string.clod_geo_update_failed,
                 ToastDuration.Long,
                 detail = geo.failed.joinToString(", ").ifEmpty { null },
+                kind = NoticeKind.Error,
             )
             geo.failed.isNotEmpty() -> showToast(
                 DesignR.string.clod_geo_update_partial,

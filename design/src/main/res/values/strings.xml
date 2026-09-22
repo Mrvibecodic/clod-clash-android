@@ -329,6 +329,7 @@
     <string name="clod_sub_other_ways">Other ways to import</string>
     <string name="clod_sub_fetching">Fetching subscription\u2026</string>
     <string name="clod_sub_added">Subscription added</string>
+    <string name="clod_sub_added_named">Subscription “%1$s” added</string>
     <string name="clod_sub_added_partial">Subscription added, but some provider lists were not downloaded</string>
     <string name="clod_providers_failed_plural">Some provider lists were not downloaded</string>
     <string name="clod_sub_draft">Not loaded</string>

@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.compose.component.NoticeHost
+import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.compose.component.NoticeState
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.model.DarkMode
@@ -68,6 +69,7 @@ abstract class Design<R>(val context: Context) :
         detail: String? = null,
         actionLabel: Int? = null,
         onAction: (() -> Unit)? = null,
+        kind: NoticeKind = NoticeKind.Info,
     ) {
         return showToast(
             message = context.getString(resId),
@@ -75,6 +77,7 @@ abstract class Design<R>(val context: Context) :
             detail = detail,
             actionLabel = actionLabel?.let { context.getString(it) },
             onAction = onAction,
+            kind = kind,
         )
     }
 
@@ -84,6 +87,7 @@ abstract class Design<R>(val context: Context) :
         detail: String? = null,
         actionLabel: String? = null,
         onAction: (() -> Unit)? = null,
+        kind: NoticeKind = NoticeKind.Info,
     ) {
         withContext(Dispatchers.Main) {
             notices.show(
@@ -92,6 +96,7 @@ abstract class Design<R>(val context: Context) :
                 detail = detail,
                 actionLabel = actionLabel,
                 onAction = onAction,
+                kind = kind,
             )
         }
     }
