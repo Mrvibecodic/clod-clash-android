@@ -18,7 +18,7 @@ const copy = {
     shotAlt: 'Главный экран приложения в подключённом состоянии',
     points: [
       ['Одна кнопка', 'Туннель на всё устройство или локальный прокси без VPN'],
-      ['Свои серверы', 'Выбор узла вручную, замер задержки, избранное'],
+      ['Свои серверы', 'Выбор сервера вручную, замер задержки, избранное'],
       ['Ничего лишнего', 'Тёмная тема, русский язык, виджет и плитка в шторке'],
     ],
   },
@@ -37,7 +37,7 @@ const copy = {
     shotAlt: 'The app home screen while connected',
     points: [
       ['One button', 'A device-wide tunnel, or a local proxy without VPN'],
-      ['Your servers', 'Pick a node by hand, measure latency, keep favourites'],
+      ['Your servers', 'Pick a server by hand, measure latency, keep favourites'],
       ['Nothing extra', 'Dark theme, English and Russian, widget and quick tile'],
     ],
   },
