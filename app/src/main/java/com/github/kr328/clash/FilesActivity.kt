@@ -13,7 +13,7 @@ import com.github.kr328.clash.design.FilesDesign
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.FilesClient
 import com.github.kr328.clash.service.model.Profile
-import com.github.kr328.clash.util.fileName
+import com.github.kr328.clash.util.displayName
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
@@ -37,7 +37,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
 
         this.stack = stack
 
-        design.configurationEditable = profile.type != Profile.Type.Url
+        design.configurationEditable = profile.type == Profile.Type.File
         design.refresh(client, stack, root)
 
         setContentDesign(design)
@@ -83,7 +83,9 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                             is FilesDesign.Request.RenameFile -> {
                                 val newName = design.requestFileName(it.file.name)
 
-                                client.renameDocument(it.file.id, newName)
+                                if (newName != null && newName != it.file.name) {
+                                    client.renameDocument(it.file.id, newName)
+                                }
                             }
                             is FilesDesign.Request.ImportFile -> {
                                 val uri: Uri? = startActivityForResult(
@@ -93,9 +95,11 @@ class FilesActivity : BaseActivity<FilesDesign>() {
 
                                 if (uri != null) {
                                     if (it.file == null) {
-                                        val name = design.requestFileName(uri.fileName ?: "File")
+                                        val name = design.requestFileName(uri.displayName(contentResolver) ?: "File")
 
-                                        client.importDocument(stack.last(), uri, name)
+                                        if (name != null) {
+                                            client.importDocument(stack.last(), uri, name)
+                                        }
                                     } else {
                                         client.copyDocument(it.file!!.id, uri)
                                     }

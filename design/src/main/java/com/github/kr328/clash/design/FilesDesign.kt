@@ -82,7 +82,7 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         state = state.copy(currentTime = System.currentTimeMillis())
     }
 
-    suspend fun requestFileName(name: String): String {
+    suspend fun requestFileName(name: String): String? {
         return context.requestModelTextInput(
             initial = name,
             title = context.getText(R.string.file_name),

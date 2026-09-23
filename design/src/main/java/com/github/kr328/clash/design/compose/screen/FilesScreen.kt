@@ -47,7 +47,13 @@ data class FilesState(
     val currentTime: Long = 0,
     val menuFor: File? = null,
     val error: String? = null,
-)
+) {
+    fun importable(file: File): Boolean = !file.isDirectory && (!inBaseDir || configurationEditable)
+
+    fun exportable(file: File): Boolean = !file.isDirectory && file.size > 0
+
+    fun hasActions(file: File): Boolean = importable(file) || exportable(file) || !inBaseDir
+}
 
 sealed interface FilesAction {
     data object Back : FilesAction
@@ -133,7 +139,7 @@ fun FilesScreen(
                             .elapsedIntervalString(context)
                     },
                     onOpen = { onAction(FilesAction.Open(file)) },
-                    onMore = { onAction(FilesAction.More(file)) },
+                    onMore = { onAction(FilesAction.More(file)) }.takeIf { state.hasActions(file) },
                 )
             }
         }
@@ -151,7 +157,7 @@ fun FilesScreen(
             sheetState = sheetState,
         ) {
             Column(modifier = Modifier.navigationBarsPadding()) {
-                if (!target.isDirectory && (!state.inBaseDir || state.configurationEditable)) {
+                if (state.importable(target)) {
                     MenuAction(
                         title = stringResource(R.string.import_),
                         icon = R.drawable.ic_baseline_get_app,
@@ -159,7 +165,7 @@ fun FilesScreen(
                     )
                 }
 
-                if (!target.isDirectory && target.size > 0) {
+                if (state.exportable(target)) {
                     MenuAction(
                         title = stringResource(R.string.export),
                         icon = R.drawable.ic_baseline_publish,
@@ -219,7 +225,7 @@ private fun FileRow(
     file: File,
     elapsed: String?,
     onOpen: () -> Unit,
-    onMore: () -> Unit,
+    onMore: (() -> Unit)?,
 ) {
     Row(
         modifier = Modifier
@@ -261,12 +267,16 @@ private fun FileRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = onMore) {
-            Icon(
-                painter = painterResource(R.drawable.ic_baseline_more_vert),
-                contentDescription = stringResource(R.string.more),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (onMore != null) {
+            IconButton(onClick = onMore) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_baseline_more_vert),
+                    contentDescription = stringResource(R.string.more),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            Spacer(Modifier.size(48.dp))
         }
     }
 }

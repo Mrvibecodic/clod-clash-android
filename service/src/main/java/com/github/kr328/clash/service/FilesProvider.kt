@@ -1,5 +1,6 @@
 package com.github.kr328.clash.service
 
+import android.content.Context
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.database.sqlite.SQLiteException
@@ -9,6 +10,7 @@ import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
 import com.github.kr328.clash.common.util.PatternFileName
 import com.github.kr328.clash.service.document.*
+import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.runBlocking
 import java.io.FileNotFoundException
 import android.provider.DocumentsContract.Document as D
@@ -35,6 +37,9 @@ class FilesProvider : DocumentsProvider() {
             Root.COLUMN_MIME_TYPES
         )
     }
+
+    private val localized: Context
+        get() = context!!.withStoredLocale()
 
     private val picker: Picker by lazy {
         Picker(context!!)
@@ -81,31 +86,31 @@ class FilesProvider : DocumentsProvider() {
         val name = displayName ?: ""
 
         if (!PatternFileName.matches(name))
-            throw IllegalArgumentException("invalid name $displayName")
+            throw IllegalArgumentException(localized.getString(R.string.clod_file_name_invalid, name))
 
         return runBlocking {
             val path = Paths.resolve(documentId ?: "/")
 
             if (path.relative == null)
-                throw IllegalArgumentException("unable to rename $documentId")
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, documentId.orEmpty()))
 
             val document = picker.pick(path, true)
 
             if (document !is FileDocument)
-                throw IllegalArgumentException("unable to rename $document")
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, document.name))
 
             val parent = document.file.parentFile
 
             if (parent == null)
-                throw IllegalArgumentException("unable to rename $document")
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, document.name))
 
             val target = parent.resolve(name)
 
             if (name != document.file.name && target.exists())
-                throw IllegalArgumentException("already exists $name")
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_exists, name))
 
             if (!document.file.renameTo(target))
-                throw IllegalArgumentException("unable to rename $document")
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, document.file.name))
 
             path.copy(relative = path.relative.dropLast(1) + name).toString()
         }

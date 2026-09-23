@@ -19,27 +19,16 @@ suspend fun Context.requestModelTextInput(
     hint: CharSequence? = null,
     error: CharSequence? = null,
     validator: Validator = ValidatorAcceptAll,
-): String {
-    return this.requestModelTextInput(initial, title, null, hint, error, validator)!!
-}
-
-suspend fun Context.requestModelTextInput(
-    initial: String?,
-    title: CharSequence,
-    reset: CharSequence?,
-    hint: CharSequence? = null,
-    error: CharSequence? = null,
-    validator: Validator = ValidatorAcceptAll,
 ): String? {
     return suspendCancellableCoroutine { continuation ->
-        var current = initial ?: ""
+        var current = initial
         var dialog: AlertDialog? = null
 
         val view = ComposeView(this).apply {
             setContent {
                 ClodClashTheme(darkTheme = appDarkTheme()) {
                     TextInputContent(
-                        initial = initial ?: "",
+                        initial = initial,
                         isValid = validator,
                         onChanged = { text, valid ->
                             current = text
@@ -58,20 +47,14 @@ suspend fun Context.requestModelTextInput(
             .setView(view)
             .setCancelable(true)
             .setPositiveButton(R.string.ok) { _, _ ->
-                continuation.resume(if (validator(current)) current else initial)
+                if (validator(current)) continuation.resume(current)
             }
             .setNegativeButton(R.string.cancel) { _, _ -> }
             .setOnDismissListener {
                 if (!continuation.isCompleted) {
-                    continuation.resume(initial)
+                    continuation.resume(null)
                 }
             }
-
-        if (reset != null) {
-            builder.setNeutralButton(reset) { _, _ ->
-                continuation.resume(null)
-            }
-        }
 
         val created = builder.create()
 

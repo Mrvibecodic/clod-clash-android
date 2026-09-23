@@ -5,13 +5,17 @@ package com.github.kr328.clash.remote
 import android.content.Context
 import android.net.Uri
 import com.github.kr328.clash.common.constants.Authorities
+import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.model.File
 import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.util.copyContentTo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 import android.provider.DocumentsContract as DC
+
+class FilesRejected(message: String) : IOException(message), HumanMessage
 
 class FilesClient(private val context: Context) {
     suspend fun list(parentDocumentId: String): List<File> = withContext(Dispatchers.IO) {
@@ -43,7 +47,11 @@ class FilesClient(private val context: Context) {
     suspend fun renameDocument(documentId: String, name: String) = withContext(Dispatchers.IO) {
         val uri = buildDocumentUri(documentId)
 
-        DC.renameDocument(context.contentResolver, uri, name)
+        try {
+            DC.renameDocument(context.contentResolver, uri, name)
+        } catch (e: IllegalArgumentException) {
+            throw FilesRejected(e.message.orEmpty())
+        }
     }
 
     suspend fun deleteDocument(documentId: String) = withContext(Dispatchers.IO) {

@@ -29,6 +29,9 @@
     <string name="profiles_and_providers">Profiles and Providers</string>
     <string name="configuration_yaml">Configuration.yaml</string>
     <string name="provider_files">Provider Files</string>
+    <string name="clod_file_name_invalid">The file name is not allowed: %1$s</string>
+    <string name="clod_file_exists">A file named “%1$s” already exists</string>
+    <string name="clod_file_rename_failed">Could not rename “%1$s”</string>
     <string name="profile_updating">Profile Updating</string>
 
     <string name="clod_alert_channel">Subscription reminders</string>

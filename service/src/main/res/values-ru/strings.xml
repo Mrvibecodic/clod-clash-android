@@ -29,6 +29,9 @@
     <string name="profiles_and_providers">Профили и провайдеры</string>
     <string name="configuration_yaml">Configuration.yaml</string>
     <string name="provider_files">Файлы провайдера</string>
+    <string name="clod_file_name_invalid">Недопустимое название файла: %1$s</string>
+    <string name="clod_file_exists">Файл «%1$s» уже есть</string>
+    <string name="clod_file_rename_failed">Не удалось переименовать «%1$s»</string>
     <string name="profile_updating">Профиль обновляется</string>
 
     <string name="clod_alert_channel">Напоминания о подписке</string>
