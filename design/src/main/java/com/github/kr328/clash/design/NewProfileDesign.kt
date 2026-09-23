@@ -17,7 +17,7 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
         data object Back : Request
         data class Create(val provider: ProfileProvider) : Request
         data class OpenDetail(val provider: ProfileProvider.External) : Request
-        data class LaunchScanner(val provider: ProfileProvider.QR) : Request
+        data object LaunchScanner : Request
     }
 
     private var state by mutableStateOf(NewProfileState())
@@ -33,7 +33,7 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
                 val provider = action.provider
 
                 if (provider is ProfileProvider.QR) {
-                    requests.trySend(Request.LaunchScanner(provider))
+                    requests.trySend(Request.LaunchScanner)
                 } else {
                     requests.trySend(Request.Create(provider))
                 }

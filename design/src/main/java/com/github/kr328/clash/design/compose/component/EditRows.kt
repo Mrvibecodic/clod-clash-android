@@ -32,14 +32,14 @@ fun TextRow(
     value: String?,
     onValue: (String?) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = stringResource(R.string.dont_modify),
     empty: String? = null,
     numeric: Boolean = false,
-    blankIsNull: Boolean = true,
     valid: (String) -> Boolean = { true },
     enabled: Boolean = true,
 ) {
     var editing by rememberSaveable { mutableStateOf(false) }
+
+    val placeholder = stringResource(R.string.dont_modify)
 
     val shown = when {
         value == null -> placeholder
@@ -79,8 +79,7 @@ fun TextRow(
                     when {
                         text.isNotBlank() -> text
                         value == "" -> ""
-                        blankIsNull -> null
-                        else -> text
+                        else -> null
                     },
                 )
             },

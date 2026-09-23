@@ -13,7 +13,6 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 interface ModelProgressBarConfigure {
     var isIndeterminate: Boolean
-    var text: String?
     var progress: Int
     var max: Int
 }
@@ -24,7 +23,6 @@ interface ModelProgressBarScope {
 
 suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.() -> Unit) {
     var indeterminate by mutableStateOf(true)
-    var message by mutableStateOf<String?>(null)
     var current by mutableIntStateOf(0)
     var maximum by mutableIntStateOf(0)
 
@@ -35,7 +33,6 @@ suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.()
                     indeterminate = indeterminate,
                     progress = current,
                     max = maximum,
-                    text = message,
                 )
             }
         }
@@ -51,11 +48,6 @@ suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.()
             get() = indeterminate
             set(value) {
                 indeterminate = value
-            }
-        override var text: String?
-            get() = message
-            set(value) {
-                message = value
             }
         override var progress: Int
             get() = current

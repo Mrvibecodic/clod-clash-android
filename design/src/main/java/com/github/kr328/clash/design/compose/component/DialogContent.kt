@@ -1,12 +1,9 @@
 package com.github.kr328.clash.design.compose.component
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -83,7 +80,6 @@ fun ProgressContent(
     indeterminate: Boolean,
     progress: Int,
     max: Int,
-    text: String?,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -97,16 +93,6 @@ fun ProgressContent(
             LinearProgressIndicator(
                 progress = { progress.toFloat() / max.toFloat() },
                 modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        if (!text.isNullOrBlank()) {
-            Spacer(Modifier.height(12.dp))
-
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

@@ -94,7 +94,7 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                             launchAppDetailed(it.provider)
                         }
 
-                        is NewProfileDesign.Request.LaunchScanner -> {
+                        NewProfileDesign.Request.LaunchScanner -> {
                             scanLauncher.launch(null)
                         }
                     }
