@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"net/url"
-	"sort"
 	"strings"
 
 	"cfa/native/config/groups"
@@ -13,14 +12,6 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel"
-)
-
-type SortMode int
-
-const (
-	Default SortMode = iota
-	Title
-	Delay
 )
 
 type Proxy struct {
@@ -36,23 +27,6 @@ type ProxyGroup struct {
 	Type    string   `json:"type"`
 	Now     string   `json:"now"`
 	Proxies []*Proxy `json:"proxies"`
-}
-
-type sortableProxyList struct {
-	list []*Proxy
-	less func(a, b *Proxy) bool
-}
-
-func (s *sortableProxyList) Len() int {
-	return len(s.list)
-}
-
-func (s *sortableProxyList) Less(i, j int) bool {
-	return s.less(s.list[i], s.list[j])
-}
-
-func (s *sortableProxyList) Swap(i, j int) {
-	s.list[i], s.list[j] = s.list[j], s.list[i]
 }
 
 type ProxyGroupNames struct {
@@ -154,7 +128,7 @@ func matchTarget() string {
 	return ""
 }
 
-func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
+func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
 	p := tunnel.Proxies()[name]
 
 	if p == nil {
@@ -171,29 +145,6 @@ func QueryProxyGroup(name string, sortMode SortMode, uiSubtitlePattern *regexp2.
 	}
 
 	proxies := convertProxies(g.Proxies(), uiSubtitlePattern, GroupTestURL(g))
-
-	switch sortMode {
-	case Title:
-		wrapper := &sortableProxyList{
-			list: proxies,
-			less: func(a, b *Proxy) bool {
-				return strings.Compare(a.Title, b.Title) < 0
-			},
-		}
-
-		sort.Sort(wrapper)
-	case Delay:
-		wrapper := &sortableProxyList{
-			list: proxies,
-			less: func(a, b *Proxy) bool {
-				return a.Delay < b.Delay
-			},
-		}
-
-		sort.Sort(wrapper)
-	case Default:
-	default:
-	}
 
 	return &ProxyGroup{
 		Type:    g.Type().String(),

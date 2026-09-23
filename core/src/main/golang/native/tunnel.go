@@ -40,22 +40,12 @@ func queryGroupNames(excludeNotSelectable C.int) (result *C.char) {
 }
 
 //export queryGroup
-func queryGroup(name C.c_string, sortMode C.c_string) (result *C.char) {
+func queryGroup(name C.c_string) (result *C.char) {
 	defer guard("queryGroup", func() {})()
 
 	n := C.GoString(name)
-	s := C.GoString(sortMode)
 
-	mode := tunnel.Default
-
-	switch s {
-	case "Title":
-		mode = tunnel.Title
-	case "Delay":
-		mode = tunnel.Delay
-	}
-
-	response := tunnel.QueryProxyGroup(n, mode, app.SubtitlePattern())
+	response := tunnel.QueryProxyGroup(n, app.SubtitlePattern())
 
 	if response == nil {
 		return nil

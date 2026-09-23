@@ -159,13 +159,12 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryGroupNames(JNIEnv *env
 
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryGroup(JNIEnv *env, jobject thiz,
-                                                                jstring name, jstring mode) {
+                                                                jstring name) {
     TRACE_METHOD();
 
     scoped_string _name = get_string(name);
-    scoped_string _mode = get_string(mode);
 
-    scoped_string response = queryGroup(_name, _mode);
+    scoped_string response = queryGroup(_name);
 
     if (response == NULL)
         return NULL;

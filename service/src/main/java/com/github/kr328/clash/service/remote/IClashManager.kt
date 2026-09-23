@@ -9,7 +9,7 @@ import java.util.UUID
 interface IClashManager {
     fun queryTrafficTotal(): Long
     fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames
-    fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup
+    fun queryProxyGroup(name: String): ProxyGroup
     fun queryProviders(): ProviderList
 
     fun patchSelector(group: String, name: String): Boolean

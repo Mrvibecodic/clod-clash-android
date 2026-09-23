@@ -999,7 +999,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.loadProxyGroup(index: Int): ProxyGroup? {
         val name = proxyGroupNames.getOrNull(index) ?: return null
-        val group = withClash { queryProxyGroup(name, uiStore.proxySort) }
+        val group = withClash { queryProxyGroup(name) }
 
         if (name == GLOBAL_GROUP) {
             globalSelection = group.now

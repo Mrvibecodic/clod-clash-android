@@ -38,7 +38,10 @@ class MainApplication : Application(), Configuration.Provider {
         Log.i("Process $processName started")
 
         if (processName == packageName) {
-            UiStore(this).darkMode.applyToSystem(this)
+            UiStore(this).apply {
+                dropRemovedKeys()
+                darkMode.applyToSystem(this@MainApplication)
+            }
             restoreLauncherIconIfUnsupported()
 
             Remote.launch()

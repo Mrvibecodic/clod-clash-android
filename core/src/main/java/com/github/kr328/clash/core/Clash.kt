@@ -135,8 +135,8 @@ object Clash {
         return CoreJson.decodeFromString(ProxyGroupNames.serializer(), json)
     }
 
-    fun queryGroup(name: String, sort: ProxySort): ProxyGroup {
-        return Bridge.nativeQueryGroup(name, sort.name)
+    fun queryGroup(name: String): ProxyGroup {
+        return Bridge.nativeQueryGroup(name)
             ?.let { CoreJson.decodeFromString(ProxyGroup.serializer(), it) }
             ?: ProxyGroup("Unknown", emptyList(), "")
     }

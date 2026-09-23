@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
-import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.model.DarkMode
 import java.util.UUID
@@ -29,6 +28,18 @@ class UiStore(context: Context) {
         val editor = preferences.edit()
 
         SETTING_KEYS.forEach { editor.remove(it) }
+
+        editor.apply()
+    }
+
+    fun dropRemovedKeys() {
+        val stale = REMOVED_KEYS.filter(preferences::contains)
+
+        if (stale.isEmpty()) return
+
+        val editor = preferences.edit()
+
+        stale.forEach { editor.remove(it) }
 
         editor.apply()
     }
@@ -106,12 +117,6 @@ class UiStore(context: Context) {
 
     private fun favoritesKey(profile: UUID): String = "favorites_$profile"
 
-    var proxySort: ProxySort by store.enum(
-        key = "proxy_sort",
-        defaultValue = ProxySort.Default,
-        values = ProxySort.values()
-    )
-
     var accessControlSort: AppInfoSort by store.enum(
         key = "access_control_sort",
         defaultValue = AppInfoSort.Label,
@@ -141,8 +146,6 @@ class UiStore(context: Context) {
             HIDE_APP_ICON,
             "hide_from_recents",
             "allow_external_control",
-            "proxy_sort",
-            "proxy_last_group",
             "access_control_sort",
             "access_control_reverse",
             "access_control_system_app",
@@ -151,6 +154,8 @@ class UiStore(context: Context) {
             "notifications_snoozes",
             "reliability_asked",
         )
+
+        private val REMOVED_KEYS = listOf("proxy_sort", "proxy_last_group")
 
         val Context.mainActivityAlias: ComponentName
             get() = ComponentName(this, "com.github.kr328.clash.MainActivityAlias")

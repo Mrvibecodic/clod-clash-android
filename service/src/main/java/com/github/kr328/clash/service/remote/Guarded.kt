@@ -10,7 +10,6 @@ import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.ProviderList
 import com.github.kr328.clash.core.model.ProxyGroup
 import com.github.kr328.clash.core.model.ProxyGroupNames
-import com.github.kr328.clash.core.model.ProxySort
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
@@ -63,8 +62,8 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames =
         guardSync("queryProxyGroupNames") { delegate.queryProxyGroupNames(excludeNotSelectable) }
 
-    override fun queryProxyGroup(name: String, proxySort: ProxySort): ProxyGroup =
-        guardSync("queryProxyGroup") { delegate.queryProxyGroup(name, proxySort) }
+    override fun queryProxyGroup(name: String): ProxyGroup =
+        guardSync("queryProxyGroup") { delegate.queryProxyGroup(name) }
 
     override fun queryProviders(): ProviderList =
         guardSync("queryProviders") { delegate.queryProviders() }
