@@ -8,7 +8,6 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.model.PendingRestore
@@ -27,7 +26,7 @@ import com.github.kr328.clash.design.R
 class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
     private var reload = false
     private var rereading = false
-    private var configuration: ConfigurationOverride? = null
+    private var draft: PendingOverride.Draft? = null
 
     override suspend fun main() {
         val pending = PendingOverride.take(PendingOverride.SLOT_META)
@@ -36,28 +35,22 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             valuePresent = pending != null,
         )
 
-        val configuration = pending
-            ?: withClash { queryOverride(Clash.OverrideSlot.Persist) }
+        val draft = pending
+            ?: PendingOverride.Draft(withClash { queryOverride(Clash.OverrideSlot.Persist) })
 
-        this.configuration = configuration
+        this.draft = draft
 
         reload = restored?.getBoolean("reload") ?: false
 
-        var writeBack = !reload
-
         defer {
-            if (writeBack) {
-                withClash {
-                    patchOverride(Clash.OverrideSlot.Persist, configuration)
-                }
-            }
+            draft.save()
 
             PendingOverride.clear(PendingOverride.SLOT_META)
         }
 
         val design = MetaFeatureSettingsDesign(
             this,
-            configuration
+            draft.value
         )
 
         setContentDesign(design)
@@ -79,11 +72,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     when (it) {
                         MetaFeatureSettingsDesign.Request.Back -> finish()
                         MetaFeatureSettingsDesign.Request.OpenOverride -> {
-                            withClash {
-                                patchOverride(Clash.OverrideSlot.Persist, configuration)
-                            }
+                            draft.save()
 
-                            writeBack = false
                             reload = true
 
                             startActivity(OverrideSettingsActivity::class.intent)
@@ -130,9 +120,9 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         outState.putBoolean("reload", reload && !rereading)
 
         if (!reload) {
-            PendingOverride.put(PendingOverride.SLOT_META, configuration)
+            PendingOverride.put(PendingOverride.SLOT_META, draft)
 
-            outState.putBoolean(PendingOverride.KEY, configuration != null)
+            outState.putBoolean(PendingOverride.KEY, draft?.dirty() == true)
         }
     }
 

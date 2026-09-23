@@ -2,7 +2,6 @@ package com.github.kr328.clash
 
 import android.os.Bundle
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.design.OverrideSettingsDesign
 import com.github.kr328.clash.design.compose.screen.ModeShadow
@@ -18,7 +17,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 
 class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
-    private var configuration: ConfigurationOverride? = null
+    private var draft: PendingOverride.Draft? = null
 
     override suspend fun main() {
         val pending = PendingOverride.take(PendingOverride.SLOT_OVERRIDE)
@@ -27,10 +26,10 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             valuePresent = pending != null,
         )
 
-        val configuration = pending
-            ?: withClash { queryOverride(Clash.OverrideSlot.Persist) }
+        val draft = pending
+            ?: PendingOverride.Draft(withClash { queryOverride(Clash.OverrideSlot.Persist) })
 
-        this.configuration = configuration
+        this.draft = draft
         val service = ServiceStore(this)
 
         val active = withProfile { queryActive() }
@@ -50,21 +49,15 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             null
         }
 
-        if (modeLocked) {
-            configuration.mode = null
-        }
-
         defer {
-            withClash {
-                patchOverride(Clash.OverrideSlot.Persist, configuration)
-            }
+            draft.save()
 
             PendingOverride.clear(PendingOverride.SLOT_OVERRIDE)
         }
 
         val design = OverrideSettingsDesign(
             this,
-            configuration,
+            draft.value,
             modeLocked = modeLocked,
             modeShadow = modeShadow,
         )
@@ -102,8 +95,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        PendingOverride.put(PendingOverride.SLOT_OVERRIDE, configuration)
+        PendingOverride.put(PendingOverride.SLOT_OVERRIDE, draft)
 
-        outState.putBoolean(PendingOverride.KEY, configuration != null)
+        outState.putBoolean(PendingOverride.KEY, draft?.dirty() == true)
     }
 }
