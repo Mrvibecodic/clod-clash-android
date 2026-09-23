@@ -29,7 +29,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         .setColor(service.getColorCompat(R.color.color_clash))
         .setOnlyAlertOnce(true)
         .setShowWhen(false)
-        .setContentTitle("Not Selected")
+        .setContentTitle(service.getString(R.string.launch_name))
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         .setContentIntent(
             PendingIntent.getActivity(
@@ -96,7 +96,7 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
                     }
                 }
                 profileLoaded.onReceive {
-                    builder.setContentTitle(StatusProvider.currentProfile ?: "Not selected")
+                    builder.setContentTitle(StatusProvider.currentProfile ?: service.getString(R.string.launch_name))
                 }
                 if (shouldUpdate) {
                     ticker.onReceive {

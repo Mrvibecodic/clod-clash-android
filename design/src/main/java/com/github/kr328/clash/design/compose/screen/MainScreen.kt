@@ -1145,7 +1145,7 @@ private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
             text = { Text(stringResource(R.string.clod_mode_locked_hint)) },
             confirmButton = {
                 TextButton(onClick = { picking = false }) {
-                    Text(stringResource(android.R.string.ok))
+                    Text(stringResource(R.string.ok))
                 }
             },
         )
@@ -1159,7 +1159,7 @@ private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
             title = { Text(stringResource(R.string.clod_mode)) },
             confirmButton = {
                 TextButton(onClick = { picking = false }) {
-                    Text(stringResource(android.R.string.cancel))
+                    Text(stringResource(R.string.cancel))
                 }
             },
             text = {

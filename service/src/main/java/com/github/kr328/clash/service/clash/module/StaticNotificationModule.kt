@@ -34,7 +34,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                 ready = true
             }
 
-            val profileName = StatusProvider.currentProfile ?: "Not selected"
+            val profileName = StatusProvider.currentProfile ?: service.getString(R.string.launch_name)
 
             val notification = builder
                 .setContentTitle(profileName)

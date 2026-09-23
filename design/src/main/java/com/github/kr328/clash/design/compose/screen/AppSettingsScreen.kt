@@ -267,7 +267,7 @@ private fun ResetRow(enabled: Boolean, onAction: (AppSettingsAction) -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { confirming = false }) {
-                    Text(stringResource(android.R.string.cancel))
+                    Text(stringResource(R.string.cancel))
                 }
             },
         )

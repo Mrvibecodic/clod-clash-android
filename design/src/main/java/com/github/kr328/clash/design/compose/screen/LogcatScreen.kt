@@ -142,14 +142,14 @@ private fun LogRow(message: LogMessage, onCopy: () -> Unit) {
             .fillMaxWidth()
             .combinedClickable(
                 onClick = {},
-                onLongClickLabel = stringResource(android.R.string.copy),
+                onLongClickLabel = stringResource(R.string.clod_copy),
                 onLongClick = onCopy,
             )
             .padding(horizontal = 18.dp, vertical = 8.dp),
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = message.level.name,
+                text = stringResource(levelLabel(message.level)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
@@ -166,4 +166,13 @@ private fun LogRow(message: LogMessage, onCopy: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
+}
+
+private fun levelLabel(level: LogMessage.Level): Int = when (level) {
+    LogMessage.Level.Debug -> R.string.debug
+    LogMessage.Level.Info -> R.string.info
+    LogMessage.Level.Warning -> R.string.warning
+    LogMessage.Level.Error -> R.string.error
+    LogMessage.Level.Silent -> R.string.silent
+    LogMessage.Level.Unknown -> R.string.clod_log_level_unknown
 }

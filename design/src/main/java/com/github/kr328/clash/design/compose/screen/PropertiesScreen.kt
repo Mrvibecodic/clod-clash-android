@@ -234,7 +234,7 @@ fun PropertiesScreen(
             text = { Text(stringResource(R.string.exit_without_save_warning)) },
             confirmButton = {
                 TextButton(onClick = { onAction(PropertiesAction.ConfirmExit) }) {
-                    Text(stringResource(R.string.ok))
+                    Text(stringResource(R.string.clod_exit_discard))
                 }
             },
             dismissButton = {

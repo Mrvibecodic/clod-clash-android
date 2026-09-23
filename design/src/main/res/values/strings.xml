@@ -3,9 +3,9 @@
     <string name="tap_to_start">Tap to start</string>
 
     <string name="proxy">Proxy</string>
-    <string name="direct_mode">Direct Mode</string>
-    <string name="rule_mode">Rule Mode</string>
-    <string name="global_mode">Global Mode</string>
+    <string name="direct_mode">Direct mode</string>
+    <string name="rule_mode">Rule mode</string>
+    <string name="global_mode">Global mode</string>
 
 
     <string name="logs">Logs</string>
@@ -21,26 +21,26 @@
     <string name="format_hours_ago">%d hours ago</string>
     <string name="format_days_ago">%d days ago</string>
 
-    <string name="create_profile">Create Profile</string>
+    <string name="create_profile">New subscription</string>
     <string name="file">File</string>
-    <string name="import_from_file">Import from File</string>
+    <string name="import_from_file">Import from file</string>
     <string name="url">URL</string>
-    <string name="qr" translatable="false">QR Code</string>
+    <string name="qr" translatable="false">QR code</string>
     <string name="import_from_url">Import from URL</string>
-    <string name="import_from_qr">Import from QR Code</string>
+    <string name="import_from_qr">Import from QR code</string>
     <string name="external">External</string>
 
-    <string name="application_broken">Application Broken</string>
-    <string name="application_crashed">Application Crashed</string>
+    <string name="application_broken">Application broken</string>
+    <string name="application_crashed">Application crashed</string>
     <string name="application_broken_tips">App lacks the necessary runtime components, which is usually caused by downloading an incomplete apk.</string>
     <string name="reinstall">Reinstall</string>
-    <string name="github_releases">Github Releases</string>
+    <string name="github_releases">GitHub releases</string>
 
-    <string name="profile">Profile</string>
+    <string name="profile">Subscription</string>
     <string name="name">Name</string>
-    <string name="profile_name">Profile Name</string>
-    <string name="auto_update">Auto Update</string>
-    <string name="auto_update_minutes">Auto Update (Minutes)</string>
+    <string name="profile_name">Subscription name</string>
+    <string name="auto_update">Auto update</string>
+    <string name="auto_update_minutes">Auto update (minutes)</string>
 
     <string name="accept_http_content">The address has to start with https://</string>
     <string name="at_least_15_minutes">At least 15 minutes or empty</string>
@@ -53,12 +53,13 @@
     <string name="import_">Import</string>
     <string name="properties">Properties</string>
 
-    <string name="exit_without_save">Exit without Save</string>
-    <string name="exit_without_save_warning">All changed will *LOST*</string>
+    <string name="exit_without_save">Exit without saving</string>
+    <string name="exit_without_save_warning">All changes will be lost</string>
+    <string name="clod_exit_discard">Discard</string>
 
     <string name="raw_cn" translatable="false">cn</string>
     <string name="disabled">Disabled</string>
-    <string name="empty_name">Empty Name</string>
+    <string name="empty_name">Empty name</string>
     <string name="invalid_url">Invalid URL</string>
     <string name="clod_link_no_app">No app to open the link</string>
 
@@ -79,13 +80,14 @@
 
     <string name="clash_logcat">Core log</string>
     <string name="history">History</string>
-    <string name="logcat">Logcat</string>
+    <string name="logcat">Log</string>
     <string name="clod_logcat_stop">Stop recording</string>
     <string name="clod_log_delete_message">The log will be deleted</string>
+    <string name="clod_copy">Copy</string>
 
-    <string name="delete_all_logs">Delete All Logs</string>
-    <string name="delete_all_logs_warn">All historical logs will *LOST*</string>
-    <string name="file_exported">File Exported</string>
+    <string name="delete_all_logs">Delete all logs</string>
+    <string name="delete_all_logs_warn">All saved logs will be deleted</string>
+    <string name="file_exported">File exported</string>
 
     <string name="behavior">Behavior</string>
     <string name="network">Network</string>
@@ -95,65 +97,65 @@
     <string name="auto_restart">Start after reboot</string>
     <string name="allow_clash_auto_restart">Bring the tunnel back after the phone restarts or the app updates, if it was on</string>
 
-    <string name="route_system_traffic">Route System Traffic</string>
+    <string name="route_system_traffic">Route system traffic</string>
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
     <string name="clod_local_proxy_summary">Local proxy %1$s for apps set up to use it; other traffic is not protected</string>
     <string name="clod_local_proxy_missing">Local proxy: no HTTP port is set — the subscription does not define one, it is disabled in the override, or allow-lan is enabled</string>
     <string name="clod_local_proxy_allow_lan">If the subscription turns on allow-lan, the port listens on every interface: any device on the same local network can use this proxy</string>
 
-    <string name="vpn_service_options">VpnService Options</string>
-    <string name="bypass_private_network">Bypass Private Network</string>
+    <string name="vpn_service_options">VpnService options</string>
+    <string name="bypass_private_network">Bypass private network</string>
     <string name="bypass_private_network_summary">Bypass private network addresses</string>
-    <string name="dns_hijacking">DNS Hijacking</string>
+    <string name="dns_hijacking">DNS hijacking</string>
     <string name="dns_hijacking_summary">Handle all dns packet</string>
     <string name="clod_private_dns_strict">Private DNS with an explicit host (%1$s) is on in the system settings: apps get real addresses, so domain rules and fake-ip do not apply to them</string>
-    <string name="allow_bypass">Allow Bypass</string>
+    <string name="allow_bypass">Allow bypass</string>
     <string name="allow_bypass_summary">Lets apps that explicitly bind to a network (some messengers, banking and telecom apps) connect around the VPN. Off: their traffic goes through the tunnel too</string>
-    <string name="allow_ipv6">Allow Ipv6</string>
-    <string name="allow_ipv6_summary">Allows ipv6 traffic via VpnService</string>
-    <string name="system_proxy">System Proxy</string>
+    <string name="allow_ipv6">Allow IPv6</string>
+    <string name="allow_ipv6_summary">Allows IPv6 traffic via VpnService</string>
+    <string name="system_proxy">System proxy</string>
     <string name="system_proxy_summary">Announce an HTTP proxy of this VPN to apps that respect the system proxy setting (no password, reachable only inside the device)</string>
-    <string name="access_control_mode">Access Control Mode</string>
+    <string name="access_control_mode">Access control mode</string>
 
     <string name="options_unavailable">Options unavailable until the tunnel is stopped</string>
 
     <string name="general">General</string>
     <string name="dns">DNS</string>
     <string name="prefer_h3">Prefer h3</string>
-    <string name="http_port">HTTP Port</string>
-    <string name="socks_port">Socks Port</string>
-    <string name="redirect_port">Redirect Port</string>
-    <string name="mixed_port">Mixed Port</string>
-    <string name="tproxy_port">TProxy Port</string>
+    <string name="http_port">HTTP port</string>
+    <string name="socks_port">SOCKS port</string>
+    <string name="redirect_port">Redirect port</string>
+    <string name="mixed_port">Mixed port</string>
+    <string name="tproxy_port">TProxy port</string>
     <string name="authentication">Authentication</string>
     <string name="allow_lan">Allow LAN</string>
-    <string name="bind_address">Bind Address</string>
+    <string name="bind_address">Bind address</string>
     <string name="mode">Mode</string>
-    <string name="log_level">Log Level</string>
+    <string name="log_level">Log level</string>
     <string name="ipv6">IPv6</string>
-    <string name="external_controller">External Controller</string>
-    <string name="external_controller_tls">External Controller TLS</string>
-    <string name="allow_origins">External Controller Allow Origins</string>
-    <string name="allow_private_network">External Controller Allow Private Network</string>
+    <string name="external_controller">External controller</string>
+    <string name="external_controller_tls">External controller TLS</string>
+    <string name="allow_origins">External controller allowed origins</string>
+    <string name="allow_private_network">External controller: allow private network</string>
     <string name="secret">Secret</string>
     <string name="hosts">Hosts</string>
     <string name="_new">New</string>
 
     <string name="strategy">Strategy</string>
     <string name="listen">Listen</string>
-    <string name="append_system_dns">Append System DNS</string>
-    <string name="use_hosts">Use Hosts</string>
-    <string name="enhanced_mode">Enhanced Mode</string>
-    <string name="name_server">Name Server</string>
-    <string name="fallback">Fallback Name Server</string>
-    <string name="default_name_server">Default Name Server</string>
-    <string name="fakeip_filter">Fake-IP Filter</string>
-    <string name="fakeip_filter_mode">Fake-IP Filter Mode</string>
-    <string name="geoip_fallback">GeoIP Fallback</string>
-    <string name="geoip_fallback_code">GeoIP Fallback Code</string>
-    <string name="ipcidr_fallback">IPCIDR Fallback</string>
-    <string name="domain_fallback">Domain Fallback</string>
-    <string name="name_server_policy">Name Server Policy</string>
+    <string name="append_system_dns">Append system DNS</string>
+    <string name="use_hosts">Use hosts</string>
+    <string name="enhanced_mode">Enhanced mode</string>
+    <string name="name_server">Name server</string>
+    <string name="fallback">Fallback name server</string>
+    <string name="default_name_server">Default name server</string>
+    <string name="fakeip_filter">Fake-IP filter</string>
+    <string name="fakeip_filter_mode">Fake-IP filter mode</string>
+    <string name="geoip_fallback">GeoIP fallback</string>
+    <string name="geoip_fallback_code">GeoIP fallback code</string>
+    <string name="ipcidr_fallback">IPCIDR fallback</string>
+    <string name="domain_fallback">Domain fallback</string>
+    <string name="name_server_policy">Name server policy</string>
 
     <string name="dont_modify">Do not modify</string>
     <string name="empty">Empty</string>
@@ -165,56 +167,57 @@
     <string name="error">Error</string>
     <string name="debug">Debug</string>
     <string name="silent">Silent</string>
+    <string name="clod_log_level_unknown">Unknown</string>
 
-    <string name="force_enable">Force Enable</string>
+    <string name="force_enable">Force enable</string>
 
     <string name="mapping">Real-IP to domain mapping</string>
     <string name="fakeip">Fake-IP to domain mapping</string>
 
-    <string name="blacklist">Black List</string>
-    <string name="whitelist">White List</string>
+    <string name="blacklist">Blacklist</string>
+    <string name="whitelist">Whitelist</string>
 
-    <string name="off">OFF</string>
-    <string name="strict">Strict</string>
+    <string name="off">Off</string>
+    <string name="strict">Only for rules</string>
     <string name="always">Always</string>
 
-    <string name="system_apps">System Apps</string>
+    <string name="system_apps">System apps</string>
     <string name="filter">Filter</string>
-    <string name="package_name">Package Name</string>
-    <string name="update_time">Update Time</string>
-    <string name="install_time">Install Time</string>
+    <string name="package_name">Package name</string>
+    <string name="update_time">Update time</string>
+    <string name="install_time">Install time</string>
     <string name="reverse">Reverse</string>
     <string name="search">Search</string>
-    <string name="select_all">Select All</string>
-    <string name="select_invert">Select Invert</string>
-    <string name="select_none">Select None</string>
-    <string name="import_from_clipboard">Import from Clipboard</string>
-    <string name="export_to_clipboard">Export to Clipboard</string>
+    <string name="select_all">Select all</string>
+    <string name="select_invert">Invert selection</string>
+    <string name="select_none">Select none</string>
+    <string name="import_from_clipboard">Import from clipboard</string>
+    <string name="export_to_clipboard">Export to clipboard</string>
 
     <string name="document">Documentation</string>
     <string name="sources">Sources</string>
-    <string name="clash_meta_core">Clash Meta Core</string>
+    <string name="clash_meta_core">Clash Meta core</string>
     <string name="meta_github_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android</string>
     <string name="clash_meta_core_url" translatable="false">https://github.com/MetaCubeX/mihomo</string>
 
     <string name="app">App</string>
     <string name="service">Service</string>
 
-    <string name="dark_mode">Dark Mode</string>
+    <string name="dark_mode">Dark mode</string>
 
-    <string name="show_traffic">Show Traffic</string>
+    <string name="show_traffic">Show traffic</string>
     <string name="show_traffic_summary">Refresh the traffic counter in the notification every second — noticeably drains the battery</string>
 
-    <string name="follow_system_android_10">Follow System (Android 10+)</string>
-    <string name="always_dark">Always Dark</string>
-    <string name="always_light">Always Light</string>
+    <string name="follow_system_android_10">Follow system (Android 10+)</string>
+    <string name="always_dark">Always dark</string>
+    <string name="always_light">Always light</string>
 
-    <string name="tun_stack_mode">Stack Mode</string>
+    <string name="tun_stack_mode">Stack mode</string>
     <string name="tun_stack_auto">Auto (from subscription)</string>
-    <string name="tun_stack_system">System Stack</string>
-    <string name="tun_stack_gvisor">Gvisor Stack</string>
-    <string name="tun_stack_mixed">Mixed Stack</string>
-    <string name="tun_stack_mips">Mips Stack</string>
+    <string name="tun_stack_system">System stack</string>
+    <string name="tun_stack_gvisor">gVisor stack</string>
+    <string name="tun_stack_mixed">Mixed stack</string>
+    <string name="tun_stack_mips">MIPS stack</string>
     <string name="clod_tun_stack_effective">Stack in use</string>
     <string name="clod_tun_stack_from_profile">%1$s — from the subscription</string>
 
@@ -226,21 +229,21 @@
     <string name="providers">Providers</string>
 
     <string name="files">Files</string>
-    <string name="browse_files">Browse Files</string>
+    <string name="browse_files">Browse files</string>
     <string name="browse_configuration_providers"><![CDATA[Browse configuration & providers]]></string>
     <string name="rename">Rename</string>
-    <string name="file_name">File Name</string>
+    <string name="file_name">File name</string>
     <string name="invalid_file_name">Invalid file name</string>
 
-    <string name="reset_override_settings">Reset Override Settings</string>
+    <string name="reset_override_settings">Reset override settings</string>
     <string name="reset_override_settings_message">All override settings will be discarded</string>
 
-    <string name="use_built_in">Use Built-in</string>
+    <string name="use_built_in">Use built-in</string>
     <string name="more">More</string>
     <string name="save">Save</string>
 
     <string name="rule">Rule</string>
-    <string name="update_all">Update All</string>
+    <string name="update_all">Update all</string>
 
     <string name="close">Close</string>
     <string name="clod_back">Back</string>
@@ -258,44 +261,44 @@
     <string name="clod_docs">Clod Clash documentation</string>
     <string name="clod_docs_url">https://mrvibecodic.github.io/clod-clash-android/en/docs</string>
 
-    <string name="meta_features">Core Features</string>
-    <string name="unified_delay">Unified Delay</string>
-    <string name="geodata_mode">Geodata Mode</string>
-    <string name="tcp_concurrent">TCP Concurrent</string>
-    <string name="find_process_mode">Find Process Mode</string>
+    <string name="meta_features">Core features</string>
+    <string name="unified_delay">Unified delay</string>
+    <string name="geodata_mode">Geodata mode</string>
+    <string name="tcp_concurrent">TCP concurrent</string>
+    <string name="find_process_mode">Process detection</string>
 
-    <string name="sniffer_setting">Sniffer Setting</string>
-    <string name="force_dns_mapping">Force DNS Mapping</string>
-    <string name="parse_pure_ip">Parse Pure IP</string>
-    <string name="override_destination">Override Destination</string>
-    <string name="force_domain">Force Domain</string>
-    <string name="skip_domain">Skip Domain</string>
-    <string name="skip_src_address">Skip Src Address</string>
-    <string name="skip_dst_address">Skip Dst Address</string>
-    <string name="sniff_http_ports">Sniff HTTP Ports</string>
-    <string name="sniff_tls_ports">Sniff TLS Ports</string>
-    <string name="sniff_quic_ports">Sniff QUIC Ports</string>
-    <string name="sniff_http_override_destination">Sniff HTTP Override Destination</string>
-    <string name="sniff_tls_override_destination">Sniff TLS Override Destination</string>
-    <string name="sniff_quic_override_destination">Sniff QUIC Override Destination</string>
+    <string name="sniffer_setting">Sniffer settings</string>
+    <string name="force_dns_mapping">Force DNS mapping</string>
+    <string name="parse_pure_ip">Parse pure IP</string>
+    <string name="override_destination">Override destination</string>
+    <string name="force_domain">Force domain</string>
+    <string name="skip_domain">Skip domain</string>
+    <string name="skip_src_address">Skip source address</string>
+    <string name="skip_dst_address">Skip destination address</string>
+    <string name="sniff_http_ports">Sniff HTTP ports</string>
+    <string name="sniff_tls_ports">Sniff TLS ports</string>
+    <string name="sniff_quic_ports">Sniff QUIC ports</string>
+    <string name="sniff_http_override_destination">Sniff HTTP: override destination</string>
+    <string name="sniff_tls_override_destination">Sniff TLS: override destination</string>
+    <string name="sniff_quic_override_destination">Sniff QUIC: override destination</string>
 
-    <string name="geox_files" >Geo Files</string>
-    <string name="import_geoip_file">Import GeoIP Database</string>
-    <string name="import_geosite_file">Import GeoSite Database</string>
-    <string name="import_asn_file">Import ASN Database</string>
+    <string name="geox_files" >Geo files</string>
+    <string name="import_geoip_file">Import GeoIP database</string>
+    <string name="import_geosite_file">Import GeoSite database</string>
+    <string name="import_asn_file">Import ASN database</string>
     <string name="press_to_import">Press to import...</string>
     <string name="geofile_import_failed">Import failed</string>
-    <string name="geofile_unknown_db_format">Unknown Database format</string>
+    <string name="geofile_unknown_db_format">Unknown database format</string>
     <string name="geofile_unknown_db_format_message">Only %1$s are supported</string>
     <string name="geofile_imported">%1$s imported</string>
     <string name="geofile_after_reconnect">The core will use it after reconnecting</string>
-    <string name="external_control_activity">External Control</string>
+    <string name="external_control_activity">External control</string>
     <string name="external_control_started">Clod Clash is on</string>
     <string name="external_control_stopped">Clod Clash is off</string>
 
-    <string name="hide_app_icon_title">Hide App Icon</string>
+    <string name="hide_app_icon_title">Hide app icon</string>
     <string name="hide_app_icon_desc">Hide the app icon from the launcher. Afterwards open the app by pressing and holding its quick settings tile</string>
-    <string name="hide_from_recents_title">Hide from Recents</string>
+    <string name="hide_from_recents_title">Hide from recents</string>
     <string name="hide_from_recents_desc">Hide app from the Recent apps screen</string>
     <string name="import_from_qr_no_permission">Camera access is restricted. Please enable it in Settings.</string>
     <string name="import_from_qr_exception">An unhandled system exception occurred.</string>
@@ -345,7 +348,10 @@
     <string name="clod_sub_unlimited">Unlimited</string>
     <string name="clod_sub_days">%1$d d</string>
     <string name="clod_delay_ms">%1$d ms</string>
-    <string name="clod_delays_measuring">Measuring %1$d servers, up to %2$d min</string>
+    <plurals name="clod_delays_measuring">
+        <item quantity="one">Measuring %1$d server, up to %2$d min</item>
+        <item quantity="other">Measuring %1$d servers, up to %2$d min</item>
+    </plurals>
     <string name="clod_sub_until">until %1$s</string>
     <string name="clod_sub_expired_at">expired %1$s</string>
     <string name="clod_sub_last_day">less than a day</string>
@@ -365,10 +371,10 @@
     <string name="clod_interval_by_panel">Set by the subscription panel; changes with the next update</string>
     <string name="clod_interval_from_panel">Use the panel value</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
-    <string name="clod_properties_tip_source">The address of this profile is set by the source it came from and cannot be changed here. The name can be changed at any time.</string>
-    <string name="clod_properties_tip_file">This profile is a local file: it has no address, and its configuration is edited on the Files screen. The name can be changed at any time.</string>
-    <string name="clod_properties_type">Profile type: %1$s</string>
-    <string name="clod_profile_type_url">subscription</string>
+    <string name="clod_properties_tip_source">The address of this subscription is set by the source it came from and cannot be changed here. The name can be changed at any time.</string>
+    <string name="clod_properties_tip_file">This subscription is a local file: it has no address, and its configuration is edited on the Files screen. The name can be changed at any time.</string>
+    <string name="clod_properties_type">Subscription type: %1$s</string>
+    <string name="clod_profile_type_url">link</string>
     <string name="clod_profile_type_external">from another app</string>
     <string name="clod_profile_type_file">local file</string>
     <string name="clod_properties_secure">Secure connection is on. It cannot be turned off — only by adding the subscription again.</string>
@@ -392,7 +398,7 @@
     </plurals>
     <string name="clod_servers_offline">Not connected: delays are measured directly, and the server you pick is applied once you connect.</string>
     <string name="clod_select_offline">Saved. It will be applied when you connect.</string>
-    <string name="clod_select_not_selectable">The core picks the node in this group automatically.</string>
+    <string name="clod_select_not_selectable">The core picks the server in this group automatically.</string>
     <string name="clod_group_all">All</string>
     <string name="clod_group_none">No group</string>
     <string name="clod_group_move">Group</string>
@@ -451,12 +457,12 @@
     <string name="clod_geo_missing">Not downloaded</string>
     <string name="clod_group_index">Group \u00b7 %1$d of %2$d</string>
     <plurals name="clod_nodes_count">
-        <item quantity="one">%d node</item>
-        <item quantity="other">%d nodes</item>
+        <item quantity="one">%d server</item>
+        <item quantity="other">%d servers</item>
     </plurals>
     <string name="clod_favorite_add">Add to favorites</string>
     <string name="clod_favorite_remove">Remove from favorites</string>
-    <string name="clod_servers_direct">“Direct Mode” is on: traffic goes past the servers, so picking one changes nothing. The mode is shown in the More tab and can be switched there unless your provider has set it.</string>
+    <string name="clod_servers_direct">“Direct mode” is on: traffic goes past the servers, so picking one changes nothing. The mode is shown in the More tab and can be switched there unless your provider has set it.</string>
     <string name="clod_one_per_line">One per line</string>
     <string name="clod_key_value_per_line">One «key = value» pair per line</string>
     <string name="clod_hwid_title">Identify this device</string>
@@ -469,7 +475,7 @@
     <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
     <string name="clod_delay_unavailable">No server responded to the delay test</string>
     <string name="clod_delay_failed">Could not test the servers</string>
-    <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded nodes. Traffic is blocked, not sent directly. Update the subscription</string>
+    <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded servers. Traffic is blocked, not sent directly. Update the subscription</string>
     <string name="clod_override_pending_lost">Unsaved changes were lost while the app was in the background</string>
     <string name="clod_override_mode_shadowed">“%2$s” is chosen for the “%1$s” subscription on the More tab — it takes precedence</string>
     <string name="clod_language_title">Language</string>
@@ -516,7 +522,7 @@
     <string name="clod_reset_connections_summary">Switching between Wi-Fi and mobile data kills the connections that went through the old one. Dropping them right away lets apps reconnect instead of waiting out a timeout. It also rebuilds the multiplexed sessions (mux, QUIC, gRPC, anytls, ssh): with the switch off a dead session keeps poisoning new connections too.</string>
     <string name="clod_background">Background</string>
     <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
-    <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and node checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
+    <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and server checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
     <string name="clod_secure_channel">Secure connection</string>
     <string name="clod_secure_channel_hint">The provider must support it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
     <string name="clod_home_connected_to">Connected to</string>
@@ -552,7 +558,7 @@
     <string name="clod_notify_open_settings">Open settings</string>
     <string name="clod_reset_section">Reset</string>
     <string name="clod_reset_title">Reset settings</string>
-    <string name="clod_reset_summary">App, network and notification settings go back to defaults, the list on the Apps screen and the config overrides are cleared. Subscriptions, profiles and their own settings stay.</string>
-    <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow all apps” — apps you kept out of the tunnel will go through it again. The config overrides are cleared too. Subscriptions, profiles and their own settings stay untouched.</string>
+    <string name="clod_reset_summary">App, network and notification settings go back to defaults, the list on the Apps screen and the config overrides are cleared. Subscriptions and their own settings stay.</string>
+    <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow all apps” — apps you kept out of the tunnel will go through it again. The config overrides are cleared too. Subscriptions and their own settings stay untouched.</string>
     <string name="clod_reset_action">Reset</string>
 </resources>

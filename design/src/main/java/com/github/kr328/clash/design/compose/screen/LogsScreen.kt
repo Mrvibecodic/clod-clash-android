@@ -115,7 +115,7 @@ fun LogsScreen(
             text = { Text(stringResource(R.string.delete_all_logs_warn)) },
             confirmButton = {
                 TextButton(onClick = { onAction(LogsAction.ConfirmDeleteAll) }) {
-                    Text(stringResource(R.string.ok))
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {

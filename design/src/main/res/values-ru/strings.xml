@@ -7,7 +7,7 @@
     <string name="global_mode">Глобальный режим</string>
 
 
-    <string name="logs">Логи</string>
+    <string name="logs">Журналы</string>
     <string name="settings">Настройки</string>
     <string name="help">Помощь</string>
     <string name="about">О программе</string>
@@ -20,7 +20,7 @@
     <string name="format_hours_ago">%d час. назад</string>
     <string name="format_days_ago">%d дн. назад</string>
 
-    <string name="create_profile">Создать профиль</string>
+    <string name="create_profile">Новая подписка</string>
     <string name="file">Файл</string>
     <string name="import_from_file">Импорт из файла</string>
     <string name="url">URL</string>
@@ -34,9 +34,9 @@
     <string name="reinstall">Переустановить</string>
     <string name="github_releases">Релизы на GitHub</string>
 
-    <string name="profile">Профиль</string>
+    <string name="profile">Подписка</string>
     <string name="name">Название</string>
-    <string name="profile_name">Название профиля</string>
+    <string name="profile_name">Название подписки</string>
     <string name="auto_update">Автообновление</string>
     <string name="auto_update_minutes">Автообновление (минут)</string>
 
@@ -52,18 +52,19 @@
     <string name="properties">Свойства</string>
 
     <string name="exit_without_save">Выйти без сохранения</string>
-    <string name="exit_without_save_warning">Все изменения будут ПОТЕРЯНЫ</string>
+    <string name="exit_without_save_warning">Все изменения будут потеряны</string>
+    <string name="clod_exit_discard">Выйти</string>
 
     <string name="raw_cn" translatable="false">cn</string>
-    <string name="disabled">Отключен</string>
+    <string name="disabled">Выключено</string>
     <string name="empty_name">Пустое название</string>
     <string name="invalid_url">Неверный URL</string>
     <string name="clod_link_no_app">Нет приложения, чтобы открыть ссылку</string>
 
-    <string name="format_fetching_configuration">Загрузка настроек из \'%s\'</string>
-    <string name="format_fetching_provider">Загрузка провайдера из \'%s\'</string>
+    <string name="format_fetching_configuration">Загрузка настроек из «%s»</string>
+    <string name="format_fetching_provider">Загрузка провайдера «%s»</string>
     <string name="clod_provider_update">Обновить этот провайдер</string>
-    <string name="clod_provider_failed">Провайдер \'%s\' не скачался</string>
+    <string name="clod_provider_failed">Провайдер «%s» не скачался</string>
     <string name="initializing">Инициализация</string>
     <string name="verifying">Проверка</string>
 
@@ -80,9 +81,10 @@
     <string name="logcat">Журнал</string>
     <string name="clod_logcat_stop">Остановить запись</string>
     <string name="clod_log_delete_message">Журнал будет удалён</string>
+    <string name="clod_copy">Копировать</string>
 
-    <string name="delete_all_logs">Удалить все логи</string>
-    <string name="delete_all_logs_warn">Вся история будет ПОТЕРЯНА</string>
+    <string name="delete_all_logs">Удалить все журналы</string>
+    <string name="delete_all_logs_warn">Все сохранённые журналы будут удалены</string>
     <string name="file_exported">Файл экспортирован</string>
 
     <string name="behavior">Поведение</string>
@@ -125,7 +127,7 @@
     <string name="allow_lan">Разрешить LAN</string>
     <string name="bind_address">Задать адрес</string>
     <string name="mode">Режим</string>
-    <string name="log_level">Уровень логов</string>
+    <string name="log_level">Уровень журнала</string>
     <string name="ipv6">IPv6</string>
     <string name="hosts">Hosts</string>
     <string name="_new">Новый</string>
@@ -155,14 +157,15 @@
     <string name="error">Ошибка</string>
     <string name="debug">Отладка</string>
     <string name="silent">Тихий</string>
+    <string name="clod_log_level_unknown">Неизвестно</string>
 
     <string name="force_enable">Включить принудительно</string>
 
     <string name="mapping">Сопоставление реальных IP доменам</string>
     <string name="fakeip">Сопоставление подставных IP доменам</string>
-    <string name="off">Принудительно закрыть</string>
-    <string name="strict">Следовать настройкам конфигурации</string>
-    <string name="always">Принудительно включить</string>
+    <string name="off">Выключено</string>
+    <string name="strict">Только для правил</string>
+    <string name="always">Всегда</string>
 
     <string name="system_apps">Системные приложения</string>
     <string name="filter">Фильтр</string>
@@ -227,7 +230,7 @@
     <string name="clod_external_control_refused">Внешнее управление выключено. Включите его в настройках, раздел «Приложение».</string>
     <string name="clod_sub_menu">Действия с подпиской</string>
 
-    <string name="invalid_log_file">Недопустимый лог файл</string>
+    <string name="invalid_log_file">Недопустимый файл журнала</string>
     <string name="unable_to_start_vpn">Система не открыла запрос разрешения на VPN. Попробуйте ещё раз</string>
 
     <string name="clod_docs">Документация Clod Clash</string>
@@ -237,7 +240,7 @@
     <string name="unified_delay">Унифицированная задержка</string>
     <string name="geodata_mode">Режим геоданных</string>
     <string name="tcp_concurrent">Многопоточный TCP</string>
-    <string name="find_process_mode">Найти режим процесса</string>
+    <string name="find_process_mode">Определение процесса</string>
 
     <string name="sniffer_setting">Настройки перехвата доменов</string>
     <string name="force_domain">Принудительный перехват доменов</string>
@@ -297,7 +300,12 @@
     <string name="clod_sub_unlimited">безлимит</string>
     <string name="clod_sub_days">%1$d дн</string>
     <string name="clod_delay_ms">%1$d мс</string>
-    <string name="clod_delays_measuring">Измеряем %1$d серверов, до %2$d мин</string>
+    <plurals name="clod_delays_measuring">
+        <item quantity="one">Измеряем %1$d сервер, до %2$d мин</item>
+        <item quantity="few">Измеряем %1$d сервера, до %2$d мин</item>
+        <item quantity="many">Измеряем %1$d серверов, до %2$d мин</item>
+        <item quantity="other">Измеряем %1$d сервера, до %2$d мин</item>
+    </plurals>
     <string name="clod_sub_until">до %1$s</string>
     <string name="clod_sub_expired_at">истекла %1$s</string>
     <string name="clod_sub_last_day">меньше суток</string>
@@ -331,14 +339,14 @@
     <string name="clod_interval_by_panel">Задаёт панель подписки; меняется при следующем обновлении</string>
     <string name="clod_interval_from_panel">Как в панели</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
-    <string name="clod_properties_tip_source">Адрес этого профиля задан источником, из которого он пришёл, и здесь не меняется. Имя можно менять когда угодно.</string>
-    <string name="clod_properties_tip_file">Это локальный профиль-файл: адреса у него нет, конфигурация правится на экране «Файлы». Имя можно менять когда угодно.</string>
-    <string name="clod_properties_type">Тип профиля: %1$s</string>
-    <string name="clod_profile_type_url">подписка</string>
+    <string name="clod_properties_tip_source">Адрес этой подписки задан источником, из которого она пришла, и здесь не меняется. Имя можно менять когда угодно.</string>
+    <string name="clod_properties_tip_file">Это подписка из локального файла: адреса у неё нет, конфигурация правится на экране «Файлы». Имя можно менять когда угодно.</string>
+    <string name="clod_properties_type">Тип подписки: %1$s</string>
+    <string name="clod_profile_type_url">по ссылке</string>
     <string name="clod_profile_type_external">из другого приложения</string>
     <string name="clod_profile_type_file">локальный файл</string>
     <string name="clod_properties_secure">Защищённое соединение включено. Снять его нельзя — только добавить подписку заново.</string>
-    <string name="clod_no_logs">Сохранённых логов пока нет</string>
+    <string name="clod_no_logs">Сохранённых журналов пока нет</string>
     <string name="clod_no_files">Файлов пока нет</string>
     <string name="clod_files_error">Не удалось прочитать файлы: %1$s</string>
     <string name="clod_retry">Повторить</string>
@@ -360,7 +368,7 @@
     </plurals>
     <string name="clod_servers_offline">Без подключения: задержки меряются напрямую, а выбранный сервер применится, когда подключитесь.</string>
     <string name="clod_select_offline">Запомнили. Применится при подключении.</string>
-    <string name="clod_select_not_selectable">В этой группе узел выбирает ядро автоматически.</string>
+    <string name="clod_select_not_selectable">В этой группе ядро само выбирает сервер.</string>
     <string name="clod_group_all">Все</string>
     <string name="clod_group_none">Без группы</string>
     <string name="clod_group_move">Группа</string>
@@ -419,10 +427,10 @@
     <string name="clod_geo_missing">Не скачан</string>
     <string name="clod_group_index">Группа \u00b7 %1$d из %2$d</string>
     <plurals name="clod_nodes_count">
-        <item quantity="one">%d узел</item>
-        <item quantity="few">%d узла</item>
-        <item quantity="many">%d узлов</item>
-        <item quantity="other">%d узла</item>
+        <item quantity="one">%d сервер</item>
+        <item quantity="few">%d сервера</item>
+        <item quantity="many">%d серверов</item>
+        <item quantity="other">%d сервера</item>
     </plurals>
     <string name="clod_favorite_add">В избранное</string>
     <string name="clod_favorite_remove">Убрать из избранного</string>
@@ -456,7 +464,7 @@
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
     <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
     <string name="clod_delay_failed">Не удалось проверить серверы</string>
-    <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных узлов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
+    <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных серверов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
     <string name="clod_override_pending_lost">Несохранённые правки пропали, пока приложение было в фоне</string>
     <string name="clod_override_mode_shadowed">Для подписки «%1$s» во вкладке «Ещё» выбран «%2$s» — он главнее</string>
     <string name="clod_language_title">Язык</string>
@@ -511,7 +519,7 @@
     <string name="clod_reset_connections_summary">При переходе между Wi-Fi и мобильным интернетом соединения через старую сеть уже мертвы. Разрыв позволяет приложениям переподключиться сразу, а не ждать таймаута. Заодно пересоздаются мультиплексные сессии (mux, QUIC, gRPC, anytls, ssh): при выключенном тумблере дохлая сессия травит и новые подключения.</string>
     <string name="clod_background">Фоновая работа</string>
     <string name="clod_keep_awake">Держать туннель активным при выключенном экране</string>
-    <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки узлов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
+    <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки серверов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
     <string name="clod_secure_channel">Защищённое соединение</string>
     <string name="clod_secure_channel_hint">Провайдер должен его поддерживать. Включённую защиту нельзя снять — придётся добавить подписку заново.</string>
     <string name="clod_home_connected_to">Подключено к</string>
@@ -547,7 +555,7 @@
     <string name="clod_notify_open_settings">Открыть настройки</string>
     <string name="clod_reset_section">Сброс</string>
     <string name="clod_reset_title">Сбросить настройки</string>
-    <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским, список на экране «Приложения» и переопределения конфига очистятся. Подписки, профили и их собственные настройки останутся.</string>
-    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Список на экране «Приложения» очистится, а режим контроля доступа вернётся к «Разрешить все приложения» — приложения, которые вы исключали из туннеля, снова пойдут через него. Переопределения конфига тоже очистятся. Подписки, профили и их собственные настройки останутся нетронутыми.</string>
+    <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским, список на экране «Приложения» и переопределения конфига очистятся. Подписки и их собственные настройки останутся.</string>
+    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Список на экране «Приложения» очистится, а режим контроля доступа вернётся к «Разрешить все приложения» — приложения, которые вы исключали из туннеля, снова пойдут через него. Переопределения конфига тоже очистятся. Подписки и их собственные настройки останутся нетронутыми.</string>
     <string name="clod_reset_action">Сбросить</string>
 </resources>

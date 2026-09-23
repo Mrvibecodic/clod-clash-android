@@ -14,7 +14,7 @@ fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         title = { Text(stringResource(R.string.reset_override_settings)) },
         text = { Text(stringResource(R.string.reset_override_settings_message)) },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.ok)) }
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.clod_reset_action)) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }

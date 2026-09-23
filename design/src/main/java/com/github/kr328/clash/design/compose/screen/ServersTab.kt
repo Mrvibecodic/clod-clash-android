@@ -79,8 +79,9 @@ fun ServersTab(
 
                 if (state.testing && state.measuring > 0) {
                     Text(
-                        text = stringResource(
-                            R.string.clod_delays_measuring,
+                        text = pluralStringResource(
+                            R.plurals.clod_delays_measuring,
+                            state.measuring,
                             state.measuring,
                             measuringMinutes(state.measuring),
                         ),
