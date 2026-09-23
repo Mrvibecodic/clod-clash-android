@@ -10,8 +10,6 @@ import com.github.kr328.clash.design.compose.component.ProgressContent
 import com.github.kr328.clash.design.compose.theme.ClodClashTheme
 import com.github.kr328.clash.design.compose.theme.appDarkTheme
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 interface ModelProgressBarConfigure {
     var isIndeterminate: Boolean
@@ -73,9 +71,7 @@ suspend fun Context.withModelProgressBar(block: suspend ModelProgressBarScope.()
 
     val scopeImpl = object : ModelProgressBarScope {
         override suspend fun configure(block: suspend ModelProgressBarConfigure.() -> Unit) {
-            withContext(Dispatchers.Main) {
-                configureImpl.block()
-            }
+            configureImpl.block()
         }
     }
 

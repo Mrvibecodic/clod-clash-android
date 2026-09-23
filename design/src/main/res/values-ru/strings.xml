@@ -77,6 +77,8 @@
     <string name="clash_logcat">Журнал ядра</string>
     <string name="history">История</string>
     <string name="logcat">Журнал</string>
+    <string name="clod_logcat_stop">Остановить запись</string>
+    <string name="clod_log_delete_message">Журнал будет удалён</string>
 
     <string name="delete_all_logs">Удалить все логи</string>
     <string name="delete_all_logs_warn">Вся история будет ПОТЕРЯНА</string>

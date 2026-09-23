@@ -79,6 +79,8 @@
     <string name="clash_logcat">Core log</string>
     <string name="history">History</string>
     <string name="logcat">Logcat</string>
+    <string name="clod_logcat_stop">Stop recording</string>
+    <string name="clod_log_delete_message">The log will be deleted</string>
 
     <string name="delete_all_logs">Delete All Logs</string>
     <string name="delete_all_logs_warn">All historical logs will *LOST*</string>

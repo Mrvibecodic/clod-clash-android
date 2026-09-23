@@ -78,21 +78,23 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                     finish()
                 }
                 LogcatDesign.Request.Export -> {
-                    val output = startActivityForResult(
-                        ActivityResultContracts.CreateDocument("text/plain"),
-                        file.fileName
-                    )
+                    try {
+                        val output = startActivityForResult(
+                            ActivityResultContracts.CreateDocument("text/plain"),
+                            file.fileName
+                        )
 
-                    if (output != null) {
-                        try {
+                        if (output != null) {
                             withContext(Dispatchers.IO) {
                                 writeLogTo(messages, file, output)
                             }
 
                             design.showToast(R.string.file_exported, ToastDuration.Long)
-                        } catch (e: Exception) {
-                            design.showExceptionToast(e, R.string.clod_export_failed)
                         }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        design.showExceptionToast(e, R.string.clod_export_failed)
                     }
                 }
                 else -> Unit

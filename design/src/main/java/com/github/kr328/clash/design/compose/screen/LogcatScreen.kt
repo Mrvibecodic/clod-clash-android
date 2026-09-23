@@ -9,13 +9,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,6 +55,8 @@ fun LogcatScreen(
 ) {
     val listState = rememberLazyListState()
 
+    var deleting by rememberSaveable { mutableStateOf(false) }
+
     val atBottom = {
         val info = listState.layoutInfo
         val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
@@ -71,11 +79,11 @@ fun LogcatScreen(
                 IconButton(onClick = { onAction(LogcatAction.Close) }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_stop),
-                        contentDescription = stringResource(R.string.close),
+                        contentDescription = stringResource(R.string.clod_logcat_stop),
                     )
                 }
             } else {
-                IconButton(onClick = { onAction(LogcatAction.Delete) }) {
+                IconButton(onClick = { deleting = true }) {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_delete),
                         contentDescription = stringResource(R.string.delete),
@@ -98,6 +106,29 @@ fun LogcatScreen(
                 LogRow(message = message, onCopy = { onAction(LogcatAction.Copy(message)) })
             }
         }
+    }
+
+    if (deleting) {
+        AlertDialog(
+            onDismissRequest = { deleting = false },
+            title = { Text(stringResource(R.string.delete)) },
+            text = { Text(stringResource(R.string.clod_log_delete_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        deleting = false
+                        onAction(LogcatAction.Delete)
+                    },
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleting = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
     }
 }
 
