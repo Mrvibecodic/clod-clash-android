@@ -60,7 +60,7 @@ fun TextRow(
 
         EditDialog(
             title = title,
-            hint = empty ?: "",
+            hint = if (value == "" && empty != null) empty else placeholder,
             text = text,
             singleLine = true,
             numeric = numeric,
@@ -170,6 +170,7 @@ fun PairsRow(
             hint = stringResource(R.string.clod_key_value_per_line),
             text = text,
             singleLine = false,
+            confirmEnabled = !pairsInvalid(text),
             onText = { text = it },
             onDismiss = { editing = false },
             onReset = {
@@ -199,6 +200,9 @@ fun PairsRow(
     }
 }
 
+internal fun pairsInvalid(text: String): Boolean =
+    text.lines().any { it.isNotBlank() && it.substringBefore('=', "").isBlank() }
+
 @Composable
 private fun ValueRow(
     title: String,
@@ -218,20 +222,12 @@ private fun ValueRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) {
-                    MaterialTheme.colorScheme.onSurface
-                } else {
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                },
+                color = titleColor(enabled),
             )
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (enabled) {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                },
+                color = subtitleColor(enabled),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

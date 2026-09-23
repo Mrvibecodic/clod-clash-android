@@ -167,21 +167,21 @@ fun SelectRow(
 }
 
 @Composable
-private fun iconTint(enabled: Boolean) = if (enabled) {
+internal fun iconTint(enabled: Boolean) = if (enabled) {
     MaterialTheme.colorScheme.primary
 } else {
     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
 }
 
 @Composable
-private fun titleColor(enabled: Boolean) = if (enabled) {
+internal fun titleColor(enabled: Boolean) = if (enabled) {
     MaterialTheme.colorScheme.onSurface
 } else {
     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
 }
 
 @Composable
-private fun subtitleColor(enabled: Boolean) = if (enabled) {
+internal fun subtitleColor(enabled: Boolean) = if (enabled) {
     MaterialTheme.colorScheme.onSurfaceVariant
 } else {
     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)

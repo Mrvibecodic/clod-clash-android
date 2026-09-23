@@ -117,7 +117,7 @@ fun ActionRow(
         Icon(
             painter = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = iconTint(enabled),
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.width(16.dp))
@@ -125,13 +125,13 @@ fun ActionRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = titleColor(enabled),
             )
             if (subtitle != null) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = subtitleColor(enabled),
                     maxLines = subtitleMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -140,7 +140,7 @@ fun ActionRow(
         Icon(
             painter = painterResource(R.drawable.ic_chevron_right),
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = subtitleColor(enabled),
             modifier = Modifier.size(20.dp),
         )
     }
