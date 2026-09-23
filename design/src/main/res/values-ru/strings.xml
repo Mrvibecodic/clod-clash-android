@@ -14,12 +14,6 @@
 
     <string name="copied">Скопировано</string>
 
-    <string name="recently">Недавно</string>
-
-    <string name="format_minutes_ago">%d мин. назад</string>
-    <string name="format_hours_ago">%d час. назад</string>
-    <string name="format_days_ago">%d дн. назад</string>
-
     <string name="create_profile">Новая подписка</string>
     <string name="file">Файл</string>
     <string name="import_from_file">Импорт из файла</string>
@@ -529,8 +523,26 @@
     <string name="clod_home_blocked">Блокируется</string>
     <string name="clod_section_configuration">Конфигурация</string>
     <string name="clod_data_title">Базы и провайдеры</string>
-    <string name="clod_just_now">только что</string>
-    <string name="clod_never">не обновлялось</string>
+    <string name="clod_just_now">Только что</string>
+    <plurals name="clod_minutes_ago">
+        <item quantity="one">%d минуту назад</item>
+        <item quantity="few">%d минуты назад</item>
+        <item quantity="many">%d минут назад</item>
+        <item quantity="other">%d минуты назад</item>
+    </plurals>
+    <plurals name="clod_hours_ago">
+        <item quantity="one">%d час назад</item>
+        <item quantity="few">%d часа назад</item>
+        <item quantity="many">%d часов назад</item>
+        <item quantity="other">%d часа назад</item>
+    </plurals>
+    <plurals name="clod_days_ago">
+        <item quantity="one">%d день назад</item>
+        <item quantity="few">%d дня назад</item>
+        <item quantity="many">%d дней назад</item>
+        <item quantity="other">%d дня назад</item>
+    </plurals>
+    <string name="clod_never">Не обновлялось</string>
     <string name="clod_notify_ask_title">Показывать уведомления?</string>
     <string name="clod_notify_ask_text">В постоянном уведомлении видно состояние туннеля и есть кнопка «Отключить». Туда же приходят напоминания о подписке и сообщения об ошибках её обновления.</string>
     <string name="clod_notify_ask_allow">Разрешить</string>

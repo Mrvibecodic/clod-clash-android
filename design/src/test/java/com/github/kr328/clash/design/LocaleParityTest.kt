@@ -8,6 +8,10 @@ import java.io.File
 class LocaleParityTest {
     private val declarations = Regex("""<string name="([^"]+)"([^>]*)>""")
 
+    private val pluralBlocks = Regex("""<plurals name="([^"]+)"[^>]*>(.*?)</plurals>""", RegexOption.DOT_MATCHES_ALL)
+
+    private val quantities = Regex("""<item quantity="([^"]+)"""")
+
     private val modules = listOf("design", "service", "common")
 
     private val root: File = run {
@@ -45,6 +49,33 @@ class LocaleParityTest {
             assertTrue("$module: base strings not found", base.isNotEmpty())
             assertEquals("$module: keys without values-ru", emptySet<String>(), base - ru)
             assertEquals("$module: keys only in values-ru", emptySet<String>(), ru - base)
+        }
+    }
+
+    private fun plurals(module: String, locale: String): Map<String, Set<String>> =
+        pluralBlocks.findAll(resolve(module, locale).readText())
+            .associate { block ->
+                block.groupValues[1] to quantities.findAll(block.groupValues[2]).map { it.groupValues[1] }.toSet()
+            }
+
+    @Test
+    fun everyPluralHasAllForms() {
+        for (module in modules) {
+            val base = plurals(module, "values")
+            val ru = plurals(module, "values-ru")
+
+            assertEquals("$module: plurals differ between locales", base.keys, ru.keys)
+
+            for ((name, forms) in base) {
+                assertTrue("$module: $name lacks English forms: $forms", forms.containsAll(setOf("one", "other")))
+            }
+
+            for ((name, forms) in ru) {
+                assertTrue(
+                    "$module: $name lacks Russian forms: $forms",
+                    forms.containsAll(setOf("one", "few", "many", "other")),
+                )
+            }
         }
     }
 

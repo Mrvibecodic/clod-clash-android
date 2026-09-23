@@ -1,6 +1,5 @@
 package com.github.kr328.clash.design.compose.screen
 
-import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,10 +16,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ReleaseNotes
 
@@ -38,8 +37,6 @@ fun UpdateDialog(
     state: UpdateState,
     onAction: (MainAction) -> Unit,
 ) {
-    val context = LocalContext.current
-
     AlertDialog(
         onDismissRequest = { if (!state.downloading) onAction(MainAction.UpdateLater) },
         title = {
@@ -57,7 +54,7 @@ fun UpdateDialog(
             ) {
                 if (state.sizeBytes > 0) {
                     Text(
-                        text = Formatter.formatShortFileSize(context, state.sizeBytes),
+                        text = state.sizeBytes.toBytesString(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -28,10 +28,9 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
+import com.github.kr328.clash.design.util.formatDate
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
-import java.text.DateFormat
-import java.util.Date
 import java.util.concurrent.TimeUnit
 
 enum class NoServersReason {
@@ -266,9 +265,4 @@ private fun refillMillis(panel: PanelInfo?): Long {
     val seconds = panel?.refillDate ?: 0
 
     return if (seconds > 0) TimeUnit.SECONDS.toMillis(seconds) else 0
-}
-
-@Composable
-private fun formatDate(millis: Long): String {
-    return DateFormat.getDateInstance(DateFormat.LONG).format(Date(millis))
 }

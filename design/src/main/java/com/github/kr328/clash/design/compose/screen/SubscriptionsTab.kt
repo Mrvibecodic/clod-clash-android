@@ -1,6 +1,5 @@
 package com.github.kr328.clash.design.compose.screen
 
-import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -49,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -69,9 +67,9 @@ import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.design.util.bidiIsolated
+import com.github.kr328.clash.design.util.formatDate
 import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.service.model.Profile
-import java.util.Date
 import java.util.concurrent.TimeUnit
 
 internal enum class SubscriptionState {
@@ -130,7 +128,7 @@ internal fun expiryLeft(expire: Long, now: Long): String? {
 @Composable
 internal fun expiryDate(expire: Long, now: Long): String = stringResource(
     if (expire in 1 until now) R.string.clod_sub_expired_at else R.string.clod_sub_until,
-    DateFormat.getDateFormat(LocalContext.current).format(Date(expire)),
+    formatDate(expire),
 )
 
 @Composable

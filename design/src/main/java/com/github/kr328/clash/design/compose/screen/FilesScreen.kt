@@ -25,7 +25,6 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -35,7 +34,7 @@ import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.model.File
-import com.github.kr328.clash.design.util.elapsedIntervalString
+import com.github.kr328.clash.design.util.relativeTime
 import kotlinx.coroutines.launch
 
 @Immutable
@@ -75,7 +74,6 @@ fun FilesScreen(
     onAction: (FilesAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState()
 
@@ -134,9 +132,7 @@ fun FilesScreen(
                     elapsed = if (file.isDirectory) {
                         null
                     } else {
-                        (state.currentTime - file.lastModified)
-                            .coerceAtLeast(0)
-                            .elapsedIntervalString(context)
+                        relativeTime(file.lastModified, state.currentTime)
                     },
                     onOpen = { onAction(FilesAction.Open(file)) },
                     onMore = { onAction(FilesAction.More(file)) }.takeIf { state.hasActions(file) },

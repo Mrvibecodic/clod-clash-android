@@ -1,7 +1,5 @@
 package com.github.kr328.clash.design.compose.screen
 
-import android.text.format.DateUtils
-import android.text.format.Formatter
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,14 +17,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SubScreenScaffold
+import com.github.kr328.clash.design.util.relativeTime
 
 @Immutable
 data class GeoFileState(
@@ -101,7 +100,7 @@ fun RoutingDataScreen(
                     icon = R.drawable.ic_baseline_swap_vertical_circle,
                     title = provider.name,
                     subtitle = provider.error
-                        ?: relativeTime(provider.updatedAt),
+                        ?: relativeTime(provider.updatedAt, System.currentTimeMillis()),
                     error = provider.error != null,
                 ) {
                     if (provider.updating) {
@@ -132,34 +131,22 @@ fun RoutingDataScreen(
 
 @Composable
 private fun GeoFileRow(file: GeoFileState) {
-    val context = LocalContext.current
     val exists = file.sizeBytes > 0
 
     DataRow(
         icon = R.drawable.ic_baseline_domain,
         title = file.name,
         subtitle = if (exists) {
-            relativeTime(file.updatedAt)
+            relativeTime(file.updatedAt, System.currentTimeMillis())
         } else {
             stringResource(R.string.clod_geo_missing)
         },
         trailing = if (exists) {
-            Formatter.formatShortFileSize(context, file.sizeBytes)
+            file.sizeBytes.toBytesString()
         } else {
             null
         },
     )
-}
-
-@Composable
-private fun relativeTime(millis: Long): String {
-    if (millis <= 0) return stringResource(R.string.clod_never)
-
-    val now = System.currentTimeMillis()
-
-    if (now - millis < DateUtils.MINUTE_IN_MILLIS) return stringResource(R.string.clod_just_now)
-
-    return DateUtils.getRelativeTimeSpanString(millis, now, DateUtils.MINUTE_IN_MILLIS).toString()
 }
 
 @Composable

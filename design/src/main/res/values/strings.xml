@@ -15,12 +15,6 @@
 
     <string name="copied">Copied</string>
 
-    <string name="recently">Recently</string>
-
-    <string name="format_minutes_ago">%d min ago</string>
-    <string name="format_hours_ago">%d hours ago</string>
-    <string name="format_days_ago">%d days ago</string>
-
     <string name="create_profile">New subscription</string>
     <string name="file">File</string>
     <string name="import_from_file">Import from file</string>
@@ -533,6 +527,18 @@
     <string name="clod_section_configuration">Configuration</string>
     <string name="clod_data_title">Routing data and providers</string>
     <string name="clod_just_now">Just now</string>
+    <plurals name="clod_minutes_ago">
+        <item quantity="one">%d minute ago</item>
+        <item quantity="other">%d minutes ago</item>
+    </plurals>
+    <plurals name="clod_hours_ago">
+        <item quantity="one">%d hour ago</item>
+        <item quantity="other">%d hours ago</item>
+    </plurals>
+    <plurals name="clod_days_ago">
+        <item quantity="one">%d day ago</item>
+        <item quantity="other">%d days ago</item>
+    </plurals>
     <string name="clod_never">Never</string>
     <string name="clod_notify_ask_title">Show notifications?</string>
     <string name="clod_notify_ask_text">The ongoing notification shows the tunnel state and carries a Disconnect button. Subscription reminders and update errors arrive there too.</string>
