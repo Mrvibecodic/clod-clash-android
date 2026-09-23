@@ -92,7 +92,11 @@ fun UpdateDialog(
             }
         },
         dismissButton = {
-            if (!state.downloading) {
+            if (state.downloading) {
+                TextButton(onClick = { onAction(MainAction.UpdateCancel) }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            } else {
                 Row {
                     TextButton(onClick = { onAction(MainAction.UpdateSkip) }) {
                         Text(stringResource(R.string.clod_update_skip))

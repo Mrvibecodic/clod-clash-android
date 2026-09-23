@@ -3,10 +3,14 @@ package com.github.kr328.clash.update
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.annotation.StringRes
 import com.github.kr328.clash.BuildConfig
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.net.Redirects
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.ByteArrayOutputStream
@@ -17,6 +21,7 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URL
 import java.security.MessageDigest
+import com.github.kr328.clash.design.R as DesignR
 
 object Updater {
     private const val TAG = "Updater"
@@ -35,7 +40,13 @@ object Updater {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    class UnsupportedAbiException(message: String) : IOException(message)
+    class UpdateException(val kind: Kind, message: String) : IOException(message) {
+        enum class Kind(@StringRes val text: Int) {
+            Network(DesignR.string.clod_update_reason_network),
+            Rejected(DesignR.string.clod_update_reason_rejected),
+            NoBuild(DesignR.string.clod_update_reason_no_build),
+        }
+    }
 
     data class Available(
         val manifest: UpdateManifest,
@@ -55,7 +66,8 @@ object Updater {
 
                 listOfNotNull(release.getOrNull(), preview).maxByOrNull { it.versionCode }
                     ?: return@withContext Result.failure(
-                        release.exceptionOrNull() ?: IOException("манифест недоступен"),
+                        release.exceptionOrNull()
+                            ?: UpdateException(UpdateException.Kind.Network, "манифест недоступен"),
                     )
             } else {
                 release.getOrElse { return@withContext Result.failure(it) }
@@ -68,12 +80,17 @@ object Updater {
             val platform = manifest.platformFor(Build.SUPPORTED_ABIS.toList())
             if (platform == null) {
                 return@withContext Result.failure(
-                    UnsupportedAbiException("в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}"),
+                    UpdateException(
+                        UpdateException.Kind.NoBuild,
+                        "в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}",
+                    ),
                 )
             }
 
             if (!isHttps(platform.url)) {
-                return@withContext Result.failure(IOException("адрес обновления не https"))
+                return@withContext Result.failure(
+                    UpdateException(UpdateException.Kind.Rejected, "адрес обновления не https"),
+                )
             }
 
             Result.success(Available(manifest, platform))
@@ -82,16 +99,21 @@ object Updater {
     private fun isHttps(url: String): Boolean =
         runCatching { URL(url).protocol.equals("https", ignoreCase = true) }.getOrDefault(false)
 
-    private fun load(url: String, mixedPort: Int?): Result<UpdateManifest> {
+    private suspend fun load(url: String, mixedPort: Int?): Result<UpdateManifest> {
         if (!isHttps(url)) {
-            return Result.failure(IOException("адрес манифеста не https"))
+            return Result.failure(UpdateException(UpdateException.Kind.Rejected, "адрес манифеста не https"))
         }
 
         val body = fetch(url, mixedPort)?.toString(Charsets.UTF_8)
-            ?: return Result.failure(IOException("манифест недоступен"))
+            ?: return Result.failure(UpdateException(UpdateException.Kind.Network, "манифест недоступен"))
 
-        return runCatching { json.decodeFromString(UpdateManifest.serializer(), body) }
-            .onFailure { Log.w("$TAG: манифест не разобран", it) }
+        return try {
+            Result.success(json.decodeFromString(UpdateManifest.serializer(), body))
+        } catch (e: Exception) {
+            Log.w("$TAG: манифест не разобран", e)
+
+            Result.failure(UpdateException(UpdateException.Kind.Rejected, "манифест не разобран"))
+        }
     }
 
     suspend fun download(
@@ -106,25 +128,35 @@ object Updater {
             target.delete()
 
             val actual = downloadTo(available.platform.url, mixedPort, target, onProgress)
-                ?: error("не удалось скачать обновление")
+                ?: throw UpdateException(UpdateException.Kind.Network, "не удалось скачать обновление")
 
             if (!actual.equals(available.platform.sha256, ignoreCase = true)) {
-                error("контрольная сумма не совпала: ожидалась ${available.platform.sha256}, получена $actual")
+                throw UpdateException(
+                    UpdateException.Kind.Rejected,
+                    "контрольная сумма не совпала: ожидалась ${available.platform.sha256}, получена $actual",
+                )
             }
 
             if (!hasSameSignature(context, target)) {
-                error("файл подписан другим ключом — установка поверх невозможна")
+                throw UpdateException(
+                    UpdateException.Kind.Rejected,
+                    "файл подписан другим ключом — установка поверх невозможна",
+                )
             }
 
             if (!matchesManifest(context, target, available.manifest)) {
-                error("пакет или версия файла не совпадают с манифестом")
+                throw UpdateException(UpdateException.Kind.Rejected, "пакет или версия файла не совпадают с манифестом")
             }
+
+            currentCoroutineContext().ensureActive()
 
             target
         }.onFailure {
-            Log.w("$TAG: загрузка не удалась", it)
-
             target.delete()
+
+            if (it is CancellationException) throw it
+
+            Log.w("$TAG: загрузка не удалась", it)
         }
     }
 
@@ -191,12 +223,14 @@ object Updater {
 
     private class LimitExceededException(message: String) : IOException(message)
 
-    private fun <T : Any> request(
+    private suspend fun <T : Any> request(
         url: String,
         mixedPort: Int?,
-        read: (HttpURLConnection) -> T,
+        read: suspend (HttpURLConnection) -> T,
     ): T? {
         for (proxy in routes(mixedPort)) {
+            currentCoroutineContext().ensureActive()
+
             val result = runCatching {
                 val connection = Redirects.open(
                     url,
@@ -218,6 +252,8 @@ object Updater {
                     connection.disconnect()
                 }
             }.onFailure {
+                if (it is CancellationException) throw it
+
                 Log.i("$TAG: $url через $proxy не удалось: ${it.message}")
             }
 
@@ -229,7 +265,7 @@ object Updater {
         return null
     }
 
-    private fun fetch(url: String, mixedPort: Int?): ByteArray? =
+    private suspend fun fetch(url: String, mixedPort: Int?): ByteArray? =
         request(url, mixedPort) { connection ->
             val total = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
 
@@ -242,6 +278,8 @@ object Updater {
                 val buffer = ByteArray(BUFFER_SIZE)
 
                 while (true) {
+                    currentCoroutineContext().ensureActive()
+
                     val read = input.read(buffer)
                     if (read < 0) break
 
@@ -256,7 +294,7 @@ object Updater {
             }
         }
 
-    private fun downloadTo(
+    private suspend fun downloadTo(
         url: String,
         mixedPort: Int?,
         target: File,
@@ -276,6 +314,8 @@ object Updater {
         connection.inputStream.use { input ->
             target.outputStream().use { output ->
                 while (true) {
+                    currentCoroutineContext().ensureActive()
+
                     val read = input.read(buffer)
                     if (read < 0) break
 

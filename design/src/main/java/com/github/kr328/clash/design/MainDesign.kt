@@ -69,6 +69,7 @@ class MainDesign(
         data object UpdateNow : Request
         data object UpdateSkip : Request
         data object UpdateLater : Request
+        data object UpdateCancel : Request
         data object NewProfile : Request
         data object UpdateAllProfiles : Request
         data class ActivateProfile(val profile: Profile) : Request
@@ -139,6 +140,7 @@ class MainDesign(
             MainAction.UpdateNow -> request(Request.UpdateNow)
             MainAction.UpdateSkip -> request(Request.UpdateSkip)
             MainAction.UpdateLater -> request(Request.UpdateLater)
+            MainAction.UpdateCancel -> request(Request.UpdateCancel)
             is MainAction.SelectSubscriptionGroup ->
                 state = state.copy(
                     subscriptions = state.subscriptions.copy(selectedGroup = action.group),

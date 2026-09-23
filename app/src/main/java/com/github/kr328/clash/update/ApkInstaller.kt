@@ -27,6 +27,8 @@ object ApkInstaller {
 
     const val ACTION_INSTALL_STATUS = "install_status"
 
+    private const val ACTION_CONFIRM_DISMISSED = "update_confirm_dismissed"
+
     fun canInstall(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
             context.packageManager.canRequestPackageInstalls()
@@ -96,7 +98,7 @@ object ApkInstaller {
         return state.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
     }
 
-    private fun notifyConfirm(base: Context, confirm: Intent): Boolean {
+    private fun notifyConfirm(base: Context, confirm: Intent, session: Int): Boolean {
         val context = base.withAppLocale()
 
         val manager = NotificationManagerCompat.from(context)
@@ -129,6 +131,16 @@ object ApkInstaller {
                     pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
                 ),
             )
+            .setDeleteIntent(
+                PendingIntent.getBroadcast(
+                    context,
+                    CONFIRM_NOTIFICATION_ID,
+                    Intent(context, ResultReceiver::class.java)
+                        .setAction("${context.packageName}.$ACTION_CONFIRM_DISMISSED")
+                        .putExtra(PackageInstaller.EXTRA_SESSION_ID, session),
+                    pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
+                ),
+            )
             .build()
 
         return runCatching { manager.notify(CONFIRM_NOTIFICATION_ID, notification) }.isSuccess
@@ -140,8 +152,27 @@ object ApkInstaller {
         File(context.cacheDir, "update.apk").delete()
     }
 
+    private fun abandon(context: Context, intent: Intent) {
+        val session = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+        if (session >= 0) {
+            runCatching {
+                context.packageManager.packageInstaller.abandonSession(session)
+            }
+        }
+    }
+
     class ResultReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == "${context.packageName}.$ACTION_CONFIRM_DISMISSED") {
+                abandon(context, intent)
+
+                finish(context)
+
+                UpdateTask.installFinished(UpdateTask.InstallOutcome.Returned)
+
+                return
+            }
+
             when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
                 PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                     val confirm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -151,7 +182,15 @@ object ApkInstaller {
                         intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
                     }
 
-                    if (confirm == null) return
+                    if (confirm == null) {
+                        abandon(context, intent)
+
+                        finish(context)
+
+                        UpdateTask.installFinished(UpdateTask.InstallOutcome.Returned)
+
+                        return
+                    }
 
                     confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
@@ -161,29 +200,37 @@ object ApkInstaller {
                         return
                     }
 
-                    if (notifyConfirm(context, confirm)) return
+                    if (notifyConfirm(context, confirm, intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1))) return
 
                     Log.w("$TAG: подтверждение установки показать негде")
 
-                    val session = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
-                    if (session >= 0) {
-                        runCatching {
-                            context.packageManager.packageInstaller.abandonSession(session)
-                        }
-                    }
+                    abandon(context, intent)
 
                     finish(context)
+
+                    UpdateTask.installFinished(UpdateTask.InstallOutcome.Returned)
                 }
 
                 PackageInstaller.STATUS_SUCCESS -> {
                     Log.i("$TAG: обновление установлено")
                     finish(context)
+
+                    UpdateTask.installFinished(UpdateTask.InstallOutcome.Installed)
+                }
+
+                PackageInstaller.STATUS_FAILURE_ABORTED -> {
+                    Log.i("$TAG: установка отменена")
+                    finish(context)
+
+                    UpdateTask.installFinished(UpdateTask.InstallOutcome.Returned)
                 }
 
                 else -> {
                     val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                     Log.w("$TAG: установка не удалась, status=$status, $message")
                     finish(context)
+
+                    UpdateTask.installFinished(UpdateTask.InstallOutcome.Refused(message))
                 }
             }
         }

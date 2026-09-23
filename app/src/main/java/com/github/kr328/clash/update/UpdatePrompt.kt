@@ -25,7 +25,7 @@ object UpdatePrompt {
 
         data object UpToDate : Outcome
 
-        data class Failed(val reason: String?) : Outcome
+        data class Failed(val kind: Updater.UpdateException.Kind?, val detail: String?) : Outcome
     }
 
     suspend fun check(context: Context, manual: Boolean, mixedPort: Int?): Outcome {
@@ -41,14 +41,16 @@ object UpdatePrompt {
 
         val result = checked.onFailure { Log.w("UpdatePrompt: проверка не удалась", it) }
 
-        val unsupportedAbi = result.exceptionOrNull() is Updater.UnsupportedAbiException
+        val kind = (result.exceptionOrNull() as? Updater.UpdateException)?.kind
+
+        val unsupportedAbi = kind == Updater.UpdateException.Kind.NoBuild
 
         store.lastUpdateCheck = System.currentTimeMillis()
         store.lastUpdateCheckFailed = result.isFailure && !unsupportedAbi
 
         if (!manual && unsupportedAbi) return Outcome.UpToDate
 
-        result.exceptionOrNull()?.let { return Outcome.Failed(it.message) }
+        if (result.isFailure) return Outcome.Failed(kind, if (kind == null) result.exceptionOrNull()?.let { it.message ?: it.toString() } else null)
 
         val available = result.getOrNull() ?: return Outcome.UpToDate
 

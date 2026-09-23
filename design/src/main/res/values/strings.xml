@@ -405,6 +405,9 @@
     <string name="clod_update_none">You are on the latest version</string>
     <string name="clod_update_check_failed">Could not check for updates</string>
     <string name="clod_update_failed_generic">Could not install the update</string>
+    <string name="clod_update_reason_network">Could not reach the update server</string>
+    <string name="clod_update_reason_rejected">The update did not pass verification</string>
+    <string name="clod_update_reason_no_build">There is no build for this device</string>
     <string name="clod_update_permission">Allow installation so the app can update itself. The system will open its own screen — turn the switch on there.</string>
     <string name="clod_update_confirm_channel">Update</string>
     <string name="clod_update_confirm_title">Update ready to install</string>

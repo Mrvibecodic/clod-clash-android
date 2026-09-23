@@ -373,6 +373,9 @@
     <string name="clod_update_none">Установлена последняя версия</string>
     <string name="clod_update_check_failed">Не удалось проверить обновления</string>
     <string name="clod_update_failed_generic">Не удалось установить обновление</string>
+    <string name="clod_update_reason_network">Не удалось связаться с сервером обновлений</string>
+    <string name="clod_update_reason_rejected">Обновление не прошло проверку</string>
+    <string name="clod_update_reason_no_build">Для этого устройства нет сборки</string>
     <string name="clod_update_permission">Разрешите приложению установку, чтобы оно могло обновить себя. Система откроет свой экран — включите там переключатель.</string>
     <string name="clod_update_confirm_channel">Обновление</string>
     <string name="clod_update_confirm_title">Обновление готово к установке</string>

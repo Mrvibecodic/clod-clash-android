@@ -245,6 +245,7 @@ sealed interface MainAction {
     data object UpdateNow : MainAction
     data object UpdateLater : MainAction
     data object UpdateSkip : MainAction
+    data object UpdateCancel : MainAction
     data class SetAutoCheckUpdate(val enabled: Boolean) : MainAction
     data class SetPrerelease(val enabled: Boolean) : MainAction
     data object UpdateRoutingData : MainAction

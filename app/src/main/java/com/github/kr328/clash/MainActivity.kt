@@ -404,6 +404,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             UpdateTask.dismiss()
                         }
                         MainDesign.Request.UpdateLater -> UpdateTask.dismiss()
+                        MainDesign.Request.UpdateCancel -> UpdateTask.cancel()
                         MainDesign.Request.NewProfile -> launch { addProfile() }
                         MainDesign.Request.UpdateAllProfiles -> {
                             launch {
@@ -1446,7 +1447,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     showToast(
                         DesignR.string.clod_update_check_failed,
                         ToastDuration.Long,
-                        detail = state.reason,
+                        detail = state.kind?.let { getString(it.text) } ?: state.detail?.let(Redact::text),
                         kind = NoticeKind.Error,
                     )
                 }
@@ -1457,7 +1458,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 showToast(
                     DesignR.string.clod_update_failed_generic,
                     ToastDuration.Long,
-                    detail = Redact.text(state.reason),
+                    detail = state.kind?.let { getString(it.text) } ?: state.detail?.let(Redact::text),
                     kind = NoticeKind.Error,
                 )
 
