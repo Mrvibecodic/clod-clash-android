@@ -40,7 +40,7 @@ class TileService : TileService() {
 
         when (tile.state) {
             Tile.STATE_INACTIVE -> {
-                if (startClashService() != null) {
+                if (startClashService(unattended = true) != null) {
                     val intent = WidgetToggleActivity::class.intent
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

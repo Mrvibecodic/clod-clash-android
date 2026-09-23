@@ -153,7 +153,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
     private fun startClash() {
         if (isFinishing || isDestroyed) return
 
-        val vpnRequest = startClashService()
+        val vpnRequest = startClashService(unattended = true)
         if (vpnRequest != null) {
             startActivity(MainActivity::class.intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return

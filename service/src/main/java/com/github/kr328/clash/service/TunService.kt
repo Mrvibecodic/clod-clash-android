@@ -154,7 +154,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 "rejected = ${session.rejected}, stopped = ${session.stopped}"
         )
 
-        return when (session.onStartCommand(intent == null, startId)) {
+        val unattended = intent?.getBooleanExtra(Intents.EXTRA_UNATTENDED, false) == true
+
+        return when (session.onStartCommand(intent == null, unattended, startId)) {
             StartCommandOutcome.StopSticky, StartCommandOutcome.StopStartFailed -> START_NOT_STICKY
             else -> super.onStartCommand(intent, flags, startId)
         }
@@ -168,6 +170,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         session.reason = getString(R.string.clod_tun_revoked)
 
         session.systemStarted = false
+        session.unattendedStart = false
 
         StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_tun_revoked), R.string.clod_stopped_title)
 

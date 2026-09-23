@@ -11,7 +11,7 @@ class RestartReceiver : BroadcastReceiver() {
         when (intent.action) {
             Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED -> {
                 if (StatusProvider.shouldStartClashOnBoot)
-                    context.startClashService()
+                    context.startClashService(unattended = true)
             }
         }
     }

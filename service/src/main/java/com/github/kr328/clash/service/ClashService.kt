@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.SystemClock
 import android.os.IBinder
+import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
@@ -105,7 +106,9 @@ class ClashService : BaseService() {
                 "rejected = ${session.rejected}, stopped = ${session.stopped}"
         )
 
-        return when (session.onStartCommand(intent == null, startId)) {
+        val unattended = intent?.getBooleanExtra(Intents.EXTRA_UNATTENDED, false) == true
+
+        return when (session.onStartCommand(intent == null, unattended, startId)) {
             StartCommandOutcome.Rejected,
             StartCommandOutcome.StopSticky,
             StartCommandOutcome.StopStartFailed -> START_NOT_STICKY

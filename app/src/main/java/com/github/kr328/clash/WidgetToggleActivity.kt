@@ -56,7 +56,7 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
     }
 
     private fun start() {
-        val vpnRequest = startClashService()
+        val vpnRequest = startClashService(unattended = true)
 
         if (vpnRequest == null) {
             ToggleWidgetProvider.notifyWait(this)
@@ -87,7 +87,7 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == REQUEST_VPN && resultCode == RESULT_OK) {
-            if (startClashService() == null) {
+            if (startClashService(unattended = true) == null) {
                 ToggleWidgetProvider.notifyWait(this)
                 Toast.makeText(this, R.string.clod_status_connecting, Toast.LENGTH_SHORT).show()
             }

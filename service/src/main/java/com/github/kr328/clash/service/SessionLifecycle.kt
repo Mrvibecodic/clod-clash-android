@@ -74,6 +74,9 @@ class SessionLifecycle(
 
     var systemStarted = false
 
+    @Volatile
+    var unattendedStart = false
+
     var rejected = false
         private set
 
@@ -115,7 +118,7 @@ class SessionLifecycle(
         service.sendClashStopped(reason)
 
         reason?.let {
-            if (systemStarted) {
+            if (systemStarted || unattendedStart) {
                 StaticNotificationModule.notifyStartFailed(service, it)
             }
         }
@@ -126,6 +129,8 @@ class SessionLifecycle(
         StatusProvider.serviceReady = true
 
         ServiceStore(service).stickyRestarts = ""
+
+        unattendedStart = false
 
         StaticNotificationModule.cancelStartFailed(service)
 
@@ -198,7 +203,7 @@ class SessionLifecycle(
         launchRuntime()
     }
 
-    fun onStartCommand(systemStart: Boolean, startId: Int): StartCommandOutcome {
+    fun onStartCommand(systemStart: Boolean, unattended: Boolean, startId: Int): StartCommandOutcome {
         val pending = !rejected && stopping.get()
 
         if (!pending) {
@@ -226,7 +231,11 @@ class SessionLifecycle(
                 val held = pendingStart.get()
 
                 pendingStart.set(
-                    PendingStart(startId = startId, bySystem = systemStart && (held?.bySystem ?: true)),
+                    PendingStart(
+                        startId = startId,
+                        bySystem = systemStart && (held?.bySystem ?: true),
+                        unattended = unattended || held?.unattended == true,
+                    ),
                 )
 
                 ServiceLog.mark("start command $startId held until stop finishes")
@@ -237,14 +246,26 @@ class SessionLifecycle(
                 service.stopSelf()
             }
             StartCommandOutcome.StopStartFailed -> {
-                reason = service.getString(R.string.clod_foreground_denied)
+                val failure = service.getString(R.string.clod_foreground_denied)
 
-                service.sendClashStopped(reason)
+                reason = failure
+
+                service.sendClashStopped(failure)
+
+                if (unattended && !systemStarted) {
+                    StaticNotificationModule.notifyStartFailed(service, failure)
+                }
 
                 service.stopSelf()
             }
-            StartCommandOutcome.StartSession -> startSession()
-            StartCommandOutcome.Ignore -> Unit
+            StartCommandOutcome.StartSession -> {
+                unattendedStart = unattended
+
+                startSession()
+            }
+            StartCommandOutcome.Ignore -> if (unattended && !StatusProvider.serviceReady) {
+                unattendedStart = true
+            }
         }
 
         return outcome
@@ -271,6 +292,10 @@ class SessionLifecycle(
 
         if (held != null && held.bySystem) {
             systemStarted = true
+        }
+
+        if (held != null) {
+            unattendedStart = held.unattended
         }
 
         val outcome = afterStopOutcome(
@@ -330,7 +355,7 @@ class SessionLifecycle(
         ServiceStore(service).clearSessionStarted(sessionStartedAt)
     }
 
-    private data class PendingStart(val startId: Int, val bySystem: Boolean)
+    private data class PendingStart(val startId: Int, val bySystem: Boolean, val unattended: Boolean)
 
     private companion object {
         private const val STICKY_RESTART_WINDOW_MS = 10 * 60 * 1000L
