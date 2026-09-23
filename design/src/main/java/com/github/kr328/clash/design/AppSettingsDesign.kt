@@ -1,6 +1,7 @@
 package com.github.kr328.clash.design
 
 import android.content.Context
+import android.os.Build
 import android.view.View
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationManagerCompat
@@ -47,7 +48,7 @@ class AppSettingsDesign(
 
     private val languageTags = listOf("", "en", "ru")
 
-    private val canHideAppIcon: Boolean = !context.isTelevision()
+    private val canHideAppIcon: Boolean = !context.isTelevision() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
 
     private var state by mutableStateOf(
         AppSettingsState(

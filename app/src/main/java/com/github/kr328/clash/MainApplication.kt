@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.work.Configuration
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.currentProcessName
@@ -38,7 +39,7 @@ class MainApplication : Application(), Configuration.Provider {
 
         if (processName == packageName) {
             UiStore(this).darkMode.applyToSystem(this)
-            restoreLauncherIconOnTelevision()
+            restoreLauncherIconIfUnsupported()
 
             Remote.launch()
         } else {
@@ -46,10 +47,11 @@ class MainApplication : Application(), Configuration.Provider {
         }
     }
 
-    private fun restoreLauncherIconOnTelevision() {
+    private fun restoreLauncherIconIfUnsupported() {
         val uiStore = UiStore(this)
 
-        if (!uiStore.hideAppIcon || !isTelevision()) return
+        if (!uiStore.hideAppIcon) return
+        if (!isTelevision() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) return
 
         uiStore.hideAppIcon = false
 

@@ -87,8 +87,8 @@
     <string name="interface_">Интерфейс</string>
     <string name="override">Переопределение</string>
 
-    <string name="auto_restart">Автоматический перезапуск</string>
-    <string name="allow_clash_auto_restart">Разрешить туннелю перезапускаться автоматически</string>
+    <string name="auto_restart">Запускать после перезагрузки</string>
+    <string name="allow_clash_auto_restart">Поднимать туннель после перезагрузки телефона и обновления приложения, если он был включён</string>
 
     <string name="route_system_traffic">Маршрутизировать системный трафик</string>
     <string name="routing_via_vpn_service">Автоматически маршрутизировать весь системный трафик через VPN</string>

@@ -89,8 +89,8 @@
     <string name="interface_">Interface</string>
     <string name="override">Override</string>
 
-    <string name="auto_restart">Auto Restart</string>
-    <string name="allow_clash_auto_restart">Allow the tunnel to restart automatically</string>
+    <string name="auto_restart">Start after reboot</string>
+    <string name="allow_clash_auto_restart">Bring the tunnel back after the phone restarts or the app updates, if it was on</string>
 
     <string name="route_system_traffic">Route System Traffic</string>
     <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
