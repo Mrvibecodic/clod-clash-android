@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
+import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
+import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.util.withAppLocale
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +33,15 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
                 StatusClient(this@WidgetToggleActivity).isActive()
             }
 
-            if (running || isFinishing || isDestroyed) {
+            if (isFinishing || isDestroyed) {
+                return@launch finish()
+            }
+
+            if (running) {
+                if (intent.action == Intents.ACTION_TOGGLE_CLASH) {
+                    stop()
+                }
+
                 return@launch finish()
             }
 
@@ -50,7 +60,7 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
 
         if (vpnRequest == null) {
             ToggleWidgetProvider.notifyWait(this)
-            Toast.makeText(this, R.string.external_control_started, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.clod_status_connecting, Toast.LENGTH_SHORT).show()
 
             return finish()
         }
@@ -65,6 +75,12 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
         }
     }
 
+    private fun stop() {
+        ToggleWidgetProvider.notifyWait(this)
+        stopClashService()
+        Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_SHORT).show()
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
@@ -73,7 +89,7 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
         if (requestCode == REQUEST_VPN && resultCode == RESULT_OK) {
             if (startClashService() == null) {
                 ToggleWidgetProvider.notifyWait(this)
-                Toast.makeText(this, R.string.external_control_started, Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, R.string.clod_status_connecting, Toast.LENGTH_SHORT).show()
             }
         }
 

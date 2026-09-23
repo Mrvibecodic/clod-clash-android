@@ -6,13 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
 import android.widget.RemoteViews
-import android.widget.Toast
-import androidx.core.app.NotificationChannelCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Intents
@@ -22,9 +16,6 @@ import com.github.kr328.clash.common.util.packageName
 import com.github.kr328.clash.util.withAppLocale
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.remote.StatusClient
-import com.github.kr328.clash.service.R as ServiceR
-import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,19 +54,6 @@ class ToggleWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            ACTION_WIDGET_TOGGLE -> {
-                val pending = goAsync()
-
-                Global.launch {
-                    try {
-                        toggle(context)
-                    } catch (e: Exception) {
-                        Log.w("Widget toggle: $e", e)
-                    } finally {
-                        pending.finish()
-                    }
-                }
-            }
             ACTION_WIDGET_WAIT -> render(context, State.Wait)
             Intents.ACTION_CLASH_STARTING -> render(context, State.Wait)
             Intents.ACTION_CLASH_STARTED -> render(context, State.On)
@@ -84,121 +62,8 @@ class ToggleWidgetProvider : AppWidgetProvider() {
         }
     }
 
-    private suspend fun toggle(context: Context) {
-        if (isRunning(context)) {
-            render(context, State.Wait)
-
-            context.stopClashService()
-
-            showToast(context, DesignR.string.external_control_stopped)
-
-            return
-        }
-
-        val vpnRequest = context.startClashService()
-
-        if (vpnRequest == null) {
-            render(context, State.Wait)
-
-            showToast(context, DesignR.string.external_control_started)
-        } else {
-            requestVpnPermission(context)
-        }
-    }
-
-    private suspend fun isRunning(context: Context): Boolean {
-        return withContext(Dispatchers.IO) {
-            StatusClient(context).isActive()
-        }
-    }
-
-    private fun showToast(context: Context, text: Int) {
-        val localized = context.withAppLocale()
-
-        Handler(Looper.getMainLooper()).post {
-            Toast.makeText(localized, text, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun requestVpnPermission(base: Context) {
-        val context = base.withAppLocale()
-
-        val manager = NotificationManagerCompat.from(context)
-
-        manager.createNotificationChannel(
-            NotificationChannelCompat.Builder(
-                PERMISSION_CHANNEL,
-                NotificationManagerCompat.IMPORTANCE_HIGH
-            ).setName(context.getString(DesignR.string.clod_widget_channel)).build()
-        )
-
-        val notification = NotificationCompat.Builder(context, PERMISSION_CHANNEL)
-            .setSmallIcon(ServiceR.drawable.ic_logo_service)
-            .setContentTitle(context.getString(DesignR.string.clod_widget_perm_title))
-            .setContentText(context.getString(DesignR.string.clod_widget_perm_text))
-            .setAutoCancel(true)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    context,
-                    0,
-                    WidgetToggleActivity::class.intent
-                        .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                    pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
-                ),
-            )
-            .build()
-
-        runCatching { manager.notify(PERMISSION_NOTIFICATION_ID, notification) }
-    }
-
-    private fun render(context: Context, state: State) {
-        val manager = AppWidgetManager.getInstance(context)
-        val component = ComponentName(context, ToggleWidgetProvider::class.java)
-
-        if (manager.getAppWidgetIds(component).isEmpty())
-            return
-
-        val views = RemoteViews(context.packageName, R.layout.widget_toggle)
-
-        views.setImageViewResource(
-            R.id.widget_circle,
-            when (state) {
-                State.Off -> R.drawable.widget_circle_dim
-                State.Wait -> R.drawable.widget_circle_plain
-                State.On -> R.drawable.widget_circle_glow
-            },
-        )
-
-        views.setImageViewResource(
-            R.id.widget_dot,
-            when (state) {
-                State.Off -> R.drawable.widget_dot_off
-                State.Wait -> R.drawable.widget_dot_wait
-                State.On -> R.drawable.widget_dot_on
-            },
-        )
-
-        views.setOnClickPendingIntent(
-            R.id.widget_button,
-            PendingIntent.getBroadcast(
-                context,
-                R.id.widget_button,
-                Intent(context, ToggleWidgetProvider::class.java)
-                    .setAction(ACTION_WIDGET_TOGGLE)
-                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND),
-                pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
-            ),
-        )
-
-        manager.updateAppWidget(component, views)
-    }
-
     companion object {
-        val ACTION_WIDGET_TOGGLE = "$packageName.action.WIDGET_TOGGLE"
         val ACTION_WIDGET_WAIT = "$packageName.action.WIDGET_WAIT"
-
-        private const val PERMISSION_CHANNEL = "widget_permission_channel"
-        private const val PERMISSION_NOTIFICATION_ID = 0x7701
 
         fun notifyWait(context: Context) {
             context.sendBroadcast(
@@ -206,6 +71,63 @@ class ToggleWidgetProvider : AppWidgetProvider() {
                     .setAction(ACTION_WIDGET_WAIT)
                     .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             )
+        }
+
+        fun renderRecreated(context: Context) {
+            runCatching { render(context, State.Off) }.onFailure { Log.w("Widget render: $it", it) }
+        }
+
+        private fun render(context: Context, state: State) {
+            val manager = AppWidgetManager.getInstance(context) ?: return
+            val component = ComponentName(context, ToggleWidgetProvider::class.java)
+
+            if (manager.getAppWidgetIds(component).isEmpty())
+                return
+
+            val views = RemoteViews(context.packageName, R.layout.widget_toggle)
+
+            views.setImageViewResource(
+                R.id.widget_circle,
+                when (state) {
+                    State.Off -> R.drawable.widget_circle_dim
+                    State.Wait -> R.drawable.widget_circle_plain
+                    State.On -> R.drawable.widget_circle_glow
+                },
+            )
+
+            views.setImageViewResource(
+                R.id.widget_dot,
+                when (state) {
+                    State.Off -> R.drawable.widget_dot_off
+                    State.Wait -> R.drawable.widget_dot_wait
+                    State.On -> R.drawable.widget_dot_on
+                },
+            )
+
+            views.setContentDescription(
+                R.id.widget_button,
+                context.withAppLocale().getString(
+                    when (state) {
+                        State.Off -> DesignR.string.shortcut_start_long
+                        State.Wait -> R.string.launch_name
+                        State.On -> DesignR.string.shortcut_stop_long
+                    },
+                ),
+            )
+
+            views.setOnClickPendingIntent(
+                R.id.widget_button,
+                PendingIntent.getActivity(
+                    context,
+                    R.id.widget_button,
+                    WidgetToggleActivity::class.intent
+                        .setAction(Intents.ACTION_TOGGLE_CLASH)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    pendingIntentFlags(PendingIntent.FLAG_UPDATE_CURRENT),
+                ),
+            )
+
+            manager.updateAppWidget(component, views)
         }
     }
 }

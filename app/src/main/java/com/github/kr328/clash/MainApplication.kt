@@ -44,6 +44,8 @@ class MainApplication : Application(), Configuration.Provider {
             Remote.launch()
         } else {
             sendServiceRecreated()
+
+            ToggleWidgetProvider.renderRecreated(this)
         }
     }
 

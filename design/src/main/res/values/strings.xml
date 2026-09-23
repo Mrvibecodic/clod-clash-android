@@ -489,9 +489,6 @@
     <string name="clod_access_import_none">The clipboard has no names of installed apps</string>
     <string name="clod_access_import_done">Imported: %1$d</string>
     <string name="clod_widget_description">Toggles the connection with one tap</string>
-    <string name="clod_widget_channel">Widget</string>
-    <string name="clod_widget_perm_title">VPN permission required</string>
-    <string name="clod_widget_perm_text">Tap to allow the connection and turn it on</string>
     <string name="clod_portal">Customer portal</string>
     <string name="clod_support">Support</string>
     <string name="clod_bot">Bot</string>

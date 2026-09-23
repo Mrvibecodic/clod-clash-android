@@ -159,7 +159,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
             return
         }
         ToggleWidgetProvider.notifyWait(this)
-        Toast.makeText(this, R.string.external_control_started, Toast.LENGTH_LONG).show()
+        Toast.makeText(this, R.string.clod_status_connecting, Toast.LENGTH_LONG).show()
     }
 
     private fun stopClash() {
