@@ -71,14 +71,6 @@ class AccessControlDesign(
 
                 syncSelected()
             }
-            is AccessControlAction.Search -> {
-                state = if (action.enabled) {
-                    state.copy(searching = true)
-                } else {
-                    state.copy(searching = false, query = "")
-                }
-            }
-            is AccessControlAction.Query -> state = state.copy(query = action.value)
             is AccessControlAction.Mode -> {
                 val mode = modes.getOrNull(action.index) ?: return
 

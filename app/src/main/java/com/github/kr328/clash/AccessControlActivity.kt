@@ -8,60 +8,59 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.core.content.getSystemService
+import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.design.AccessControlDesign
+import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
+import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.remote.StatusClient
-import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeTunPrefs
+import com.github.kr328.clash.util.SelectionOps
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 class AccessControlActivity : BaseActivity<AccessControlDesign>() {
-    private var initial: Set<String>? = null
-    private var initialMode: AccessControlMode? = null
     private var current: MutableSet<String>? = null
 
     override suspend fun main() {
         val service = ServiceStore(this)
 
-        val bundle = restored
-
-        val selected = bundle?.getStringArray("selected")?.toMutableSet()
+        val selected = restored?.getStringArray("selected")?.toMutableSet()
             ?: withContext(Dispatchers.IO) { service.accessControlPackages.toMutableSet() }
-        val initial = bundle?.getStringArray("initial")?.toSet() ?: selected.toSet()
-        val initialMode = bundle?.getString("initialMode")
-            ?.let { name -> AccessControlMode.entries.firstOrNull { it.name == name } }
-            ?: withContext(Dispatchers.IO) { service.accessControlMode }
 
-        this.initial = initial
-        this.initialMode = initialMode
         this.current = selected
 
         defer {
-            withContext(Dispatchers.IO) {
-                val changed = initial != selected ||
-                    initialMode != service.accessControlMode
-                if (changed) {
-                    service.accessControlPackages = selected.toSet()
-                }
-                if (changed && StatusClient(this@AccessControlActivity).isActive()) {
-                    stopClashService()
+            val restart = withContext(Dispatchers.IO) {
+                service.accessControlPackages = selected.toSet()
+
+                accessControlFingerprint(service.accessControlMode, selected) != service.accessControlApplied &&
+                    uiStore.enableVpn &&
+                    StatusClient(this@AccessControlActivity).isActive()
+            }
+            if (restart) {
+                val app = applicationContext
+
+                Global.launch(Dispatchers.IO) {
+                    app.stopClashService()
                     withTimeoutOrNull(10_000) {
-                        while (StatusClient(this@AccessControlActivity).isActive()) {
+                        while (StatusClient(app).isActive()) {
                             delay(200)
                         }
                     }
-                    if (startClashService() != null) {
+                    if (app.startClashService() != null) {
                         Log.w("Access control: VPN permission required, service not restarted")
                     }
                 }
@@ -99,31 +98,15 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                         }
 
                         AccessControlDesign.Request.SelectAll -> {
-                            val all = withContext(Dispatchers.Default) {
-                                design.apps.map(AppInfo::packageName)
-                            }
-
-                            selected.clear()
-                            selected.addAll(all)
-
-                            design.rebindAll()
+                            applySelection(selected, SelectionOps.Op.SelectAll, design)
                         }
 
                         AccessControlDesign.Request.SelectNone -> {
-                            selected.clear()
-
-                            design.rebindAll()
+                            applySelection(selected, SelectionOps.Op.SelectNone, design)
                         }
 
                         AccessControlDesign.Request.SelectInvert -> {
-                            val all = withContext(Dispatchers.Default) {
-                                design.apps.map(AppInfo::packageName).toSet() - selected
-                            }
-
-                            selected.clear()
-                            selected.addAll(all)
-
-                            design.rebindAll()
+                            applySelection(selected, SelectionOps.Op.Invert, design)
                         }
 
                         AccessControlDesign.Request.Import -> {
@@ -134,19 +117,28 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                                 ?.getItemAt(0)
                                 ?.text
                                 ?.toString()
+                                .orEmpty()
 
-                            if (!text.isNullOrBlank()) {
-                                val packages = text.split("\n")
+                            val imported = withContext(Dispatchers.IO) {
+                                text.lineSequence()
                                     .map { line -> line.trim() }
                                     .filter { line -> line.isNotEmpty() }
+                                    .filter { line -> runCatching { packageManager.getApplicationInfo(line, 0) }.isSuccess }
                                     .toSet()
-                                val all = design.apps.map(AppInfo::packageName).intersect(packages)
-
-                                selected.clear()
-                                selected.addAll(all)
                             }
 
-                            design.rebindAll()
+                            if (imported.isEmpty()) {
+                                design.showToast(R.string.clod_access_import_none, ToastDuration.Long)
+                            } else {
+                                selected.clear()
+                                selected.addAll(imported)
+
+                                design.rebindAll()
+                                design.showToast(
+                                    getString(R.string.clod_access_import_done, imported.size),
+                                    ToastDuration.Short,
+                                )
+                            }
                         }
 
                         AccessControlDesign.Request.Export -> {
@@ -168,9 +160,23 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        initial?.let { outState.putStringArray("initial", it.toTypedArray()) }
         current?.let { outState.putStringArray("selected", it.toTypedArray()) }
-        initialMode?.let { outState.putString("initialMode", it.name) }
+    }
+
+    private suspend fun applySelection(
+        selected: MutableSet<String>,
+        op: SelectionOps.Op,
+        design: AccessControlDesign,
+    ) {
+        val visible = withContext(Dispatchers.Default) {
+            design.apps.map(AppInfo::packageName).toSet()
+        }
+        val result = SelectionOps.apply(op, selected.toSet(), visible)
+
+        selected.clear()
+        selected.addAll(result)
+
+        design.rebindAll()
     }
 
     override fun onDestroy() {

@@ -109,6 +109,11 @@ class ServiceStore(context: Context) {
         defaultValue = emptySet()
     )
 
+    var accessControlApplied: String by store.string(
+        key = "access_control_applied",
+        defaultValue = ""
+    )
+
     var dnsHijacking by store.boolean(
         key = "dns_hijacking",
         defaultValue = true

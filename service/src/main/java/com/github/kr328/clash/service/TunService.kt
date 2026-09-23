@@ -16,6 +16,7 @@ import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
@@ -241,7 +242,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 runCatching { packageManager.getApplicationInfo(it, 0) }.isSuccess
             }.toSet()
 
-            when (store.accessControlMode) {
+            val mode = store.accessControlMode
+            val packages = store.accessControlPackages
+
+            store.accessControlApplied = accessControlFingerprint(mode, packages)
+
+            when (mode) {
                 AccessControlMode.AcceptAll -> {
                     if (installedIncludes.isNotEmpty()) {
                         (installedIncludes + packageName).forEach {
@@ -254,12 +260,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     }
                 }
                 AccessControlMode.AcceptSelected -> {
-                    (store.accessControlPackages + installedIncludes + packageName).forEach {
+                    (packages + installedIncludes + packageName).forEach {
                         runCatching { addAllowedApplication(it) }
                     }
                 }
                 AccessControlMode.DenySelected -> {
-                    (store.accessControlPackages + excludeFromProfile - packageName).forEach {
+                    (packages + excludeFromProfile - packageName).forEach {
                         runCatching { addDisallowedApplication(it) }
                     }
                 }

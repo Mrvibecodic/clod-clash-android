@@ -484,6 +484,8 @@
     <string name="clod_backup_restored">Restored %1$d of %2$d</string>
     <string name="clod_access_sub_include">Via VPN (subscription)</string>
     <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
+    <string name="clod_access_import_none">The clipboard has no names of installed apps</string>
+    <string name="clod_access_import_done">Imported: %1$d</string>
     <string name="clod_widget_description">Toggles the connection with one tap</string>
     <string name="clod_widget_channel">Widget</string>
     <string name="clod_widget_perm_title">VPN permission required</string>

@@ -71,8 +71,6 @@ data class AccessControlState(
     val apps: List<AppInfo> = emptyList(),
     val selected: Set<String> = emptySet(),
     val loaded: Boolean = false,
-    val searching: Boolean = false,
-    val query: String = "",
     val sort: AppInfoSort = AppInfoSort.Label,
     val reverse: Boolean = false,
     val systemApps: Boolean = false,
@@ -89,8 +87,6 @@ sealed interface AccessControlAction {
     data object Import : AccessControlAction
     data object Export : AccessControlAction
     data class Toggle(val packageName: String) : AccessControlAction
-    data class Search(val enabled: Boolean) : AccessControlAction
-    data class Query(val value: String) : AccessControlAction
     data class Mode(val index: Int) : AccessControlAction
     data class Sort(val value: AppInfoSort) : AccessControlAction
     data class Reverse(val value: Boolean) : AccessControlAction
@@ -105,13 +101,18 @@ fun AccessControlScreen(
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by rememberSaveable { mutableStateOf(false) }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
 
-    BackHandler(enabled = state.searching) {
-        onAction(AccessControlAction.Search(false))
+    val stopSearch = {
+        searching = false
+        query = ""
     }
 
-    val visible = remember(state.apps, state.query) {
-        val keyword = state.query.trim()
+    BackHandler(enabled = searching, onBack = stopSearch)
+
+    val visible = remember(state.apps, query) {
+        val keyword = query.trim()
 
         if (keyword.isEmpty()) {
             state.apps
@@ -129,10 +130,10 @@ fun AccessControlScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    if (state.searching) {
+                    if (searching) {
                         SearchField(
-                            query = state.query,
-                            onQuery = { onAction(AccessControlAction.Query(it)) },
+                            query = query,
+                            onQuery = { query = it },
                         )
                     } else {
                         Text(
@@ -145,8 +146,8 @@ fun AccessControlScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            if (state.searching) {
-                                onAction(AccessControlAction.Search(false))
+                            if (searching) {
+                                stopSearch()
                             } else {
                                 onAction(AccessControlAction.Back)
                             }
@@ -159,8 +160,8 @@ fun AccessControlScreen(
                     }
                 },
                 actions = {
-                    if (!state.searching) {
-                        IconButton(onClick = { onAction(AccessControlAction.Search(true)) }) {
+                    if (!searching) {
+                        IconButton(onClick = { searching = true }) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_baseline_search),
                                 contentDescription = stringResource(R.string.search),
@@ -204,7 +205,7 @@ fun AccessControlScreen(
         }
 
         LazyColumn(contentPadding = padding) {
-            if (!state.searching) {
+            if (!searching) {
                 item(key = "mode") {
                     Column {
                         SelectRow(
