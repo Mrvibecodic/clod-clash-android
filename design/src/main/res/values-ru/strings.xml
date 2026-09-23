@@ -40,7 +40,7 @@
     <string name="auto_update">Автообновление</string>
     <string name="auto_update_minutes">Автообновление (минут)</string>
 
-    <string name="accept_http_content">Принимать только http(s)</string>
+    <string name="accept_http_content">Адрес должен начинаться с https://</string>
     <string name="at_least_15_minutes">Не менее 15 минут или пустой</string>
     <string name="should_not_be_blank">Не должно быть пустым</string>
     <string name="detail">Детали</string>
@@ -277,6 +277,10 @@
     <string name="clod_sub_url_label">Ссылка на подписку</string>
     <string name="clod_sub_url_hint">Ссылку выдаёт ваш сервис. Всё остальное подтянется само.</string>
     <string name="clod_sub_other_ways">Другие способы импорта</string>
+    <string name="clod_sub_fetch_failed">Не удалось загрузить подписку</string>
+    <string name="clod_sub_import_busy">Ещё загружается другая подписка. Дождитесь, пока она закончит</string>
+    <string name="clod_name_too_long">Название длиннее %1$d символов</string>
+    <string name="clod_url_too_long">Адрес длиннее %1$d символов</string>
     <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
     <string name="clod_sub_added">Подписка успешно добавлена</string>
     <string name="clod_sub_added_named">Подписка «%1$s» добавлена</string>

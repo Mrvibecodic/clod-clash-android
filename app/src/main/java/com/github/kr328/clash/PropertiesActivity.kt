@@ -1,15 +1,17 @@
 package com.github.kr328.clash
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.core.os.BundleCompat
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.design.PropertiesDesign
-import com.github.kr328.clash.design.compose.screen.MIN_INTERVAL_MINUTES
+import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.util.DraftGate
 import com.github.kr328.clash.util.ProfileImports
@@ -20,7 +22,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
+import java.util.Locale
 import com.github.kr328.clash.design.R
 
 class PropertiesActivity : BaseActivity<PropertiesDesign>() {
@@ -63,7 +65,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                     is ProfileImports.State.Failed -> {
                         ProfileImports.consume(token)
                         design.clearImporting()
-                        design.showToast(it.message, ToastDuration.Long)
+                        design.showToast(it.message, ToastDuration.Long, detail = it.detail, kind = NoticeKind.Error)
                     }
                     ProfileImports.State.Idle -> design.clearImporting()
                 }
@@ -157,22 +159,36 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
     }
 
     private suspend fun PropertiesDesign.verifyAndCommit() {
+        val violation = ProfileFields.violation(
+            profile.name,
+            profile.source,
+            Uri.parse(profile.source)?.scheme?.lowercase(Locale.ROOT),
+            profile.interval,
+            profile.type != Profile.Type.File,
+        )
+
         when {
-            profile.name.isBlank() -> {
-                showToast(R.string.empty_name, ToastDuration.Long)
-            }
-            !isValidSource(profile.type, profile.source) -> {
-                showToast(R.string.invalid_url, ToastDuration.Long)
-            }
-            profile.interval != 0L &&
-                profile.interval < TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES) -> {
-                showToast(R.string.at_least_15_minutes, ToastDuration.Long)
-            }
+            violation != null -> showToast(violationText(violation), ToastDuration.Long)
+            !isValidSource(profile.type, profile.source) -> showToast(R.string.invalid_url, ToastDuration.Long)
             else -> {
                 val started = ProfileImports.commit(profile)
 
-                if (started != 0L) token = started
+                if (started != 0L) {
+                    token = started
+                } else if (ProfileImports.state.value.token != token) {
+                    showToast(R.string.clod_sub_import_busy, ToastDuration.Long)
+                }
             }
         }
+    }
+
+    private fun violationText(violation: ProfileFields.Violation): String = when (violation) {
+        ProfileFields.Violation.EmptyName -> getString(R.string.empty_name)
+        ProfileFields.Violation.NameTooLong -> getString(R.string.clod_name_too_long, ProfileFields.NAME_MAX)
+        ProfileFields.Violation.EmptySource,
+        ProfileFields.Violation.UnsupportedScheme,
+        -> getString(R.string.invalid_url)
+        ProfileFields.Violation.SourceTooLong -> getString(R.string.clod_url_too_long, ProfileFields.SOURCE_MAX)
+        ProfileFields.Violation.ShortInterval -> getString(R.string.at_least_15_minutes)
     }
 }

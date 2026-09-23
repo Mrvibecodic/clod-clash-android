@@ -4,12 +4,14 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.util.ProfileImports
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
@@ -57,7 +59,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                     is ProfileImports.State.Failed -> {
                         ProfileImports.consume(token)
 
-                        design.setError(state.message)
+                        design.setError(listOfNotNull(state.message, state.detail).joinToString("\n"))
                     }
                 }
             }
@@ -70,8 +72,18 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                     when (request) {
                         is AddProfileDesign.Request.Submit -> design.addProfile(request.url, request.secure)
                         AddProfileDesign.Request.ScanQr -> scanLauncher.launch(null)
-                        AddProfileDesign.Request.OtherWays ->
-                            startActivity(NewProfileActivity::class.intent)
+                        AddProfileDesign.Request.OtherWays -> {
+                            val result = startActivityForResult(
+                                ActivityResultContracts.StartActivityForResult(),
+                                NewProfileActivity::class.intent,
+                            )
+
+                            if (result.resultCode == Activity.RESULT_OK) {
+                                setResult(Activity.RESULT_OK)
+
+                                finish()
+                            }
+                        }
                     }
                 }
             }
@@ -99,10 +111,18 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
             return
         }
 
+        if (source.length > ProfileFields.SOURCE_MAX) {
+            setError(getString(R.string.clod_url_too_long, ProfileFields.SOURCE_MAX))
+
+            return
+        }
+
         val started = ProfileImports.start(source, secure)
 
         if (started != 0L) {
             token = started
+        } else if (ProfileImports.state.value.token != token) {
+            setError(getString(R.string.clod_sub_import_busy))
         }
     }
 

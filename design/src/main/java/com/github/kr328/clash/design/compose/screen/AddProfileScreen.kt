@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -103,6 +104,11 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Uri,
             imeAction = ImeAction.Done,
+        ),
+        keyboardActions = KeyboardActions(
+            onDone = {
+                if (state.url.isBlank()) defaultKeyboardAction(ImeAction.Done) else onAction(AddProfileAction.Submit)
+            },
         ),
         trailingIcon = {
             IconButton(onClick = { onAction(AddProfileAction.ScanQr) }) {

@@ -119,8 +119,11 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
             PropertiesActivity::class.intent.setUUID(uuid)
         )
 
-        if (r.resultCode == Activity.RESULT_OK)
+        if (r.resultCode == Activity.RESULT_OK) {
+            setResult(Activity.RESULT_OK)
+
             finish()
+        }
     }
 
     private suspend fun ProfileProvider.External.get(): Pair<Uri, String?>? {

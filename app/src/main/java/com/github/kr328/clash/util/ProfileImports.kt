@@ -1,11 +1,15 @@
 package com.github.kr328.clash.util
 
+import android.content.Context
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.HumanMessage
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
+import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.store.AppStore
 import kotlinx.coroutines.CancellationException
@@ -34,7 +38,7 @@ object ProfileImports {
             val name: String,
             val failedProviders: List<String>,
         ) : State
-        data class Failed(override val token: Long, val message: String) : State
+        data class Failed(override val token: Long, val message: String, val detail: String?) : State
     }
 
     sealed interface BatchState {
@@ -115,7 +119,7 @@ object ProfileImports {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state_.value = State.Failed(token, e.message ?: context.getString(R.string.invalid_url))
+                state_.value = context.failed(token, e)
             }
         }
 
@@ -193,6 +197,11 @@ object ProfileImports {
                 }
 
                 AppStore(context).apply {
+                    if (!profile.imported) {
+                        addedProfileName = profileDisplayName(context.queryPanelInfo(profile.uuid), profile.name)
+                        addedProfilePending = true
+                    }
+
                     profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
                 }
 
@@ -200,11 +209,22 @@ object ProfileImports {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state_.value = State.Failed(token, e.message ?: context.getString(R.string.invalid_url))
+                state_.value = context.failed(token, e)
             }
         }
 
         return token
+    }
+
+    private fun Context.failed(token: Long, e: Exception): State.Failed {
+        val raw = e.message.orEmpty()
+        val human = humanizeUpdateFailure(raw) ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
+
+        return State.Failed(
+            token,
+            human ?: getString(R.string.clod_sub_fetch_failed),
+            if (human == null) Redact.text(raw.ifBlank { e.javaClass.name }) else null,
+        )
     }
 
     fun consume(token: Long) {

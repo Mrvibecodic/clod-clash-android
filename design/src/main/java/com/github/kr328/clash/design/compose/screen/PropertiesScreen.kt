@@ -153,7 +153,11 @@ fun PropertiesScreen(
                     value = state.url,
                     onValueChange = { onAction(PropertiesAction.UrlChanged(it)) },
                     label = { Text(stringResource(R.string.url)) },
-                    placeholder = { Text(stringResource(R.string.accept_http_content)) },
+                    placeholder = if (state.urlEditable) {
+                        { Text(stringResource(R.string.accept_http_content)) }
+                    } else {
+                        null
+                    },
                     singleLine = true,
                     enabled = state.urlEditable && !processing,
                     isError = urlBroken,

@@ -42,7 +42,7 @@
     <string name="auto_update">Auto Update</string>
     <string name="auto_update_minutes">Auto Update (Minutes)</string>
 
-    <string name="accept_http_content">Accept only http(s)</string>
+    <string name="accept_http_content">The address has to start with https://</string>
     <string name="at_least_15_minutes">At least 15 minutes or empty</string>
     <string name="should_not_be_blank">Should not be blank</string>
     <string name="detail">Detail</string>
@@ -325,6 +325,10 @@
     <string name="clod_sub_url_label">Subscription link</string>
     <string name="clod_sub_url_hint">Your provider issues the link. Everything else is pulled from it.</string>
     <string name="clod_sub_other_ways">Other ways to import</string>
+    <string name="clod_sub_fetch_failed">Could not load the subscription</string>
+    <string name="clod_sub_import_busy">Another subscription is still loading. Wait for it to finish</string>
+    <string name="clod_name_too_long">The name is longer than %1$d characters</string>
+    <string name="clod_url_too_long">The address is longer than %1$d characters</string>
     <string name="clod_sub_fetching">Fetching subscription\u2026</string>
     <string name="clod_sub_added">Subscription added</string>
     <string name="clod_sub_added_named">Subscription “%1$s” added</string>
