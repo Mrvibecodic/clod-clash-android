@@ -58,6 +58,7 @@
     <string name="disabled">Отключен</string>
     <string name="empty_name">Пустое название</string>
     <string name="invalid_url">Неверный URL</string>
+    <string name="clod_link_no_app">Нет приложения, чтобы открыть ссылку</string>
 
     <string name="format_fetching_configuration">Загрузка настроек из \'%s\'</string>
     <string name="format_fetching_provider">Загрузка провайдера из \'%s\'</string>

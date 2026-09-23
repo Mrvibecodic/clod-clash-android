@@ -72,6 +72,8 @@ import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
+import com.github.kr328.clash.util.showNoAppForLink
+import com.github.kr328.clash.util.startExternal
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
@@ -1479,10 +1481,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         try {
-            startActivity(
-                Intent(Intent.ACTION_VIEW, uri)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
+            if (!startExternal(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
+                launch { design?.showNoAppForLink(url) }
+            }
         } catch (e: Exception) {
             launch { design?.showExceptionToast(e) }
         }

@@ -60,6 +60,7 @@
     <string name="disabled">Disabled</string>
     <string name="empty_name">Empty Name</string>
     <string name="invalid_url">Invalid URL</string>
+    <string name="clod_link_no_app">No app to open the link</string>
 
     <string name="format_fetching_configuration">Fetching configuration from \'%s\'</string>
     <string name="format_fetching_provider">Fetching provider \'%s\'</string>
