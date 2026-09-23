@@ -26,6 +26,7 @@ object GeoAssets {
     private const val LOCK_INTERVAL = 100L
     const val READY_TIMEOUT = 60_000L
     private const val TEMP_MAX_AGE = 3_600_000L
+    private const val STAMPS = "geo-bundled.properties"
 
     private val names = listOf(
         "geoip.metadb",
@@ -188,6 +189,36 @@ object GeoAssets {
             }
     }
 
+    fun stamp(size: Long, lastModified: Long): String = "$size:$lastModified"
+
+    fun replaces(present: Boolean, updated: Boolean, recorded: String?, actual: String): Boolean {
+        if (!present) return true
+
+        if (!updated) return false
+
+        return recorded == null || recorded == actual
+    }
+
+    private fun readStamps(file: File): MutableMap<String, String> {
+        val stamps = mutableMapOf<String, String>()
+
+        try {
+            if (file.isFile) {
+                file.readLines().forEach { line ->
+                    val at = line.indexOf('=')
+
+                    if (at > 0) {
+                        stamps[line.substring(0, at)] = line.substring(at + 1)
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            Log.w("$TAG: $e", e)
+        }
+
+        return stamps
+    }
+
     private fun extractAll(context: Context) {
         val dir = File(context.filesDir, "clash")
 
@@ -199,10 +230,20 @@ object GeoAssets {
             .getPackageInfo(context.packageName, 0)
             .lastUpdateTime
 
+        val stampsFile = File(dir, STAMPS)
+        val stamps = readStamps(stampsFile)
+
         names.forEach { name ->
             val target = File(dir, name)
 
-            if (target.isFile && target.length() > 0 && target.lastModified() >= installedAt) {
+            val replace = replaces(
+                target.isFile && target.length() > 0,
+                target.lastModified() < installedAt,
+                stamps[name],
+                stamp(target.length(), target.lastModified()),
+            )
+
+            if (!replace) {
                 return@forEach
             }
 
@@ -213,7 +254,10 @@ object GeoAssets {
                     context.assets.open(name).use { it.copyTo(output) }
                 }
 
-                if (!temp.renameTo(target)) {
+                if (temp.renameTo(target)) {
+                    stamps[name] = stamp(target.length(), target.lastModified())
+                    writeStamps(stampsFile, stamps)
+                } else {
                     Log.w("$TAG: unable to replace $name")
                 }
             } catch (e: Throwable) {
@@ -221,6 +265,26 @@ object GeoAssets {
             } finally {
                 temp.delete()
             }
+        }
+    }
+
+    private fun writeStamps(file: File, stamps: Map<String, String>) {
+        val temp = File(file.parentFile, "${file.name}${TempArtifacts.MARK}.${Process.myPid()}")
+
+        try {
+            temp.writeText(stamps.entries.joinToString("\n") { "${it.key}=${it.value}" })
+
+            if (!temp.renameTo(file)) {
+                Log.w("$TAG: unable to write $STAMPS")
+
+                file.delete()
+            }
+        } catch (e: Throwable) {
+            Log.w("$TAG: $e", e)
+
+            file.delete()
+        } finally {
+            temp.delete()
         }
     }
 }

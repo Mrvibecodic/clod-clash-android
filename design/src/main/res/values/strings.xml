@@ -279,7 +279,6 @@
     <string name="geox_files" >Geo Files</string>
     <string name="import_geoip_file">Import GeoIP Database</string>
     <string name="import_geosite_file">Import GeoSite Database</string>
-    <string name="import_country_file">Import Country Database</string>
     <string name="import_asn_file">Import ASN Database</string>
     <string name="press_to_import">Press to import...</string>
     <string name="geofile_import_failed">Import failed</string>

@@ -244,7 +244,6 @@
     <string name="import_geoip_file">Загрузить базу GeoIP</string>
     <string name="press_to_import">Нажмите, чтобы выбрать файл</string>
     <string name="import_geosite_file">Загрузить базу GeoSite</string>
-    <string name="import_country_file">Загрузить базу стран</string>
     <string name="geofile_import_failed">Не удалось загрузить</string>
     <string name="geofile_unknown_db_format">Неизвестный формат базы</string>
     <string name="geofile_unknown_db_format_message">Поддерживаются только %1$s</string>

@@ -35,7 +35,6 @@ sealed interface MetaFeatureSettingsAction {
 
     data object ImportGeoIp : MetaFeatureSettingsAction
     data object ImportGeoSite : MetaFeatureSettingsAction
-    data object ImportCountry : MetaFeatureSettingsAction
     data object ImportAsn : MetaFeatureSettingsAction
 }
 
@@ -263,12 +262,6 @@ fun MetaFeatureSettingsScreen(
                 icon = painterResource(R.drawable.ic_outline_folder),
                 subtitle = stringResource(R.string.press_to_import),
                 onClick = { onAction(MetaFeatureSettingsAction.ImportGeoSite) },
-            )
-            ActionRow(
-                title = stringResource(R.string.import_country_file),
-                icon = painterResource(R.drawable.ic_outline_folder),
-                subtitle = stringResource(R.string.press_to_import),
-                onClick = { onAction(MetaFeatureSettingsAction.ImportCountry) },
             )
             ActionRow(
                 title = stringResource(R.string.import_asn_file),

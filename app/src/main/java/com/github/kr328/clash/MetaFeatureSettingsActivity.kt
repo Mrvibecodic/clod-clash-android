@@ -96,12 +96,6 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                                 "*/*")
                             importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportGeoSite)
                         }
-                        MetaFeatureSettingsDesign.Request.ImportCountry -> {
-                            val uri = startActivityForResult(
-                                ActivityResultContracts.GetContent(),
-                                "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportCountry)
-                        }
                         MetaFeatureSettingsDesign.Request.ImportASN -> {
                             val uri = startActivityForResult(
                                 ActivityResultContracts.GetContent(),
@@ -136,8 +130,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         importType: MetaFeatureSettingsDesign.Request,
     ): GeoImportTarget? {
         return when (importType) {
-            MetaFeatureSettingsDesign.Request.ImportGeoIp,
-            MetaFeatureSettingsDesign.Request.ImportCountry -> GeoImportTarget(
+            MetaFeatureSettingsDesign.Request.ImportGeoIp -> GeoImportTarget(
                 fileName = "geoip.metadb",
                 extensions = listOf(".metadb", ".db", ".mmdb"),
                 obsolete = listOf("geoip.db", "country.mmdb"),

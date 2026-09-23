@@ -19,7 +19,7 @@ class MetaFeatureSettingsDesign(
     private val configuration: ConfigurationOverride,
 ) : Design<MetaFeatureSettingsDesign.Request>(context) {
     enum class Request {
-        ResetOverride, OpenOverride, ImportGeoIp, ImportGeoSite, ImportCountry, ImportASN, Back
+        ResetOverride, OpenOverride, ImportGeoIp, ImportGeoSite, ImportASN, Back
     }
 
     private var state by mutableStateOf(MetaFeatureSettingsState(configuration))
@@ -38,7 +38,6 @@ class MetaFeatureSettingsDesign(
             MetaFeatureSettingsAction.OpenOverride -> requests.trySend(Request.OpenOverride)
             MetaFeatureSettingsAction.ImportGeoIp -> requests.trySend(Request.ImportGeoIp)
             MetaFeatureSettingsAction.ImportGeoSite -> requests.trySend(Request.ImportGeoSite)
-            MetaFeatureSettingsAction.ImportCountry -> requests.trySend(Request.ImportCountry)
             MetaFeatureSettingsAction.ImportAsn -> requests.trySend(Request.ImportASN)
         }
     }
