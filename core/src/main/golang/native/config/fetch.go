@@ -61,6 +61,7 @@ const (
 	providerTimeout   = 30 * time.Second
 	prefetchBudget    = 20 * time.Second
 	providerParallel  = 4
+	configRejected    = "clod-config-rejected"
 )
 
 func subscriptionHeaders(device bool) http.Header {
@@ -517,13 +518,13 @@ func FetchAndValid(
 
 	rawCfg, err := unmarshalProfile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", configRejected, err)
 	}
 
 	template := rawCfg.Mode
 
 	if err := process(rawCfg, path); err != nil {
-		return err
+		return fmt.Errorf("%s: %w", configRejected, err)
 	}
 
 	panelInfo := readPanelInfo(path)
@@ -558,7 +559,7 @@ func FetchAndValid(
 
 	cfg, err := Parse(rawCfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %w", configRejected, err)
 	}
 
 	DestroyProviders(cfg)

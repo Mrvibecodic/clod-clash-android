@@ -54,4 +54,9 @@
     <string name="clod_update_cause_not_found">Провайдер не нашёл эту подписку (код %1$d). Адрес мог смениться — возьмите свежую ссылку у провайдера</string>
     <string name="clod_update_cause_server">У сервера провайдера неполадки (код %1$d). Это на его стороне, попробуйте позже</string>
     <string name="clod_update_cause_status">Провайдер ответил кодом %1$d</string>
+    <string name="clod_update_cause_rejected">В настройках подписки ошибка, и ядро их не приняло</string>
+    <string name="clod_update_cause_timeout">Сервер подписки не ответил вовремя. Проверьте интернет и попробуйте ещё раз</string>
+    <string name="clod_update_cause_tls">Сертификат сервера подписки не прошёл проверку, соединение не установлено. Проверьте дату и время на устройстве; если они верны — спросите провайдера</string>
+    <string name="clod_update_cause_dns">Не удалось найти сервер подписки по имени. Проверьте интернет; если повторяется — адрес мог смениться</string>
+    <string name="clod_update_cause_connection">Не удалось подключиться к серверу подписки: нет интернета или сервер недоступен. Попробуйте позже</string>
 </resources>

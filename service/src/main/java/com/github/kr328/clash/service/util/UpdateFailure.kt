@@ -16,6 +16,11 @@ object UpdateFailures {
         NotFound,
         ServerError,
         Status,
+        Rejected,
+        Timeout,
+        Tls,
+        Dns,
+        Connection,
     }
 
     data class Reason(val cause: Cause, val status: Int = 0)
@@ -39,7 +44,9 @@ object UpdateFailures {
 
         if (text.contains(UNSUPPORTED_SCHEME)) return Reason(Cause.Scheme)
 
-        val status = statusOf(text) ?: return null
+        if (text.contains(CONFIG_REJECTED)) return Reason(Cause.Rejected)
+
+        val status = statusOf(text) ?: return transportOf(text.lowercase())
 
         return when (status) {
             401, 402, 403 -> Reason(Cause.Unauthorized, status)
@@ -47,6 +54,14 @@ object UpdateFailures {
             in 500..599 -> Reason(Cause.ServerError, status)
             else -> Reason(Cause.Status, status)
         }
+    }
+
+    private fun transportOf(text: String): Reason? = when {
+        TIMEOUT.any(text::contains) -> Reason(Cause.Timeout)
+        TLS.any(text::contains) -> Reason(Cause.Tls)
+        DNS.any(text::contains) -> Reason(Cause.Dns)
+        CONNECTION.any(text::contains) || text.endsWith(": eof") -> Reason(Cause.Connection)
+        else -> null
     }
 
     private fun statusOf(text: String): Int? {
@@ -72,6 +87,31 @@ object UpdateFailures {
     private const val UNSUPPORTED_SCHEME = "unsupported scheme"
 
     private const val STATUS_PREFIX = "server answered with status "
+
+    private const val CONFIG_REJECTED = "clod-config-rejected"
+
+    private val TIMEOUT = listOf(
+        "time budget for the update is exhausted",
+        "context deadline exceeded",
+        "i/o timeout",
+        "tls handshake timeout",
+        "timeout awaiting response headers",
+        "client.timeout exceeded",
+    )
+
+    private val TLS = listOf("x509:", "certificate")
+
+    private val DNS = listOf("no such host", "couldn't find ip", "all dns requests failed")
+
+    private val CONNECTION = listOf(
+        "connection refused",
+        "network is unreachable",
+        "no route to host",
+        "connection reset",
+        "broken pipe",
+        "unexpected eof",
+        "tls:",
+    )
 }
 
 fun Context.humanizeUpdateFailure(raw: String): String? {
@@ -93,5 +133,10 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
             getString(R.string.clod_update_cause_server, reason.status)
         UpdateFailures.Cause.Status ->
             getString(R.string.clod_update_cause_status, reason.status)
+        UpdateFailures.Cause.Rejected -> getString(R.string.clod_update_cause_rejected)
+        UpdateFailures.Cause.Timeout -> getString(R.string.clod_update_cause_timeout)
+        UpdateFailures.Cause.Tls -> getString(R.string.clod_update_cause_tls)
+        UpdateFailures.Cause.Dns -> getString(R.string.clod_update_cause_dns)
+        UpdateFailures.Cause.Connection -> getString(R.string.clod_update_cause_connection)
     }
 }

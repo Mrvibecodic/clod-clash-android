@@ -52,4 +52,9 @@
     <string name="clod_update_cause_not_found">The provider did not find this subscription (code %1$d). The address may have changed — take a fresh link from the provider</string>
     <string name="clod_update_cause_server">The provider server is having trouble (code %1$d). This is on their side, try again later</string>
     <string name="clod_update_cause_status">The provider answered with code %1$d</string>
+    <string name="clod_update_cause_rejected">The subscription settings contain an error, and the core did not accept them</string>
+    <string name="clod_update_cause_timeout">The subscription server did not answer in time. Check the internet connection and try again</string>
+    <string name="clod_update_cause_tls">The subscription server certificate failed the check, so no connection was made. Make sure the date and time on the device are correct; if they are, ask the provider</string>
+    <string name="clod_update_cause_dns">The subscription server name could not be resolved. Check the internet connection; if it repeats, the address may have changed</string>
+    <string name="clod_update_cause_connection">Could not connect to the subscription server: no internet, or the server is unreachable. Try again later</string>
 </resources>
