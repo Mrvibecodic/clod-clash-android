@@ -37,6 +37,7 @@ jobs:
           # от «лёг, но не тем местом» — маркеры из ТЕЛА каждого патча. На каждую правку
           # ядра обязан быть свой маркер: нет маркера — патча в стражах нет.
           grep -q ProbeHolding adapter/adapter.go
+          grep -qF 'ctx.Err() == context.Canceled' adapter/adapter.go
           grep -q ProbeHolding adapter/outboundgroup/groupbase.go
           grep -q ProbeFreezeGap constant/probehold.go
           grep -Eq 'expectedStatus +string' adapter/outboundgroup/selector.go

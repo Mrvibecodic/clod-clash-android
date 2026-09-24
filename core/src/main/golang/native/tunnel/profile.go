@@ -58,12 +58,7 @@ func TestProfileDelays(path string) map[string]int {
 	seen := make(map[string]bool, len(cfg.Proxies))
 
 	add := func(p C.Proxy) {
-		if _, isGroup := p.Adapter().(outboundgroup.ProxyGroup); isGroup {
-			return
-		}
-
-		switch p.Type() {
-		case C.Direct, C.Reject, C.RejectDrop, C.Pass, C.PassRule, C.Compatible, C.Dns:
+		if _, isGroup := p.Adapter().(outboundgroup.ProxyGroup); isGroup || builtin(p) {
 			return
 		}
 
@@ -205,6 +200,8 @@ func providerProxies(path string, rawCfg *mihomoConfig.RawConfig) ([]C.Proxy, fu
 			mapping[key] = value
 		}
 
+		// Замер без туннеля только читает скачанный файл: битый не уходит в сеть и не перезаписывается
+		mapping["type"] = "file"
 		mapping["interval"] = 0
 		mapping["health-check"] = map[string]any{"enable": false}
 

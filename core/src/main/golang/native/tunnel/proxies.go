@@ -250,6 +250,12 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			}
 		}
 
+		// Не мерили — 0, интерфейс покажет «—»; 0xffff ядро отдаёт и мёртвому, и не промеренному
+		delay := 0
+		if _, measured := histories[testURL]; measured {
+			delay = int(p.LastDelayForTestUrl(testURL))
+		}
+
 		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
 		result = append(result, &Proxy{
@@ -257,7 +263,7 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			Title:    strings.TrimSpace(title),
 			Subtitle: strings.TrimSpace(subtitle),
 			Type:     p.Type().String(),
-			Delay:    int(p.LastDelayForTestUrl(testURL)),
+			Delay:    delay,
 			IsGroup:  isGroup,
 		})
 	}

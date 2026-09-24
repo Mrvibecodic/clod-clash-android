@@ -186,7 +186,9 @@ fun ServersTab(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(items = proxies, key = { it.name }) { proxy ->
+                // Без ключа по имени: ядро допускает одноимённые узлы из разных провайдеров,
+                // а одинаковый ключ роняет список
+                items(items = proxies) { proxy ->
                     ProxyRow(
                         title = proxy.title,
                         subtitle = descriptions[proxy.name]?.takeIf { it.isNotBlank() }

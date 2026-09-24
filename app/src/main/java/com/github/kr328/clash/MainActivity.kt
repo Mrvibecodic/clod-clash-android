@@ -195,7 +195,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             reconcileUpdatingProfiles()
 
-                            design.fetch()
+                            val started = design.fetch()
 
                             design.showAddedProfile()
 
@@ -204,7 +204,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             if (design.selectedTab == MainTab.Servers &&
                                 shouldAutoHealthCheck(
                                     clashRunning = clashRunning,
-                                    startedByReload = false,
+                                    startedByReload = started,
                                     groupsKnown = proxyGroupNames.isNotEmpty(),
                                     readOnly = serversReadOnly,
                                     sinceLastCheckMs = SystemClock.elapsedRealtime() - lastHealthCheckAt,
@@ -590,6 +590,15 @@ class MainActivity : BaseActivity<MainDesign>() {
                         if (design.selectedTab == MainTab.Home) {
                             design.fetchTraffic()
                             design.fetchSession()
+
+                            // url-test и fallback ядро переключает само, без событий
+                            val now = SystemClock.elapsedRealtime()
+
+                            if (now - homeRouteReadAt >= HOME_ROUTE_REFRESH_MS) {
+                                homeRouteReadAt = now
+
+                                design.reloadProxyGroup(design.selectedGroup)
+                            }
                         }
 
                         ProfileUpdates.prune()
@@ -616,7 +625,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun MainDesign.fetch() {
+    private suspend fun MainDesign.fetch(): Boolean {
         panelRunning = null
 
         val status = if (clashRunning) null else withContext(Dispatchers.IO) {
@@ -673,7 +682,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         favoritesProfile = active?.profile?.uuid
         setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
 
-        reloadProxyGroups()
+        return reloadProxyGroups()
     }
 
     private var proxyGroupNames: List<String> = emptyList()
@@ -698,6 +707,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     @Volatile
     private var healthCheckRequested = false
     private var healthCheckRequestedManually = false
+
+    private var homeRouteReadAt = SystemClock.elapsedRealtime()
 
     private var lastHealthCheckAt: Long
         get() = HealthProbes.checkedAt
@@ -770,7 +781,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         return false
     }
 
-    private suspend fun MainDesign.runHealthCheck(manual: Boolean) {
+    private suspend fun MainDesign.runHealthCheck(manual: Boolean, force: Boolean = manual) {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
         if (healthChecking) {
@@ -817,7 +828,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             val others = proxyGroupNames.filter { it != first }
 
             if (others.isNotEmpty()) {
-                withClash { healthCheckGroups(others, listOfNotNull(first), manual) }
+                withClash { healthCheckGroups(others, listOfNotNull(first), force) }
             }
 
             val delays = reloadProxyGroup(selectedGroup)
@@ -855,7 +866,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         healthCheckRequestedManually = false
 
-        runHealthCheck(manual = queuedManually)
+        // Нажатие во время круга: только что промеренные живые узлы не перемеряются
+        runHealthCheck(manual = queuedManually, force = false)
     }
 
     private suspend fun MainDesign.startOfflineHealthCheck(manual: Boolean) {
@@ -963,9 +975,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {
-        if (delays.isEmpty()) return
-
-        if (delays.any { it in 1 until DELAY_UNKNOWN }) return
+        // 0 — узел не промерен: судить можно только по промеренным
+        if (delays.none { it >= DELAY_UNKNOWN } || delays.any { it in 1 until DELAY_UNKNOWN }) return
 
         showToast(DesignR.string.clod_delay_unavailable, ToastDuration.Long)
     }
@@ -1011,7 +1022,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             globalSelection = group.now
         }
 
-        setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
+        // Пока шёл запрос, список групп мог смениться — тогда слот уже чужой
+        if (proxyGroupNames.getOrNull(index) == name) {
+            setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
+        }
 
         return group
     }
@@ -1021,6 +1035,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private companion object {
         private const val DELAY_UNKNOWN = 0xffff
+
+        private val HOME_ROUTE_REFRESH_MS = TimeUnit.SECONDS.toMillis(60)
 
         private val UPDATES_ACTIVE_POLL_MS = TimeUnit.SECONDS.toMillis(3)
 

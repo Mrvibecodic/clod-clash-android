@@ -46,7 +46,7 @@ type probePool struct {
 var (
 	probeMu       sync.Mutex
 	probeRoot     context.Context
-	probeAbort    context.CancelFunc
+	probeAbort    context.CancelCauseFunc
 	probeInflight = map[string]*probeResult{}
 
 	screenProbes  = &probePool{tag: "screen", slots: make(chan struct{}, healthCheckConcurrency)}
@@ -58,18 +58,29 @@ func probeContext() context.Context {
 	defer probeMu.Unlock()
 
 	if probeRoot == nil || probeRoot.Err() != nil {
-		probeRoot, probeAbort = context.WithCancel(context.Background())
+		probeRoot, probeAbort = context.WithCancelCause(context.Background())
 	}
 
 	return probeRoot
 }
 
+var errConfigReplaced = errors.New("config replaced")
+
 func CancelHealthChecks() {
+	cancelHealthChecks(nil)
+}
+
+// Замер, начатый до загрузки конфига, меряет выброшенные объекты прежнего
+func CancelHealthChecksOfOldConfig() {
+	cancelHealthChecks(errConfigReplaced)
+}
+
+func cancelHealthChecks(cause error) {
 	probeMu.Lock()
 	defer probeMu.Unlock()
 
 	if probeAbort != nil {
-		probeAbort()
+		probeAbort(cause)
 	}
 }
 
@@ -152,10 +163,24 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 			return 0, own.outcome, own.err
 		}
 
+		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал
+		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < healthCheckProbeTimeout {
+			own.err = context.DeadlineExceeded
+			own.outcome = probeoutcome.Expired
+
+			return 0, own.outcome, own.err
+		}
+
 		probe, cancel := context.WithTimeout(ctx, healthCheckProbeTimeout)
 		defer cancel()
 
 		own.delay, own.err = px.URLTest(probe, url, expected)
+
+		// Ответ с неподходящим кодом ядро возвращает без ошибки, но записывает провалом
+		if own.err == nil && !px.AliveForTestUrl(url) {
+			own.err = errUnexpectedStatus
+		}
+
 		own.outcome = probeoutcome.Classify(own.err, ctx.Err())
 
 		return own.delay, own.outcome, own.err
@@ -287,14 +312,14 @@ func healthCheckGroup(pool *probePool, name string) error {
 
 	log.Infoln("Health check `%s`: %d proxies via %s", name, len(proxies), url)
 
-	checked, alive := probeTargets(pool, "Health check `"+name+"`", targets)
+	checked, alive, replaced := probeTargets(pool, "Health check `"+name+"`", targets)
 
 	log.Infoln(
 		"Health check `%s`: %d alive of %d checked, %d of %d not checked",
 		name, alive, checked, len(proxies)-checked, len(proxies),
 	)
 
-	if checked == 0 {
+	if checked == 0 && !replaced {
 		return errNothingChecked
 	}
 
@@ -313,6 +338,23 @@ func (t checkTarget) key() string {
 }
 
 var errNothingChecked = errors.New("health check interrupted: no node was checked")
+
+var errUnexpectedStatus = errors.New("unexpected status code")
+
+// Встроенные исходящие (DIRECT, REJECT и др.) — не узлы: пробовать их нечего или незачем
+func builtin(p C.Proxy) bool {
+	switch p.Type() {
+	case C.Direct, C.Reject, C.RejectDrop, C.Pass, C.PassRule, C.Compatible, C.Dns:
+		return true
+	default:
+		return false
+	}
+}
+
+// GLOBAL ведёт трафик только в глобальном режиме
+func routesTraffic(g outboundgroup.ProxyGroup) bool {
+	return g.Name() != "GLOBAL" || tunnel.Mode() == tunnel.Global
+}
 
 func groupTargets(name string) []checkTarget {
 	p := tunnel.Proxies()[name]
@@ -390,21 +432,23 @@ func HealthCheckGroups(names []string, exclude []string, force bool) error {
 		return nil
 	}
 
-	checked, alive := probeTargets(screenProbes, "Health check", targets)
+	checked, alive, replaced := probeTargets(screenProbes, "Health check", targets)
 
 	log.Infoln(
 		"Health check of %d groups: %d alive of %d checked, %d of %d not checked",
 		len(names), alive, checked, len(targets)-checked, len(targets),
 	)
 
-	if checked == 0 {
+	if checked == 0 && !replaced {
 		return errNothingChecked
 	}
 
 	return nil
 }
 
-func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int) {
+// replaced — круг прервала загрузка нового конфига: это не отказ проверки,
+// новый конфиг меряет круг, который ставит его загрузка
+func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int, bool) {
 	ctx, cancel := context.WithTimeout(probeContext(), healthCheckBudget(len(targets)))
 	defer cancel()
 
@@ -440,7 +484,7 @@ func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int
 
 	wg.Wait()
 
-	return int(checked.Load()), int(alive.Load())
+	return int(checked.Load()), int(alive.Load()), errors.Is(context.Cause(ctx), errConfigReplaced)
 }
 
 func ProbeCurrentNodes() {
@@ -465,12 +509,12 @@ func ProbeCurrentNodes() {
 
 	for _, p := range proxies {
 		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
-		if !ok {
+		if !ok || !routesTraffic(g) {
 			continue
 		}
 
 		now, target := resolveSelected(g)
-		if target == nil {
+		if target == nil || builtin(target) {
 			continue
 		}
 
@@ -562,7 +606,7 @@ func RecoverDeadNodes(force bool) {
 
 	for _, p := range tunnel.Proxies() {
 		g, ok := p.Adapter().(outboundgroup.ProxyGroup)
-		if !ok {
+		if !ok || !routesTraffic(g) {
 			continue
 		}
 
@@ -572,7 +616,7 @@ func RecoverDeadNodes(force bool) {
 		}
 
 		for _, px := range g.Proxies() {
-			if _, isGroup := px.Adapter().(outboundgroup.ProxyGroup); isGroup {
+			if _, isGroup := px.Adapter().(outboundgroup.ProxyGroup); isGroup || builtin(px) {
 				continue
 			}
 

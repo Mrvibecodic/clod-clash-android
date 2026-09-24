@@ -159,6 +159,7 @@ jobs:
           cd core/src/foss/golang/clash
           for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
           grep -q ProbeHolding adapter/adapter.go
+          grep -qF 'ctx.Err() == context.Canceled' adapter/adapter.go
           grep -q ProbeHolding adapter/outboundgroup/groupbase.go
           grep -q ProbeFreezeGap constant/probehold.go
           grep -Eq 'expectedStatus +string' adapter/outboundgroup/selector.go

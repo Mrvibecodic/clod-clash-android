@@ -10,7 +10,7 @@ index 6f20c08..265e1a4 100644
 +
  	defer func() {
  		alive := err == nil
-+		if (!alive || !satisfied) && (C.ProbeHolding(probeStart) || C.ProbeHolding(time.Now())) {
++		if (!alive || !satisfied) && (ctx.Err() == context.Canceled || C.ProbeHolding(probeStart) || C.ProbeHolding(time.Now())) {
 +			return
 +		}
  		record := C.DelayHistory{Time: time.Now()}

@@ -9,6 +9,7 @@ import (
 
 	"cfa/native/common/safego"
 	"cfa/native/config"
+	"cfa/native/tunnel"
 )
 
 type remoteValidCallback struct {
@@ -65,6 +66,10 @@ func load(completable unsafe.Pointer, path C.c_string) {
 
 			return config.Load(p)
 		}()
+
+		if err == nil {
+			tunnel.CancelHealthChecksOfOldConfig()
+		}
 
 		C.complete(completable, marshalError(err))
 
