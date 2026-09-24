@@ -6,7 +6,7 @@ on:
       - 'android-v*'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,7 +20,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       version_code: ${{ steps.v.outputs.version_code }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Тег, схема versionCode и рост версии
         id: v
@@ -101,6 +101,8 @@ jobs:
     name: Черновик релиза
     needs: check_version
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       release_id: ${{ steps.draft.outputs.release_id }}
     steps:
@@ -140,8 +142,10 @@ jobs:
     name: Сборка
     needs: [check_version, prepare_release]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -172,17 +176,20 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
           java-version: 21
 
-      - uses: gradle/actions/setup-gradle@v5
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c
+        with:
+          cache-disabled: true
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c
         with:
           go-download-base-url: 'https://github.com/MetaCubeX/go/releases/download/build'
           go-version: '1.26'
+          cache: false
 
       - name: Патчи Go-тулчейна
         run: |
@@ -192,14 +199,6 @@ jobs:
           # Стражи на оба патча: первый ДОБАВЛЯЕТ ветку, второй УДАЛЯЕТ две.
           grep -q 'tailscale/tailscale/issues/13452' src/os/pidfd_linux.go
           test "$(grep -c 'if use64bitsTimeOn32bits' src/runtime/os_linux32.go)" = "0"
-
-      - uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
 
       - name: Обновить CA-сертификаты ядра
         run: |
@@ -212,28 +211,8 @@ jobs:
           test -s core/src/foss/golang/clash/component/ca/ca-certificates.crt
           test "$(grep -c 'BEGIN CERTIFICATE' core/src/foss/golang/clash/component/ca/ca-certificates.crt)" -gt 100
 
-      - name: Ключ подписи из секретов
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
-            echo "::error::Секрет KEYSTORE_BASE64 не задан — релиз нельзя подписать"
-            exit 1
-          fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          {
-            echo "keystore.path=$RUNNER_TEMP/release.keystore"
-            echo "keystore.password=$KEYSTORE_PASSWORD"
-            echo "key.alias=$KEY_ALIAS"
-            echo "key.password=$KEY_PASSWORD"
-          } > signing.properties
-
       - name: Сборка релиза
-        run: ./gradlew --no-daemon app:assembleStandardRelease
+        run: ./gradlew --no-daemon --no-build-cache app:assembleStandardRelease
 
       - name: Проверка выравнивания 16 KB
         run: |
@@ -265,12 +244,88 @@ jobs:
           [[ $checked -gt 0 ]] || { echo "::error::Ни одной библиотеки .so не проверено"; exit 1; }
           [[ $fail -eq 0 ]] || exit 1
 
+      - name: Неподписанные APK для подписи
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-unsigned
+          if-no-files-found: error
+          retention-days: 7
+          path: app/build/outputs/apk/standard/release/*-unsigned.apk
+
+  sign:
+    name: Подпись и заливка
+    needs: [check_version, prepare_release, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: release-unsigned
+          path: unsigned
+
+      - name: Подписать APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_BASE64:-}" ]]; then
+            echo "::error::Секрет KEYSTORE_BASE64 не задан — релиз нельзя подписать"
+            exit 1
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          KS="$RUNNER_TEMP/release.keystore"
+          trap 'rm -f "$KS" "$RUNNER_TEMP/aligned.apk"' EXIT
+          echo "$KEYSTORE_BASE64" | base64 -d > "$KS"
+          mkdir -p signed
+          count=0
+          for apk in unsigned/*-unsigned.apk; do
+            name=$(basename "$apk" -unsigned.apk).apk
+            "$BT/zipalign" -f -P 16 4 "$apk" "$RUNNER_TEMP/aligned.apk"
+            "$BT/apksigner" sign \
+              --ks "$KS" --ks-key-alias "$KEY_ALIAS" \
+              --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
+              --v1-signing-enabled true --v2-signing-enabled true \
+              --v3-signing-enabled false --v4-signing-enabled false \
+              --out "signed/$name" "$RUNNER_TEMP/aligned.apk"
+            count=$((count + 1))
+          done
+          [[ $count -gt 0 ]] || { echo "::error::Нет APK для подписи"; exit 1; }
+          echo "подписано APK: $count"
+
+      - name: Проверить подпись
+        env:
+          CERT_SHA256: aa3ac63121c7f6dcbc62bbbe0c372b1ceaef9ba86bf6d96eae99c6c840d3c62c
+        run: |
+          set -euo pipefail
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for apk in signed/*.apk; do
+            out=$("$BT/apksigner" verify -v --print-certs "$apk")
+            grep -q 'Verified using v1 scheme (JAR signing): true' <<< "$out"
+            grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' <<< "$out"
+            grep -q 'Number of signers: 1' <<< "$out"
+            grep -q "Signer #1 certificate SHA-256 digest: $CERT_SHA256" <<< "$out" || {
+              echo "::error::$(basename "$apk") подписан не релизным ключом"
+              exit 1
+            }
+            "$BT/zipalign" -c -P 16 4 "$apk"
+            echo "подпись в порядке: $(basename "$apk")"
+          done
+
       - name: Переименовать APK и посчитать SHA-256
         id: assets
         run: |
           set -euo pipefail
           mkdir -p dist
-          for apk in app/build/outputs/apk/standard/release/*.apk; do
+          for apk in signed/*.apk; do
             name=$(basename "$apk")
             abi=universal
             for candidate in arm64-v8a armeabi-v7a x86_64 x86; do
@@ -349,10 +404,12 @@ jobs:
 
   publish:
     name: Публикация
-    needs: [check_version, prepare_release, build]
+    needs: [check_version, prepare_release, sign]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
 
       - name: Проверить, что релиз укомплектован
         env:
