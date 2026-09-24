@@ -38,6 +38,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -491,9 +492,49 @@ object ProfileProcessor {
                         context.sendProfileChanged(uuid)
                     }
                 }
+
+                // Каталог без строки черновика остаётся, если процесс умер между копированием и
+                // вставкой строки. Список каталогов снимается раньше списка строк: create вставляет
+                // строку до того, как заводит каталог, поэтому живой черновик сюда не попадёт.
+                val dirs = context.pendingDir.listFiles().orEmpty()
+                val drafts = PendingDao().queryAllUUIDs().mapTo(HashSet()) { it.toString() }
+
+                for (dir in dirs) {
+                    if (dir.name in drafts) continue
+
+                    dir.deleteRecursively()
+
+                    Log.w("Orphan draft directory ${dir.name} removed")
+                }
             }
         }
     }
+
+    // Черновик из рабочей подписки заводится под тем же замком, что и подмена каталога:
+    // иначе копия может попасть между двумя переименованиями ProfileSwap.
+    suspend fun openDraft(context: Context, uuid: UUID, draft: (Imported) -> Pending): Boolean =
+        withContext(NonCancellable) {
+            profileLock.withLock {
+                if (PendingDao().exists(uuid)) return@withLock false
+
+                repairLocked(context)
+
+                val imported = ImportedDao().queryByUUID(uuid)
+                    ?: throw FileNotFoundException("profile $uuid not found")
+
+                val source = context.importedDir.resolve(uuid.toString())
+                val target = context.pendingDir.resolve(uuid.toString())
+
+                if (!source.exists()) throw FileNotFoundException("profile $uuid not found")
+
+                target.deleteRecursively()
+                source.copyRecursively(target)
+
+                PendingDao().insert(draft(imported))
+
+                true
+            }
+        }
 
     suspend fun release(context: Context, uuid: UUID) {
         withContext(NonCancellable) {

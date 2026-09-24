@@ -3,8 +3,8 @@ package com.github.kr328.clash.service.document
 import android.content.Context
 import android.provider.DocumentsContract
 import com.github.kr328.clash.common.util.PatternFileName
+import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.R
-import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
@@ -77,8 +77,23 @@ class Picker(private val context: Context) {
                 throw IllegalArgumentException("invalid name $fileName")
             }
 
-            if (pending == null)
-                cloneToPending(imported ?: throw FileNotFoundException("profile not found"))
+            if (pending == null) {
+                ProfileProcessor.openDraft(context, path.uuid) { imported ->
+                    Pending(
+                        imported.uuid,
+                        imported.name,
+                        imported.type,
+                        imported.source,
+                        imported.interval,
+                        imported.upload,
+                        imported.download,
+                        imported.total,
+                        imported.expire,
+                        secure = imported.secure,
+                        intervalManual = imported.intervalManual,
+                    )
+                }
+            }
         }
 
         val profileDir = if (writable) context.pendingDir.resolve(path.uuid.toString()) else storedDir
@@ -120,30 +135,6 @@ class Picker(private val context: Context) {
         return FileDocument(
             file = profileDir.resolve("providers").resolve(path.relative.joinToString(separator = "/")),
             flags = setOf(Flag.Writable, Flag.Deletable)
-        )
-    }
-
-    private suspend fun cloneToPending(imported: Imported) {
-        val source = context.importedDir.resolve(imported.uuid.toString())
-        val target = context.pendingDir.resolve(imported.uuid.toString())
-
-        target.deleteRecursively()
-        source.copyRecursively(target)
-
-        PendingDao().insert(
-            Pending(
-                imported.uuid,
-                imported.name,
-                imported.type,
-                imported.source,
-                imported.interval,
-                imported.upload,
-                imported.download,
-                imported.total,
-                imported.expire,
-                secure = imported.secure,
-                intervalManual = imported.intervalManual,
-            )
         )
     }
 }

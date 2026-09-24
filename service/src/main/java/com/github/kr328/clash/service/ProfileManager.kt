@@ -80,13 +80,8 @@ class ProfileManager(private val context: Context) : IProfileManager,
     override suspend fun patch(uuid: UUID, name: String, source: String, interval: Long, intervalManual: Boolean) {
         val pending = PendingDao().queryByUUID(uuid)
 
-        if (pending == null) {
-            val imported = ImportedDao().queryByUUID(uuid)
-                ?: throw FileNotFoundException("profile $uuid not found")
-
-            cloneImportedFiles(uuid)
-
-            PendingDao().insert(
+        val opened = pending == null &&
+            ProfileProcessor.openDraft(context, uuid) { imported ->
                 Pending(
                     uuid = imported.uuid,
                     name = name,
@@ -100,9 +95,14 @@ class ProfileManager(private val context: Context) : IProfileManager,
                     secure = imported.secure,
                     intervalManual = intervalManual,
                 )
-            )
-        } else {
-            val newPending = pending.copy(
+            }
+
+        if (!opened) {
+            // Черновик мог завестись параллельно, пока openDraft ждал замка — тогда правим его.
+            val current = pending ?: PendingDao().queryByUUID(uuid)
+                ?: throw FileNotFoundException("profile $uuid not found")
+
+            val newPending = current.copy(
                 name = name,
                 source = source,
                 interval = interval,
@@ -206,18 +206,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
         return context.importedDir.resolve(uuid.toString()).directoryLastModified
             ?: context.pendingDir.resolve(uuid.toString()).directoryLastModified
             ?: -1
-    }
-
-    private fun cloneImportedFiles(uuid: UUID) {
-        val s = context.importedDir.resolve(uuid.toString())
-        val t = context.pendingDir.resolve(uuid.toString())
-
-        if (!s.exists())
-            throw FileNotFoundException("profile $uuid not found")
-
-        t.deleteRecursively()
-
-        s.copyRecursively(t)
     }
 
     private suspend fun scheduleUpdate(uuid: UUID, startImmediately: Boolean) {
