@@ -10,7 +10,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.model.Proxy
-import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.screen.AddProfileScreen
 import com.github.kr328.clash.design.compose.screen.AddProfileState
@@ -128,7 +127,6 @@ abstract class Screenshots(private val locale: String, private val demo: DemoCon
     ) = MainScreenState(
         status = status,
         active = subscription,
-        mode = TunnelState.Mode.Rule,
         selectedTab = tab,
         servers = servers,
         subscriptions = SubscriptionsState(profiles = listOf(subscription)),
