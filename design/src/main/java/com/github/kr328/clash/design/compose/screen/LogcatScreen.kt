@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,12 @@ data class LogcatState(
     val firstLine: Long = 0,
 )
 
+@Immutable
+data class LogcatExport(
+    val written: Int,
+    val total: Int,
+)
+
 sealed interface LogcatAction {
     data object Back : LogcatAction
     data object Close : LogcatAction
@@ -52,6 +59,7 @@ fun LogcatScreen(
     state: LogcatState,
     onAction: (LogcatAction) -> Unit,
     modifier: Modifier = Modifier,
+    export: LogcatExport? = null,
 ) {
     val listState = rememberLazyListState()
 
@@ -130,6 +138,26 @@ fun LogcatScreen(
             },
         )
     }
+
+    export?.let { ExportProgressDialog(it) }
+}
+
+@Composable
+private fun ExportProgressDialog(export: LogcatExport) {
+    AlertDialog(
+        onDismissRequest = {},
+        text = {
+            if (export.total > 0) {
+                LinearProgressIndicator(
+                    progress = { export.written.toFloat() / export.total },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = {},
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)

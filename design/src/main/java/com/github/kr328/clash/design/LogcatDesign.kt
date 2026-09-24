@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.design.compose.screen.LogcatAction
+import com.github.kr328.clash.design.compose.screen.LogcatExport
 import com.github.kr328.clash.design.compose.screen.LogcatScreen
 import com.github.kr328.clash.design.compose.screen.LogcatState
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -27,8 +28,10 @@ class LogcatDesign(
 
     private var state by mutableStateOf(LogcatState(streaming = streaming))
 
+    private var exporting by mutableStateOf<LogcatExport?>(null)
+
     override val root: View = composeRoot {
-        LogcatScreen(state = state, onAction = ::onAction)
+        LogcatScreen(state = state, onAction = ::onAction, export = exporting)
     }
 
     private fun onAction(action: LogcatAction) {
@@ -45,6 +48,10 @@ class LogcatDesign(
                 showToast(R.string.copied, ToastDuration.Short)
             }
         }
+    }
+
+    fun setExport(progress: LogcatExport?) {
+        exporting = progress
     }
 
     suspend fun patchMessages(messages: List<LogMessage>, removed: Int) {

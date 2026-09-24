@@ -14,7 +14,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.design.LogcatDesign
-import com.github.kr328.clash.design.dialog.withModelProgressBar
+import com.github.kr328.clash.design.compose.screen.LogcatExport
 import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
@@ -86,7 +86,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
 
                         if (output != null) {
                             withContext(Dispatchers.IO) {
-                                writeLogTo(messages, file, output)
+                                writeLogTo(messages, file, output, design)
                             }
 
                             design.showToast(R.string.file_exported, ToastDuration.Long)
@@ -188,29 +188,20 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
         }
     }
 
-    @Suppress("BlockingMethodInNonBlockingContext")
-    private suspend fun writeLogTo(messages: List<LogMessage>, file: LogFile, uri: Uri) {
+    private fun writeLogTo(messages: List<LogMessage>, file: LogFile, uri: Uri, design: LogcatDesign) {
         LogcatFilter(OutputStreamWriter(contentResolver.openOutputStream(uri)), this).use {
-            withContext(Dispatchers.Main) {
-                withModelProgressBar {
-                    configure {
-                        isIndeterminate = true
-                        max = messages.size
-                    }
+            try {
+                design.setExport(LogcatExport(0, messages.size))
 
-                    withContext(Dispatchers.IO) {
-                        it.writeHeader(file.date)
+                it.writeHeader(file.date)
 
-                        messages.forEachIndexed { idx, msg ->
-                            configure {
-                                isIndeterminate = false
-                                progress = idx
-                            }
+                messages.forEachIndexed { idx, msg ->
+                    design.setExport(LogcatExport(idx, messages.size))
 
-                            it.writeMessage(msg)
-                        }
-                    }
+                    it.writeMessage(msg)
                 }
+            } finally {
+                design.setExport(null)
             }
         }
     }

@@ -5,13 +5,14 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.github.kr328.clash.design.compose.screen.FileNaming
 import com.github.kr328.clash.design.compose.screen.FilesAction
 import com.github.kr328.clash.design.compose.screen.FilesScreen
 import com.github.kr328.clash.design.compose.screen.FilesState
-import com.github.kr328.clash.design.dialog.requestModelTextInput
 import com.github.kr328.clash.design.model.File
-import com.github.kr328.clash.design.util.ValidatorFileName
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
 class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
@@ -57,6 +58,8 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
             is FilesAction.Export -> pick(Request.ExportFile(action.file))
             is FilesAction.Rename -> pick(Request.RenameFile(action.file))
             is FilesAction.Delete -> pick(Request.DeleteFile(action.file))
+            is FilesAction.NameConfirm -> resumeNaming(action.name)
+            FilesAction.NameCancel -> resumeNaming(null)
         }
     }
 
@@ -82,13 +85,35 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         state = state.copy(currentTime = System.currentTimeMillis())
     }
 
+    private var naming: CancellableContinuation<String?>? = null
+
+    private var namingId = 0L
+
     suspend fun requestFileName(name: String): String? {
-        return context.requestModelTextInput(
-            initial = name,
-            title = context.getText(R.string.file_name),
-            hint = context.getText(R.string.file_name),
-            error = context.getText(R.string.invalid_file_name),
-            validator = ValidatorFileName,
-        )
+        return withContext(Dispatchers.Main) {
+            suspendCancellableCoroutine { continuation ->
+                naming = continuation
+
+                state = state.copy(naming = FileNaming(++namingId, name))
+
+                continuation.invokeOnCancellation {
+                    naming = null
+
+                    state = state.copy(naming = null)
+                }
+            }
+        }
+    }
+
+    private fun resumeNaming(name: String?) {
+        state = state.copy(naming = null)
+
+        val continuation = naming ?: return
+
+        naming = null
+
+        if (continuation.isActive) {
+            continuation.resumeWith(Result.success(name))
+        }
     }
 }

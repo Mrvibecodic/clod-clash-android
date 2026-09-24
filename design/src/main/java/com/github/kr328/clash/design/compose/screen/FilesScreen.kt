@@ -12,21 +12,35 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -34,6 +48,7 @@ import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.model.File
+import com.github.kr328.clash.design.util.ValidatorFileName
 import com.github.kr328.clash.design.util.relativeTime
 import kotlinx.coroutines.launch
 
@@ -46,6 +61,7 @@ data class FilesState(
     val currentTime: Long = 0,
     val menuFor: File? = null,
     val error: String? = null,
+    val naming: FileNaming? = null,
 ) {
     fun importable(file: File): Boolean = !file.isDirectory && (!inBaseDir || configurationEditable)
 
@@ -53,6 +69,12 @@ data class FilesState(
 
     fun hasActions(file: File): Boolean = importable(file) || exportable(file) || !inBaseDir
 }
+
+@Immutable
+data class FileNaming(
+    val id: Long,
+    val initial: String,
+)
 
 sealed interface FilesAction {
     data object Back : FilesAction
@@ -65,6 +87,8 @@ sealed interface FilesAction {
     data class Export(val file: File) : FilesAction
     data class Rename(val file: File) : FilesAction
     data class Delete(val file: File) : FilesAction
+    data class NameConfirm(val name: String) : FilesAction
+    data object NameCancel : FilesAction
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,6 +209,73 @@ fun FilesScreen(
             }
         }
     }
+
+    state.naming?.let { naming ->
+        key(naming.id) {
+            FileNameDialog(
+                initial = naming.initial,
+                onConfirm = { onAction(FilesAction.NameConfirm(it)) },
+                onDismiss = { onAction(FilesAction.NameCancel) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileNameDialog(
+    initial: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var value by remember {
+        mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length)))
+    }
+
+    val focusRequester = remember { FocusRequester() }
+    val valid = ValidatorFileName(value.text)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.file_name)) },
+        text = {
+            val keyboard = LocalSoftwareKeyboardController.current
+
+            LaunchedEffect(Unit) {
+                withFrameNanos { }
+
+                runCatching {
+                    focusRequester.requestFocus()
+                    keyboard?.show()
+                }
+            }
+
+            OutlinedTextField(
+                value = value,
+                onValueChange = { value = it },
+                singleLine = true,
+                isError = !valid,
+                label = { Text(stringResource(R.string.file_name)) },
+                supportingText = if (valid) {
+                    null
+                } else {
+                    { Text(stringResource(R.string.invalid_file_name)) }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(value.text) }, enabled = valid) {
+                Text(stringResource(R.string.ok))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable

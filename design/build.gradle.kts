@@ -36,7 +36,6 @@ dependencies {
     implementation(libs.androidx.core)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity)
-    implementation(libs.google.material)
 
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)

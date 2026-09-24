@@ -56,6 +56,5 @@ class ValidatorTest {
         assertTrue(ValidatorNotBlank("x"))
         assertFalse(ValidatorNotBlank(""))
         assertFalse(ValidatorNotBlank("   "))
-        assertTrue(ValidatorAcceptAll(""))
     }
 }

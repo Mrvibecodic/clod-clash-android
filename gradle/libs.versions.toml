@@ -8,7 +8,6 @@ coroutine = "1.11.0"
 coreKtx = "1.16.0"
 activity = "1.10.1"
 appcompat = "1.8.0"
-material = "1.14.0"
 serialization = "1.11.0"
 kaidl = "1.15"
 junit = "4.13.2"
@@ -38,7 +37,6 @@ androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtim
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
-google-material = { module = "com.google.android.material:material", version.ref = "material" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
