@@ -1,12 +1,14 @@
 package com.github.kr328.clash.design.util
 
-import android.text.format.DateFormat
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.core.os.ConfigurationCompat
 import com.github.kr328.clash.design.R
+import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 @Composable
@@ -27,4 +29,8 @@ fun relativeTime(millis: Long, now: Long): String {
 }
 
 @Composable
-fun formatDate(millis: Long): String = DateFormat.getMediumDateFormat(LocalContext.current).format(Date(millis))
+fun formatDate(millis: Long): String {
+    val locale = ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: Locale.getDefault()
+
+    return DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(millis))
+}
