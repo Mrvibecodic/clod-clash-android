@@ -19,6 +19,8 @@ class StatusProvider : ContentProvider() {
                     putString(KEY_STAGE, startupStage)
                     putString(KEY_NAME, currentProfile)
                     putString(KEY_UUID, currentProfileUuid)
+                    putBoolean(KEY_RESTARTED, serviceReady && restartedBySystem)
+                    putBoolean(KEY_PROXY_REFUSED, serviceReady && systemProxyRefused)
                 }
             }
             METHOD_UPDATING_PROFILES -> {
@@ -72,6 +74,8 @@ class StatusProvider : ContentProvider() {
         const val KEY_STAGE = "stage"
         const val KEY_NAME = "name"
         const val KEY_UUID = "uuid"
+        const val KEY_RESTARTED = "restarted"
+        const val KEY_PROXY_REFUSED = "proxyRefused"
         const val METHOD_UPDATING_PROFILES = "updatingProfiles"
         const val KEY_UPDATING = "updating"
 
@@ -108,5 +112,11 @@ class StatusProvider : ContentProvider() {
 
         @Volatile
         var currentProfileUuid: String? = null
+
+        @Volatile
+        var restartedBySystem: Boolean = false
+
+        @Volatile
+        var systemProxyRefused: Boolean = false
     }
 }

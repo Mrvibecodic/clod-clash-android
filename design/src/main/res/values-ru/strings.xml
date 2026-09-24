@@ -268,6 +268,8 @@
     <string name="clod_stage_tunnel">Открытие VPN-туннеля\u2026</string>
     <string name="clod_status_disconnecting">Отключение\u2026</string>
     <string name="clod_tap_to_connect">Нажмите, чтобы подключиться</string>
+    <string name="clod_session_restarted">Система перезапускала фоновую часть приложения — подключение восстановилось само</string>
+    <string name="clod_session_proxy_refused">Системный прокси не объявлен: локальный вход ядра не открылся. Сам VPN работает как обычно</string>
     <string name="clod_traffic_downloaded">Скачано</string>
     <string name="clod_traffic_uploaded">Отправлено</string>
     <string name="clod_sub_url_label">Ссылка на подписку</string>

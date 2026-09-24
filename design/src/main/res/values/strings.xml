@@ -315,6 +315,8 @@
     <string name="clod_stage_tunnel">Opening the VPN tunnel\u2026</string>
     <string name="clod_status_disconnecting">Disconnecting\u2026</string>
     <string name="clod_tap_to_connect">Tap to connect</string>
+    <string name="clod_session_restarted">The system restarted the background part of the app — the connection was restored on its own</string>
+    <string name="clod_session_proxy_refused">The system proxy was not announced: the local inbound of the core did not open. The VPN itself works as usual</string>
     <string name="clod_traffic_downloaded">Downloaded</string>
     <string name="clod_traffic_uploaded">Uploaded</string>
     <string name="clod_sub_url_label">Subscription link</string>

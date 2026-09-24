@@ -226,6 +226,15 @@ class MainDesign(
         }
     }
 
+    suspend fun setSessionNotes(restartedBySystem: Boolean, systemProxyRefused: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                restartedBySystem = restartedBySystem,
+                systemProxyRefused = systemProxyRefused,
+            )
+        }
+    }
+
     suspend fun setDisconnecting() {
         withContext(Dispatchers.Main) {
             if (state.status == ConnectionStatus.Connected ||

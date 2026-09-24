@@ -635,6 +635,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             setClashRunning(clashRunning)
         }
 
+        val notes = status ?: withContext(Dispatchers.IO) {
+            StatusClient(this@MainActivity).status()
+        }
+
+        setSessionNotes(notes.restartedBySystem, notes.systemProxyRefused)
+
         val session = if (clashRunning) {
             withContext(Dispatchers.IO) {
                 ServiceStore(this@MainActivity).run { clashStartedAt to clashStartedElapsed }

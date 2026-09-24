@@ -305,6 +305,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     Log.w("System proxy requested but http listener is unavailable")
 
                     ServiceLog.mark("system proxy: local http inbound unavailable")
+
+                    session.systemProxyRefused = true
                 }
 
                 http?.let {

@@ -77,6 +77,12 @@ class SessionLifecycle(
     @Volatile
     var unattendedStart = false
 
+    @Volatile
+    var systemProxyRefused = false
+
+    @Volatile
+    private var restartedBySystem = false
+
     var rejected = false
         private set
 
@@ -113,6 +119,8 @@ class SessionLifecycle(
         StatusProvider.serviceReady = false
         StatusProvider.startupStage = null
         StatusProvider.currentProfileUuid = null
+        StatusProvider.restartedBySystem = false
+        StatusProvider.systemProxyRefused = false
         StatusProvider.serviceRunning = false
 
         service.sendClashStopped(reason)
@@ -126,6 +134,8 @@ class SessionLifecycle(
 
     fun notifyReady() {
         StatusProvider.startupStage = null
+        StatusProvider.restartedBySystem = restartedBySystem
+        StatusProvider.systemProxyRefused = systemProxyRefused
         StatusProvider.serviceReady = true
 
         ServiceStore(service).stickyRestarts = ""
@@ -183,6 +193,9 @@ class SessionLifecycle(
 
         reason = null
 
+        restartedBySystem = false
+        systemProxyRefused = false
+
         StatusProvider.serviceReady = false
         StatusProvider.serviceRunning = true
 
@@ -224,6 +237,10 @@ class SessionLifecycle(
             startFailed = startFailed,
             stopped = stopNotified.get(),
         )
+
+        if (systemStart && outcome == StartCommandOutcome.Ignore) {
+            restartedBySystem = true
+        }
 
         when (outcome) {
             StartCommandOutcome.Rejected -> service.stopSelf()

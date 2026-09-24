@@ -210,6 +210,8 @@ data class MainScreenState(
     val update: UpdateState? = null,
     val notificationPrompt: Boolean = false,
     val reliability: ReliabilityState = ReliabilityState(),
+    val restartedBySystem: Boolean = false,
+    val systemProxyRefused: Boolean = false,
 ) {
     val mode: TunnelState.Mode
         get() = effectiveMode(profileMode)
@@ -561,6 +563,12 @@ private fun HomeTab(
             if (connected) {
                 SessionTraffic(session)
             }
+            if (connected && state.restartedBySystem) {
+                SessionNote(stringResource(R.string.clod_session_restarted))
+            }
+            if (connected && state.systemProxyRefused) {
+                SessionNote(stringResource(R.string.clod_session_proxy_refused))
+            }
         }
 
         Spacer(Modifier.height(28.dp))
@@ -853,6 +861,18 @@ private fun SessionPowerButton(
         onClick = onClick,
         modifier = modifier,
         caption = formatSession(seconds).takeIf { connected && seconds > 0 },
+    )
+}
+
+@Composable
+private fun SessionNote(text: String) {
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.padding(horizontal = 24.dp),
     )
 }
 
