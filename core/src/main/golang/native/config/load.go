@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	P "path"
-	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -130,6 +129,8 @@ func Load(path string) error {
 
 	logDns(rawCfg)
 
+	prefetchProviders(rawCfg)
+
 	parseMutex.Lock()
 	defer unlockParse()
 
@@ -165,8 +166,6 @@ func Load(path string) error {
 	loaded.Store(true)
 
 	app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
-
-	runtime.GC()
 
 	return nil
 }

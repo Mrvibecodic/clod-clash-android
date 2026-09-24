@@ -44,6 +44,8 @@ jobs:
           grep -Eq 'expectedStatus: +option\.ExpectedStatus,' adapter/outboundgroup/selector.go
           grep -q ResetNetwork adapter/outbound/base.go
           grep -q ErrRedirectDowngrade component/http/http.go
+          grep -A1 -F 'loadProvider(cfg.RuleProviders)' hub/executor/executor.go | grep -qF 'tunnel.OnRunning()'
+          grep -A1 -F 'tunnel.OnRunning()' hub/executor/executor.go | grep -qF 'runtime.GC()'
 
       - name: Check Core Connectivity Test Address
         run: |

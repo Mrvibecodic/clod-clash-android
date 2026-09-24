@@ -16,6 +16,7 @@ import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.data.Selections
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.ActiveProfileAction
+import com.github.kr328.clash.service.util.ProfileInputs
 import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.activeProfileRollback
 import com.github.kr328.clash.service.util.displayProfileName
@@ -60,6 +61,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
         }
 
         var loaded: UUID? = null
+        var loadedInputs: String? = null
         var ready = false
 
         reload.trySend(Unit)
@@ -97,6 +99,22 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 ProfileProcessor.repair(service)
 
+                val profileDir = service.importedDir.resolve(active.uuid.toString())
+                val inputs = ProfileInputs.fingerprint(profileDir)
+
+                if (changed != null && changed == loaded && current == loaded && inputs == loadedInputs) {
+                    ServiceLog.mark("config: profile unchanged, core load skipped")
+
+                    StatusProvider.currentProfile =
+                        service.displayProfileName(active.uuid, active.name)
+
+                    service.sendProfileLoaded(current)
+
+                    enqueueEvent(Event.Loaded(current))
+
+                    continue
+                }
+
                 if (first) stage(Intents.STAGE_LOADING)
 
                 Clash.patchOverride(
@@ -116,7 +134,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 var applyOutcome = "failed"
 
                 try {
-                    Clash.load(service.importedDir.resolve(active.uuid.toString())).await()
+                    Clash.load(profileDir).await()
 
                     applyOutcome = "ok"
                 } catch (e: CancellationException) {
@@ -131,6 +149,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 }
 
                 loaded = current
+                loadedInputs = inputs
 
                 if (first) stage(Intents.STAGE_SELECTING)
 

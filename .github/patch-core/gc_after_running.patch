@@ -1,0 +1,14 @@
+diff --git a/hub/executor/executor.go b/hub/executor/executor.go
+index 796face..3cd68c9 100644
+--- a/hub/executor/executor.go
++++ b/hub/executor/executor.go
+@@ -115,8 +115,8 @@ func ApplyConfig(cfg *config.Config, force bool) {
+ 	loadProvider(cfg.Providers)
+ 	updateProfile(cfg)
+ 	loadProvider(cfg.RuleProviders)
+-	runtime.GC()
+ 	tunnel.OnRunning()
++	runtime.GC()
+ 	updateUpdater(cfg)
+ 
+ 	resolver.ResetConnection()

@@ -26,6 +26,7 @@ import (
 	"github.com/metacubex/mihomo/adapter/provider"
 	clashHttp "github.com/metacubex/mihomo/component/http"
 	"github.com/metacubex/mihomo/config"
+	"github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	RB "github.com/metacubex/mihomo/rules/bundle"
 )
@@ -58,6 +59,7 @@ const (
 	fetchTimeout      = 60 * time.Second
 	fetchQuickTimeout = 30 * time.Second
 	providerTimeout   = 30 * time.Second
+	prefetchBudget    = 20 * time.Second
 	providerParallel  = 4
 )
 
@@ -677,17 +679,51 @@ func fetchProviders(rawCfg *config.RawConfig, budget *budgets.Budget, reportStat
 }
 
 func fetchProvider(job providerJob, budget *budgets.Budget) error {
-	if job.bundle != "" {
-		if file, err := RB.Open(job.bundle); err == nil {
-			defer file.Close()
+	_ = os.MkdirAll(P.Dir(job.path), 0700)
 
-			if err := writeFile(job.path, file); err == nil {
+	parts := constant.Path.Resolve("provider-parts")
+
+	_ = os.MkdirAll(parts, 0700)
+
+	part, err := os.CreateTemp(parts, P.Base(job.path)+".*.part")
+	if err != nil {
+		return err
+	}
+
+	temp := part.Name()
+	_ = part.Close()
+
+	if err := fetchProviderTo(job, temp, budget); err != nil {
+		_ = os.Remove(temp)
+
+		return err
+	}
+
+	if err := os.Rename(temp, job.path); err != nil {
+		_ = os.Remove(temp)
+
+		return err
+	}
+
+	return nil
+}
+
+func fetchProviderTo(job providerJob, file string, budget *budgets.Budget) error {
+	if job.bundle != "" {
+		if bundled, err := RB.Open(job.bundle); err == nil {
+			defer bundled.Close()
+
+			if err := writeFile(file, bundled); err == nil {
 				return nil
 			}
 		}
 	}
 
-	_, err := fetch(job.url, job.path, false, budget, providerTimeout)
+	_, err := fetch(job.url, file, false, budget, providerTimeout)
 
 	return err
+}
+
+func prefetchProviders(rawCfg *config.RawConfig) {
+	fetchProviders(rawCfg, budgets.Within(time.Now(), prefetchBudget), func(string) {})
 }
