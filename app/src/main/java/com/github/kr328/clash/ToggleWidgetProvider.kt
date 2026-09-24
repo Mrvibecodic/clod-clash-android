@@ -58,12 +58,22 @@ class ToggleWidgetProvider : AppWidgetProvider() {
             Intents.ACTION_CLASH_STARTING -> render(context, State.Wait)
             Intents.ACTION_CLASH_STARTED -> render(context, State.On)
             Intents.ACTION_CLASH_STOPPED -> render(context, State.Off)
+            LEGACY_ACTION_TOGGLE -> {
+                context.startActivity(
+                    WidgetToggleActivity::class.intent
+                        .setAction(Intents.ACTION_TOGGLE_CLASH)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+
+                onUpdate(context, AppWidgetManager.getInstance(context) ?: return, IntArray(0))
+            }
             else -> super.onReceive(context, intent)
         }
     }
 
     companion object {
         val ACTION_WIDGET_WAIT = "$packageName.action.WIDGET_WAIT"
+        private val LEGACY_ACTION_TOGGLE = "$packageName.action.WIDGET_TOGGLE"
 
         fun notifyWait(context: Context) {
             context.sendBroadcast(

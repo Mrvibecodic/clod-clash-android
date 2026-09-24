@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.Configuration
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.currentProcessName
@@ -44,6 +45,8 @@ class MainApplication : Application(), Configuration.Provider {
             }
             restoreLauncherIconIfUnsupported()
 
+            NotificationManagerCompat.from(this).deleteNotificationChannel(LEGACY_WIDGET_CHANNEL)
+
             Remote.launch()
         } else {
             sendServiceRecreated()
@@ -65,5 +68,9 @@ class MainApplication : Application(), Configuration.Provider {
             PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
             PackageManager.DONT_KILL_APP,
         )
+    }
+
+    private companion object {
+        const val LEGACY_WIDGET_CHANNEL = "widget_permission_channel"
     }
 }

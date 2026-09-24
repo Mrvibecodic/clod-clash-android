@@ -119,8 +119,6 @@ object UpdateTask {
                 }
             }
 
-            ensureActive()
-
             result.fold(
                 onSuccess = { apk ->
                     val before = current.getAndUpdate {

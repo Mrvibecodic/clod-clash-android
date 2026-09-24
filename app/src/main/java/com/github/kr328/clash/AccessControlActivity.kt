@@ -60,7 +60,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                             delay(200)
                         }
                     }
-                    if (app.startClashService() != null) {
+                    if (app.startClashService(unattended = true) != null) {
                         Log.w("Access control: VPN permission required, service not restarted")
                     }
                 }
