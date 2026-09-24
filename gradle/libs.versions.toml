@@ -6,6 +6,7 @@ ksp = "2.3.12"
 golang = "1.0.4"
 coroutine = "1.11.0"
 coreKtx = "1.16.0"
+annotation = "1.9.1"
 activity = "1.10.1"
 appcompat = "1.8.0"
 serialization = "1.11.0"
@@ -31,6 +32,7 @@ build-golang = { module = "com.github.kr328.golang:gradle-plugin", version.ref =
 kotlin-coroutine = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutine" }
 kotlin-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
 androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }

@@ -35,7 +35,6 @@ dependencies {
     implementation(libs.kotlin.coroutine)
     implementation(libs.androidx.core)
     implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.activity)
 
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
