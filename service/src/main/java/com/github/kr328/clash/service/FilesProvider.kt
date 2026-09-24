@@ -92,9 +92,15 @@ class FilesProvider : DocumentsProvider() {
             val path = Paths.resolve(documentId ?: "/")
 
             if (path.relative == null)
-                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, documentId.orEmpty()))
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, name))
 
-            val document = picker.pick(path, true)
+            val current = path.relative.last()
+
+            val document = try {
+                picker.pick(path, true)
+            } catch (e: IllegalArgumentException) {
+                throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, current))
+            }
 
             if (document !is FileDocument)
                 throw IllegalArgumentException(localized.getString(R.string.clod_file_rename_failed, document.name))
