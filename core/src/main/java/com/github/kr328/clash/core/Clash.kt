@@ -273,6 +273,13 @@ object Clash {
         )?.let(::decodeProfileMode) ?: ProfileMode()
     }
 
+    fun switchMode(path: File, session: ConfigurationOverride): Boolean {
+        return Bridge.nativeSwitchMode(
+            path.absolutePath,
+            CoreJson.encodeToString(ConfigurationOverride.serializer(), session),
+        )
+    }
+
     internal fun decodeProfileMode(json: String): ProfileMode {
         return CoreJson.decodeFromString(ProfileMode.serializer(), json)
     }

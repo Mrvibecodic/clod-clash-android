@@ -74,6 +74,11 @@ object ProfileProcessor {
             Clash.queryModeOf(context.importedDir.resolve(uuid.toString()), session)
         }
 
+    suspend fun switchMode(context: Context, uuid: UUID, session: ConfigurationOverride): Boolean =
+        profileLock.withLock {
+            Clash.switchMode(context.importedDir.resolve(uuid.toString()), session)
+        }
+
     suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver? = null) {
         withContext(NonCancellable) {
             processLock.withLock {

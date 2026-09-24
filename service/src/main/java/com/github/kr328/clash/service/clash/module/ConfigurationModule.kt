@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.ServiceLog
@@ -29,9 +30,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.*
 
 class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(service) {
+    companion object {
+        val coreLoad = Mutex()
+    }
+
     sealed class Event {
         data class Loaded(val uuid: UUID) : Event()
         data class LoadFailed(val message: String) : Event()
@@ -100,13 +107,21 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 ProfileProcessor.repair(service)
 
                 val profileDir = service.importedDir.resolve(active.uuid.toString())
-                val inputs = ProfileInputs.fingerprint(profileDir)
+                val session = sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid))
+                val inputs = runCatching {
+                    val locked = ProfileProcessor.queryMode(service, active.uuid, session).source ==
+                        ProfileMode.Source.Locked
 
-                if (changed != null && changed == loaded && current == loaded && inputs == loadedInputs) {
+                    "${ProfileInputs.fingerprint(profileDir)}|locked=$locked"
+                }.getOrNull()
+
+                if (changed != null && changed == loaded && current == loaded && inputs != null && inputs == loadedInputs) {
                     ServiceLog.mark("config: profile unchanged, core load skipped")
 
                     StatusProvider.currentProfile =
                         service.displayProfileName(active.uuid, active.name)
+
+                    StatusProvider.currentProfileUuid = active.uuid.toString()
 
                     service.sendProfileLoaded(current)
 
@@ -117,35 +132,34 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 if (first) stage(Intents.STAGE_LOADING)
 
-                Clash.patchOverride(
-                    Clash.OverrideSlot.Session,
-                    sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid)),
-                )
+                coreLoad.withLock {
+                    Clash.patchOverride(Clash.OverrideSlot.Session, session)
 
-                // Окно мерит только загрузку ядра: один Clash.load(...).await().
-                // Ожидание гео-баз, repair и выбор узлов идут отдельными стадиями
-                // (STAGE_PREPARING / STAGE_SELECTING) и сюда не входят, поэтому
-                // цифру из журнала нельзя противопоставлять жалобе «подключение
-                // применяется N секунд».
-                val applyStartedAt = SystemClock.elapsedRealtime()
+                    // Окно мерит только загрузку ядра: один Clash.load(...).await().
+                    // Ожидание гео-баз, repair и выбор узлов идут отдельными стадиями
+                    // (STAGE_PREPARING / STAGE_SELECTING) и сюда не входят, поэтому
+                    // цифру из журнала нельзя противопоставлять жалобе «подключение
+                    // применяется N секунд».
+                    val applyStartedAt = SystemClock.elapsedRealtime()
 
-                ServiceLog.mark("config: core load window start")
+                    ServiceLog.mark("config: core load window start")
 
-                var applyOutcome = "failed"
+                    var applyOutcome = "failed"
 
-                try {
-                    Clash.load(profileDir).await()
+                    try {
+                        Clash.load(profileDir).await()
 
-                    applyOutcome = "ok"
-                } catch (e: CancellationException) {
-                    applyOutcome = "cancelled"
+                        applyOutcome = "ok"
+                    } catch (e: CancellationException) {
+                        applyOutcome = "cancelled"
 
-                    throw e
-                } finally {
-                    ServiceLog.mark(
-                        "config: core load window end, $applyOutcome, in " +
-                            "${SystemClock.elapsedRealtime() - applyStartedAt} ms",
-                    )
+                        throw e
+                    } finally {
+                        ServiceLog.mark(
+                            "config: core load window end, $applyOutcome, in " +
+                                "${SystemClock.elapsedRealtime() - applyStartedAt} ms",
+                        )
+                    }
                 }
 
                 loaded = current
@@ -178,6 +192,8 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                loadedInputs = null
+
                 val message = e.message ?: "Unknown"
                 val retained = loaded
                 val failed = current?.let { ImportedDao().queryByUUID(it) }

@@ -95,6 +95,17 @@ func queryModeOf(path, session C.c_string) *C.char {
 	return marshalJson(config.QueryMode(C.GoString(path), C.GoString(session)))
 }
 
+//export switchMode
+func switchMode(path, session C.c_string) (result C.int) {
+	defer guard("switchMode", func() {})()
+
+	if config.SwitchMode(C.GoString(path), C.GoString(session)) {
+		return 1
+	}
+
+	return 0
+}
+
 //export clearOverride
 func clearOverride(slot C.int) {
 	defer guard("clearOverride", func() {})()

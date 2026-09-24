@@ -14,6 +14,7 @@ import (
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/hub"
 	"github.com/metacubex/mihomo/log"
+	"github.com/metacubex/mihomo/tunnel"
 )
 
 func logDns(cfg *config.RawConfig) {
@@ -60,6 +61,7 @@ var (
 	loadGeneration    atomic.Uint64
 	pendingGeneration atomic.Uint64
 	loaded            atomic.Bool
+	globalDeclared    atomic.Bool
 )
 
 var ErrLoadCancelled = errors.New("load cancelled by reset")
@@ -159,7 +161,11 @@ func Load(path string) error {
 
 	hub.ApplyConfig(cfg)
 
-	if !globalGroupDeclared(rawCfg) {
+	declared := globalGroupDeclared(rawCfg)
+
+	globalDeclared.Store(declared)
+
+	if !declared {
 		pinGlobalDefault()
 	}
 
@@ -168,6 +174,25 @@ func Load(path string) error {
 	app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
 
 	return nil
+}
+
+func SwitchMode(profileDir, session string) bool {
+	if !loaded.Load() {
+		return false
+	}
+
+	mode, ok := tunnel.ModeMapping[QueryMode(profileDir, session).Mode]
+	if !ok {
+		return false
+	}
+
+	tunnel.SetMode(mode)
+
+	if !globalDeclared.Load() {
+		pinGlobalDefault()
+	}
+
+	return true
 }
 
 func LoadDefault() {

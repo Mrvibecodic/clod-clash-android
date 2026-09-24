@@ -4,6 +4,7 @@ import android.content.Context
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.*
+import com.github.kr328.clash.service.clash.module.ConfigurationModule
 import com.github.kr328.clash.service.data.ModeChoice
 import com.github.kr328.clash.service.data.ModeChoiceDao
 import com.github.kr328.clash.service.data.Selection
@@ -117,7 +118,31 @@ class ClashManager(private val context: Context) : IClashManager,
 
         ModeChoiceDao().setChoice(ModeChoice(current, mode))
 
-        context.sendOverrideChanged()
+        if (!switchModeLive(current, mode)) {
+            context.sendOverrideChanged()
+        }
+    }
+
+    private suspend fun switchModeLive(current: UUID, mode: TunnelState.Mode): Boolean {
+        if (StatusProvider.currentProfileUuid != current.toString()) return false
+
+        if (!ConfigurationModule.coreLoad.tryLock()) return false
+
+        try {
+            val session = sessionOverrideFor(mode)
+
+            Clash.patchOverride(Clash.OverrideSlot.Session, session)
+
+            val switched = ProfileProcessor.switchMode(context, current, session)
+
+            if (switched) {
+                ServiceLog.mark("config: mode switched to $mode without reload")
+            }
+
+            return switched
+        } finally {
+            ConfigurationModule.coreLoad.unlock()
+        }
     }
 
     override fun clearOverride(slot: Clash.OverrideSlot) {

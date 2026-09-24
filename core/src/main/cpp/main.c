@@ -369,6 +369,18 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryModeOf(JNIEnv *env, jo
     return new_string(response);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeSwitchMode(JNIEnv *env, jobject thiz,
+                                                               jstring path,
+                                                               jstring session) {
+    TRACE_METHOD();
+
+    scoped_string _path = get_string(path);
+    scoped_string _session = get_string(session);
+
+    return (jboolean) (switchMode(_path, _session) != 0);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeClearOverride(JNIEnv *env, jobject thiz,
                                                                    jint slot) {
