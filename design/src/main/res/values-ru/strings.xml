@@ -20,7 +20,6 @@
     <string name="url">URL</string>
     <string name="import_from_url">Импорт из URL</string>
     <string name="external">Внешний</string>
-    <string name="import_from_qr">Импорт из QR-кода</string>
 
     <string name="application_broken">Приложение сломано</string>
     <string name="application_crashed">Приложение упало</string>
@@ -255,8 +254,6 @@
     <string name="force_dns_mapping">Принудительное сопоставление DNS</string>
     <string name="parse_pure_ip">Разбирать чистый IP</string>
     <string name="override_destination">Подменять назначение</string>
-    <string name="import_from_qr_no_permission">Доступ к камере ограничен. Разрешите его в настройках.</string>
-    <string name="import_from_qr_exception">Произошла не обрабатываемая системная ошибка.</string>
     <string name="clod_tab_home">Главная</string>
     <string name="clod_tab_servers">Серверы</string>
     <string name="clod_tab_subscriptions">Подписки</string>

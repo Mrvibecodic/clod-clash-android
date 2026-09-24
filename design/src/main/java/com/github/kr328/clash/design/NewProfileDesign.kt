@@ -17,7 +17,6 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
         data object Back : Request
         data class Create(val provider: ProfileProvider) : Request
         data class OpenDetail(val provider: ProfileProvider.External) : Request
-        data object LaunchScanner : Request
     }
 
     private var state by mutableStateOf(NewProfileState())
@@ -29,15 +28,7 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
     private fun onAction(action: NewProfileAction) {
         when (action) {
             NewProfileAction.Back -> requests.trySend(Request.Back)
-            is NewProfileAction.Select -> {
-                val provider = action.provider
-
-                if (provider is ProfileProvider.QR) {
-                    requests.trySend(Request.LaunchScanner)
-                } else {
-                    requests.trySend(Request.Create(provider))
-                }
-            }
+            is NewProfileAction.Select -> requests.trySend(Request.Create(action.provider))
             is NewProfileAction.Detail -> {
                 val provider = action.provider as? ProfileProvider.External ?: return
 

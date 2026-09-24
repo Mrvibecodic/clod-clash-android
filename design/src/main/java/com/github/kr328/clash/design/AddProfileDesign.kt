@@ -21,7 +21,6 @@ class AddProfileDesign(
 ) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
         data class Submit(val url: String, val secure: Boolean) : Request
-        data object ScanQr : Request
         data object OtherWays : Request
     }
 
@@ -47,14 +46,7 @@ class AddProfileDesign(
             is AddProfileAction.UrlChanged -> state = state.copy(url = action.url, error = null)
             is AddProfileAction.SecureChanged -> state = state.copy(secure = action.secure)
             AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url, state.secure))
-            AddProfileAction.ScanQr -> requests.trySend(Request.ScanQr)
             AddProfileAction.OtherWays -> requests.trySend(Request.OtherWays)
-        }
-    }
-
-    suspend fun setUrl(url: String) {
-        withContext(Dispatchers.Main) {
-            state = state.copy(url = url, error = null)
         }
     }
 

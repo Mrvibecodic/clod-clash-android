@@ -3,18 +3,12 @@
 Clod Clash is an open source VPN client. It is provided free of charge and as is.
 
 The app has no accounts of its own, shows no advertising, and contains no analytics or
-crash-reporting code written by us. It has one third-party dependency that is worth naming
-explicitly: the QR-code scanner used when adding a subscription is built on Google's ML Kit
-barcode library, and that library pulls in Google Play Services and Google DataTransport
-components. Recognition itself runs offline on the device and the camera image is never
-uploaded by this app, but those Google components can report their own usage telemetry
-directly to Google. Everything described below covers the
-requests this app makes itself.
+crash-reporting code. Everything described below covers the requests this app makes itself.
 
 **What the app sends, and where**
 
 *   **To the subscription address you entered.** When the app downloads or refreshes a
-    subscription, it requests the URL you typed or scanned. If the profile uses the secure
+    subscription, it requests the URL you entered. If the profile uses the secure
     channel, the request to that same address is sent with a browser-like TLS fingerprint and
     a browser-like set of headers (a desktop Chrome `User-Agent`, `sec-ch-ua`,
     `accept-language` and similar) instead of the app's own `User-Agent`; the host is still
@@ -98,9 +92,8 @@ foreground service notification and for subscription and update notices. The app
 `QUERY_ALL_PACKAGES`, because the per-app tunnel screen has to list the applications installed
 on the device — that list is read locally and never sent anywhere; `REQUEST_INSTALL_PACKAGES`,
 to install an app update it has downloaded; and the battery optimisation permission, used for
-scheduled subscription refreshes. Camera access comes from the QR
-scanner and is used only to read a subscription code; the image is not stored or transmitted.
-The app requests no location, contacts or microphone access.
+scheduled subscription refreshes.
+The app requests no camera, location, contacts or microphone access.
 
 **Children's privacy**
 

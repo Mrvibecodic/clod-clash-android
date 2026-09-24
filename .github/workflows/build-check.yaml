@@ -235,7 +235,7 @@ jobs:
             app/build/outputs/apk/standard/debug/*.apk
 
       # Слитый манифест: разрешения, uses-feature и exported-компоненты
-      # приезжают из библиотек (сканер QR, стартовый провайдер AndroidX),
+      # приезжают из библиотек (стартовый провайдер AndroidX),
       # и в дереве их не видно. Локальных сборок APK нет — итог виден
       # только здесь. AGP 8.x кладёт файл в подкаталог задачи
       # processStandardDebugMainManifest, отсюда `**`.

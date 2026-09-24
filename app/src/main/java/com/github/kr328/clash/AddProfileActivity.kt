@@ -5,23 +5,17 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.lifecycle.lifecycleScope
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
-import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.util.ProfileImports
-import io.github.g00fy2.quickie.QRResult
-import io.github.g00fy2.quickie.ScanQRCode
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 
 class AddProfileActivity : BaseActivity<AddProfileDesign>() {
-    private val scanLauncher = registerForActivityResult(ScanQRCode(), ::onScanResult)
-
     private var token: Long = 0
 
     override suspend fun main() {
@@ -71,7 +65,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                 design.requests.onReceive { request ->
                     when (request) {
                         is AddProfileDesign.Request.Submit -> design.addProfile(request.url, request.secure)
-                        AddProfileDesign.Request.ScanQr -> scanLauncher.launch(null)
                         AddProfileDesign.Request.OtherWays -> {
                             val result = startActivityForResult(
                                 ActivityResultContracts.StartActivityForResult(),
@@ -142,26 +135,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
             }
 
             else -> null
-        }
-    }
-
-    private fun onScanResult(result: QRResult) {
-        lifecycleScope.launch {
-            when (result) {
-                is QRResult.QRSuccess -> {
-                    val url = result.content.rawValue
-                        ?: result.content.rawBytes?.let { String(it) }.orEmpty()
-
-                    design?.setUrl(url)
-                }
-
-                QRResult.QRUserCanceled -> Unit
-                QRResult.QRMissingPermission ->
-                    design?.showExceptionToast(getString(R.string.import_from_qr_no_permission))
-
-                is QRResult.QRError ->
-                    design?.showExceptionToast(getString(R.string.import_from_qr_exception))
-            }
         }
     }
 

@@ -20,8 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,7 +30,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
@@ -60,7 +57,6 @@ sealed interface AddProfileAction {
     data class UrlChanged(val url: String) : AddProfileAction
     data class SecureChanged(val secure: Boolean) : AddProfileAction
     data object Submit : AddProfileAction
-    data object ScanQr : AddProfileAction
     data object OtherWays : AddProfileAction
 }
 
@@ -110,15 +106,6 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
                 if (state.url.isBlank()) defaultKeyboardAction(ImeAction.Done) else onAction(AddProfileAction.Submit)
             },
         ),
-        trailingIcon = {
-            IconButton(onClick = { onAction(AddProfileAction.ScanQr) }) {
-                Icon(
-                    painter = painterResource(R.drawable.baseline_qr_code_scanner),
-                    contentDescription = stringResource(R.string.import_from_qr),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        },
         modifier = Modifier.fillMaxWidth(),
     )
     Spacer(Modifier.height(8.dp))

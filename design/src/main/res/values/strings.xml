@@ -19,9 +19,7 @@
     <string name="file">File</string>
     <string name="import_from_file">Import from file</string>
     <string name="url">URL</string>
-    <string name="qr" translatable="false">QR code</string>
     <string name="import_from_url">Import from URL</string>
-    <string name="import_from_qr">Import from QR code</string>
     <string name="external">External</string>
 
     <string name="application_broken">Application broken</string>
@@ -294,8 +292,6 @@
     <string name="hide_app_icon_desc">Hide the app icon from the launcher. Afterwards open the app by pressing and holding its quick settings tile</string>
     <string name="hide_from_recents_title">Hide from recents</string>
     <string name="hide_from_recents_desc">Hide app from the Recent apps screen</string>
-    <string name="import_from_qr_no_permission">Camera access is restricted. Please enable it in Settings.</string>
-    <string name="import_from_qr_exception">An unhandled system exception occurred.</string>
 
     <string name="clod_shortcut_disabled">The app icon is hidden in settings</string>
     <string name="clod_sub_delete_message">Delete subscription \"%1$s\"? Its settings and downloaded configuration will be removed, there is no undo.</string>
