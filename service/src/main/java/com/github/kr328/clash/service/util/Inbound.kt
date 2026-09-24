@@ -12,12 +12,10 @@ import java.util.UUID
 private val inboundJson = Json { ignoreUnknownKeys = true }
 
 fun Context.readInboundPrefs(uuid: UUID): InboundPrefs? {
-    val file = importedDir.resolve(uuid.toString()).resolve("inbound.json")
-
-    if (!file.isFile) return null
-
     return try {
-        inboundJson.decodeFromString(InboundPrefs.serializer(), file.readText())
+        ProfileSwap.read(importedDir.resolve(uuid.toString()), "inbound.json") { file ->
+            inboundJson.decodeFromString(InboundPrefs.serializer(), file.readText())
+        }
     } catch (e: Exception) {
         Log.w("Read inbound.json of $uuid: $e", e)
 

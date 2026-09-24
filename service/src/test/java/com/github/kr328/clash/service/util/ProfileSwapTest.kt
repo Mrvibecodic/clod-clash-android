@@ -290,4 +290,40 @@ class ProfileSwapTest {
         assertEquals("old", live.resolve("config.yaml").readText())
         assertFalse(ProfileSwap.staleOf(live).exists())
     }
+
+    @Test
+    fun `чтение между переименованиями берёт прежнюю версию, после подмены — новую`() {
+        val root = imported()
+        val live = dir(root, "p", *oldVersion)
+        val fresh = dir(tmp.root, "processing", *newVersion)
+        val seen = mutableMapOf<ProfileSwap.Step, String?>()
+
+        ProfileSwap.replace(live, fresh) { step ->
+            seen[step] = ProfileSwap.read(live, "panel.json") { it.readText() }
+        }
+
+        assertEquals("{\"v\":1}", seen[ProfileSwap.Step.PROMOTE_FRESH])
+        assertEquals("{\"v\":2}", seen[ProfileSwap.Step.DROP_STALE])
+        assertEquals("{\"v\":2}", ProfileSwap.read(live, "panel.json") { it.readText() })
+    }
+
+    @Test
+    fun `файла нет в живой папке — прежняя версия его не подставляет`() {
+        val root = imported()
+        val live = dir(root, "p", *newVersion)
+        dir(root, "p.old", *oldVersion)
+
+        assertEquals(null, ProfileSwap.read(live, "alerts.json") { it.readText() })
+        assertEquals(null, ProfileSwap.read(root.resolve("gone"), "panel.json") { it.readText() })
+    }
+
+    @Test
+    fun `после обрыва подмены ответ даёт только целая прежняя папка — как решит repair`() {
+        val root = imported()
+        val live = dir(root, "p", "providers/late.yaml" to "written by core")
+        dir(root, "p.old", *oldVersion)
+
+        assertEquals("{\"v\":1}", ProfileSwap.read(live, "panel.json") { it.readText() })
+        assertEquals(null, ProfileSwap.read(live, "providers/late.yaml") { it.readText() })
+    }
 }

@@ -2,13 +2,12 @@ package config
 
 import (
 	"errors"
-	"os"
-	P "path"
 	"strings"
 	"sync"
 	"sync/atomic"
 
 	"cfa/native/app"
+	"cfa/native/config/panel"
 
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
@@ -33,9 +32,7 @@ func logDns(cfg *config.RawConfig) {
 }
 
 func unmarshalProfile(profilePath string) (*config.RawConfig, error) {
-	configPath := P.Join(profilePath, "config.yaml")
-
-	configData, err := os.ReadFile(configPath)
+	configData, err := panel.ReadProfileFile(profilePath, panel.ProfileConfigFile)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package com.github.kr328.clash.service.util
 
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.IOException
 
 object ProfileSwap {
@@ -35,6 +37,10 @@ object ProfileSwap {
 
         beforeStep(Step.KEEP_OWN_FILES)
         keepOwnFiles(live, fresh, warn)
+
+        // Переименования ниже журнал файловой системы сохраняет по порядку, а содержимое файлов —
+        // нет: без fsync потеря питания сразу после подмены оставила бы пустой config.yaml.
+        syncFiles(fresh)
 
         live.parentFile?.mkdirs()
 
@@ -93,6 +99,44 @@ object ProfileSwap {
             }
     }
 
+    // Читатели без profileLock. Живой каталог не целый, а .old целый — подмена идёт или оборвалась,
+    // и ответ даёт только .old (то же решает repair). Ответ «файла нет» по живому каталогу даётся,
+    // когда .old не было ни до, ни после чтения, и подтверждается повторным чтением: две подмены
+    // подряд между ними не уместятся — их разделяет загрузка подписки. То же правило —
+    // ReadProfileFile в native/config/panel/profilefile.go.
+    fun <T> read(live: File, name: String, parse: (File) -> T): T? {
+        val stale = staleOf(live)
+
+        repeat(READ_ATTEMPTS) {
+            val quiet = !stale.exists()
+
+            if (!isWhole(live) && isWhole(stale)) {
+                attempt(stale.resolve(name), parse)?.let { return it.value }
+
+                if (isWhole(stale) && !isWhole(live)) return null
+            }
+
+            attempt(live.resolve(name), parse)?.let { return it.value }
+
+            if (quiet && !stale.exists() && live.isDirectory) {
+                return attempt(live.resolve(name), parse)?.value
+            }
+        }
+
+        return null
+    }
+
+    private const val READ_ATTEMPTS = 3
+
+    private class Found<T>(val value: T)
+
+    private fun <T> attempt(file: File, parse: (File) -> T): Found<T>? =
+        try {
+            if (file.isFile) Found(parse(file)) else null
+        } catch (e: FileNotFoundException) {
+            null
+        }
+
     fun staleOf(live: File): File = live.resolveSibling(live.name + STALE_SUFFIX)
 
     fun isWhole(dir: File): Boolean = dir.isDirectory && dir.resolve(CONFIG_FILE).isFile
@@ -105,6 +149,12 @@ object ProfileSwap {
         }
 
         return false
+    }
+
+    private fun syncFiles(dir: File) {
+        dir.walkTopDown().filter { it.isFile }.forEach { file ->
+            FileInputStream(file).use { it.fd.sync() }
+        }
     }
 
     private fun keepOwnFiles(live: File, fresh: File, warn: (String) -> Unit) {

@@ -17,13 +17,11 @@ internal fun truncateTitle(value: String): String {
 }
 
 fun Context.readPanelInfo(uuid: UUID): PanelInfo? {
-    val file = importedDir.resolve(uuid.toString()).resolve("panel.json")
-
-    if (!file.isFile) return null
-
     return try {
-        json.decodeFromString(PanelInfo.serializer(), file.readText()).let {
-            it.copy(title = truncateTitle(it.title))
+        ProfileSwap.read(importedDir.resolve(uuid.toString()), "panel.json") { file ->
+            json.decodeFromString(PanelInfo.serializer(), file.readText()).let {
+                it.copy(title = truncateTitle(it.title))
+            }
         }
     } catch (e: Exception) {
         Log.w("Read panel.json of $uuid: $e", e)

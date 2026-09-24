@@ -450,8 +450,8 @@ object ProfileProcessor {
                 val imported = context.importedDir.resolve(uuid.toString())
 
                 pending.deleteRecursively()
-                imported.deleteRecursively()
                 ProfileSwap.staleOf(imported).deleteRecursively()
+                imported.deleteRecursively()
 
                 val store = ServiceStore(context)
 

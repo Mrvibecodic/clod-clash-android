@@ -97,7 +97,7 @@ func panelPath(dir string) string {
 func Read(dir string) Info {
 	var info Info
 
-	bytes, err := os.ReadFile(panelPath(dir))
+	bytes, err := ReadProfileFile(dir, panelFileName)
 	if err != nil {
 		return info
 	}

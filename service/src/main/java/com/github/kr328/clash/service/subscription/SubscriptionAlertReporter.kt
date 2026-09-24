@@ -13,6 +13,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.readPanelInfo
@@ -79,12 +80,10 @@ private fun Context.stateFile(uuid: UUID): File =
     importedDir.resolve(uuid.toString()).resolve(STATE_FILE)
 
 private fun Context.readState(uuid: UUID): Map<String, Long> {
-    val file = stateFile(uuid)
-
-    if (!file.isFile) return emptyMap()
-
     return try {
-        json.decodeFromString(stateSerializer, file.readText())
+        ProfileSwap.read(importedDir.resolve(uuid.toString()), STATE_FILE) { file ->
+            json.decodeFromString(stateSerializer, file.readText())
+        } ?: emptyMap()
     } catch (e: Exception) {
         Log.w("Read $STATE_FILE of $uuid: $e", e)
 

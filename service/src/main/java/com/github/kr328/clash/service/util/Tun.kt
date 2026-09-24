@@ -10,12 +10,10 @@ import java.util.UUID
 private val json = Json { ignoreUnknownKeys = true }
 
 fun Context.readTunPrefs(uuid: UUID): TunPrefs? {
-    val file = importedDir.resolve(uuid.toString()).resolve("tun.json")
-
-    if (!file.isFile) return null
-
     return try {
-        json.decodeFromString(TunPrefs.serializer(), file.readText())
+        ProfileSwap.read(importedDir.resolve(uuid.toString()), "tun.json") { file ->
+            json.decodeFromString(TunPrefs.serializer(), file.readText())
+        }
     } catch (e: Exception) {
         Log.w("Read tun.json of $uuid: $e", e)
 
