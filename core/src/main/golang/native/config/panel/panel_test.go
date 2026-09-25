@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -620,6 +621,65 @@ func TestApplyHeadersDisablePing(t *testing.T) {
 		if info.DisablePing {
 			t.Fatalf("%q не должно скрывать цифры пинга", raw)
 		}
+	}
+}
+
+func TestApplyHeadersPingBounds(t *testing.T) {
+	cases := []struct {
+		raw          string
+		fast, medium int
+	}{
+		{"200/400", 200, 400},
+		{" 150 / 600 ", 150, 600},
+		{"1/2", 1, 2},
+		{"59999/60000", 59999, 60000},
+		{"base64:" + base64.StdEncoding.EncodeToString([]byte("100/300")), 100, 300},
+		{"", 0, 0},
+		{"200", 0, 0},
+		{"400/200", 0, 0},
+		{"300/300", 0, 0},
+		{"0/400", 0, 0},
+		{"-5/400", 0, 0},
+		{"+200/400", 0, 0},
+		{"200/+400", 0, 0},
+		{"2e2/400", 0, 0},
+		{"200,400", 0, 0},
+		{"200/", 0, 0},
+		{"200/60001", 0, 0},
+		{"200/400/600", 0, 0},
+		{"200.5/400", 0, 0},
+		{"a/b", 0, 0},
+		{"/400", 0, 0},
+	}
+
+	for _, c := range cases {
+		info := Info{PingFast: 1, PingMedium: 2}
+		ApplyHeaders(&info, http.Header{"Clod-Ping": []string{c.raw}}, "https://panel.example/sub")
+
+		if info.PingFast != c.fast || info.PingMedium != c.medium {
+			t.Fatalf("%q: получено %d/%d, ожидалось %d/%d", c.raw, info.PingFast, info.PingMedium, c.fast, c.medium)
+		}
+	}
+}
+
+func TestPingBoundsSurvivePanelFile(t *testing.T) {
+	dir := t.TempDir()
+
+	Write(dir, Info{PingFast: 150, PingMedium: 600})
+
+	if got := Read(dir); got.PingFast != 150 || got.PingMedium != 600 {
+		t.Fatalf("границы пинга не пережили запись: %d/%d", got.PingFast, got.PingMedium)
+	}
+
+	Write(dir, Info{})
+
+	bytes, err := os.ReadFile(panelPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(bytes), "ping") {
+		t.Fatalf("без заголовка границы не пишутся: %s", bytes)
 	}
 }
 

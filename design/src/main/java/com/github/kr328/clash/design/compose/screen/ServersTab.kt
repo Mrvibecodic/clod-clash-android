@@ -47,6 +47,7 @@ import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.measuringMinutes
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.ProxyRow
+import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.GroupIcon
 import com.github.kr328.clash.design.compose.component.SelectorRow
@@ -195,6 +196,7 @@ fun ServersTab(
                             ?: proxy.subtitle,
                         delay = proxy.delay,
                         marksOnly = active?.panel?.disablePing == true,
+                        pingBounds = active?.panel.pingBounds(),
                         selected = proxy.name == group.now,
                         favorite = proxy.name in state.favorites,
                         onClick = { onAction(MainAction.SelectProxy(proxy.name)) },

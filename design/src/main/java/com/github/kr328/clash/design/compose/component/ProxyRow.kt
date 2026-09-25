@@ -21,6 +21,7 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,7 @@ import com.github.kr328.clash.design.compose.theme.ClodRowCorner
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.statusContainer
 import com.github.kr328.clash.design.compose.theme.statusText
+import com.github.kr328.clash.service.model.PanelInfo
 
 fun splitFlag(title: String): Pair<String?, String> {
     var i = 0
@@ -61,16 +63,38 @@ fun splitFlag(title: String): Pair<String?, String> {
 
 private const val DELAY_UNKNOWN = 0xffff
 
-@Composable
-private fun delayColor(delay: Int): Color = when {
-    delay <= 0 || delay >= DELAY_UNKNOWN -> ClodTheme.extraColors.statusStopped
-    delay < 200 -> ClodTheme.extraColors.statusConnected
-    delay < 400 -> ClodTheme.extraColors.statusConnecting
-    else -> MaterialTheme.colorScheme.error
+@Immutable
+data class PingBounds(val fast: Int = 200, val medium: Int = 400)
+
+fun PanelInfo?.pingBounds(): PingBounds =
+    if (this != null && pingFast > 0 && pingMedium > pingFast) PingBounds(pingFast, pingMedium) else PingBounds()
+
+enum class DelayLevel { Fast, Medium, Slow }
+
+fun delayLevel(delay: Int, bounds: PingBounds): DelayLevel = when {
+    delay < bounds.fast -> DelayLevel.Fast
+    delay < bounds.medium -> DelayLevel.Medium
+    else -> DelayLevel.Slow
 }
 
 @Composable
-fun PingBadge(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
+private fun delayColor(delay: Int, bounds: PingBounds): Color = when {
+    delay <= 0 || delay >= DELAY_UNKNOWN -> ClodTheme.extraColors.statusStopped
+    else -> when (delayLevel(delay, bounds)) {
+        DelayLevel.Fast -> ClodTheme.extraColors.statusConnected
+        DelayLevel.Medium -> ClodTheme.extraColors.statusConnecting
+        DelayLevel.Slow -> MaterialTheme.colorScheme.error
+    }
+}
+
+@Composable
+fun PingBadge(
+    delay: Int,
+    on: Color,
+    marksOnly: Boolean = false,
+    bounds: PingBounds = PingBounds(),
+    modifier: Modifier = Modifier,
+) {
     val color: Color
     val label: String
 
@@ -92,7 +116,7 @@ fun PingBadge(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modif
     } else {
         val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
 
-        color = delayColor(delay)
+        color = delayColor(delay, bounds)
         label = if (unknown) "—" else stringResource(R.string.clod_delay_ms, delay)
     }
 
@@ -112,7 +136,13 @@ fun PingBadge(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modif
 }
 
 @Composable
-fun DelayPill(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modifier = Modifier) {
+fun DelayPill(
+    delay: Int,
+    on: Color,
+    marksOnly: Boolean = false,
+    bounds: PingBounds = PingBounds(),
+    modifier: Modifier = Modifier,
+) {
     if (marksOnly && delay > 0) {
         val failed = delay >= DELAY_UNKNOWN
         val color = if (failed) ClodTheme.extraColors.delaySlow else ClodTheme.extraColors.delayFast
@@ -158,10 +188,10 @@ fun DelayPill(delay: Int, on: Color, marksOnly: Boolean = false, modifier: Modif
         return
     }
 
-    val color = when {
-        delay < 200 -> ClodTheme.extraColors.delayFast
-        delay < 400 -> ClodTheme.extraColors.delayMedium
-        else -> ClodTheme.extraColors.delaySlow
+    val color = when (delayLevel(delay, bounds)) {
+        DelayLevel.Fast -> ClodTheme.extraColors.delayFast
+        DelayLevel.Medium -> ClodTheme.extraColors.delayMedium
+        DelayLevel.Slow -> ClodTheme.extraColors.delaySlow
     }
 
     Box(
@@ -192,6 +222,7 @@ fun ProxyRow(
     onClick: () -> Unit,
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
+    pingBounds: PingBounds = PingBounds(),
 ) {
     val (flag, name) = remember(title) { splitFlag(title) }
 
@@ -264,6 +295,7 @@ fun ProxyRow(
                 MaterialTheme.colorScheme.surfaceContainerLow
             },
             marksOnly = marksOnly,
+            bounds = pingBounds,
         )
         Spacer(Modifier.width(6.dp))
         Box(

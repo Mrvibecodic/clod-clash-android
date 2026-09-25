@@ -66,6 +66,9 @@ type Info struct {
 
 	DisablePing bool `json:"disablePing,omitempty"`
 
+	PingFast   int `json:"pingFast,omitempty"`
+	PingMedium int `json:"pingMedium,omitempty"`
+
 	Groups []Group `json:"groups,omitempty"`
 
 	Main string `json:"main,omitempty"`
@@ -182,7 +185,38 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 
 	info.DisablePing = strings.EqualFold(headerValue(header, "clod-disable-ping"), "true")
 
+	info.PingFast, info.PingMedium = pingBounds(headerValue(header, "clod-ping"))
+
 	info.LockMode, info.LockPermanent = lockMode(header)
+}
+
+const pingMaxMillis = 60000
+
+func pingBounds(raw string) (int, int) {
+	first, second, ok := strings.Cut(raw, "/")
+	if !ok {
+		return 0, 0
+	}
+
+	fast, okFast := pingMillis(first)
+	medium, okMedium := pingMillis(second)
+
+	if !okFast || !okMedium || fast < 1 || fast >= medium || medium > pingMaxMillis {
+		return 0, 0
+	}
+
+	return fast, medium
+}
+
+func pingMillis(raw string) (int, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || strings.TrimLeft(raw, "0123456789") != "" {
+		return 0, false
+	}
+
+	value, err := strconv.Atoi(raw)
+
+	return value, err == nil
 }
 
 const lockForever = "lock"

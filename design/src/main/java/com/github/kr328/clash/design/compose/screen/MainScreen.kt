@@ -105,6 +105,8 @@ import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.PingBadge
+import com.github.kr328.clash.design.compose.component.PingBounds
+import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.PowerButton
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectorRow
@@ -602,6 +604,7 @@ private fun HomeTab(
             leading = painterResource(R.drawable.ic_nav_servers),
             groups = state.servers.groups,
             marksOnly = state.active?.panel?.disablePing == true,
+            pingBounds = state.active?.panel.pingBounds(),
             onAction = onAction,
         )
 
@@ -627,6 +630,7 @@ private fun HomeTab(
                     leading = iconPainter ?: painterResource(R.drawable.ic_nav_servers),
                     groups = state.servers.groups,
                     marksOnly = state.active?.panel?.disablePing == true,
+                    pingBounds = state.active?.panel.pingBounds(),
                     onAction = onAction,
                 )
             }
@@ -643,6 +647,7 @@ private fun HomeRouteRow(
     leading: Painter,
     groups: List<ProxyGroupState>,
     marksOnly: Boolean,
+    pingBounds: PingBounds,
     onAction: (MainAction) -> Unit,
 ) {
     if (route is HomeRoute.Direct) {
@@ -688,6 +693,7 @@ private fun HomeRouteRow(
                     delay = delay,
                     on = MaterialTheme.colorScheme.surfaceContainerLow,
                     marksOnly = marksOnly,
+                    bounds = pingBounds,
                 )
             }
         } else {

@@ -39,6 +39,9 @@ data class PanelInfo(
 
     val disablePing: Boolean = false,
 
+    val pingFast: Int = 0,
+    val pingMedium: Int = 0,
+
     val groups: List<PanelGroup> = emptyList(),
 
     val main: String? = null,

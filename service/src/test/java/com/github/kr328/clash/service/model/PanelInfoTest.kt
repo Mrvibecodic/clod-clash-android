@@ -47,6 +47,16 @@ class PanelInfoTest {
     }
 
     @Test
+    fun `границы пинга читаются теми же именами, что пишет ядро, а у старого файла их нет`() {
+        val info = decode("""{"pingFast":150,"pingMedium":600}""")
+
+        assertEquals(150, info.pingFast)
+        assertEquals(600, info.pingMedium)
+        assertEquals(0, decode("""{"disablePing":true}""").pingFast)
+        assertEquals(0, decode("""{"disablePing":true}""").pingMedium)
+    }
+
+    @Test
     fun `состав групп переживает разбор`() {
         val info = decode(
             """{"groups":[{"name":"🇳🇱 Нидерланды","type":"url-test","proxies":["A","B"]}]}""",
