@@ -19,8 +19,6 @@ data class PanelInfo(
 
     val hwidLimitMessage: String = "",
 
-    val hwidMaxDevices: Int = 0,
-
     val refillDate: Long = 0,
 
     val notifyExpireDays: List<Int>? = null,

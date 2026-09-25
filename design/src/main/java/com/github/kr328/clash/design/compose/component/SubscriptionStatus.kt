@@ -165,6 +165,7 @@ private fun Actions(
 
     val primary: Pair<Int, () -> Unit>? = when {
         reason == NoServersReason.DeviceNotIdentified -> R.string.clod_open_settings to onOpenSettings
+        reason == NoServersReason.DeviceLimit && support.isNotBlank() -> R.string.clod_support to { onOpenUrl(support) }
         portal.isNotBlank() -> R.string.clod_portal to { onOpenUrl(portal) }
         support.isNotBlank() -> R.string.clod_support to { onOpenUrl(support) }
         else -> null
@@ -230,11 +231,7 @@ private fun titleOf(reason: NoServersReason): Int = when (reason) {
 
 @Composable
 private fun messageOf(reason: NoServersReason, panel: PanelInfo?, profile: Profile?): String = when (reason) {
-    NoServersReason.DeviceLimit -> if ((panel?.hwidMaxDevices ?: 0) > 0) {
-        stringResource(R.string.clod_no_servers_device_count, panel!!.hwidMaxDevices)
-    } else {
-        stringResource(R.string.clod_no_servers_device)
-    }
+    NoServersReason.DeviceLimit -> stringResource(R.string.clod_no_servers_device)
 
     NoServersReason.DeviceNotIdentified -> stringResource(R.string.clod_no_servers_unidentified)
 

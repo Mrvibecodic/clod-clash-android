@@ -34,8 +34,7 @@ type Info struct {
 
 	HwidLimitMessage string `json:"hwidLimitMessage,omitempty"`
 
-	HwidState      string `json:"hwidState,omitempty"`
-	HwidMaxDevices int    `json:"hwidMaxDevices,omitempty"`
+	HwidState string `json:"hwidState,omitempty"`
 
 	RefillDate int64 `json:"refillDate,omitempty"`
 
@@ -156,7 +155,6 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.Title = truncate(firstNonEmpty(headerValue(header, "profile-title"), info.Title), titleMaxChars)
 
 	info.HwidState = hwidState(header)
-	info.HwidMaxDevices, _ = parseUint(headerValue(header, "x-hwid-max-devices"))
 	info.RefillDate = parseRefillDate(headerValue(header, "subscription-refill-date"))
 
 	info.NotifyExpireDays = thresholds(headerValue(header, "notify-expire-days"), 1, 365)
@@ -527,15 +525,6 @@ func boolHeader(header map[string][]string, name string) bool {
 	}
 
 	return false
-}
-
-func parseUint(raw string) (int, bool) {
-	value, err := strconv.Atoi(strings.TrimSpace(raw))
-	if err != nil || value < 0 {
-		return 0, false
-	}
-
-	return value, true
 }
 
 func parseRefillDate(raw string) int64 {

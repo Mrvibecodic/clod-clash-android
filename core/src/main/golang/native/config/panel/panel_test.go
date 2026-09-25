@@ -419,7 +419,6 @@ func TestApplyHeaders(t *testing.T) {
 		"notify-expire-days":       {"7,3,1"},
 		"notify-traffic-percent":   {"80,90,100"},
 		"x-hwid-active":            {"true"},
-		"x-hwid-max-devices":       {"5"},
 		"new-domain":               {"new.example.com"},
 		"global-mode":              {"false"},
 	}, current)
@@ -440,8 +439,8 @@ func TestApplyHeaders(t *testing.T) {
 		t.Fatalf("логотип по http не должен приниматься, получено %q", info.LogoURL)
 	}
 
-	if info.HwidState != HwidActive || info.HwidMaxDevices != 5 {
-		t.Fatalf("состояние устройства = %q, лимит = %d", info.HwidState, info.HwidMaxDevices)
+	if info.HwidState != HwidActive {
+		t.Fatalf("состояние устройства = %q", info.HwidState)
 	}
 
 	if info.RefillDate != 1786309200 {
@@ -504,7 +503,6 @@ func TestApplyHeadersBareExpireToggle(t *testing.T) {
 func TestApplyHeadersResetsStateFields(t *testing.T) {
 	info := Info{
 		HwidState:            HwidActive,
-		HwidMaxDevices:       5,
 		RefillDate:           1786309200,
 		NotifyExpireDays:     []int{1, 3, 7},
 		NotifyTrafficPercent: []int{80},
@@ -513,8 +511,8 @@ func TestApplyHeadersResetsStateFields(t *testing.T) {
 
 	ApplyHeaders(&info, map[string][]string{}, "https://panel.example.com/sub")
 
-	if info.HwidState != HwidUnknown || info.HwidMaxDevices != 0 || info.RefillDate != 0 {
-		t.Fatalf("состояние устройства должно сбрасываться: %q %d %d", info.HwidState, info.HwidMaxDevices, info.RefillDate)
+	if info.HwidState != HwidUnknown || info.RefillDate != 0 {
+		t.Fatalf("состояние устройства должно сбрасываться: %q %d", info.HwidState, info.RefillDate)
 	}
 
 	if info.NotifyExpireDays != nil || info.NotifyTrafficPercent != nil {

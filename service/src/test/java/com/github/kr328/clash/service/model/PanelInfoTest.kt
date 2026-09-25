@@ -19,7 +19,6 @@ class PanelInfoTest {
 
         assertTrue(info.isEmpty)
         assertEquals("", info.title)
-        assertEquals(0, info.hwidMaxDevices)
         assertFalse(info.noServers)
     }
 
@@ -149,7 +148,7 @@ class PanelInfoTest {
 
     @Test
     fun `служебные поля пустоту не отменяют`() {
-        assertTrue(PanelInfo(refillDate = 1_700_000_000, hwidMaxDevices = 3).isEmpty)
+        assertTrue(PanelInfo(refillDate = 1_700_000_000, hwidState = "limit").isEmpty)
     }
 
     @Test
