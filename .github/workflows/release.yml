@@ -310,13 +310,16 @@ jobs:
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           for apk in signed/*.apk; do
             out=$("$BT/apksigner" verify -v --print-certs "$apk")
-            grep -q 'Verified using v1 scheme (JAR signing): true' <<< "$out"
-            grep -q 'Verified using v2 scheme (APK Signature Scheme v2): true' <<< "$out"
-            grep -q 'Number of signers: 1' <<< "$out"
-            grep -q "Signer #1 certificate SHA-256 digest: $CERT_SHA256" <<< "$out" || {
-              echo "::error::$(basename "$apk") подписан не релизным ключом"
-              exit 1
-            }
+            echo "$out" | grep -E 'Verified using|Number of signers|Signer #[0-9]+ certificate (DN|SHA-256)'
+            for want in 'Verified using v1 scheme (JAR signing): true' \
+                        'Verified using v2 scheme (APK Signature Scheme v2): true' \
+                        'Number of signers: 1' \
+                        "Signer #1 certificate SHA-256 digest: $CERT_SHA256"; do
+              grep -q "$want" <<< "$out" || {
+                echo "::error::$(basename "$apk"): нет строки «$want» — подпись не релизная"
+                exit 1
+              }
+            done
             "$BT/zipalign" -c -P 16 4 "$apk"
             echo "подпись в порядке: $(basename "$apk")"
           done
