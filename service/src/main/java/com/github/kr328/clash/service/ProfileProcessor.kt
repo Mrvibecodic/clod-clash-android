@@ -147,6 +147,8 @@ object ProfileProcessor {
                         ImportedDao().insert(new)
                     }
 
+                    Clash.markProfileUpdated(context.importedDir.resolve(snapshot.uuid.toString()), updateInterval)
+
                     PendingDao().remove(snapshot.uuid)
 
                     context.pendingDir.resolve(snapshot.uuid.toString()).deleteRecursively()
@@ -215,6 +217,8 @@ object ProfileProcessor {
                         if (stored != imported) {
                             ImportedDao().update(stored)
                         }
+
+                        Clash.markProfileUpdated(context.importedDir.resolve(snapshot.uuid.toString()), stored.interval)
 
                         context.sendProfileChanged(snapshot.uuid)
                     }
@@ -305,6 +309,8 @@ object ProfileProcessor {
                     quota = info?.subUpload != null || imported.quota,
                 ),
             )
+
+            Clash.markProfileUpdated(profileDir, imported.interval)
 
             writeMigration(
                 stateFile,

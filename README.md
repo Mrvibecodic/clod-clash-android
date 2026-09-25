@@ -82,7 +82,8 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 
 **Понимаем в ответе** (`core/…/config/panel/panel.go`): `profile-title`,
 `profile-logo`, `subscription-userinfo`, `subscription-refill-date`,
-`profile-update-interval`, `announce` + `announce-url`, `clod-promo` +
+`profile-update-interval`, `announce` + `announce-url` (наш `clod-announce`
+важнее панельного `announce`, если пришли оба), `clod-promo` +
 `clod-promo-url`, `clod-portal-url`, `profile-web-page-url`, `support-url`,
 `clod-bot-url`, `clod-monitor-url`, `clod-guide-url`,
 `clod-hwid-limit`, всё семейство `x-hwid-*`, пороги напоминаний
@@ -90,10 +91,18 @@ ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 `notification-subs-expire` и `global-mode` для совместимости), переезд подписки
 `new-url` / `new-domain`, запасные адреса `fallback-url` / `fallback-domain`,
 часы панели по стандартному `Date`, `clod-lock-mode`, `clod-show-0hosts`
-и `clod-disable-ping` (галочка/крестик вместо цифр задержки).
+и `clod-disable-ping: true` (галочка/крестик вместо цифр задержки; любое
+другое значение, включая `1`, цифры не прячет).
 
-**Чего пока нет против десктопа:** `clod-connect-mode` (чем ловить трафик),
-`clod-device-remove` (кнопка «Освободить устройство» в диалоге лимита) и
+`clod-lock-mode` понимает три значения, как на десктопе: `true` (`1`, `yes`,
+`on`) — режим закреплён за подпиской (`mode:` шаблона, без него — правила),
+но замок снимается сам, если подписка не обновлялась удачно дольше
+max(72 ч, 3 × интервал автообновления этой подписки), и возвращается
+со следующим удачным обновлением; `lock` (регистр не важен) — тот же замок
+без срока; `false` (`0`, `no`, `off`) — замка нет. `clod-lock-mode` важнее
+`global-mode`.
+
+**Чего пока нет против десктопа:** `clod-connect-mode` (чем ловить трафик) и
 `clod-latency-style` с синонимом `pxa-latency-dots` (вид задержки). Панель
 может слать их — они просто игнорируются.
 

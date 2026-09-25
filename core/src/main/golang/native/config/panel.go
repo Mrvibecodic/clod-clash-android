@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/tunnel"
 
@@ -13,8 +15,9 @@ type (
 )
 
 type ModeState struct {
-	Mode   string           `json:"mode,omitempty"`
-	Source panel.ModeSource `json:"source"`
+	Mode      string           `json:"mode,omitempty"`
+	Source    panel.ModeSource `json:"source"`
+	LockUntil int64            `json:"lockUntil,omitempty"`
 }
 
 func modeName(mode *tunnel.TunnelMode) *string {
@@ -41,10 +44,19 @@ func QueryMode(profileDir, session string) ModeState {
 		info.Mode,
 		modeName(overrideMode(ReadOverride(OverrideSlotPersist))),
 		modeName(overrideMode(session)),
-		modeLocked(info),
+		modeLocked(profileDir, info),
 	)
 
-	return ModeState{Mode: mode, Source: source}
+	state := ModeState{Mode: mode, Source: source}
+	if source == panel.ModeLocked {
+		state.LockUntil = panel.LockUntil(panel.WithUpdatedAt(profileDir, info))
+	}
+
+	return state
+}
+
+func MarkUpdated(profileDir string, intervalMillis int64) {
+	panel.MarkUpdated(profileDir, time.Now().Unix(), intervalMillis/1000)
 }
 
 func readPanelInfo(dir string) PanelInfo {

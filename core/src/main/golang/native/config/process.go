@@ -6,6 +6,7 @@ import (
 	"net/netip"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/dlclark/regexp2"
 
@@ -47,8 +48,8 @@ func overrideMode(content string) *tunnel.TunnelMode {
 	return slot.Mode
 }
 
-func modeLocked(info panel.Info) bool {
-	return info.LockMode != nil && *info.LockMode
+func modeLocked(profileDir string, info panel.Info) bool {
+	return panel.LockActive(panel.WithUpdatedAt(profileDir, info), time.Now().Unix())
 }
 
 func patchOverride(cfg *config.RawConfig, profileDir string) error {
@@ -69,7 +70,7 @@ func patchOverride(cfg *config.RawConfig, profileDir string) error {
 		template.String(),
 		modeName(overrideMode(persist)),
 		modeName(overrideMode(session)),
-		modeLocked(panel.Read(profileDir)),
+		modeLocked(profileDir, panel.Read(profileDir)),
 	)
 
 	// The provider pinned the mode: the override slots must not win over the subscription.

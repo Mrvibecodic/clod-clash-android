@@ -382,6 +382,17 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeSwitchMode(JNIEnv *env, job
 }
 
 JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeMarkProfileUpdated(JNIEnv *env, jobject thiz,
+                                                                        jstring path,
+                                                                        jlong interval) {
+    TRACE_METHOD();
+
+    scoped_string _path = get_string(path);
+
+    markProfileUpdated(_path, (int64_t) interval);
+}
+
+JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeClearOverride(JNIEnv *env, jobject thiz,
                                                                    jint slot) {
     TRACE_METHOD();

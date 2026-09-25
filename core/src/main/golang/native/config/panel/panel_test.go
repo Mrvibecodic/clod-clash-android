@@ -219,6 +219,38 @@ func TestHeaderValue(t *testing.T) {
 	}
 }
 
+func TestApplyHeadersClodAnnounceWins(t *testing.T) {
+	for _, order := range [][2]string{{"Announce", "Clod-Announce"}, {"Clod-Announce", "Announce"}} {
+		header := http.Header{}
+		values := map[string]string{"Announce": "панель", "Clod-Announce": "наш"}
+
+		for _, key := range order {
+			header.Set(key, values[key])
+		}
+
+		info := Info{}
+		ApplyHeaders(&info, header, "https://panel.example/sub")
+
+		if info.Announce != "наш" {
+			t.Fatalf("порядок %v: получено %q", order, info.Announce)
+		}
+	}
+
+	info := Info{}
+	ApplyHeaders(&info, http.Header{"Announce": []string{"панель"}}, "https://panel.example/sub")
+
+	if info.Announce != "панель" {
+		t.Fatalf("только панельный: получено %q", info.Announce)
+	}
+
+	info = Info{}
+	ApplyHeaders(&info, http.Header{"Announce": []string{"панель"}, "Clod-Announce": []string{"  "}}, "https://panel.example/sub")
+
+	if info.Announce != "панель" {
+		t.Fatalf("пустой наш не перебивает: получено %q", info.Announce)
+	}
+}
+
 func TestDecodeHeaderValue(t *testing.T) {
 	const text = "Привет, мир"
 
@@ -572,7 +604,7 @@ func TestApplyHeadersShowZeroHosts(t *testing.T) {
 }
 
 func TestApplyHeadersDisablePing(t *testing.T) {
-	for _, raw := range []string{"true", "TRUE", "1", "yes", "on"} {
+	for _, raw := range []string{"true", "TRUE", " True "} {
 		info := Info{}
 		ApplyHeaders(&info, http.Header{"Clod-Disable-Ping": []string{raw}}, "https://panel.example/sub")
 
@@ -581,7 +613,7 @@ func TestApplyHeadersDisablePing(t *testing.T) {
 		}
 	}
 
-	for _, raw := range []string{"", "  ", "false", "0", "off", "no", "мусор", "maybe"} {
+	for _, raw := range []string{"", "  ", "false", "0", "1", "yes", "on", "off", "no", "мусор", "maybe"} {
 		info := Info{}
 		ApplyHeaders(&info, http.Header{"Clod-Disable-Ping": []string{raw}}, "https://panel.example/sub")
 

@@ -111,6 +111,13 @@ func switchMode(path, session C.c_string) (result C.int) {
 	return 0
 }
 
+//export markProfileUpdated
+func markProfileUpdated(path C.c_string, interval C.int64_t) {
+	defer guard("markProfileUpdated", func() {})()
+
+	config.MarkUpdated(C.GoString(path), int64(interval))
+}
+
 //export clearOverride
 func clearOverride(slot C.int) {
 	defer guard("clearOverride", func() {})()

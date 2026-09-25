@@ -38,7 +38,10 @@ falls back to `DIRECT` — traffic goes direct.
 
 <Callout type="warn" title="The mode can be locked">
 A provider may pin the mode to the subscription. The switch is then visible but disabled and
-carries a note — that is the provider's decision, not a malfunction.
+carries a note — that is the provider's decision, not a malfunction. A regular lock lifts by
+itself if the subscription has not been refreshed for more than three days (or three update
+intervals, if the interval is longer): you can pick the mode again, and the lock comes back
+with the next successful refresh. A provider can also set a lock that never lifts.
 </Callout>
 
 ## Network stack

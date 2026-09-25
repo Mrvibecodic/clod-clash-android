@@ -280,6 +280,10 @@ object Clash {
         )
     }
 
+    fun markProfileUpdated(path: File, interval: Long) {
+        Bridge.nativeMarkProfileUpdated(path.absolutePath, interval)
+    }
+
     internal fun decodeProfileMode(json: String): ProfileMode {
         return CoreJson.decodeFromString(ProfileMode.serializer(), json)
     }

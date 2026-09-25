@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 data class ProfileMode(
     val mode: TunnelState.Mode? = null,
     val source: Source = Source.Template,
+    val lockUntil: Long = 0,
 ) : Parcelable {
     @Serializable
     enum class Source {

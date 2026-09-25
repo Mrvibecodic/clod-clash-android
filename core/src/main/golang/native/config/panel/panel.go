@@ -47,7 +47,11 @@ type Info struct {
 
 	MigrateURL string `json:"migrateUrl,omitempty"`
 
-	LockMode *bool `json:"lockMode,omitempty"`
+	LockMode      *bool `json:"lockMode,omitempty"`
+	LockPermanent bool  `json:"lockPermanent,omitempty"`
+
+	UpdatedAt      int64 `json:"updatedAt,omitempty"`
+	UpdateInterval int64 `json:"updateInterval,omitempty"`
 
 	NoServers bool `json:"noServers,omitempty"`
 
@@ -134,7 +138,7 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	}
 
 	info.LogoURL = httpsURL(headerValue(header, "profile-logo"))
-	info.Announce = truncate(headerValue(header, "announce"), announceMaxChars)
+	info.Announce = truncate(firstNonEmpty(headerValue(header, "clod-announce"), headerValue(header, "announce")), announceMaxChars)
 	info.AnnounceURL = httpsURL(headerValue(header, "announce-url"))
 	info.SupportURL = contactURL(headerValue(header, "support-url"))
 	info.HomeURL = httpsURL(headerValue(header, "profile-web-page-url"))
@@ -176,16 +180,31 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 
 	info.ShowZeroHosts = boolHeader(header, "clod-show-0hosts")
 
-	info.DisablePing = boolHeader(header, "clod-disable-ping")
+	info.DisablePing = strings.EqualFold(headerValue(header, "clod-disable-ping"), "true")
 
-	info.LockMode = optionalBool(header, "clod-lock-mode")
+	info.LockMode, info.LockPermanent = lockMode(header)
+}
 
-	if info.LockMode == nil {
-		if allowed := optionalBool(header, "global-mode"); allowed != nil {
-			locked := !*allowed
-			info.LockMode = &locked
-		}
+const lockForever = "lock"
+
+func lockMode(header map[string][]string) (*bool, bool) {
+	if strings.EqualFold(headerValue(header, "clod-lock-mode"), lockForever) {
+		locked := true
+
+		return &locked, true
 	}
+
+	if locked := optionalBool(header, "clod-lock-mode"); locked != nil {
+		return locked, false
+	}
+
+	if allowed := optionalBool(header, "global-mode"); allowed != nil {
+		locked := !*allowed
+
+		return &locked, false
+	}
+
+	return nil, false
 }
 
 func headerValue(header map[string][]string, name string) string {
