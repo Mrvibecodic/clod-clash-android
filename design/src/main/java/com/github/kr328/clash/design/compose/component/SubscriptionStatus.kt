@@ -45,9 +45,6 @@ enum class NoServersReason {
     Provider,
 }
 
-private val NoServersReason.isDeviceRelated: Boolean
-    get() = this == NoServersReason.DeviceLimit || this == NoServersReason.DeviceNotIdentified
-
 private const val HWID_LIMIT_REACHED = "limit"
 private const val HWID_NOT_SUPPORTED = "not-supported"
 
@@ -130,18 +127,6 @@ fun NoServersCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-
-            val providerNote = panel?.hwidLimitMessage.orEmpty()
-
-            if (providerNote.isNotBlank() && reason.isDeviceRelated) {
-                Spacer(Modifier.height(6.dp))
-
-                Text(
-                    text = providerNote,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
 
             Actions(
                 reason = reason,

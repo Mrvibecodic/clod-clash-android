@@ -355,7 +355,6 @@ func TestRefusesDevice(t *testing.T) {
 		{name: "устройство принято", header: http.Header{"X-Hwid-Active": {"true"}}, want: false},
 		{name: "молчание", header: http.Header{}, want: false},
 		{name: "явное нет", header: http.Header{"X-Hwid-Limit": {"false"}, "X-Hwid-Not-Supported": {"0"}}, want: false},
-		{name: "свой текст провайдера", header: http.Header{"Clod-Hwid-Limit": {"текст"}}, want: false},
 	}
 
 	for _, item := range cases {
@@ -526,13 +525,12 @@ func TestApplyHeadersResetsStateFields(t *testing.T) {
 
 func TestApplyHeadersPanelTextsFollowPanel(t *testing.T) {
 	info := Info{
-		Title:            "Провайдер",
-		LogoURL:          "https://old.example/logo.png",
-		Announce:         "Работы с 3 до 5",
-		AnnounceURL:      "https://old.example/news",
-		Promo:            "Скидка 30%",
-		PromoURL:         "https://old.example/sale",
-		HwidLimitMessage: "Отвяжите старое устройство в кабинете",
+		Title:       "Провайдер",
+		LogoURL:     "https://old.example/logo.png",
+		Announce:    "Работы с 3 до 5",
+		AnnounceURL: "https://old.example/news",
+		Promo:       "Скидка 30%",
+		PromoURL:    "https://old.example/sale",
 	}
 
 	ApplyHeaders(&info, map[string][]string{"profile-title": {"Провайдер"}}, "https://panel.example.com/sub")
@@ -547,10 +545,6 @@ func TestApplyHeadersPanelTextsFollowPanel(t *testing.T) {
 
 	if info.LogoURL != "" {
 		t.Fatalf("логотип остался: %q", info.LogoURL)
-	}
-
-	if info.HwidLimitMessage != "" {
-		t.Fatalf("текст для диалога устройства остался: %q", info.HwidLimitMessage)
 	}
 
 	if info.Title != "Провайдер" {

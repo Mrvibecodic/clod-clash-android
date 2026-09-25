@@ -32,8 +32,6 @@ type Info struct {
 
 	LogoFile string `json:"logoFile,omitempty"`
 
-	HwidLimitMessage string `json:"hwidLimitMessage,omitempty"`
-
 	HwidState string `json:"hwidState,omitempty"`
 
 	RefillDate int64 `json:"refillDate,omitempty"`
@@ -150,7 +148,6 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.GuideURL = httpsURL(headerValue(header, "clod-guide-url"))
 	info.Promo = truncate(headerValue(header, "clod-promo"), announceMaxChars)
 	info.PromoURL = httpsURL(headerValue(header, "clod-promo-url"))
-	info.HwidLimitMessage = truncate(headerValue(header, "clod-hwid-limit"), announceMaxChars)
 
 	info.Title = truncate(firstNonEmpty(headerValue(header, "profile-title"), info.Title), titleMaxChars)
 

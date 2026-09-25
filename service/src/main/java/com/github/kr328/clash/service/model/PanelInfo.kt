@@ -17,8 +17,6 @@ data class PanelInfo(
     val promoUrl: String = "",
     val hwidState: String = "",
 
-    val hwidLimitMessage: String = "",
-
     val refillDate: Long = 0,
 
     val notifyExpireDays: List<Int>? = null,
