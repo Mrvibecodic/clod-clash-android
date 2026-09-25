@@ -17,6 +17,8 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/chanx"
+	"cfa/native/config/delivery"
+	"cfa/native/config/panel"
 
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
@@ -262,11 +264,17 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 
 	log.Infoln("Subscription fetched over the secure channel")
 
-	return io.NopCloser(strings.NewReader(answer.Body)), fetchHeader{
+	header := fetchHeader{
 		SubscriptionUserInfo:  meta.Get("subscription-userinfo"),
 		ProfileUpdateInterval: meta.Get("profile-update-interval"),
 		Raw:                   map[string][]string(meta),
-	}, nil
+	}
+
+	if delivery.NotAConfiguration([]byte(answer.Body)) && panel.RefusesDevice(meta) {
+		return nil, header, errDeviceRefused
+	}
+
+	return io.NopCloser(strings.NewReader(answer.Body)), header, nil
 }
 
 func abs(v int64) int64 {

@@ -3,6 +3,8 @@ package sentinel
 import (
 	"strconv"
 	"strings"
+
+	"github.com/metacubex/mihomo/common/yaml"
 )
 
 const nilUUID = "00000000-0000-0000-0000-000000000000"
@@ -122,4 +124,92 @@ func Inspect(proxies []map[string]any) Report {
 	report.OnlySentinels = real == 0 && len(report.Names) > 0
 
 	return report
+}
+
+const RefusedConfig = "proxies: []\nrules:\n  - MATCH,REJECT\n"
+
+func Refused(previous []byte) []byte {
+	if disarmed, ok := Disarm(previous); ok {
+		return disarmed
+	}
+
+	return []byte(RefusedConfig)
+}
+
+func Disarm(config []byte) ([]byte, bool) {
+	var document map[string]any
+	if err := yaml.Unmarshal(config, &document); err != nil || document == nil {
+		return nil, false
+	}
+
+	proxies, _ := document["proxies"].([]any)
+
+	placeholders := make([]any, 0, len(proxies))
+	for _, proxy := range proxies {
+		fields, ok := proxy.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		name := fields["name"]
+		switch value := name.(type) {
+		case string:
+			if value == "" {
+				continue
+			}
+		case int, int64, uint64, float64, bool:
+		default:
+			continue
+		}
+
+		placeholders = append(placeholders, map[string]any{
+			"name":    name,
+			"type":    "vless",
+			"server":  "0.0.0.0",
+			"port":    1,
+			"uuid":    nilUUID,
+			"network": "tcp",
+			"udp":     true,
+		})
+	}
+
+	if len(placeholders) == 0 {
+		return nil, false
+	}
+
+	document["proxies"] = placeholders
+
+	delete(document, "proxy-providers")
+
+	groups, _ := document["proxy-groups"].([]any)
+	for _, group := range groups {
+		fields, ok := group.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		delete(fields, "use")
+		delete(fields, "include-all-providers")
+
+		if includeAll, _ := fields["include-all"].(bool); includeAll {
+			fields["include-all-proxies"] = true
+		}
+		delete(fields, "include-all")
+
+		members, _ := fields["proxies"].([]any)
+		if includeProxies, _ := fields["include-all-proxies"].(bool); len(members) == 0 && !includeProxies {
+			fields["proxies"] = []any{"REJECT"}
+		}
+
+		if _, present := fields["empty-fallback"]; !present {
+			fields["empty-fallback"] = "REJECT"
+		}
+	}
+
+	disarmed, err := yaml.Marshal(document)
+	if err != nil {
+		return nil, false
+	}
+
+	return disarmed, true
 }

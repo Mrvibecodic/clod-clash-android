@@ -327,8 +327,8 @@ func patchProviders(cfg *config.RawConfig, profileDir string) error {
 	return nil
 }
 
-func validConfig(cfg *config.RawConfig, _ string) error {
-	if len(cfg.Proxy) == 0 && len(cfg.ProxyProvider) == 0 {
+func validConfig(cfg *config.RawConfig, profileDir string) error {
+	if len(cfg.Proxy) == 0 && len(cfg.ProxyProvider) == 0 && !readPanelInfo(profileDir).RefusesDevice() {
 		return errors.New("profile does not contain `proxies` or `proxy-providers`")
 	}
 

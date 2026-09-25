@@ -353,6 +353,18 @@ const (
 	HwidNotSupported = "not-supported"
 )
 
+func RefusesDevice(header map[string][]string) bool {
+	return refusal(hwidState(header))
+}
+
+func (info Info) RefusesDevice() bool {
+	return refusal(info.HwidState)
+}
+
+func refusal(state string) bool {
+	return state == HwidLimitReached || state == HwidNotSupported
+}
+
 func hwidState(header map[string][]string) string {
 	if boolHeader(header, "x-hwid-not-supported") {
 		return HwidNotSupported

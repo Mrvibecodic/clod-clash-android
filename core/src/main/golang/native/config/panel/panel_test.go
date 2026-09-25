@@ -343,6 +343,43 @@ func TestHwidState(t *testing.T) {
 	}
 }
 
+func TestRefusesDevice(t *testing.T) {
+	cases := []struct {
+		name   string
+		header http.Header
+		want   bool
+	}{
+		{name: "лимит", header: http.Header{"X-Hwid-Active": {"true"}, "X-Hwid-Max-Devices-Reached": {"true"}, "X-Hwid-Limit": {"true"}}, want: true},
+		{name: "не опознано", header: http.Header{"X-Hwid-Active": {"true"}, "X-Hwid-Not-Supported": {"true"}, "X-Hwid-Limit": {"true"}}, want: true},
+		{name: "только limit", header: http.Header{"X-Hwid-Limit": {"true"}}, want: true},
+		{name: "устройство принято", header: http.Header{"X-Hwid-Active": {"true"}}, want: false},
+		{name: "молчание", header: http.Header{}, want: false},
+		{name: "явное нет", header: http.Header{"X-Hwid-Limit": {"false"}, "X-Hwid-Not-Supported": {"0"}}, want: false},
+		{name: "свой текст провайдера", header: http.Header{"Clod-Hwid-Limit": {"текст"}}, want: false},
+	}
+
+	for _, item := range cases {
+		t.Run(item.name, func(t *testing.T) {
+			if got := RefusesDevice(item.header); got != item.want {
+				t.Fatalf("RefusesDevice = %v, ожидалось %v", got, item.want)
+			}
+		})
+	}
+}
+
+func TestInfoRefusesDevice(t *testing.T) {
+	for state, want := range map[string]bool{
+		HwidUnknown:      false,
+		HwidActive:       false,
+		HwidLimitReached: true,
+		HwidNotSupported: true,
+	} {
+		if got := (Info{HwidState: state}).RefusesDevice(); got != want {
+			t.Fatalf("Info{HwidState: %q}.RefusesDevice = %v, ожидалось %v", state, got, want)
+		}
+	}
+}
+
 func TestOptionalBool(t *testing.T) {
 	if got := optionalBool(map[string][]string{}, "clod-lock-mode"); got != nil {
 		t.Fatalf("молчание должно давать nil, получено %v", *got)

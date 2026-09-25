@@ -21,6 +21,7 @@ import (
 	"cfa/native/common/safego"
 	budgets "cfa/native/config/budget"
 	"cfa/native/config/delivery"
+	"cfa/native/config/panel"
 	"cfa/native/config/sentinel"
 
 	"github.com/metacubex/mihomo/adapter/provider"
@@ -42,6 +43,8 @@ type Status struct {
 	SubExpire         *int64   `json:"subExpire,omitempty"`
 	SubUpdateInterval *int64   `json:"subUpdateInterval,omitempty"`
 }
+
+var errDeviceRefused = errors.New("the panel refused this device")
 
 type fetchHeader struct {
 	SubscriptionUserInfo  string
@@ -218,6 +221,12 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 		return nil, fetchHeader{}, fmt.Errorf("server answered with status %d", response.StatusCode)
 	}
 
+	header := fetchHeader{
+		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
+		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
+		Raw:                   map[string][]string(response.Header),
+	}
+
 	body := io.ReadCloser(response.Body)
 
 	if device {
@@ -225,17 +234,17 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 		if err != nil {
 			_ = response.Body.Close()
 
+			if panel.RefusesDevice(header.Raw) {
+				return nil, header, errDeviceRefused
+			}
+
 			return nil, fetchHeader{}, err
 		}
 
 		body = guarded
 	}
 
-	return body, fetchHeader{
-		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
-		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
-		Raw:                   map[string][]string(response.Header),
-	}, nil
+	return body, header, nil
 }
 
 func openContent(url string) (io.ReadCloser, error) {
@@ -259,13 +268,24 @@ func fetchConfig(url *U.URL, file string, budget *budgets.Budget, limit time.Dur
 	defer direct.close()
 
 	reader, header, err := openUrlSecure(rounds, url.String(), P.Dir(file), direct)
+	if errors.Is(err, errDeviceRefused) {
+		return header, err
+	}
 	if err != nil {
 		return fetchHeader{}, err
 	}
 
 	defer reader.Close()
 
-	return header, writeFile(file, reader)
+	return header, refusedOnFailure(header, writeFile(file, reader))
+}
+
+func refusedOnFailure(header fetchHeader, err error) error {
+	if err != nil && panel.RefusesDevice(header.Raw) {
+		return errDeviceRefused
+	}
+
+	return err
 }
 
 func hostOf(url *U.URL) string {
@@ -321,13 +341,26 @@ func fetch(url *U.URL, file string, device bool, budget *budgets.Budget, limit t
 		err = fmt.Errorf("unsupported scheme %s of %s", url.Scheme, url)
 	}
 
+	if errors.Is(err, errDeviceRefused) {
+		return header, err
+	}
+
 	if err != nil {
 		return fetchHeader{}, err
 	}
 
 	defer reader.Close()
 
-	return header, writeFile(file, reader)
+	err = writeFile(file, reader)
+	if device {
+		err = refusedOnFailure(header, err)
+	}
+
+	return header, err
+}
+
+func writeRefusedConfig(file string, previous []byte) error {
+	return writeFile(file, strings.NewReader(string(sentinel.Refused(previous))))
 }
 
 const maxDownloadBytes = 32 << 20
@@ -447,6 +480,10 @@ func fetchFromSpare(
 		reportStatus(string(bytes))
 
 		header, err := fetchConfig(parsed, configPath, budget, limit)
+		if errors.Is(err, errDeviceRefused) {
+			return header, err
+		}
+
 		if err != nil {
 			log.Warnln("Spare address %s failed as well: %s", parsed.Host, err.Error())
 
@@ -477,6 +514,10 @@ func FetchAndValid(
 
 	budget := budgets.Within(time.Now(), total)
 
+	var previous []byte
+	refused := false
+	replaced := false
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) || force {
 		url, err := U.Parse(url)
 		if err != nil {
@@ -501,12 +542,26 @@ func FetchAndValid(
 			limit = fetchQuickTimeout
 		}
 
+		previous, _ = os.ReadFile(configPath)
+
 		header, err := fetchConfig(url, configPath, budget, limit)
-		if err != nil {
+		if err != nil && !errors.Is(err, errDeviceRefused) {
 			header, err = fetchFromSpare(spares, configPath, err, budget, reportStatus)
-			if err != nil {
-				return err
-			}
+		}
+
+		refused = errors.Is(err, errDeviceRefused) || (err == nil && panel.RefusesDevice(header.Raw))
+
+		if refused && probe {
+			return errDeviceRefused
+		}
+
+		if errors.Is(err, errDeviceRefused) {
+			err = writeRefusedConfig(configPath, previous)
+			replaced = true
+		}
+
+		if err != nil {
+			return err
 		}
 
 		reportSubscriptionInfo(header, reportStatus)
@@ -518,6 +573,36 @@ func FetchAndValid(
 
 	defer runtime.GC()
 
+	firstReport := reportStatus
+	if refused && !replaced {
+		firstReport = func(string) {}
+	}
+
+	err := verifyProfile(path, budget, firstReport)
+	if err != nil && refused && !replaced {
+		log.Warnln("The panel refused this device and sent a configuration the core rejects (%s), taking the servers away", err.Error())
+
+		if err := writeRefusedConfig(configPath, previous); err != nil {
+			return err
+		}
+
+		err = verifyProfile(path, budget, reportStatus)
+	}
+
+	if err != nil && refused {
+		log.Warnln("The configuration without servers was rejected as well (%s), rejecting everything", err.Error())
+
+		if err := writeFile(configPath, strings.NewReader(sentinel.RefusedConfig)); err != nil {
+			return err
+		}
+
+		err = verifyProfile(path, budget, reportStatus)
+	}
+
+	return err
+}
+
+func verifyProfile(path string, budget *budgets.Budget, reportStatus func(string)) error {
 	rawCfg, err := unmarshalProfile(path)
 	if err != nil {
 		return fmt.Errorf("%s: %w", configRejected, err)
