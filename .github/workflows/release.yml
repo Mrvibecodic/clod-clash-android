@@ -257,6 +257,10 @@ jobs:
     name: Подпись и заливка
     needs: [check_version, prepare_release, build]
     runs-on: ubuntu-latest
+    # Те же build-tools, что у сборки (compileSdk 35): у более новых apksigner
+    # другой формат вывода, и проверка сертификата на нём не читается.
+    env:
+      BUILD_TOOLS: 35.0.0
     permissions:
       contents: write
     steps:
@@ -282,7 +286,9 @@ jobs:
             echo "::error::Секрет KEYSTORE_BASE64 не задан — релиз нельзя подписать"
             exit 1
           fi
-          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          BT="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
+          [[ -x "$BT/apksigner" ]] || yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;$BUILD_TOOLS" >/dev/null
+          "$BT/apksigner" --version
           KS="$RUNNER_TEMP/release.keystore"
           trap 'rm -f "$KS" "$RUNNER_TEMP/aligned.apk"' EXIT
           echo "$KEYSTORE_BASE64" | base64 -d > "$KS"
@@ -307,7 +313,7 @@ jobs:
           CERT_SHA256: aa3ac63121c7f6dcbc62bbbe0c372b1ceaef9ba86bf6d96eae99c6c840d3c62c
         run: |
           set -euo pipefail
-          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          BT="$ANDROID_HOME/build-tools/$BUILD_TOOLS"
           for apk in signed/*.apk; do
             out=$("$BT/apksigner" verify -v --print-certs "$apk")
             echo "$out" | grep -E 'Verified using|Number of signers|Signer #[0-9]+ certificate (DN|SHA-256)'
