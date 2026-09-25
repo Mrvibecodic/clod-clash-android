@@ -55,6 +55,8 @@ object ProfileProcessor {
 
     private const val PROVIDERS_DIR = "providers"
 
+    private const val CHAN_SKEW_FILE = "chan.skew"
+
     private fun Pending.sameDraft(other: Pending): Boolean =
         name == other.name &&
             type == other.type &&
@@ -284,6 +286,8 @@ object ProfileProcessor {
 
             profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
                 ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
+            profileDir.resolve(CHAN_SKEW_FILE).takeIf { it.isFile }
+                ?.copyTo(probe.resolve(CHAN_SKEW_FILE), overwrite = true)
 
             fetchProfile(context, probe, candidate, true, true, callback)
         } catch (e: Exception) {

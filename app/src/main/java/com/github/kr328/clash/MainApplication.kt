@@ -13,6 +13,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.util.sendServiceRecreated
+import com.github.kr328.clash.util.clashDir
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 
@@ -46,6 +47,7 @@ class MainApplication : Application(), Configuration.Provider {
             restoreLauncherIconIfUnsupported()
 
             NotificationManagerCompat.from(this).deleteNotificationChannel(LEGACY_WIDGET_CHANNEL)
+            clashDir.resolve(LEGACY_CHAN_SKEW).delete()
 
             Remote.launch()
         } else {
@@ -72,5 +74,6 @@ class MainApplication : Application(), Configuration.Provider {
 
     private companion object {
         const val LEGACY_WIDGET_CHANNEL = "widget_permission_channel"
+        const val LEGACY_CHAN_SKEW = "chan.skew"
     }
 }

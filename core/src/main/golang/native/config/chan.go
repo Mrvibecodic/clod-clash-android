@@ -23,7 +23,6 @@ import (
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	tlsC "github.com/metacubex/mihomo/component/tls"
-	"github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/listener/inner"
 	"github.com/metacubex/mihomo/log"
 )
@@ -173,12 +172,12 @@ func writeChanPin(dir string, pin []byte) {
 	_ = os.WriteFile(chanPinFile(dir), []byte(base64.RawURLEncoding.EncodeToString(pin)), 0600)
 }
 
-func chanSkewFile() string {
-	return constant.Path.Resolve("chan.skew")
+func chanSkewFile(dir string) string {
+	return P.Join(dir, "chan.skew")
 }
 
-func readChanSkew() int64 {
-	raw, err := os.ReadFile(chanSkewFile())
+func readChanSkew(dir string) int64 {
+	raw, err := os.ReadFile(chanSkewFile(dir))
 	if err != nil {
 		return 0
 	}
@@ -191,20 +190,20 @@ func readChanSkew() int64 {
 	return offset
 }
 
-func storeChanSkew(offset int64) {
+func storeChanSkew(dir string, offset int64) {
 	if offset == 0 {
-		_ = os.Remove(chanSkewFile())
+		_ = os.Remove(chanSkewFile(dir))
 
 		return
 	}
 
-	_ = os.WriteFile(chanSkewFile(), []byte(strconv.FormatInt(offset, 10)), 0600)
+	_ = os.WriteFile(chanSkewFile(dir), []byte(strconv.FormatInt(offset, 10)), 0600)
 }
 
 func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
 	pin := readChanPin(dir)
 
-	offset := readChanSkew()
+	offset := readChanSkew(dir)
 
 	ctx, ok := rounds.start()
 	if !ok {
@@ -249,7 +248,7 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 
 	writeChanPin(dir, answer.SP)
 
-	storeChanSkew(offset)
+	storeChanSkew(dir, offset)
 
 	meta := http.Header{}
 	for name, values := range answer.Meta {
