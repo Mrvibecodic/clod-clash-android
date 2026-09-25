@@ -117,6 +117,20 @@ class UiStore(context: Context) {
 
     private fun favoritesKey(profile: UUID): String = "favorites_$profile"
 
+    fun dismissedPromo(profile: UUID): String {
+        return store.provider.getString(dismissedPromoKey(profile), "")
+    }
+
+    fun setDismissedPromo(profile: UUID, fingerprint: String) {
+        store.provider.setString(dismissedPromoKey(profile), fingerprint)
+    }
+
+    fun clearDismissedPromo(profile: UUID) {
+        preferences.edit().remove(dismissedPromoKey(profile)).apply()
+    }
+
+    private fun dismissedPromoKey(profile: UUID): String = "promo_dismissed_$profile"
+
     var accessControlSort: AppInfoSort by store.enum(
         key = "access_control_sort",
         defaultValue = AppInfoSort.Label,

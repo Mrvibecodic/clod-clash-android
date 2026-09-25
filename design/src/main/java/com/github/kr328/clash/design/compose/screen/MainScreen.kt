@@ -122,6 +122,7 @@ import com.github.kr328.clash.design.model.HomeRoute
 import com.github.kr328.clash.design.model.ToggleIntent
 import com.github.kr328.clash.design.model.homeExtras
 import com.github.kr328.clash.design.model.effectiveMode
+import com.github.kr328.clash.design.model.promoFingerprint
 import com.github.kr328.clash.design.model.homeRoute
 import com.github.kr328.clash.design.model.providerLinks
 import com.github.kr328.clash.design.model.shouldSaveModePick
@@ -214,6 +215,7 @@ data class MainScreenState(
     val reliability: ReliabilityState = ReliabilityState(),
     val restartedBySystem: Boolean = false,
     val systemProxyRefused: Boolean = false,
+    val dismissedPromo: String = "",
 ) {
     val mode: TunnelState.Mode
         get() = effectiveMode(profileMode)
@@ -243,6 +245,7 @@ sealed interface MainAction {
     data class OpenGroup(val index: Int) : MainAction
     data class SelectProxy(val name: String) : MainAction
     data class ToggleFavorite(val name: String) : MainAction
+    data class DismissPromo(val profile: Profile, val promo: String) : MainAction
 
     data class OpenUrl(val url: String) : MainAction
     data object CheckUpdate : MainAction
@@ -522,7 +525,7 @@ private fun HomeTab(
         )
 
         state.active?.let { active ->
-            PanelBanner(active, onAction)
+            PanelBanner(active, state.dismissedPromo, onAction)
 
             ActiveSubscriptionCard(
                 item = active,
@@ -1033,14 +1036,16 @@ private fun formatSession(seconds: Long): String {
 
 private const val COLLAPSED_NOTICE_LINES = 6
 
+private const val COLLAPSED_PROMO_LINES = 2
+
 @Composable
-private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit) {
+private fun PanelBanner(active: SubscriptionItem, dismissedPromo: String, onAction: (MainAction) -> Unit) {
     val panel = active.panel ?: return
-    val notice = panel.announce.takeIf { it.isNotBlank() } ?: panel.promo
-    val noticeUrl = if (panel.announce.isNotBlank()) panel.announceUrl else panel.promoUrl
+    val fingerprint = remember(panel.promo) { promoFingerprint(panel.promo) }
+    val promo = panel.promo.takeIf { it.isNotBlank() && fingerprint != dismissedPromo }.orEmpty()
     val reason = noServersReason(active.profile, panel, active.panelNow())
 
-    if (notice.isBlank() && reason == null) return
+    if (panel.announce.isBlank() && promo.isBlank() && reason == null) return
 
     Column(modifier = Modifier.padding(bottom = 4.dp)) {
         if (reason != null) {
@@ -1055,80 +1060,125 @@ private fun PanelBanner(active: SubscriptionItem, onAction: (MainAction) -> Unit
             Spacer(Modifier.height(8.dp))
         }
 
-        if (notice.isNotBlank()) {
-            var expanded by rememberSaveable(notice) { mutableStateOf(false) }
-            var truncated by rememberSaveable(notice) { mutableStateOf(false) }
-            val rotation by animateFloatAsState(
-                targetValue = if (expanded) 180f else 0f,
-                label = "noticeChevron",
+        if (panel.announce.isNotBlank()) {
+            NoticeCard(
+                text = panel.announce,
+                url = panel.announceUrl,
+                collapsedLines = COLLAPSED_NOTICE_LINES,
+                onAction = onAction,
             )
+        }
 
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
+        if (promo.isNotBlank()) {
+            if (panel.announce.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+            }
+
+            NoticeCard(
+                text = promo,
+                url = panel.promoUrl,
+                collapsedLines = COLLAPSED_PROMO_LINES,
+                onAction = onAction,
+                onDismiss = { onAction(MainAction.DismissPromo(active.profile, promo)) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun NoticeCard(
+    text: String,
+    url: String,
+    collapsedLines: Int,
+    onAction: (MainAction) -> Unit,
+    onDismiss: (() -> Unit)? = null,
+) {
+    var expanded by rememberSaveable(text) { mutableStateOf(false) }
+    var truncated by rememberSaveable(text) { mutableStateOf(false) }
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "noticeChevron",
+    )
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .then(
+                    if (url.isNotBlank()) {
+                        Modifier.clickable { onAction(MainAction.OpenUrl(url)) }
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(14.dp)
+                .animateContentSize(),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_outline_info),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = {
+                    if (!expanded) {
+                        truncated = it.hasVisualOverflow
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            )
+            if (truncated) {
+                Spacer(Modifier.width(4.dp))
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
                     modifier = Modifier
-                        .then(
-                            if (noticeUrl.isNotBlank()) {
-                                Modifier.clickable { onAction(MainAction.OpenUrl(noticeUrl)) }
-                            } else {
-                                Modifier
-                            },
-                        )
-                        .padding(14.dp)
-                        .animateContentSize(),
+                        .minimumInteractiveComponentSize()
+                        .size(32.dp),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_outline_info),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
+                        painter = painterResource(R.drawable.ic_chevron_down),
+                        contentDescription = stringResource(
+                            if (expanded) {
+                                R.string.clod_notice_collapse
+                            } else {
+                                R.string.clod_notice_expand
+                            },
+                        ),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(rotation),
                     )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = notice,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_NOTICE_LINES,
-                        overflow = TextOverflow.Ellipsis,
-                        onTextLayout = {
-                            if (!expanded) {
-                                truncated = it.hasVisualOverflow
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
+                }
+            }
+            if (onDismiss != null) {
+                Spacer(Modifier.width(4.dp))
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .minimumInteractiveComponentSize()
+                        .size(32.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_close),
+                        contentDescription = stringResource(R.string.close),
+                        modifier = Modifier.size(20.dp),
                     )
-                    if (truncated) {
-                        Spacer(Modifier.width(4.dp))
-                        IconButton(
-                            onClick = { expanded = !expanded },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            ),
-                            modifier = Modifier
-                                .minimumInteractiveComponentSize()
-                                .size(32.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_chevron_down),
-                                contentDescription = stringResource(
-                                    if (expanded) {
-                                        R.string.clod_notice_collapse
-                                    } else {
-                                        R.string.clod_notice_expand
-                                    },
-                                ),
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .rotate(rotation),
-                            )
-                        }
-                    }
                 }
             }
         }

@@ -363,6 +363,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 design.setFavorites(next)
                             }
                         }
+                        is MainDesign.Request.DismissPromo ->
+                            uiStore.setDismissedPromo(request.profile, request.fingerprint)
                         is MainDesign.Request.PatchMode -> {
                             val locked = withClash { queryProfileMode() }.source ==
                                 ProfileMode.Source.Locked
@@ -484,6 +486,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             withProfile(retry = false) { delete(request.profile.uuid) }
 
                             uiStore.clearFavorites(request.profile.uuid)
+                            uiStore.clearDismissedPromo(request.profile.uuid)
                             patchSubscriptionGroup(request.profile.uuid, null)
                         }
                         MainDesign.Request.AllowNotifications -> {
@@ -681,6 +684,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         favoritesProfile = active?.profile?.uuid
         setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
+        setDismissedPromo(active?.profile?.uuid, active?.profile?.uuid?.let { uiStore.dismissedPromo(it) }.orEmpty())
 
         return reloadProxyGroups()
     }

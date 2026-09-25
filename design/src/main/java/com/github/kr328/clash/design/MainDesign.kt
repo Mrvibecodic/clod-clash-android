@@ -27,6 +27,7 @@ import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.model.RoutingDataMerge
 import com.github.kr328.clash.design.model.groupIndexOf
+import com.github.kr328.clash.design.model.promoFingerprint
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import java.util.UUID
@@ -61,6 +62,7 @@ class MainDesign(
         data class ReloadGroup(val index: Int) : Request
         data class SelectProxy(val index: Int, val name: String) : Request
         data class ToggleFavorite(val name: String) : Request
+        data class DismissPromo(val profile: UUID, val fingerprint: String) : Request
         data object UrlTest : Request
         data class PatchMode(val mode: TunnelState.Mode) : Request
 
@@ -90,6 +92,8 @@ class MainDesign(
     private var session by mutableStateOf(SessionStats())
 
     private val readSession: () -> SessionStats = { session }
+
+    private val dismissedPromos = mutableMapOf<UUID, String>()
 
     override val root: View = composeRoot(noticeInset = 80.dp) {
         MainScreen(state = state, onAction = ::onAction, session = readSession)
@@ -134,6 +138,15 @@ class MainDesign(
             is MainAction.UpdateRoutingDataProvider -> request(Request.UpdateRoutingDataProvider(action.key))
             MainAction.TestDelays -> request(Request.UrlTest)
             is MainAction.ToggleFavorite -> request(Request.ToggleFavorite(action.name))
+            is MainAction.DismissPromo -> {
+                val fingerprint = promoFingerprint(action.promo)
+
+                dismissedPromos[action.profile.uuid] = fingerprint
+
+                state = state.copy(dismissedPromo = fingerprint)
+
+                request(Request.DismissPromo(action.profile.uuid, fingerprint))
+            }
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
@@ -362,6 +375,12 @@ class MainDesign(
     suspend fun setFavorites(favorites: Set<String>) {
         withContext(Dispatchers.Main) {
             state = state.copy(servers = state.servers.copy(favorites = favorites))
+        }
+    }
+
+    suspend fun setDismissedPromo(profile: UUID?, stored: String) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(dismissedPromo = profile?.let { dismissedPromos[it] } ?: stored)
         }
     }
 
