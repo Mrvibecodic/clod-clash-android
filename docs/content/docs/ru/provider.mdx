@@ -1,0 +1,74 @@
+---
+title: "Для провайдеров"
+description: "Что настроить в панели Remnawave, чтобы подписка открывалась в Clod Clash для Android"
+---
+
+Страница для тех, кто держит панель Remnawave. Пользователю здесь делать
+ничего не нужно.
+
+## Правило ответа для клиента
+
+Приложение представляется панели как `ClodClash/<версия> (Android)`. Стандартные
+правила Remnawave про него не знают: без своего правила панель отдаст ответ по
+умолчанию, а не конфиг mihomo, и подписка не добавится и не обновится —
+приложение покажет ошибку.
+
+В **Subscription response rules** добавьте правило:
+
+| Поле | Значение |
+| --- | --- |
+| Регулярное выражение | `^clodclash` |
+| Формат ответа | **MIHOMO** |
+
+Сопоставление регистронезависимое. Регулярка «с начала строки» — так посторонний
+клиент со словом `clodclash` в середине User-Agent не получит ваш шаблон
+случайно. Это то же правило, что и для десктопной версии: одно правило обслуживает
+обе платформы.
+
+## Описания серверов
+
+У каждого хоста в панели есть поле **Server description**. Приложение показывает
+его подписью под именем сервера вместо типа протокола. Панель отдаёт это поле
+только «расширенным клиентам», поэтому в то же правило, где выбран формат MIHOMO,
+добавьте `^ClodClash/` в `responseModifications.additionalExtendedClientsRegex` —
+именно по префиксу, а не точной строкой, иначе правило отвалится при следующем
+обновлении приложения.
+
+```json
+{
+  "name": "Mihomo Clients",
+  "description": "Response with generated YAML config (Mihomo Template)",
+  "enabled": true,
+  "operator": "AND",
+  "conditions": [
+    {
+      "headerName": "user-agent",
+      "operator": "REGEX",
+      "value": "^(?:FlClash|FlClashX|Flowvy|[Cc]lash-[Vv]erge|[Kk]oala-[Cc]lash|[Cc]lash-?[Mm]eta|[Mm]urge|[Cc]lashX [Mm]eta|[Mm]ihomo|[Cc]lash-nyanpasu|clash.meta|prizrak-box|[Cc]lod[Cc]lash)",
+      "caseSensitive": false
+    }
+  ],
+  "responseType": "MIHOMO",
+  "responseModifications": {
+    "additionalExtendedClientsRegex": [
+      "^ClodClash/"
+    ]
+  }
+}
+```
+
+<Callout title="Как проверить">
+Запросите ссылку подписки с заголовком `User-Agent: ClodClash/0.0.1 (Android)`:
+в ответе должен прийти YAML mihomo, а у узлов — поле `serverDescription` рядом
+с `name` и `server`.
+</Callout>
+
+## Шаблон и заголовки
+
+Как устроен шаблон MIHOMO и какие его ключи клиент перезаписывает, — в
+[руководстве по настройке панели](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
+Название тарифа, логотип, объявление, ссылки на кабинет и поддержку, замок режима
+и границы цвета пинга панель передаёт заголовками ответа — полный справочник в
+[docs/HEADERS.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS.md),
+а чем Android отличается от десктопа — в
+[README репозитория](https://github.com/Mrvibecodic/clod-clash-android#заголовки-подписки).

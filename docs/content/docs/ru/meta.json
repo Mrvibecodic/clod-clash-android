@@ -1,4 +1,4 @@
 {
   "title": "Документация",
-  "pages": ["index", "install", "subscription", "connect", "modes", "settings", "faq", "help"]
+  "pages": ["index", "install", "subscription", "connect", "modes", "settings", "faq", "provider", "help"]
 }

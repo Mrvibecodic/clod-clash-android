@@ -68,6 +68,49 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 Те же благодарности — в [README десктопной версии](https://github.com/Mrvibecodic/clod-clash#благодарности):
 клиенты общие, и подсмотренное работает на обеих платформах.
 
+## Настройка панели
+
+Приложение представляется панели как `ClodClash/<версия> (Android)`. Стандартные
+правила Remnawave про него не знают: без своего правила панель отдаст ответ по
+умолчанию, а не конфиг mihomo, и подписка не добавится.
+
+В **Subscription response rules** добавьте правило: регулярное выражение
+`^clodclash` (регистр не важен), формат ответа **MIHOMO** — то же правило, что
+для десктопа, одно на обе платформы. Чтобы до клиента доходили описания серверов
+(`serverDescription`), в том же правиле добавьте `^ClodClash/` в
+`responseModifications.additionalExtendedClientsRegex` — префиксом, а не точной
+строкой, иначе правило отвалится при следующем обновлении:
+
+```json
+{
+  "name": "Mihomo Clients",
+  "description": "Response with generated YAML config (Mihomo Template)",
+  "enabled": true,
+  "operator": "AND",
+  "conditions": [
+    {
+      "headerName": "user-agent",
+      "operator": "REGEX",
+      "value": "^(?:FlClash|FlClashX|Flowvy|[Cc]lash-[Vv]erge|[Kk]oala-[Cc]lash|[Cc]lash-?[Mm]eta|[Mm]urge|[Cc]lashX [Mm]eta|[Mm]ihomo|[Cc]lash-nyanpasu|clash.meta|prizrak-box|[Cc]lod[Cc]lash)",
+      "caseSensitive": false
+    }
+  ],
+  "responseType": "MIHOMO",
+  "responseModifications": {
+    "additionalExtendedClientsRegex": [
+      "^ClodClash/"
+    ]
+  }
+}
+```
+
+Проверка: запросите ссылку подписки с `User-Agent: ClodClash/0.0.1 (Android)` —
+придёт YAML mihomo, у узлов будет поле `serverDescription`. Шаблон MIHOMO и
+ключи, которые клиент перезаписывает, — в
+[docs/REMNAWAVE.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md)
+десктопного репозитория; то же для провайдеров на сайте — страница
+[«Для провайдеров»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider).
+
 ## Заголовки подписки
 
 Полный справочник — [docs/HEADERS.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS.md)

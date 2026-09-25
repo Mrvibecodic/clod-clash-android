@@ -1,0 +1,73 @@
+---
+title: "For providers"
+description: "What to set up in the Remnawave panel so subscriptions open in Clod Clash for Android"
+---
+
+This page is for those who run a Remnawave panel. Users don't need to do
+anything here.
+
+## Response rule for the client
+
+The app introduces itself to the panel as `ClodClash/<version> (Android)`. The
+stock Remnawave rules don't know it: without a rule of your own the panel returns
+its default response instead of a mihomo config, and the subscription won't be
+added or updated — the app shows an error.
+
+In **Subscription response rules** add a rule:
+
+| Field | Value |
+| --- | --- |
+| Regular expression | `^clodclash` |
+| Response format | **MIHOMO** |
+
+Matching is case-insensitive. The expression is anchored to the start of the
+string, so a stranger client with `clodclash` in the middle of its User-Agent
+won't get your template by accident. It is the same rule as for the desktop
+version: one rule serves both platforms.
+
+## Server descriptions
+
+Every host in the panel has a **Server description** field. The app shows it under
+the server name instead of the protocol type. The panel sends this field only to
+"extended clients", so in the same rule where MIHOMO is selected add `^ClodClash/`
+to `responseModifications.additionalExtendedClientsRegex` — as a prefix, not an
+exact string, or the rule breaks with the next app update.
+
+```json
+{
+  "name": "Mihomo Clients",
+  "description": "Response with generated YAML config (Mihomo Template)",
+  "enabled": true,
+  "operator": "AND",
+  "conditions": [
+    {
+      "headerName": "user-agent",
+      "operator": "REGEX",
+      "value": "^(?:FlClash|FlClashX|Flowvy|[Cc]lash-[Vv]erge|[Kk]oala-[Cc]lash|[Cc]lash-?[Mm]eta|[Mm]urge|[Cc]lashX [Mm]eta|[Mm]ihomo|[Cc]lash-nyanpasu|clash.meta|prizrak-box|[Cc]lod[Cc]lash)",
+      "caseSensitive": false
+    }
+  ],
+  "responseType": "MIHOMO",
+  "responseModifications": {
+    "additionalExtendedClientsRegex": [
+      "^ClodClash/"
+    ]
+  }
+}
+```
+
+<Callout title="How to check">
+Request the subscription link with the header `User-Agent: ClodClash/0.0.1 (Android)`:
+the answer must be mihomo YAML, and the nodes must carry a `serverDescription` field
+next to `name` and `server`.
+</Callout>
+
+## Template and headers
+
+How the MIHOMO template is built and which of its keys the client overwrites is
+covered in the [panel setup guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
+Plan name, logo, announcement, links to the account page and support, the mode lock
+and the ping colour bounds come from the panel as response headers — the full
+reference is [docs/HEADERS_en.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS_en.md),
+and how Android differs from the desktop is in the
+[repository README](https://github.com/Mrvibecodic/clod-clash-android#заголовки-подписки).
