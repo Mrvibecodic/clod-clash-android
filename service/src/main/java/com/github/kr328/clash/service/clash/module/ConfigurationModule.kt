@@ -6,7 +6,6 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
-import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.ServiceLog
@@ -32,6 +31,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 import java.util.*
 
 class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(service) {
@@ -107,15 +107,27 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 ProfileProcessor.repair(service)
 
                 val profileDir = service.importedDir.resolve(active.uuid.toString())
-                val session = sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid))
-                val inputs = runCatching {
-                    val locked = ProfileProcessor.queryMode(service, active.uuid, session).source ==
-                        ProfileMode.Source.Locked
+                val inputs = try {
+                    ProfileInputs.fingerprint(profileDir)
+                } catch (e: IOException) {
+                    null
+                }
 
-                    "${ProfileInputs.fingerprint(profileDir)}|locked=$locked"
-                }.getOrNull()
+                val unchanged = changed != null && changed == loaded && current == loaded &&
+                    inputs != null && inputs == loadedInputs
 
-                if (changed != null && changed == loaded && current == loaded && inputs != null && inputs == loadedInputs) {
+                // Выбор режима читается под coreLoad, чтобы живое переключение из
+                // ClashManager не легло между чтением и применением. Режим не входит в
+                // отпечаток: у неизменённого профиля его применяет switchMode.
+                val switched = unchanged && coreLoad.withLock {
+                    val session = sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid))
+
+                    Clash.patchOverride(Clash.OverrideSlot.Session, session)
+
+                    ProfileProcessor.switchMode(service, active.uuid, session)
+                }
+
+                if (switched) {
                     ServiceLog.mark("config: profile unchanged, core load skipped")
 
                     StatusProvider.currentProfile =
@@ -133,6 +145,8 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 if (first) stage(Intents.STAGE_LOADING)
 
                 coreLoad.withLock {
+                    val session = sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid))
+
                     Clash.patchOverride(Clash.OverrideSlot.Session, session)
 
                     // Окно мерит только загрузку ядра: один Clash.load(...).await().

@@ -128,7 +128,11 @@ func Load(path string) error {
 
 	logDns(rawCfg)
 
-	prefetchProviders(rawCfg)
+	// Докачка до паузы бережёт живой трафик; пока ядро ничего не держит,
+	// она лишь отодвигает подъём туннеля — провайдеры тогда берёт сам hub.
+	if loaded.Load() {
+		prefetchProviders(rawCfg)
+	}
 
 	parseMutex.Lock()
 	defer unlockParse()

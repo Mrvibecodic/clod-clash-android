@@ -178,4 +178,28 @@ class UpdateFailuresTest {
             UpdateFailures.classify("server answered with status 502 after connection reset"),
         )
     }
+
+    @Test
+    fun `a rejected config keeps its detail without the mark`() {
+        assertEquals(
+            "yaml: line 3: mapping values are not allowed",
+            UpdateFailures.detail("clod-config-rejected: yaml: line 3: mapping values are not allowed"),
+        )
+    }
+
+    @Test
+    fun `a certificate failure keeps its detail`() {
+        assertEquals(
+            "x509: certificate signed by unknown authority",
+            UpdateFailures.detail("x509: certificate signed by unknown authority"),
+        )
+    }
+
+    @Test
+    fun `other explained failures carry no detail`() {
+        assertNull(UpdateFailures.detail("server answered with status 404"))
+        assertNull(UpdateFailures.detail("Get \"https://p/s\": dial tcp: i/o timeout"))
+        assertNull(UpdateFailures.detail("something nobody has seen before"))
+        assertNull(UpdateFailures.detail("clod-config-rejected: "))
+    }
 }

@@ -28,6 +28,7 @@ import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.service.R as ServiceR
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
@@ -195,7 +196,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
             design?.showToast(
                 message = human ?: getString(ServiceR.string.update_failure),
                 duration = ToastDuration.Long,
-                detail = Redact.text(reason),
+                detail = UpdateFailures.detail(reason) ?: Redact.text(reason),
                 kind = NoticeKind.Error,
             )
         }

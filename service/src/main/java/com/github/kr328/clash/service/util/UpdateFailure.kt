@@ -1,6 +1,7 @@
 package com.github.kr328.clash.service.util
 
 import android.content.Context
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.service.R
 
 object UpdateFailures {
@@ -56,6 +57,14 @@ object UpdateFailures {
         }
     }
 
+    // Причины, у которых общая фраза без подробности бесполезна: строка YAML или
+    // сертификата нужна человеку, чтобы понять, что именно не так.
+    fun detail(raw: String): String? {
+        if (classify(raw)?.cause !in DETAILED) return null
+
+        return Redact.text(raw.replace(CONFIG_REJECTED_MARK, "").trim()).takeIf { it.isNotEmpty() }
+    }
+
     private fun transportOf(text: String): Reason? = when {
         TIMEOUT.any(text::contains) -> Reason(Cause.Timeout)
         TLS.any(text::contains) -> Reason(Cause.Tls)
@@ -89,6 +98,10 @@ object UpdateFailures {
     private const val STATUS_PREFIX = "server answered with status "
 
     private const val CONFIG_REJECTED = "clod-config-rejected"
+
+    private const val CONFIG_REJECTED_MARK = "$CONFIG_REJECTED: "
+
+    private val DETAILED = setOf(Cause.Rejected, Cause.Tls)
 
     private val TIMEOUT = listOf(
         "time budget for the update is exhausted",

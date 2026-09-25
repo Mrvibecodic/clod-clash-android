@@ -61,10 +61,6 @@ object ProfileImports {
         val active: Boolean,
     )
 
-    private const val CONFIG_REJECTED_MARK = "clod-config-rejected: "
-
-    private val DETAILED_CAUSES = setOf(UpdateFailures.Cause.Rejected, UpdateFailures.Cause.Tls)
-
     private val state_ = MutableStateFlow<State>(State.Idle)
     private val batch_ = MutableStateFlow<BatchState>(BatchState.Idle)
 
@@ -224,16 +220,11 @@ object ProfileImports {
     private fun Context.failed(token: Long, e: Exception): State.Failed {
         val raw = e.message.orEmpty()
         val human = humanizeUpdateFailure(raw) ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
-        val detailed = UpdateFailures.classify(raw)?.cause in DETAILED_CAUSES
 
         return State.Failed(
             token,
             human ?: getString(R.string.clod_sub_fetch_failed),
-            if (human == null || detailed) {
-                Redact.text(raw.replace(CONFIG_REJECTED_MARK, "").ifBlank { e.javaClass.name })
-            } else {
-                null
-            },
+            if (human == null) Redact.text(raw.ifBlank { e.javaClass.name }) else UpdateFailures.detail(raw),
         )
     }
 

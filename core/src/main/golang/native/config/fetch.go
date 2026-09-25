@@ -62,6 +62,8 @@ const (
 	prefetchBudget    = 20 * time.Second
 	providerParallel  = 4
 	configRejected    = "clod-config-rejected"
+	providerPartsDir  = "provider-parts"
+	stalePartAge      = 10 * time.Minute
 )
 
 func subscriptionHeaders(device bool) http.Header {
@@ -682,7 +684,7 @@ func fetchProviders(rawCfg *config.RawConfig, budget *budgets.Budget, reportStat
 func fetchProvider(job providerJob, budget *budgets.Budget) error {
 	_ = os.MkdirAll(P.Dir(job.path), 0700)
 
-	parts := constant.Path.Resolve("provider-parts")
+	parts := constant.Path.Resolve(providerPartsDir)
 
 	_ = os.MkdirAll(parts, 0700)
 
@@ -727,4 +729,26 @@ func fetchProviderTo(job providerJob, file string, budget *budgets.Budget) error
 
 func prefetchProviders(rawCfg *config.RawConfig) {
 	fetchProviders(rawCfg, budgets.Within(time.Now(), prefetchBudget), func(string) {})
+}
+
+// Недокачанные .part остаются после смерти процесса посреди загрузки. Мост
+// поднимается и в процессе интерфейса, пока фоновый может качать, поэтому
+// убираются только файлы, в которые давно ничего не писали: живая загрузка
+// обновляет .part непрерывно и укладывается в providerTimeout.
+func DropProviderParts() {
+	parts := constant.Path.Resolve(providerPartsDir)
+
+	entries, err := os.ReadDir(parts)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil || time.Since(info.ModTime()) < stalePartAge {
+			continue
+		}
+
+		_ = os.Remove(P.Join(parts, entry.Name()))
+	}
 }

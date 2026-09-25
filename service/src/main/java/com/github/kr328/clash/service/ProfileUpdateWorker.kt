@@ -22,6 +22,7 @@ import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
+import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
@@ -223,7 +224,9 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
                 context.getString(
                     R.string.format_update_failure,
                     name,
-                    context.humanizeUpdateFailure(reason) ?: Redact.text(reason),
+                    context.humanizeUpdateFailure(reason)
+                        ?.let { human -> UpdateFailures.detail(reason)?.let { "$human: $it" } ?: human }
+                        ?: Redact.text(reason),
                 ),
             )
         }

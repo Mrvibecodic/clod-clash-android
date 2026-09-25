@@ -32,6 +32,8 @@ func coreInit(home, versionName, gitVersion C.c_string, sdkVersion C.int) {
 
 	delegate.Init(h, v, g, s)
 
+	config.DropProviderParts()
+
 	tunnel.StartHeartbeat()
 
 	reset()
