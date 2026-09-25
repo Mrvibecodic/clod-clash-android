@@ -8,7 +8,7 @@ import com.github.kr328.clash.service.data.migrations.MIGRATIONS
 import androidx.room.Database as DB
 
 @DB(
-    version = 8,
+    version = 9,
     entities = [Imported::class, Pending::class, Selection::class, ModeChoice::class],
     exportSchema = false,
 )

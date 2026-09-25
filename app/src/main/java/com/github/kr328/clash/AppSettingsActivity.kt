@@ -124,6 +124,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         val secure: Boolean = false,
         val active: Boolean = false,
         val intervalManual: Boolean? = null,
+        val nameManual: Boolean = false,
     )
 
     @Serializable
@@ -152,6 +153,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                     secure = it.secure,
                     active = it.active,
                     intervalManual = it.intervalManual,
+                    nameManual = it.nameManual,
                 )
             },
         )
@@ -230,6 +232,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
             ProfileImports.Item(
                 name = item.name,
+                nameManual = item.nameManual,
                 source = source,
                 interval = if (item.interval > 0) {
                     maxOf(item.interval, TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES))

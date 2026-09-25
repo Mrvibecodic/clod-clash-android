@@ -180,7 +180,7 @@ data class SubscriptionItem(
     val logoPath: String? = null,
 ) {
     val title: String
-        get() = profileDisplayName(panel, profile.name)
+        get() = profileDisplayName(panel, profile.name, profile.nameManual)
 
     val updatable: Boolean
         get() = profile.imported && profile.type != Profile.Type.File

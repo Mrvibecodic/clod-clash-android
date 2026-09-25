@@ -30,13 +30,11 @@
 
     <string name="profile">Subscription</string>
     <string name="name">Name</string>
-    <string name="profile_name">Subscription name</string>
     <string name="auto_update">Auto update</string>
     <string name="auto_update_minutes">Auto update (minutes)</string>
 
     <string name="accept_http_content">The address has to start with https://</string>
     <string name="at_least_15_minutes">At least 15 minutes or empty</string>
-    <string name="should_not_be_blank">Should not be blank</string>
     <string name="detail">Detail</string>
     <string name="update">Update</string>
     <string name="edit">Edit</string>
@@ -361,6 +359,7 @@
     <string name="clod_help_notice">Clod Clash is free software. Support for the subscription itself comes from whoever issued you the link — not from us.</string>
     <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
     <string name="clod_interval_by_panel">Set by the subscription panel; changes with the next update</string>
+    <string name="clod_name_empty_shows">Empty — “%1$s” is shown</string>
     <string name="clod_interval_from_panel">Use the panel value</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_properties_tip_source">The address of this subscription is set by the source it came from and cannot be changed here. The name can be changed at any time.</string>

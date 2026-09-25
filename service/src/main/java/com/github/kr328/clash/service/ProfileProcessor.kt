@@ -61,7 +61,8 @@ object ProfileProcessor {
             source == other.source &&
             interval == other.interval &&
             secure == other.secure &&
-            intervalManual == other.intervalManual
+            intervalManual == other.intervalManual &&
+            nameManual == other.nameManual
 
     class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
 
@@ -140,6 +141,7 @@ object ProfileProcessor {
                         secure = snapshot.secure,
                         intervalManual = manual,
                         quota = subscriptionInfo?.subUpload != null,
+                        nameManual = snapshot.nameManual,
                     )
                     if (old != null) {
                         ImportedDao().update(new)

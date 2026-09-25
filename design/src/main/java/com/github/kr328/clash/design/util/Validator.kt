@@ -8,10 +8,6 @@ val ValidatorFileName: Validator = {
     PatternFileName.matches(it) && it.isNotBlank()
 }
 
-val ValidatorNotBlank: Validator = {
-    it.isNotBlank()
-}
-
 val ValidatorHttpUrl: Validator = {
     it.startsWith("https://", ignoreCase = true)
 }

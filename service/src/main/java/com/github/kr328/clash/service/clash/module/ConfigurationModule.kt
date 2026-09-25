@@ -172,7 +172,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                     lockUntil = lockDeadline(active.uuid)
 
                     StatusProvider.currentProfile =
-                        service.displayProfileName(active.uuid, active.name)
+                        service.displayProfileName(active.uuid, active.name, active.nameManual)
 
                     StatusProvider.currentProfileUuid = active.uuid.toString()
 
@@ -234,7 +234,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 }
 
                 StatusProvider.currentProfile =
-                    service.displayProfileName(active.uuid, active.name)
+                    service.displayProfileName(active.uuid, active.name, active.nameManual)
 
                 StatusProvider.currentProfileUuid = active.uuid.toString()
 
@@ -273,7 +273,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 Log.w("Profile ${failed.name} failed to load, keeping $retainedName: $message")
 
-                val failedName = service.displayProfileName(failed.uuid, failed.name)
+                val failedName = service.displayProfileName(failed.uuid, failed.name, failed.nameManual)
 
                 service.sendProfileLoadFailed(
                     current,

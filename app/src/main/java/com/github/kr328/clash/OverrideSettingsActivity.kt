@@ -44,7 +44,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             ?.mode
 
         val modeShadow = if (active != null && choice != null) {
-            ModeShadow(profileDisplayName(panel, active.name), choice)
+            ModeShadow(profileDisplayName(panel, active.name, active.nameManual), choice)
         } else {
             null
         }

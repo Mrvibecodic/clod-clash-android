@@ -35,7 +35,6 @@ import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
-import com.github.kr328.clash.design.util.ValidatorNotBlank
 import com.github.kr328.clash.service.model.Profile
 
 @Immutable
@@ -47,6 +46,7 @@ data class FetchProgress(
 @Immutable
 data class PropertiesState(
     val name: String = "",
+    val nameShown: String = "",
     val url: String = "",
     val intervalMinutes: String = "",
     val intervalManual: Boolean = false,
@@ -66,6 +66,15 @@ fun isValidSource(type: Profile.Type, source: String): Boolean = when (type) {
     Profile.Type.Url -> ValidatorHttpUrl(source)
     Profile.Type.External -> source.isNotBlank()
     Profile.Type.File -> true
+}
+
+val Profile.nameField: String
+    get() = if (nameManual) name else ""
+
+fun Profile.withNameField(field: String): Profile {
+    val own = field.trim()
+
+    return copy(name = own.ifEmpty { name }, nameManual = own.isNotEmpty())
 }
 
 const val MIN_INTERVAL_MINUTES = 15L
@@ -126,18 +135,15 @@ fun PropertiesScreen(
 
                 Spacer(Modifier.height(16.dp))
 
-                val nameBlank = !ValidatorNotBlank(state.name)
-
                 OutlinedTextField(
                     value = state.name,
                     onValueChange = { onAction(PropertiesAction.NameChanged(it)) },
                     label = { Text(stringResource(R.string.name)) },
-                    placeholder = { Text(stringResource(R.string.profile_name)) },
+                    placeholder = { Text(state.nameShown) },
                     singleLine = true,
                     enabled = !processing,
-                    isError = nameBlank,
-                    supportingText = if (nameBlank) {
-                        { Text(stringResource(R.string.should_not_be_blank)) }
+                    supportingText = if (state.name.isBlank()) {
+                        { Text(stringResource(R.string.clod_name_empty_shows, state.nameShown)) }
                     } else {
                         null
                     },

@@ -25,4 +25,5 @@ data class Imported(
     @ColumnInfo(name = "secure") val secure: Boolean = false,
     @ColumnInfo(name = "intervalManual") val intervalManual: Boolean = false,
     @ColumnInfo(name = "quota") val quota: Boolean = false,
+    @ColumnInfo(name = "nameManual") val nameManual: Boolean = false,
 )

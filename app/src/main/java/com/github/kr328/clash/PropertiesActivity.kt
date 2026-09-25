@@ -12,9 +12,9 @@ import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.ProfileFields
-import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.util.DraftGate
 import com.github.kr328.clash.util.ProfileImports
+import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
@@ -44,8 +44,9 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         val draft = bundle?.let { BundleCompat.getParcelable(it, "draft", Profile::class.java) }
 
         original = bundle?.let { BundleCompat.getParcelable(it, "original", Profile::class.java) }
-            ?: stored.copy(name = displayProfileName(uuid, stored.name))
+            ?: stored
 
+        design.panelName = queryPanelInfo(uuid)?.title
         design.profile = draft ?: original
 
         setContentDesign(design)
@@ -95,7 +96,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                             if (saves) {
                                 withContext(NonCancellable) {
                                     withProfile(retry = false) {
-                                        patch(profile.uuid, profile.name, profile.source, profile.interval, profile.intervalManual)
+                                        patch(profile.uuid, profile.name, profile.nameManual, profile.source, profile.interval, profile.intervalManual)
                                     }
                                 }
                             }

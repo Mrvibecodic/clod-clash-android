@@ -53,7 +53,11 @@ class Picker(private val context: Context) {
         val pending = PendingDao().queryByUUID(path.uuid)
         val imported = ImportedDao().queryByUUID(path.uuid)
 
-        val name = context.displayProfileName(path.uuid, pending?.name ?: imported?.name ?: throw FileNotFoundException("profile not found"))
+        val name = context.displayProfileName(
+            path.uuid,
+            pending?.name ?: imported?.name ?: throw FileNotFoundException("profile not found"),
+            pending?.nameManual ?: imported?.nameManual ?: false,
+        )
         val type = pending?.type ?: imported?.type ?: throw FileNotFoundException("profile not found")
 
         if (path.scope == Path.Scope.Configuration && path.relative != null)
@@ -91,6 +95,7 @@ class Picker(private val context: Context) {
                         imported.expire,
                         secure = imported.secure,
                         intervalManual = imported.intervalManual,
+                        nameManual = imported.nameManual,
                     )
                 }
             }

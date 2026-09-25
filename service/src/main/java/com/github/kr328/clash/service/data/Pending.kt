@@ -25,4 +25,5 @@ data class Pending(
     @ColumnInfo(name = "ageSecretKey") val ageSecretKey: String? = null,
     @ColumnInfo(name = "secure") val secure: Boolean = false,
     @ColumnInfo(name = "intervalManual") val intervalManual: Boolean = false,
+    @ColumnInfo(name = "nameManual") val nameManual: Boolean = false,
 )

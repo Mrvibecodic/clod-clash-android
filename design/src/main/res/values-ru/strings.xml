@@ -29,13 +29,11 @@
 
     <string name="profile">Подписка</string>
     <string name="name">Название</string>
-    <string name="profile_name">Название подписки</string>
     <string name="auto_update">Автообновление</string>
     <string name="auto_update_minutes">Автообновление (минут)</string>
 
     <string name="accept_http_content">Адрес должен начинаться с https://</string>
     <string name="at_least_15_minutes">Не менее 15 минут или пустой</string>
-    <string name="should_not_be_blank">Не должно быть пустым</string>
     <string name="detail">Детали</string>
     <string name="update">Обновить</string>
     <string name="edit">Изменить</string>
@@ -330,6 +328,7 @@
     <string name="hide_from_recents_desc">Не показывать приложение на экране недавних</string>
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
     <string name="clod_interval_by_panel">Задаёт панель подписки; меняется при следующем обновлении</string>
+    <string name="clod_name_empty_shows">Пусто — показывается «%1$s»</string>
     <string name="clod_interval_from_panel">Как в панели</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_properties_tip_source">Адрес этой подписки задан источником, из которого она пришла, и здесь не меняется. Имя можно менять когда угодно.</string>

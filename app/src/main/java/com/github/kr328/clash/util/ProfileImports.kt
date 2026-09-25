@@ -54,6 +54,7 @@ object ProfileImports {
 
     data class Item(
         val name: String,
+        val nameManual: Boolean,
         val source: String,
         val interval: Long,
         val intervalManual: Boolean,
@@ -108,7 +109,7 @@ object ProfileImports {
                     }
                 }
 
-                val title = profileDisplayName(context.queryPanelInfo(uuid), profile.name)
+                val title = profileDisplayName(context.queryPanelInfo(uuid), profile.name, profile.nameManual)
 
                 AppStore(context).apply {
                     addedProfileName = title
@@ -143,8 +144,12 @@ object ProfileImports {
                         create(Profile.Type.Url, item.name, item.source, secure = item.secure)
                     }
 
-                    if (item.intervalManual) {
-                        withProfile(retry = false) { patch(uuid, item.name, item.source, item.interval, true) }
+                    if (item.intervalManual || item.nameManual) {
+                        val interval = if (item.intervalManual) item.interval else 0L
+
+                        withProfile(retry = false) {
+                            patch(uuid, item.name, item.nameManual, item.source, interval, item.intervalManual)
+                        }
                     }
 
                     import(uuid, item.active) { status ->
@@ -182,7 +187,7 @@ object ProfileImports {
 
             try {
                 withProfile(retry = false) {
-                    patch(profile.uuid, profile.name, profile.source, profile.interval, profile.intervalManual)
+                    patch(profile.uuid, profile.name, profile.nameManual, profile.source, profile.interval, profile.intervalManual)
                 }
 
                 withProfile(retry = false) {
@@ -199,7 +204,11 @@ object ProfileImports {
 
                 AppStore(context).apply {
                     if (!profile.imported) {
-                        addedProfileName = profileDisplayName(context.queryPanelInfo(profile.uuid), profile.name)
+                        addedProfileName = profileDisplayName(
+                            context.queryPanelInfo(profile.uuid),
+                            profile.name,
+                            profile.nameManual,
+                        )
                         addedProfilePending = true
                     }
 

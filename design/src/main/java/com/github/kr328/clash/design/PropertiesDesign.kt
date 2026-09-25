@@ -11,8 +11,9 @@ import com.github.kr328.clash.design.compose.screen.PropertiesAction
 import com.github.kr328.clash.design.compose.screen.PropertiesScreen
 import com.github.kr328.clash.design.compose.screen.PropertiesState
 import com.github.kr328.clash.design.compose.screen.isValidSource
+import com.github.kr328.clash.design.compose.screen.nameField
+import com.github.kr328.clash.design.compose.screen.withNameField
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
-import com.github.kr328.clash.design.util.ValidatorNotBlank
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -35,9 +36,10 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         PropertiesScreen(state = state, onAction = ::onAction)
     }
 
+    var panelName: String? = null
+
     var profile: Profile
-        get() = checkNotNull(base) { "profile is not set" }.copy(
-            name = state.name,
+        get() = checkNotNull(base) { "profile is not set" }.withNameField(state.name).copy(
             source = state.url,
             interval = TimeUnit.MINUTES.toMillis(state.intervalMinutes.toLongOrNull() ?: 0),
             intervalManual = state.intervalManual,
@@ -48,7 +50,8 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
             val minutes = TimeUnit.MILLISECONDS.toMinutes(value.interval)
 
             state = state.copy(
-                name = value.name,
+                name = value.nameField,
+                nameShown = panelName?.takeIf { it.isNotBlank() } ?: value.name,
                 url = value.source,
                 intervalMinutes = if (minutes == 0L) "" else minutes.toString(),
                 intervalManual = value.intervalManual,
@@ -61,8 +64,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         get() = state.processing != null
 
     val draftValid: Boolean
-        get() = ValidatorNotBlank(state.name) &&
-            isValidSource(state.type, state.url) &&
+        get() = isValidSource(state.type, state.url) &&
             ValidatorAutoUpdateInterval(state.intervalMinutes)
 
     private fun onAction(action: PropertiesAction) {

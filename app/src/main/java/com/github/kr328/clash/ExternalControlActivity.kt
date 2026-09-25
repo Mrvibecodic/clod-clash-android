@@ -61,18 +61,18 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                             "file" -> Profile.Type.File
                             else -> Profile.Type.Url
                         }
-                        val name = uri.getQueryParameter("name")
+                        val linkName = uri.getQueryParameter("name")
                             ?.trim()
                             ?.takeIf { it.isNotEmpty() }
                             ?.take(MAX_NAME_LENGTH)
-                            ?: getString(R.string.new_profile)
+                        val name = linkName ?: getString(R.string.new_profile)
 
                         val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
                         val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
                         val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
 
                         create(type, name).also {
-                            patch(it, name, url, intervalMs, intervalMs > 0)
+                            patch(it, name, linkName != null, url, intervalMs, intervalMs > 0)
                         }
                     }
 

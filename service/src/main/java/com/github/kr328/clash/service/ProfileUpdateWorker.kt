@@ -68,7 +68,7 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             return Result.failure()
         }
 
-        val name = context.displayProfileName(imported.uuid, imported.name)
+        val name = context.displayProfileName(imported.uuid, imported.name, imported.nameManual)
 
         context.sendProfileUpdateStarted(imported.uuid)
 
@@ -77,7 +77,7 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
                 ProfileProcessor.update(context, imported.uuid)
             }
 
-            completed(imported.uuid, context.displayProfileName(imported.uuid, imported.name), failedProviders)
+            completed(imported.uuid, context.displayProfileName(imported.uuid, imported.name, imported.nameManual), failedProviders)
 
             Result.success()
         } catch (e: CancellationException) {

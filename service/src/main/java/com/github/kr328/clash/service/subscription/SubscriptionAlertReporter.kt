@@ -69,7 +69,7 @@ suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
 
     if (outcome.alerts.isEmpty()) return
 
-    val name = displayProfileName(imported.uuid, imported.name)
+    val name = displayProfileName(imported.uuid, imported.name, imported.nameManual)
 
     createAlertChannel()
 

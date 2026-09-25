@@ -50,11 +50,4 @@ class ValidatorTest {
 
         assertFalse(ValidatorAutoUpdateInterval("часто"))
     }
-
-    @Test
-    fun `непустое значение`() {
-        assertTrue(ValidatorNotBlank("x"))
-        assertFalse(ValidatorNotBlank(""))
-        assertFalse(ValidatorNotBlank("   "))
-    }
 }
