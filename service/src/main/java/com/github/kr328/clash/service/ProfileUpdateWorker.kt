@@ -42,24 +42,32 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
     override suspend fun doWork(): Result {
         val uuid = inputData.getString(KEY_UUID)?.let(UUID::fromString) ?: return Result.failure()
-        val periodic = inputData.getBoolean(KEY_PERIODIC, false)
+        // Задачи, поставленные прежней сборкой, лежат в базе WorkManager со старым
+        // входом `periodic` и переживают обновление приложения (scheduleAll их
+        // оставляет — KEEP); без этой ветки они падали бы молча до самого
+        // пересохранения подписки.
+        val kind = inputData.getString(KEY_KIND)?.let { name -> Kind.entries.firstOrNull { it.name == name } }
+            ?: if (inputData.getBoolean(LEGACY_KEY_PERIODIC, false)) Kind.Periodic else Kind.Manual
 
         if (!updating.add(uuid)) {
             Log.i("Update of $uuid already running")
 
-            return Result.success()
+            // Загрузка после истечения срока не считает чужую бегущую своей: та
+            // могла начаться до срока или провалиться — цель остаётся, повтор
+            // с бэкоффом. Остальные виды, как и раньше, довольствуются чужой.
+            return if (kind == Kind.Expiry) Result.retry() else Result.success()
         }
 
         try {
             createChannels()
 
-            return run(uuid, periodic)
+            return run(uuid, kind)
         } finally {
             updating.remove(uuid)
         }
     }
 
-    private suspend fun run(uuid: UUID, periodic: Boolean): Result {
+    private suspend fun run(uuid: UUID, kind: Kind): Result {
         val imported = ImportedDao().queryByUUID(uuid)
 
         if (imported == null) {
@@ -83,12 +91,20 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            failed(imported.uuid, name, e.message ?: "Unknown")
+            // Повторы после истечения срока идут без сдачи, и шуметь о каждом —
+            // значит слать «не удалось обновить» вечно раз в 5 ч; уведомление
+            // только о первой попытке серии, повторы — в журнал и в эфир.
+            failed(imported.uuid, name, e.message ?: "Unknown", notify = kind != Kind.Expiry || runAttemptCount == 0)
 
-            if (periodic && UpdateSchedule.retryWithinPeriod(imported.interval, runAttemptCount + 1)) {
-                Result.retry()
-            } else {
-                Result.failure()
+            when (kind) {
+                Kind.Periodic ->
+                    if (UpdateSchedule.retryWithinPeriod(imported.interval, runAttemptCount + 1)) Result.retry()
+                    else Result.failure()
+                // Без сдачи: бэкофф WorkManager растёт до своего потолка (5 ч), а
+                // цель стоит, пока загрузка после срока не удастся. Серия одна —
+                // открытие приложения ждущую задачу не сбивает (KEEP).
+                Kind.Expiry -> Result.retry()
+                Kind.Manual -> Result.failure()
             }
         }
 
@@ -101,10 +117,16 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         }
 
         if (result is Result.Success) {
-            val stored = ImportedDao().queryByUUID(uuid) ?: imported
+            // Подписку могли удалить за время загрузки — ставить задачи ей некому.
+            val stored = ImportedDao().queryByUUID(uuid) ?: return result
+            val caller = if (kind == Kind.Expiry) ProfileUpdates.Caller.ExpiryRun else ProfileUpdates.Caller.Change
 
-            if (!periodic || stored.interval != imported.interval) {
-                ProfileUpdates.schedule(context, stored)
+            if (kind != Kind.Periodic || stored.interval != imported.interval) {
+                ProfileUpdates.schedule(context, stored, caller)
+            } else {
+                // Срок мог сдвинуться или только что отработать — цель
+                // загрузки после истечения переоценивается после каждой удачи.
+                ProfileUpdates.scheduleExpiry(context, stored, caller)
             }
         }
 
@@ -212,10 +234,10 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         context.sendProfileUpdateCompleted(uuid, warning)
     }
 
-    private fun failed(uuid: UUID, name: String, reason: String) {
+    private fun failed(uuid: UUID, name: String, reason: String, notify: Boolean) {
         Log.w("Update of $uuid failed: ${Redact.text(reason)}")
 
-        if (ServiceStore(context).notifyProfileErrors) {
+        if (notify && ServiceStore(context).notifyProfileErrors) {
             post(
                 uuid,
                 UpdateOutcome.Kind.Failure,
@@ -257,14 +279,18 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         )
     }
 
+    /** Откуда пришёл запуск: по расписанию, рукой или из-за истечения срока. */
+    enum class Kind { Periodic, Manual, Expiry }
+
     companion object {
         val updating: MutableSet<UUID> = Collections.newSetFromMap(ConcurrentHashMap())
 
-        fun input(imported: Imported, periodic: Boolean): Data =
-            workDataOf(KEY_UUID to imported.uuid.toString(), KEY_PERIODIC to periodic)
+        fun input(imported: Imported, kind: Kind): Data =
+            workDataOf(KEY_UUID to imported.uuid.toString(), KEY_KIND to kind.name)
 
         private const val KEY_UUID = "uuid"
-        private const val KEY_PERIODIC = "periodic"
+        private const val KEY_KIND = "kind"
+        private const val LEGACY_KEY_PERIODIC = "periodic"
 
         private const val LEGACY_SERVICE_CHANNEL = "profile_service_channel"
         private const val STATUS_CHANNEL = "profile_status_channel"

@@ -111,3 +111,64 @@ class UpdateScheduleIntervalOwnerTest {
         assertEquals(0, UpdateSchedule.effectiveInterval(false, null, 0))
     }
 }
+
+class UpdateScheduleExpiryTest {
+    private val now = 1_700_000_000_000L
+    private val grace = UpdateSchedule.EXPIRY_GRACE
+    private val slack = UpdateSchedule.EXPIRY_SLACK
+
+    @Test
+    fun `the expiry fetch is due once after the panel deadline`() {
+        val expire = now + TimeUnit.MINUTES.toMillis(10)
+
+        assertEquals(expire + grace, UpdateSchedule.expiryFetchAt(expire, 0, now - 1))
+        // Загрузка заметно раньше дедлайна — ещё нужна.
+        assertEquals(expire + grace, UpdateSchedule.expiryFetchAt(expire, 0, expire + grace - slack - 1))
+        // Загрузка за считанные секунды до дедлайна (дрожание поправки часов) — уже в срок.
+        assertNull(UpdateSchedule.expiryFetchAt(expire, 0, expire + grace - slack))
+        // Загрузка уже была после дедлайна — второй раз не нужна.
+        assertNull(UpdateSchedule.expiryFetchAt(expire, 0, expire + grace))
+        // Ни разу не загружали.
+        assertEquals(expire + grace, UpdateSchedule.expiryFetchAt(expire, 0, 0))
+    }
+
+    @Test
+    fun `the deadline follows the panel clock`() {
+        val expire = now + TimeUnit.MINUTES.toMillis(10)
+        val minute = TimeUnit.MINUTES.toMillis(1)
+
+        // Панель спешит на минуту — по часам устройства срок наступает раньше.
+        assertEquals(expire - minute + grace, UpdateSchedule.expiryFetchAt(expire, minute, now))
+        assertEquals(expire + minute + grace, UpdateSchedule.expiryFetchAt(expire, -minute, now))
+    }
+
+    @Test
+    fun `a subscription without a deadline is never fetched for it`() {
+        assertNull(UpdateSchedule.expiryFetchAt(0, 0, 0))
+        assertNull(UpdateSchedule.expiryFetchAt(-1, 0, 0))
+    }
+
+    @Test
+    fun `a fetch made by a stale clock is re-judged by the fresh measurement`() {
+        // Поправка состарилась (0), устройство спешит на 5 минут: задача взвелась
+        // на expire + 90 с по часам устройства, загрузка ушла и удалась…
+        val minutes5 = TimeUnit.MINUTES.toMillis(5)
+        val expire = now
+        val fetched = now + grace
+
+        assertEquals(expire + grace, UpdateSchedule.expiryFetchAt(expire, 0, now - TimeUnit.HOURS.toMillis(1)))
+        // …а её ответ принёс свежий замер −5 мин: по нему та же загрузка была до
+        // срока панели, цель стоит и переставлена на expire + 5 мин + 90 с.
+        assertEquals(expire + minutes5 + grace, UpdateSchedule.expiryFetchAt(expire, -minutes5, fetched))
+    }
+
+    @Test
+    fun `seconds and milliseconds name the same deadline`() {
+        val expireSeconds = now / 1000 + 600
+
+        assertEquals(
+            UpdateSchedule.expiryFetchAt(expireSeconds * 1000, 0, now),
+            UpdateSchedule.expiryFetchAt(expireSeconds, 0, now),
+        )
+    }
+}

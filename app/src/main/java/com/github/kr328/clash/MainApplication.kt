@@ -22,6 +22,11 @@ class MainApplication : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setDefaultProcessName("$packageName:background")
+            // На каждую подписку две задачи (периодическая и после истечения
+            // срока); умолчание WorkManager — 20 слотов JobScheduler на всё
+            // приложение, и с десятком подписок периодические ждали бы, пока
+            // долгие задачи истечения освободят место.
+            .setMaxSchedulerLimit(50)
             .build()
 
     override fun attachBaseContext(base: Context?) {
