@@ -17,12 +17,13 @@ import kotlinx.coroutines.withContext
 class MetaFeatureSettingsDesign(
     context: Context,
     private val configuration: ConfigurationOverride,
+    unreadable: String? = null,
 ) : Design<MetaFeatureSettingsDesign.Request>(context) {
     enum class Request {
         ResetOverride, OpenOverride, ImportGeoIp, ImportGeoSite, ImportASN, Back
     }
 
-    private var state by mutableStateOf(MetaFeatureSettingsState(configuration))
+    private var state by mutableStateOf(MetaFeatureSettingsState(configuration, unreadable = unreadable))
 
     override val root: View = composeRoot {
         MetaFeatureSettingsScreen(state = state, onAction = ::onAction)

@@ -140,6 +140,14 @@ class ClashManager(private val context: Context) : IClashManager,
             }
 
             return switched
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Живое переключение не удалось — выбор уже записан, его применит
+            // полная перезагрузка профиля.
+            Log.w("Switch mode live: $e", e)
+
+            return false
         } finally {
             ConfigurationModule.coreLoad.unlock()
         }

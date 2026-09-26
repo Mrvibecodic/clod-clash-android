@@ -10,6 +10,8 @@ import (
 	"cfa/native/common/safego"
 	"cfa/native/config"
 	"cfa/native/tunnel"
+
+	"github.com/metacubex/mihomo/log"
 )
 
 type remoteValidCallback struct {
@@ -79,18 +81,38 @@ func load(completable unsafe.Pointer, path C.c_string) {
 	})
 }
 
+// NULL — настройки не прочитались (и при панике тоже): Kotlin обязан отличить
+// это от заводских, иначе экран запишет пустоту поверх настоящих.
+//
 //export readOverride
 func readOverride(slot C.int) *C.char {
-	return C.CString(config.ReadOverride(config.OverrideSlot(slot)))
+	defer guard("readOverride", func() {})()
+
+	content, err := config.QueryOverride(config.OverrideSlot(slot))
+	if err != nil {
+		log.Warnln("Read override: %s", err.Error())
+
+		return nil
+	}
+
+	return C.CString(content)
 }
 
+// 1 — записано. Ноль (и при панике тоже) — не записано.
+//
 //export writeOverride
-func writeOverride(slot C.int, content C.c_string) {
+func writeOverride(slot C.int, content C.c_string) (result C.int) {
 	defer guard("writeOverride", func() {})()
 
 	c := C.GoString(content)
 
-	config.WriteOverride(config.OverrideSlot(slot), c)
+	if err := config.WriteOverride(config.OverrideSlot(slot), c); err != nil {
+		log.Warnln("Write override: %s", err.Error())
+
+		return 0
+	}
+
+	return 1
 }
 
 //export queryModeOf
@@ -118,11 +140,19 @@ func markProfileUpdated(path C.c_string, interval C.int64_t) {
 	config.MarkUpdated(C.GoString(path), int64(interval))
 }
 
+// 1 — сброшено. Ноль (и при панике тоже) — не сброшено.
+//
 //export clearOverride
-func clearOverride(slot C.int) {
+func clearOverride(slot C.int) (result C.int) {
 	defer guard("clearOverride", func() {})()
 
-	config.ClearOverride(config.OverrideSlot(slot))
+	if err := config.ClearOverride(config.OverrideSlot(slot)); err != nil {
+		log.Warnln("Clear override: %s", err.Error())
+
+		return 0
+	}
+
+	return 1
 }
 
 //export reloadGeoData

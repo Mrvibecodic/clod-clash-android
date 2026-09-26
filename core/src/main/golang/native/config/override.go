@@ -1,10 +1,12 @@
 package config
 
 import (
-	"os"
 	"sync"
 
+	"cfa/native/config/overridefile"
+
 	"github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/log"
 )
 
 type OverrideSlot int
@@ -26,72 +28,56 @@ func overridePersistPath() string {
 	return constant.Path.Resolve("override.json")
 }
 
+// ReadOverride — для сборки конфига: нечитаемые настройки не должны мешать
+// подключению, поэтому здесь они заводские, а причина уходит в журнал.
 func ReadOverride(slot OverrideSlot) string {
+	content, err := QueryOverride(slot)
+	if err != nil {
+		log.Warnln("Read override: %s", err.Error())
+
+		return defaultPersistOverride
+	}
+
+	return content
+}
+
+// QueryOverride — для экрана настроек: ошибку чтения отдаёт наружу.
+func QueryOverride(slot OverrideSlot) (string, error) {
 	switch slot {
 	case OverrideSlotPersist:
-		buf, err := os.ReadFile(overridePersistPath())
-		if err != nil {
-			return defaultPersistOverride
-		}
-
-		return string(buf)
+		return overridefile.Read(overridePersistPath(), defaultPersistOverride)
 	case OverrideSlotSession:
 		sessionLock.RLock()
 		defer sessionLock.RUnlock()
 
-		return sessionOverride
+		return sessionOverride, nil
 	}
 
-	return ""
+	return "", nil
 }
 
-func WriteOverride(slot OverrideSlot, content string) {
+func WriteOverride(slot OverrideSlot, content string) error {
 	switch slot {
 	case OverrideSlotPersist:
-		tmp := overridePersistPath() + ".tmp"
-
-		file, err := os.OpenFile(tmp, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
-		if err != nil {
-			return
-		}
-
-		if _, err := file.Write([]byte(content)); err != nil {
-			_ = file.Close()
-			_ = os.Remove(tmp)
-
-			return
-		}
-
-		if err := file.Sync(); err != nil {
-			_ = file.Close()
-			_ = os.Remove(tmp)
-
-			return
-		}
-
-		if err := file.Close(); err != nil {
-			_ = os.Remove(tmp)
-
-			return
-		}
-
-		if err := os.Rename(tmp, overridePersistPath()); err != nil {
-			_ = os.Remove(tmp)
-		}
+		return overridefile.Write(overridePersistPath(), content)
 	case OverrideSlotSession:
 		sessionLock.Lock()
 		sessionOverride = content
 		sessionLock.Unlock()
 	}
+
+	return nil
 }
 
-func ClearOverride(slot OverrideSlot) {
+func ClearOverride(slot OverrideSlot) error {
 	switch slot {
 	case OverrideSlotPersist:
-		_ = os.Remove(overridePersistPath())
+		return overridefile.Remove(overridePersistPath())
 	case OverrideSlotSession:
 		sessionLock.Lock()
 		sessionOverride = defaultSessionOverride
 		sessionLock.Unlock()
 	}
+
+	return nil
 }

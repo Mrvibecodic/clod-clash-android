@@ -20,6 +20,7 @@ class OverrideSettingsDesign(
     private val configuration: ConfigurationOverride,
     modeLocked: Boolean = false,
     modeShadow: ModeShadow? = null,
+    unreadable: String? = null,
 ) : Design<OverrideSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ResetOverride : Request
@@ -27,7 +28,12 @@ class OverrideSettingsDesign(
     }
 
     private var state by mutableStateOf(
-        OverrideSettingsState(configuration, modeLocked = modeLocked, modeShadow = modeShadow),
+        OverrideSettingsState(
+            configuration,
+            modeLocked = modeLocked,
+            modeShadow = modeShadow,
+            unreadable = unreadable,
+        ),
     )
 
     override val root: View = composeRoot {

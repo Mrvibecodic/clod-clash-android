@@ -8,6 +8,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -250,25 +251,29 @@ object Clash {
         }
     }
 
+    // Нечитаемые настройки — ошибка, а не заводские: пустые экран настроек
+    // записал бы поверх настоящих.
     fun queryOverride(slot: OverrideSlot): ConfigurationOverride {
+        val json = Bridge.nativeReadOverride(slot.ordinal)
+            ?: throw IllegalStateException("override.json could not be read")
+
         return try {
-            CoreJson.decodeFromString(
-                ConfigurationOverride.serializer(),
-                Bridge.nativeReadOverride(slot.ordinal)
-            )
-        } catch (e: Exception) {
-            ConfigurationOverride()
+            CoreJson.decodeFromString(ConfigurationOverride.serializer(), json)
+        } catch (e: SerializationException) {
+            throw IllegalStateException("override.json is not valid: ${e.message}", e)
         }
     }
 
     fun patchOverride(slot: OverrideSlot, configuration: ConfigurationOverride) {
-        Bridge.nativeWriteOverride(
+        val written = Bridge.nativeWriteOverride(
             slot.ordinal,
             CoreJson.encodeToString(
                 ConfigurationOverride.serializer(),
                 configuration
             )
         )
+
+        if (!written) throw IllegalStateException("${slot.name} override could not be written")
     }
 
     fun queryModeOf(path: File, session: ConfigurationOverride): ProfileMode {
@@ -294,7 +299,9 @@ object Clash {
     }
 
     fun clearOverride(slot: OverrideSlot) {
-        Bridge.nativeClearOverride(slot.ordinal)
+        if (!Bridge.nativeClearOverride(slot.ordinal)) {
+            throw IllegalStateException("${slot.name} override could not be removed")
+        }
     }
 
     fun reloadGeoData() {

@@ -51,9 +51,9 @@ object Bridge {
         name: String
     )
 
-    external fun nativeReadOverride(slot: Int): String
-    external fun nativeWriteOverride(slot: Int, content: String)
-    external fun nativeClearOverride(slot: Int)
+    external fun nativeReadOverride(slot: Int): String?
+    external fun nativeWriteOverride(slot: Int, content: String): Boolean
+    external fun nativeClearOverride(slot: Int): Boolean
     external fun nativeQueryModeOf(path: String, session: String): String?
     external fun nativeSwitchMode(path: String, session: String): Boolean
     external fun nativeMarkProfileUpdated(path: String, interval: Long)

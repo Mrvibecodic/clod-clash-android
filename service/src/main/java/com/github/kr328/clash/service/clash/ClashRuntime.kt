@@ -31,7 +31,7 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
 
                     try {
                         Clash.reset()
-                        Clash.clearOverride(Clash.OverrideSlot.Session)
+                        clearSessionOverride()
 
                         val scope = object : ClashRuntimeScope {
                             override fun <E, T : Module<E>> install(module: T): T {
@@ -51,7 +51,7 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                             val startedAt = SystemClock.elapsedRealtime()
 
                             Clash.reset()
-                            Clash.clearOverride(Clash.OverrideSlot.Session)
+                            clearSessionOverride()
 
                             Log.i("ClashRuntime: destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms")
 
@@ -65,5 +65,15 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
         override fun requestGc() {
             Clash.forceGc()
         }
+    }
+}
+
+// Сброс сессионных настроек не проваливается, кроме как паникой в мосте; старт и
+// остановка рантайма из-за неё срываться не должны.
+private fun clearSessionOverride() {
+    try {
+        Clash.clearOverride(Clash.OverrideSlot.Session)
+    } catch (e: Exception) {
+        Log.w("Clear session override: $e", e)
     }
 }

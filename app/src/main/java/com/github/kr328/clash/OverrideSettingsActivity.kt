@@ -1,7 +1,7 @@
 package com.github.kr328.clash
 
 import android.os.Bundle
-import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.design.OverrideSettingsDesign
 import com.github.kr328.clash.design.compose.screen.ModeShadow
@@ -26,8 +26,10 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             valuePresent = pending != null,
         )
 
+        val stored = if (pending == null) readStoredOverride() else null
+
         val draft = pending
-            ?: PendingOverride.Draft(withClash { queryOverride(Clash.OverrideSlot.Persist) })
+            ?: (stored as? StoredOverride.Readable)?.let { PendingOverride.Draft(it.value) }
 
         this.draft = draft
         val service = ServiceStore(this)
@@ -49,18 +51,27 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             null
         }
 
-        defer {
-            draft.save()
-
-            PendingOverride.clear(PendingOverride.SLOT_OVERRIDE)
-        }
-
         val design = OverrideSettingsDesign(
             this,
-            draft.value,
+            draft?.value ?: ConfigurationOverride(),
             modeLocked = modeLocked,
             modeShadow = modeShadow,
+            unreadable = (stored as? StoredOverride.Unreadable)?.reason,
         )
+
+        if (draft != null) {
+            val discard = {
+                defer { PendingOverride.clear(PendingOverride.SLOT_OVERRIDE) }
+
+                finish()
+            }
+
+            defer {
+                if (!draft.saveReporting(design, discard)) throw FinishCancelled()
+
+                PendingOverride.clear(PendingOverride.SLOT_OVERRIDE)
+            }
+        }
 
         setContentDesign(design)
 
@@ -80,8 +91,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
                     when (it) {
                         OverrideSettingsDesign.Request.Back -> finish()
                         OverrideSettingsDesign.Request.ResetOverride -> {
-                            if (design.requestResetConfirm()) {
-                                defer { clearPersistedOverride() }
+                            if (design.requestResetConfirm() && resetStoredOverride(design)) {
+                                defer { }
 
                                 finish()
                             }

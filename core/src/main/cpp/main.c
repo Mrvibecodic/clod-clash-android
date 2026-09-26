@@ -347,7 +347,7 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeReadOverride(JNIEnv *env, j
     return new_string(response);
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeWriteOverride(JNIEnv *env, jobject thiz,
                                                                    jint slot,
                                                                    jstring content) {
@@ -355,7 +355,7 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeWriteOverride(JNIEnv *env, 
 
     scoped_string _content = get_string(content);
 
-    writeOverride(slot, _content);
+    return (jboolean) (writeOverride(slot, _content) != 0);
 }
 
 JNIEXPORT jstring JNICALL
@@ -398,12 +398,12 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeMarkProfileUpdated(JNIEnv *
     markProfileUpdated(_path, (int64_t) interval);
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeClearOverride(JNIEnv *env, jobject thiz,
                                                                    jint slot) {
     TRACE_METHOD();
 
-    clearOverride(slot);
+    return (jboolean) (clearOverride(slot) != 0);
 }
 
 JNIEXPORT void JNICALL

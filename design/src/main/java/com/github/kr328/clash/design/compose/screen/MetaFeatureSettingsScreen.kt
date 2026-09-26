@@ -22,6 +22,7 @@ import com.github.kr328.clash.design.compose.component.LinesRow
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.ResetConfirmDialog
 import com.github.kr328.clash.design.compose.component.SelectRow
+import com.github.kr328.clash.design.compose.component.UnreadableSettingsCard
 
 sealed interface MetaFeatureSettingsAction {
     data object Back : MetaFeatureSettingsAction
@@ -43,6 +44,7 @@ data class MetaFeatureSettingsState(
     val configuration: ConfigurationOverride,
     val revision: Int = 0,
     val confirmingReset: Boolean = false,
+    val unreadable: String? = null,
 )
 
 @Composable
@@ -90,6 +92,23 @@ fun MetaFeatureSettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            val unreadable = state.unreadable
+
+            // Файлы гео-баз к настройкам не относятся: их импорт остаётся и тогда.
+            if (unreadable != null) {
+                UnreadableSettingsCard(
+                    detail = unreadable,
+                    onReset = { onAction(MetaFeatureSettingsAction.Reset) },
+                    modifier = Modifier.padding(16.dp),
+                )
+
+                GeoFileRows(onAction)
+
+                Spacer(Modifier.height(24.dp))
+
+                return@Column
+            }
+
             SectionHeader(stringResource(R.string.clod_section_configuration))
 
             ActionRow(
@@ -249,26 +268,7 @@ fun MetaFeatureSettingsScreen(
                 enabled = sniffing,
             )
 
-            SectionHeader(stringResource(R.string.geox_files))
-
-            ActionRow(
-                title = stringResource(R.string.import_geoip_file),
-                icon = painterResource(R.drawable.ic_outline_folder),
-                subtitle = stringResource(R.string.press_to_import),
-                onClick = { onAction(MetaFeatureSettingsAction.ImportGeoIp) },
-            )
-            ActionRow(
-                title = stringResource(R.string.import_geosite_file),
-                icon = painterResource(R.drawable.ic_outline_folder),
-                subtitle = stringResource(R.string.press_to_import),
-                onClick = { onAction(MetaFeatureSettingsAction.ImportGeoSite) },
-            )
-            ActionRow(
-                title = stringResource(R.string.import_asn_file),
-                icon = painterResource(R.drawable.ic_outline_folder),
-                subtitle = stringResource(R.string.press_to_import),
-                onClick = { onAction(MetaFeatureSettingsAction.ImportAsn) },
-            )
+            GeoFileRows(onAction)
 
             Spacer(Modifier.height(24.dp))
         }
@@ -280,4 +280,28 @@ fun MetaFeatureSettingsScreen(
             onDismiss = { onAction(MetaFeatureSettingsAction.CancelReset) },
         )
     }
+}
+
+@Composable
+private fun GeoFileRows(onAction: (MetaFeatureSettingsAction) -> Unit) {
+    SectionHeader(stringResource(R.string.geox_files))
+
+    ActionRow(
+        title = stringResource(R.string.import_geoip_file),
+        icon = painterResource(R.drawable.ic_outline_folder),
+        subtitle = stringResource(R.string.press_to_import),
+        onClick = { onAction(MetaFeatureSettingsAction.ImportGeoIp) },
+    )
+    ActionRow(
+        title = stringResource(R.string.import_geosite_file),
+        icon = painterResource(R.drawable.ic_outline_folder),
+        subtitle = stringResource(R.string.press_to_import),
+        onClick = { onAction(MetaFeatureSettingsAction.ImportGeoSite) },
+    )
+    ActionRow(
+        title = stringResource(R.string.import_asn_file),
+        icon = painterResource(R.drawable.ic_outline_folder),
+        subtitle = stringResource(R.string.press_to_import),
+        onClick = { onAction(MetaFeatureSettingsAction.ImportAsn) },
+    )
 }

@@ -1,8 +1,17 @@
 package com.github.kr328.clash
 
+import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
+import com.github.kr328.clash.design.Design
+import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.NoticeKind
+import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.design.util.showExceptionToast
+import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.withClash
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -59,4 +68,63 @@ internal suspend fun clearPersistedOverride() {
     withClash { clearOverride(Clash.OverrideSlot.Persist) }
 
     withContext(Dispatchers.Main) { PendingOverride.clearAll() }
+}
+
+// Нечитаемые настройки — не заводские: экран показывает причину, ничего не
+// пишет и оставляет только сброс.
+internal sealed interface StoredOverride {
+    class Readable(val value: ConfigurationOverride) : StoredOverride
+    class Unreadable(val reason: String) : StoredOverride
+}
+
+internal suspend fun readStoredOverride(): StoredOverride = try {
+    StoredOverride.Readable(withClash { queryOverride(Clash.OverrideSlot.Persist) })
+} catch (e: CancellationException) {
+    throw e
+} catch (e: ServiceUnavailableException) {
+    throw e
+} catch (e: Exception) {
+    Log.w("Read override: $e", e)
+
+    StoredOverride.Unreadable(Redact.text(e.message ?: e.javaClass.name))
+}
+
+// Неудачная запись не закрывает экран молча: правки остаются на нём, а в
+// уведомлении — выход без сохранения, чтобы экран не держал человека, пока
+// запись не проходит.
+internal suspend fun PendingOverride.Draft.saveReporting(
+    design: Design<*>,
+    onDiscard: () -> Unit,
+): Boolean = try {
+    save()
+
+    true
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Log.w("Save override: $e", e)
+
+    design.showToast(
+        R.string.clod_override_save_failed,
+        ToastDuration.Long,
+        actionLabel = R.string.clod_override_discard,
+        onAction = onDiscard,
+        kind = NoticeKind.Error,
+    )
+
+    false
+}
+
+internal suspend fun resetStoredOverride(design: Design<*>): Boolean = try {
+    clearPersistedOverride()
+
+    true
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    Log.w("Reset override: $e", e)
+
+    design.showExceptionToast(e, R.string.clod_override_reset_failed)
+
+    false
 }

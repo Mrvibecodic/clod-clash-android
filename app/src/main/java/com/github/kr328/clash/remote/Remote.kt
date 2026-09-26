@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import com.github.kr328.clash.ApkBrokenActivity
 import com.github.kr328.clash.AppCrashedActivity
+import com.github.kr328.clash.BaseActivity
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
@@ -17,7 +18,7 @@ import kotlinx.coroutines.withContext
 object Remote {
     val broadcasts: Broadcasts = Broadcasts(Global.application)
     val service: Service = Service(Global.application) {
-        ApplicationObserver.createdActivities.forEach { it.finish() }
+        ApplicationObserver.createdActivities.forEach { if (it is BaseActivity<*>) it.finishAnyway() else it.finish() }
 
         val intent = AppCrashedActivity::class.intent
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -57,7 +58,7 @@ object Remote {
         if (store.updatedAt != updatedAt) {
             if (!context.verifyApk()) {
                 return withContext(Dispatchers.Main) {
-                    ApplicationObserver.createdActivities.forEach { it.finish() }
+                    ApplicationObserver.createdActivities.forEach { if (it is BaseActivity<*>) it.finishAnyway() else it.finish() }
 
                     val intent = ApkBrokenActivity::class.intent
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

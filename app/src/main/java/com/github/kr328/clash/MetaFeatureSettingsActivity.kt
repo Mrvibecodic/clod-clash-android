@@ -7,14 +7,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.intent
-import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.model.PendingRestore
 import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.util.clashDir
-import com.github.kr328.clash.util.withClash
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -35,23 +34,34 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             valuePresent = pending != null,
         )
 
+        val stored = if (pending == null) readStoredOverride() else null
+
         val draft = pending
-            ?: PendingOverride.Draft(withClash { queryOverride(Clash.OverrideSlot.Persist) })
+            ?: (stored as? StoredOverride.Readable)?.let { PendingOverride.Draft(it.value) }
 
         this.draft = draft
 
         reload = restored?.getBoolean("reload") ?: false
 
-        defer {
-            draft.save()
-
-            PendingOverride.clear(PendingOverride.SLOT_META)
-        }
-
         val design = MetaFeatureSettingsDesign(
             this,
-            draft.value
+            draft?.value ?: ConfigurationOverride(),
+            unreadable = (stored as? StoredOverride.Unreadable)?.reason,
         )
+
+        val discard = {
+            defer { PendingOverride.clear(PendingOverride.SLOT_META) }
+
+            finish()
+        }
+
+        if (draft != null) {
+            defer {
+                if (!draft.saveReporting(design, discard)) throw FinishCancelled()
+
+                PendingOverride.clear(PendingOverride.SLOT_META)
+            }
+        }
 
         setContentDesign(design)
 
@@ -72,15 +82,15 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     when (it) {
                         MetaFeatureSettingsDesign.Request.Back -> finish()
                         MetaFeatureSettingsDesign.Request.OpenOverride -> {
-                            draft.save()
+                            if (draft == null || draft.saveReporting(design, discard)) {
+                                reload = true
 
-                            reload = true
-
-                            startActivity(OverrideSettingsActivity::class.intent)
+                                startActivity(OverrideSettingsActivity::class.intent)
+                            }
                         }
                         MetaFeatureSettingsDesign.Request.ResetOverride -> {
-                            if (design.requestResetConfirm()) {
-                                defer { clearPersistedOverride() }
+                            if (design.requestResetConfirm() && resetStoredOverride(design)) {
+                                defer { }
                                 finish()
                             }
                         }

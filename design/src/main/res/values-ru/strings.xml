@@ -457,6 +457,11 @@
     <string name="clod_delay_failed">Не удалось проверить серверы</string>
     <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных серверов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
     <string name="clod_override_pending_lost">Несохранённые правки пропали, пока приложение было в фоне</string>
+    <string name="clod_override_unreadable_title">Сохранённые настройки не читаются</string>
+    <string name="clod_override_unreadable_message">Пока они не прочитаны, здесь ничего нельзя изменить и сохранить. Сбросьте их, чтобы настроить заново.</string>
+    <string name="clod_override_save_failed">Настройки не сохранились</string>
+    <string name="clod_override_discard">Выйти без сохранения</string>
+    <string name="clod_override_reset_failed">Настройки не сбросились</string>
     <string name="clod_override_mode_shadowed">Для подписки «%1$s» во вкладке «Ещё» выбран «%2$s» — он главнее</string>
     <string name="clod_language_title">Язык</string>
     <string name="clod_language_system">Как в системе</string>

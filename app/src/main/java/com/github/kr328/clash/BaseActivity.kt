@@ -42,6 +42,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import com.github.kr328.clash.design.R
 
+// defer бросает его, когда уйти с экрана нельзя: закрытие молча потеряло бы
+// сделанное на нём (например, правки не записались).
+class FinishCancelled : Exception()
+
 abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     CoroutineScope by (MainScope() + serviceUnavailableHandler),
     Broadcasts.Observer {
@@ -137,16 +141,36 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         super.onDestroy()
     }
 
+    @Volatile
+    private var closeAnyway = false
+
+    // Приложение закрывает все экраны разом (служба упала, APK повреждён):
+    // отказ defer закрыть экран здесь не действует.
+    fun finishAnyway() {
+        closeAnyway = true
+
+        finish()
+    }
+
     override fun finish() {
         if (deferRunning) return
         deferRunning = true
 
         launch {
+            var close = true
+
             try {
                 defer()
+            } catch (e: FinishCancelled) {
+                if (!closeAnyway) {
+                    close = false
+                    deferRunning = false
+                }
             } finally {
-                withContext(NonCancellable) {
-                    super.finish()
+                if (close) {
+                    withContext(NonCancellable) {
+                        super.finish()
+                    }
                 }
             }
         }

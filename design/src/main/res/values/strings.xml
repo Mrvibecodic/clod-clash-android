@@ -467,6 +467,11 @@
     <string name="clod_delay_failed">Could not test the servers</string>
     <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded servers. Traffic is blocked, not sent directly. Update the subscription</string>
     <string name="clod_override_pending_lost">Unsaved changes were lost while the app was in the background</string>
+    <string name="clod_override_unreadable_title">Saved settings can’t be read</string>
+    <string name="clod_override_unreadable_message">Until they are read, nothing here can be changed or saved. Reset them to set everything up again.</string>
+    <string name="clod_override_save_failed">Settings were not saved</string>
+    <string name="clod_override_discard">Leave without saving</string>
+    <string name="clod_override_reset_failed">Settings were not reset</string>
     <string name="clod_override_mode_shadowed">“%2$s” is chosen for the “%1$s” subscription on the More tab — it takes precedence</string>
     <string name="clod_language_title">Language</string>
     <string name="clod_language_system">System default</string>

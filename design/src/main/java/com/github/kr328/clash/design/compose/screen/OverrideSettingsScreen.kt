@@ -27,6 +27,7 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.ResetConfirmDialog
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.TextRow
+import com.github.kr328.clash.design.compose.component.UnreadableSettingsCard
 
 sealed interface OverrideSettingsAction {
     data object Back : OverrideSettingsAction
@@ -44,6 +45,7 @@ data class OverrideSettingsState(
     val modeLocked: Boolean = false,
     val modeShadow: ModeShadow? = null,
     val confirmingReset: Boolean = false,
+    val unreadable: String? = null,
 )
 
 @Immutable
@@ -94,6 +96,18 @@ fun OverrideSettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            val unreadable = state.unreadable
+
+            if (unreadable != null) {
+                UnreadableSettingsCard(
+                    detail = unreadable,
+                    onReset = { onAction(OverrideSettingsAction.Reset) },
+                    modifier = Modifier.padding(16.dp),
+                )
+
+                return@Column
+            }
+
             SectionHeader(stringResource(R.string.general))
 
             TextRow(
