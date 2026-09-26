@@ -71,3 +71,14 @@ and the ping colour bounds come from the panel as response headers — the full
 reference is [docs/HEADERS_en.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS_en.md),
 and how Android differs from the desktop is in the
 [repository README](https://github.com/Mrvibecodic/clod-clash-android#заголовки-подписки).
+
+## Network stack
+
+Android takes the tunnel stack from the template: `tun.stack` (when the template has
+`tun.enable: true`) or `stack` on a `type: tun` listener. `system`, `gvisor`, `mixed`
+and `mips` are accepted, anything else is skipped. Without a stack in the template the
+client uses `gvisor`. A stack the user picked in **More → Network → Network stack** wins
+over the template.
+
+The desktop client also takes `tun.stack` from the template and passes it to the core,
+`mips` included; on Windows only `system` and `mixed` are not taken from the template.

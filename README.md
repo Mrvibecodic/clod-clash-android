@@ -111,6 +111,12 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 десктопного репозитория; то же для провайдеров на сайте — страница
 [«Для провайдеров»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider).
 
+Стек туннеля Android берёт из шаблона: `tun.stack` (при `tun.enable: true`) или
+`stack` у слушателя `type: tun`; принимаются `system`, `gvisor`, `mixed`, `mips`.
+Без стека в шаблоне — `gvisor`; выбор пользователя в «Ещё → Сеть → Сетевой стек»
+главнее шаблона. Десктопный клиент тоже берёт `tun.stack` из шаблона, `mips` в том
+числе; на Windows из шаблона не принимаются только `system` и `mixed`.
+
 ## Заголовки подписки
 
 Полный справочник — [docs/HEADERS.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS.md)

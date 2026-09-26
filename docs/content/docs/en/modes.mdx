@@ -47,5 +47,6 @@ with the next successful refresh. A provider can also set a lock that never lift
 ## Network stack
 
 **More → Network → Network stack** decides how traffic is intercepted: "Auto (from
-subscription)", "System", "gVisor" or "Mixed". The default is Auto, which lets the
-subscription pick. Change it only if your provider explicitly asked you to.
+subscription)", "System", "gVisor", "Mixed" or "MIPS". The default is Auto: the stack comes
+from the subscription, and gVisor is used when the subscription does not set one. Change it
+only if your provider explicitly asked you to.

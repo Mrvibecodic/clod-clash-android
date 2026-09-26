@@ -72,3 +72,13 @@ description: "Что настроить в панели Remnawave, чтобы п
 [docs/HEADERS.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS.md),
 а чем Android отличается от десктопа — в
 [README репозитория](https://github.com/Mrvibecodic/clod-clash-android#заголовки-подписки).
+
+## Сетевой стек
+
+Android берёт стек туннеля из шаблона: `tun.stack` (если в шаблоне `tun.enable: true`)
+или `stack` у слушателя `type: tun`. Принимаются `system`, `gvisor`, `mixed` и `mips`,
+другое значение пропускается. Если стека в шаблоне нет — `gvisor`. Стек, выбранный
+пользователем в **Ещё → Сеть → Сетевой стек**, главнее шаблона.
+
+Десктопный клиент тоже берёт `tun.stack` из шаблона и передаёт его в ядро, `mips`
+в том числе; на Windows из шаблона не принимаются только `system` и `mixed`.
