@@ -81,6 +81,20 @@ func load(completable unsafe.Pointer, path C.c_string) {
 	})
 }
 
+// 1 — ядро держит применённый конфиг. Ноль (и при панике тоже) — не держит:
+// прежний разобран недоприменённым новым либо сброшен.
+//
+//export queryLoaded
+func queryLoaded() (result C.int) {
+	defer guard("queryLoaded", func() {})()
+
+	if config.IsLoaded() {
+		return 1
+	}
+
+	return 0
+}
+
 // NULL — настройки не прочитались (и при панике тоже): Kotlin обязан отличить
 // это от заводских, иначе экран запишет пустоту поверх настоящих.
 //

@@ -75,7 +75,28 @@ func applyDefaultLocked() {
 
 	loaded.Store(false)
 
+	applyLocked(cfg, func() {})
+}
+
+// Паника посреди hub.ApplyConfig оставляет туннель на паузе, а прежний конфиг —
+// наполовину разобранным новым; паника в доводке после него — ядро на новом
+// конфиге, которого служба не признала. В обоих случаях прежнего конфига больше
+// нет: признак загрузки снимается, чтобы ни служба, ни switchMode не считали его
+// живым.
+func applyLocked(cfg *config.Config, finish func()) {
+	applied := false
+
+	defer func() {
+		if !applied {
+			loaded.Store(false)
+		}
+	}()
+
 	hub.ApplyConfig(cfg)
+
+	finish()
+
+	applied = true
 }
 
 func applyPendingDefault() {
@@ -160,19 +181,19 @@ func Load(path string) error {
 
 	pendingGeneration.CompareAndSwap(generation, 0)
 
-	hub.ApplyConfig(cfg)
+	applyLocked(cfg, func() {
+		declared := globalGroupDeclared(rawCfg)
 
-	declared := globalGroupDeclared(rawCfg)
+		globalDeclared.Store(declared)
 
-	globalDeclared.Store(declared)
+		if !declared {
+			pinGlobalDefault()
+		}
 
-	if !declared {
-		pinGlobalDefault()
-	}
+		loaded.Store(true)
 
-	loaded.Store(true)
-
-	app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
+		app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
+	})
 
 	return nil
 }

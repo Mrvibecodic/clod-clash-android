@@ -22,6 +22,7 @@ import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.activeProfileRollback
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.loadFailureKeepsRetained
 import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendProfileLoadFailed
 import com.github.kr328.clash.service.util.sendProfileLoaded
@@ -254,7 +255,9 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 val retained = loaded
                 val failed = current?.let { ImportedDao().queryByUUID(it) }
 
-                if (!ready || retained == null || current == null || failed == null) {
+                val keeps = loadFailureKeepsRetained(ready, retained, coreLoaded = Clash.isLoaded())
+
+                if (!keeps || retained == null || current == null || failed == null) {
                     return enqueueEvent(Event.LoadFailed(message))
                 }
 

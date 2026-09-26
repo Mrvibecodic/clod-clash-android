@@ -334,6 +334,13 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeUpdateProvider(JNIEnv *env,
     updateProvider(_completable, _type, _name);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryLoaded(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    return (jboolean) (queryLoaded() != 0);
+}
+
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeReadOverride(JNIEnv *env, jobject thiz,
                                                                   jint slot) {

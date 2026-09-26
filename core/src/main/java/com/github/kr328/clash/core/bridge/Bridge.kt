@@ -51,6 +51,7 @@ object Bridge {
         name: String
     )
 
+    external fun nativeQueryLoaded(): Boolean
     external fun nativeReadOverride(slot: Int): String?
     external fun nativeWriteOverride(slot: Int, content: String): Boolean
     external fun nativeClearOverride(slot: Int): Boolean

@@ -251,6 +251,10 @@ object Clash {
         }
     }
 
+    fun isLoaded(): Boolean {
+        return Bridge.nativeQueryLoaded()
+    }
+
     // Нечитаемые настройки — ошибка, а не заводские: пустые экран настроек
     // записал бы поверх настоящих.
     fun queryOverride(slot: OverrideSlot): ConfigurationOverride {

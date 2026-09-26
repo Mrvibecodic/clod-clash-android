@@ -1,6 +1,8 @@
 package com.github.kr328.clash.service.util
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
 
@@ -52,5 +54,13 @@ class ActiveProfileTest {
     fun selectSkipsMissingProfile() {
         assertEquals(ActiveProfileAction.Keep, activeProfileSelect(null, a, false))
         assertEquals(ActiveProfileAction.Keep, activeProfileSelect(b, a, false))
+    }
+
+    @Test
+    fun failedLoadKeepsRetainedOnlyWhileCoreHoldsIt() {
+        assertTrue(loadFailureKeepsRetained(ready = true, retained = a, coreLoaded = true))
+        assertFalse(loadFailureKeepsRetained(ready = true, retained = a, coreLoaded = false))
+        assertFalse(loadFailureKeepsRetained(ready = false, retained = a, coreLoaded = true))
+        assertFalse(loadFailureKeepsRetained(ready = true, retained = null, coreLoaded = true))
     }
 }
