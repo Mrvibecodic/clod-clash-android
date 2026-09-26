@@ -9,7 +9,9 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
-class AppListCacheModule(service: Service) : Module<Unit>(service) {
+// notifyChanges: после каждой установки или удаления приложений — событие, по
+// которому туннельная служба сверяет состав приложений VPN.
+class AppListCacheModule(service: Service, private val notifyChanges: Boolean = false) : Module<Unit>(service) {
     private fun PackageInfo.uniqueUidName(): String =
         if (sharedUserId?.isNotBlank() == true) sharedUserId!! else packageName
 
@@ -40,12 +42,16 @@ class AppListCacheModule(service: Service) : Module<Unit>(service) {
             addDataScheme("package")
         }
 
-        while (true) {
-            reload()
+        reload()
 
+        while (true) {
             packageChanged.receive()
 
             delay(TimeUnit.SECONDS.toMillis(10))
+
+            reload()
+
+            if (notifyChanges) enqueueEvent(Unit)
         }
     }
 }

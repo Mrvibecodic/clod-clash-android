@@ -4,6 +4,7 @@ import android.annotation.TargetApi
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Network
 import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
@@ -15,7 +16,6 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
-import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceStore
@@ -23,6 +23,9 @@ import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import com.github.kr328.clash.service.util.parseCIDR
 import com.github.kr328.clash.service.util.readTunPrefs
 import com.github.kr328.clash.service.util.resolveTunStack
+import com.github.kr328.clash.service.util.TunApps
+import com.github.kr328.clash.service.util.tunApps
+import com.github.kr328.clash.service.util.tunAppsChanged
 import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.*
@@ -56,11 +59,25 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         else
             install(StaticNotificationModule(self))
 
-        install(AppListCacheModule(self))
+        val apps = install(AppListCacheModule(self, notifyChanges = true))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
 
         var opened = false
+        var profile: UUID? = null
+        var underlying: Network? = null
+
+        // На 5.1–9 establish() забывает подложенную сеть (а до него она не
+        // задаётся вовсе) — повторить её после каждого открытия туннеля.
+        fun restoreUnderlying() {
+            if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
+                setUnderlyingNetworks(underlying?.let { arrayOf(it) })
+            }
+        }
+
+        fun reopenTun(uuid: UUID) {
+            if (tun.reopenIfChanged(uuid)) restoreUnderlying()
+        }
 
         try {
             while (isActive) {
@@ -71,12 +88,18 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     config.onEvent {
                         when (it) {
                             is ConfigurationModule.Event.Loaded -> {
-                                if (!opened) {
+                                profile = it.uuid
+
+                                if (opened) {
+                                    reopenTun(it.uuid)
+                                } else {
                                     StatusProvider.startupStage = Intents.STAGE_TUNNEL
 
                                     sendClashStarting(Intents.STAGE_TUNNEL)
 
                                     tun.open(it.uuid)
+
+                                    restoreUnderlying()
 
                                     opened = true
 
@@ -92,7 +115,14 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                             }
                         }
                     }
+                    apps.onEvent {
+                        profile?.takeIf { opened }?.let { reopenTun(it) }
+
+                        false
+                    }
                     network.onEvent { n ->
+                        underlying = n
+
                         if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
                             setUnderlyingNetworks(n?.let { arrayOf(it) })
                         }
@@ -212,11 +242,63 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         runtime.requestGc()
     }
 
+    // Что туннель пропускает и на каком стеке. access — отпечаток настроек
+    // доступа, из которых посчитан apps: экран доступа сверяет с ним свой выбор.
+    private class TunPlan(val apps: TunApps, val access: String, val stack: String)
+
+    private var applied: TunPlan? = null
+
+    private fun uidLookup(): (String) -> Int? {
+        val known = HashMap<String, Int?>()
+
+        return { name ->
+            known.getOrPut(name) { runCatching { packageManager.getApplicationInfo(name, 0).uid }.getOrNull() }
+        }
+    }
+
+    private fun plan(store: ServiceStore, prefs: TunPrefs, uidOf: (String) -> Int?): TunPlan {
+        val mode = store.accessControlMode
+        val packages = store.accessControlPackages
+
+        val apps = tunApps(
+            mode = mode,
+            selected = packages,
+            include = prefs.includePackages.toSet(),
+            exclude = prefs.excludePackages.toSet(),
+            self = packageName,
+            uidOf = uidOf,
+        )
+
+        return TunPlan(apps, accessControlFingerprint(mode, packages), resolveTunStack(store.tunStackMode, prefs.stack))
+    }
+
+    // Состав приложений или стек из подписки разошлись с применёнными — например,
+    // поставили приложение из списка или пришла подписка с другим tun.json.
+    // Android применяет их только при establish(), поэтому туннель пересобирается;
+    // ядро меняет устройство на новое само (startTun). true — пересобран.
+    private fun TunModule.reopenIfChanged(profile: UUID): Boolean {
+        val applied = applied ?: return false
+        val uidOf = uidLookup()
+        val wanted = plan(ServiceStore(self), readTunPrefs(profile) ?: TunPrefs(), uidOf)
+
+        if (!tunAppsChanged(applied.apps, wanted.apps, uidOf) && wanted.stack == applied.stack) return false
+
+        ServiceLog.mark("tun: reopen, apps or stack changed")
+
+        open(wanted)
+
+        return true
+    }
+
     private fun TunModule.open(profile: UUID) {
         val store = ServiceStore(self)
         val prefs = readTunPrefs(profile) ?: TunPrefs()
-        val includeFromProfile = prefs.includePackages.toSet()
-        val excludeFromProfile = prefs.excludePackages.toSet()
+
+        open(plan(store, prefs, uidLookup()))
+    }
+
+    private fun TunModule.open(plan: TunPlan) {
+        val store = ServiceStore(self)
 
         val device = with(Builder()) {
             addAddress(TUN_GATEWAY, TUN_SUBNET_PREFIX)
@@ -245,37 +327,13 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 }
             }
 
-            val installedIncludes = (includeFromProfile - excludeFromProfile).filter {
-                runCatching { packageManager.getApplicationInfo(it, 0) }.isSuccess
-            }.toSet()
+            store.accessControlApplied = plan.access
 
-            val mode = store.accessControlMode
-            val packages = store.accessControlPackages
-
-            store.accessControlApplied = accessControlFingerprint(mode, packages)
-
-            when (mode) {
-                AccessControlMode.AcceptAll -> {
-                    if (installedIncludes.isNotEmpty()) {
-                        (installedIncludes + packageName).forEach {
-                            runCatching { addAllowedApplication(it) }
-                        }
-                    } else {
-                        (excludeFromProfile - packageName).forEach {
-                            runCatching { addDisallowedApplication(it) }
-                        }
-                    }
-                }
-                AccessControlMode.AcceptSelected -> {
-                    (packages + installedIncludes + packageName).forEach {
-                        runCatching { addAllowedApplication(it) }
-                    }
-                }
-                AccessControlMode.DenySelected -> {
-                    (packages + excludeFromProfile - packageName).forEach {
-                        runCatching { addDisallowedApplication(it) }
-                    }
-                }
+            plan.apps.allowed.keys.forEach {
+                runCatching { addAllowedApplication(it) }
+            }
+            plan.apps.disallowed.keys.forEach {
+                runCatching { addDisallowedApplication(it) }
             }
 
             setBlocking(false)
@@ -331,7 +389,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             TunModule.TunDevice(
                 fd = establish()?.detachFd()
                     ?: throw IllegalStateException(getString(R.string.clod_tun_establish_rejected)),
-                stack = resolveTunStack(store.tunStackMode, prefs.stack),
+                stack = plan.stack,
                 gateway = "$TUN_GATEWAY/$TUN_SUBNET_PREFIX" + if (store.allowIpv6) ",$TUN_GATEWAY6/$TUN_SUBNET_PREFIX6" else "",
                 portal = TUN_PORTAL + if (store.allowIpv6) ",$TUN_PORTAL6" else "",
                 dns = if (store.dnsHijacking) NET_ANY else (TUN_DNS + if (store.allowIpv6) ",$TUN_DNS6" else ""),
@@ -339,6 +397,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         }
 
         attach(device)
+
+        applied = plan
     }
 
     companion object {
