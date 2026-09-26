@@ -429,7 +429,7 @@ jobs:
           set -euo pipefail
           assets=$(gh api "repos/${{ github.repository }}/releases/$RELEASE_ID/assets" --jq '.[].name')
           echo "$assets"
-          for needle in latest.json SHA256SUMS.txt universal.apk arm64-v8a.apk armeabi-v7a.apk; do
+          for needle in latest.json SHA256SUMS.txt universal.apk arm64-v8a.apk armeabi-v7a.apk x86_64.apk; do
             if ! echo "$assets" | grep -qi -- "$needle"; then
               echo "::error::В релизе нет файла по маске '$needle'"
               exit 1

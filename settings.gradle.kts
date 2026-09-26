@@ -10,7 +10,6 @@ include(":screenshots")
 
 pluginManagement {
     repositories {
-        mavenLocal()
         mavenCentral()
         gradlePluginPortal()
     }
