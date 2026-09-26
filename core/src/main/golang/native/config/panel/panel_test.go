@@ -275,6 +275,33 @@ func TestDecodeHeaderValue(t *testing.T) {
 	if got := decodeHeaderValue("base64:!!!не base64!!!"); got != "" {
 		t.Fatalf("битый base64 должен давать пустую строку, получено %q", got)
 	}
+
+	// Как на ПК: префикс без учёта регистра (Remnawave шлёт `Base64:`),
+	// пробелы и переносы внутри payload не мешают, пустой результат — отсутствие.
+	encoded := base64.StdEncoding.EncodeToString([]byte(text))
+
+	for _, prefix := range []string{"Base64:", "BASE64:", "bAsE64:"} {
+		if got := decodeHeaderValue(prefix + encoded); got != text {
+			t.Fatalf("префикс %q должен узнаваться, получено %q", prefix, got)
+		}
+	}
+
+	spaced := "base64: " + encoded[:4] + " " + encoded[4:8] + "\n" + encoded[8:]
+	if got := decodeHeaderValue(spaced); got != text {
+		t.Fatalf("пробелы внутри payload должны выкидываться, получено %q", got)
+	}
+
+	if got := decodeHeaderValue("base64:" + base64.StdEncoding.EncodeToString([]byte("  \n "))); got != "" {
+		t.Fatalf("пустой текст под base64 — отсутствие, получено %q", got)
+	}
+
+	if got := decodeHeaderValue("base64:" + base64.StdEncoding.EncodeToString([]byte{0xff, 0xfe, 0x00})); got != "" {
+		t.Fatalf("не-UTF-8 под base64 — отсутствие, получено %q", got)
+	}
+
+	if got := decodeHeaderValue("base64"); got != "base64" {
+		t.Fatalf("короткое значение без двоеточия — обычный текст, получено %q", got)
+	}
 }
 
 func TestURLFilters(t *testing.T) {

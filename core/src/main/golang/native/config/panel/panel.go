@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"cfa/native/config/groups"
 )
@@ -298,15 +300,28 @@ func contactURL(value string) string {
 	return value
 }
 
+const base64Prefix = "base64:"
+
+// decodeHeaderValue разбирает значение заголовка панели так же, как ПК
+// (sub_headers.rs::decode_value): префикс `base64:` узнаётся без учёта
+// регистра (панели шлют и `Base64:`), пробелы внутри payload выкидываются,
+// декодирование пробуется четырьмя алфавитами, результат обязан быть
+// валидным UTF-8. Значение, объявившее себя base64 и не разобравшееся,
+// считается отсутствующим.
 func decodeHeaderValue(raw string) string {
 	value := strings.TrimSpace(raw)
 
-	payload, ok := strings.CutPrefix(value, "base64:")
-	if !ok {
+	if len(value) < len(base64Prefix) || !strings.EqualFold(value[:len(base64Prefix)], base64Prefix) {
 		return value
 	}
 
-	payload = strings.TrimSpace(payload)
+	payload := strings.Map(func(r rune) rune {
+		if unicode.IsSpace(r) {
+			return -1
+		}
+
+		return r
+	}, value[len(base64Prefix):])
 
 	for _, encoding := range []*base64.Encoding{
 		base64.StdEncoding,
@@ -314,8 +329,13 @@ func decodeHeaderValue(raw string) string {
 		base64.URLEncoding,
 		base64.RawURLEncoding,
 	} {
-		if decoded, err := encoding.DecodeString(payload); err == nil {
-			return strings.TrimSpace(string(decoded))
+		decoded, err := encoding.DecodeString(payload)
+		if err != nil || !utf8.Valid(decoded) {
+			continue
+		}
+
+		if text := strings.TrimSpace(string(decoded)); text != "" {
+			return text
 		}
 	}
 
