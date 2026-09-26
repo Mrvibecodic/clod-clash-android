@@ -21,7 +21,6 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
-import android.os.RemoteException
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
@@ -616,11 +615,10 @@ class MainActivity : BaseActivity<MainDesign>() {
                 Log.w("Main loop: $e")
 
                 design.showExceptionToast(e)
-            } catch (e: RemoteException) {
-                Log.w("Main loop: $e", e)
-
-                design.showExceptionToast(e)
-            } catch (e: IllegalStateException) {
+            } catch (e: Exception) {
+                // Отказ службы приходит через binder любым из разрешённых Parcel
+                // типов (IllegalArgument, IllegalState, Security, NullPointer…) —
+                // экран показывает причину и живёт дальше, а не падает.
                 Log.w("Main loop: $e", e)
 
                 design.showExceptionToast(e)
@@ -666,7 +664,17 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         fetchSession()
 
-        setMode(withClash { queryProfileMode() })
+        val mode = try {
+            withClash { queryProfileMode() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ServiceUnavailableException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Query profile mode: $e", e)
+
+            null
+        }
 
         val profiles = withProfile { queryAll() }
         val groups = querySubscriptionGroups()
@@ -681,6 +689,20 @@ class MainActivity : BaseActivity<MainDesign>() {
         val active = items.firstOrNull { it.profile.active }
 
         setActiveProfile(active)
+
+        // Сбой запроса режима — не «режим из шаблона»: показ остаётся прежним, но
+        // только для той же подписки — замок и режим чужой показывать нельзя.
+        val activeUuid = active?.profile?.uuid
+
+        if (mode != null) {
+            setMode(mode)
+
+            modeShownFor = activeUuid
+        } else if (modeShownFor != activeUuid) {
+            setMode(ProfileMode())
+
+            modeShownFor = null
+        }
 
         favoritesProfile = active?.profile?.uuid
         setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
@@ -735,6 +757,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     private val offlineSelections: MutableMap<String, String> = mutableMapOf()
 
     private var favoritesProfile: UUID? = null
+
+    private var modeShownFor: UUID? = null
 
     private var serversReadOnly: Boolean = false
 

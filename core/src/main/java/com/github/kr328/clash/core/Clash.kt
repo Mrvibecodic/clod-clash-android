@@ -284,11 +284,14 @@ object Clash {
         if (!written) throw IllegalStateException("${slot.name} override could not be written")
     }
 
+    // Нет ответа — ошибка, а не «режим из шаблона без замка».
     fun queryModeOf(path: File, session: ConfigurationOverride): ProfileMode {
-        return Bridge.nativeQueryModeOf(
+        val json = Bridge.nativeQueryModeOf(
             path.absolutePath,
             CoreJson.encodeToString(ConfigurationOverride.serializer(), session),
-        )?.let(::decodeProfileMode) ?: ProfileMode()
+        ) ?: throw IllegalStateException("the core returned no profile mode")
+
+        return decodeProfileMode(json)
     }
 
     fun switchMode(path: File, session: ConfigurationOverride): Boolean {

@@ -1,6 +1,7 @@
 package com.github.kr328.clash
 
 import android.os.Bundle
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.design.OverrideSettingsDesign
@@ -10,9 +11,11 @@ import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.profileDisplayName
+import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 
@@ -37,7 +40,19 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }
 
-        val profileMode = withClash { queryProfileMode() }
+        // Режим здесь только для подсказок (замок, тень выбора): при сбое экран
+        // открывается без них — замок всё равно проверяет служба.
+        val profileMode = try {
+            withClash { queryProfileMode() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ServiceUnavailableException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Query profile mode: $e", e)
+
+            ProfileMode()
+        }
 
         val modeLocked = profileMode.source == ProfileMode.Source.Locked
 
