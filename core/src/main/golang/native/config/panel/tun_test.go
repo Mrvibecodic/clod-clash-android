@@ -13,6 +13,7 @@ func TestNormalizeTunStack(t *testing.T) {
 		"System":  "system",
 		" gVisor": "gvisor",
 		"MIXED":   "mixed",
+		"Mips":    "mips",
 		"lwip":    "",
 		"":        "",
 	}

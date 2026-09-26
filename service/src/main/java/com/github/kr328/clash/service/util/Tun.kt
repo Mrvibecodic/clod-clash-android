@@ -25,14 +25,14 @@ fun Context.activeTunPrefs(): TunPrefs? {
     return ServiceStore(this).activeProfile?.let { readTunPrefs(it) }
 }
 
-// Набор для подписки совпадает с NormalizeTunStack в native/config/panel/tun.go,
-// mips доступен только явным выбором в настройках
-private val PROFILE_TUN_STACKS = setOf("system", "gvisor", "mixed")
+// Набор совпадает с NormalizeTunStack в native/config/panel/tun.go;
+// без явного выбора и без стека в подписке — gVisor, как у самого ядра
+private val TUN_STACKS = setOf("system", "gvisor", "mixed", "mips")
 
-private val USER_TUN_STACKS = PROFILE_TUN_STACKS + "mips"
+private const val DEFAULT_TUN_STACK = "gvisor"
 
 fun resolveTunStack(mode: String, fromProfile: String): String = when {
-    mode in USER_TUN_STACKS -> mode
-    fromProfile in PROFILE_TUN_STACKS -> fromProfile
-    else -> "system"
+    mode in TUN_STACKS -> mode
+    fromProfile in TUN_STACKS -> fromProfile
+    else -> DEFAULT_TUN_STACK
 }

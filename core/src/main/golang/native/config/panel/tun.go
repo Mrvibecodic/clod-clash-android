@@ -31,6 +31,8 @@ func NormalizeTunStack(stack string) string {
 		return "gvisor"
 	case "mixed":
 		return "mixed"
+	case "mips":
+		return "mips"
 	}
 
 	return ""

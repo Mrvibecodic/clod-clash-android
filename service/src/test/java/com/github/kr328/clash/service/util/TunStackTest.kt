@@ -8,31 +8,26 @@ class TunStackTest {
     fun explicitModeWins() {
         assertEquals("gvisor", resolveTunStack("gvisor", "system"))
         assertEquals("mixed", resolveTunStack("mixed", ""))
+        assertEquals("mips", resolveTunStack("mips", "system"))
+        assertEquals("system", resolveTunStack("system", "mips"))
     }
 
     @Test
     fun autoFallsBackToProfile() {
-        assertEquals("gvisor", resolveTunStack("auto", "gvisor"))
         assertEquals("system", resolveTunStack("auto", "system"))
+        assertEquals("mixed", resolveTunStack("auto", "mixed"))
+        assertEquals("mips", resolveTunStack("auto", "mips"))
     }
 
     @Test
-    fun autoWithoutProfileUsesSystem() {
-        assertEquals("system", resolveTunStack("auto", ""))
-        assertEquals("system", resolveTunStack("auto", "lwip"))
+    fun autoWithoutProfileUsesGvisor() {
+        assertEquals("gvisor", resolveTunStack("auto", ""))
+        assertEquals("gvisor", resolveTunStack("auto", "lwip"))
     }
 
     @Test
-    fun unknownModeUsesProfileThenSystem() {
+    fun unknownModeUsesProfileThenGvisor() {
         assertEquals("mixed", resolveTunStack("", "mixed"))
-        assertEquals("system", resolveTunStack("", ""))
-    }
-
-    @Test
-    fun mipsIsAcceptedAsExplicitChoice() {
-        assertEquals("mips", resolveTunStack("mips", ""))
-        assertEquals("mips", resolveTunStack("mips", "system"))
-        assertEquals("system", resolveTunStack("system", "mips"))
-        assertEquals("system", resolveTunStack("auto", "mips"))
+        assertEquals("gvisor", resolveTunStack("", ""))
     }
 }

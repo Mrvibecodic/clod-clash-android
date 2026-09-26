@@ -42,7 +42,6 @@ data class NetworkSettingsState(
     val keepAwake: Boolean = false,
     val localProxyPort: Int = 0,
     val effectiveTunStack: String = "",
-    val effectiveTunStackFromProfile: Boolean = false,
     val privateDnsHost: String? = null,
 )
 
@@ -167,11 +166,7 @@ fun NetworkSettingsScreen(
             }
             ReadOnlyRow(
                 title = stringResource(R.string.clod_tun_stack_effective),
-                value = if (state.effectiveTunStackFromProfile) {
-                    stringResource(R.string.clod_tun_stack_from_profile, effectiveStack)
-                } else {
-                    effectiveStack
-                },
+                value = effectiveStack,
                 enabled = vpnOptions,
             )
 

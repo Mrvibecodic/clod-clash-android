@@ -209,7 +209,6 @@
     <string name="tun_stack_mixed">Mixed stack</string>
     <string name="tun_stack_mips">MIPS stack</string>
     <string name="clod_tun_stack_effective">Stack in use</string>
-    <string name="clod_tun_stack_from_profile">%1$s — from the subscription</string>
 
     <string name="allow_all_apps">Allow all apps</string>
     <string name="allow_selected_apps">Allow selected apps</string>
