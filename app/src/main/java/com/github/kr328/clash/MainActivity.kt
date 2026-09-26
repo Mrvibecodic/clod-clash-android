@@ -744,7 +744,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.reloadProxyGroups(): Boolean {
         val running = clashRunning
-        val snapshot = if (running) withClash { queryProxyGroupNames(true) } else ProxyGroupNames()
+        val snapshot = if (running) queryLiveGroupNames() ?: return false else ProxyGroupNames()
         val names = snapshot.names
 
         setAllGroupsOnHome(uiStore.showAllGroupsOnHome)
@@ -909,6 +909,32 @@ class MainActivity : BaseActivity<MainDesign>() {
                 OfflineDelays.consume()
             }
         }
+    }
+
+    // Сбой запроса при живом ядре — не «групп нет»: живой список остаётся как был,
+    // офлайн-список убирается (выбор в нём к ядру не применяется), причина — в
+    // уведомлении. panelRunning не выставляется, и следующая перезагрузка панели
+    // повторит запрос.
+    private suspend fun MainDesign.queryLiveGroupNames(): ProxyGroupNames? = try {
+        withClash { queryProxyGroupNames(true) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: ServiceUnavailableException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w("Query proxy group names: $e", e)
+
+        if (offlineGroups.isNotEmpty()) {
+            offlineGroups = emptyList()
+            proxyGroupNames = emptyList()
+            mainGroup = null
+
+            setProxyGroupNames(emptyList(), main = null)
+        }
+
+        showExceptionToast(e, DesignR.string.clod_servers_query_failed)
+
+        null
     }
 
     private suspend fun MainDesign.loadOfflineProxyGroups(readOnly: Boolean) {

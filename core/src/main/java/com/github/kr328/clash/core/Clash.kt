@@ -132,9 +132,13 @@ object Clash {
         Bridge.nativeStopHttp()
     }
 
+    // Нет ответа — ошибка, а не «групп нет»: пустой ответ при живом ядре уводит
+    // экран в офлайн-список, где выбор узла к ядру не применяется.
     fun queryGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames {
-        return Bridge.nativeQueryGroupNames(excludeNotSelectable)?.let(::decodeGroupNames)
-            ?: ProxyGroupNames()
+        val json = Bridge.nativeQueryGroupNames(excludeNotSelectable)
+            ?: throw IllegalStateException("the core returned no group list")
+
+        return decodeGroupNames(json)
     }
 
     internal fun decodeGroupNames(json: String): ProxyGroupNames {

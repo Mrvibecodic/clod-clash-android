@@ -426,6 +426,7 @@
     <string name="clod_favorite_add">В избранное</string>
     <string name="clod_favorite_remove">Убрать из избранного</string>
     <string name="clod_servers_direct">Включён «Прямой режим»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим показан во вкладке «Ещё» и переключается там, если его не задал ваш сервис.</string>
+    <string name="clod_servers_query_failed">Ядро не отдало список серверов</string>
     <string name="clod_one_per_line">По одному в строке</string>
     <string name="clod_key_value_per_line">По паре «ключ = значение» в строке</string>
 <string name="secret">Секрет</string>
