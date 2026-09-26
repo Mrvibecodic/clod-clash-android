@@ -140,7 +140,7 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	}
 
 	info.LogoURL = httpsURL(headerValue(header, "profile-logo"))
-	info.Announce = truncate(firstNonEmpty(headerValue(header, "clod-announce"), headerValue(header, "announce")), announceMaxChars)
+	info.Announce = truncateBanner(firstNonEmpty(headerValue(header, "clod-announce"), headerValue(header, "announce")), announceMaxChars)
 	info.AnnounceURL = httpsURL(headerValue(header, "announce-url"))
 	info.SupportURL = contactURL(headerValue(header, "support-url"))
 	info.HomeURL = httpsURL(headerValue(header, "profile-web-page-url"))
@@ -148,7 +148,7 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.BotURL = contactURL(headerValue(header, "clod-bot-url"))
 	info.MonitorURL = httpsURL(headerValue(header, "clod-monitor-url"))
 	info.GuideURL = httpsURL(headerValue(header, "clod-guide-url"))
-	info.Promo = truncate(headerValue(header, "clod-promo"), announceMaxChars)
+	info.Promo = truncateBanner(headerValue(header, "clod-promo"), announceMaxChars)
 	info.PromoURL = httpsURL(headerValue(header, "clod-promo-url"))
 
 	info.Title = truncate(firstNonEmpty(headerValue(header, "profile-title"), info.Title), titleMaxChars)
@@ -359,6 +359,67 @@ func truncate(value string, max int) string {
 	}
 
 	return strings.TrimSpace(string(runes[:max])) + "…"
+}
+
+// colourMarkerLen — длина маркера цвета `#RRGGBB` в объявлении и промо.
+const colourMarkerLen = 7
+
+// colourMarkerAt — стоит ли на позиции index маркер цвета: `#`, шесть
+// шестнадцатеричных знаков и сразу за ними не-пробел (маркер с пробелом
+// после кода — обычный текст). Зеркало colour_marker_at на ПК; «пробел» —
+// Unicode White_Space, как у char::is_whitespace в Rust (unicode.IsSpace в Go
+// даёт тот же набор).
+func colourMarkerAt(runes []rune, index int) bool {
+	if index+colourMarkerLen >= len(runes) || runes[index] != '#' {
+		return false
+	}
+
+	if unicode.IsSpace(runes[index+colourMarkerLen]) {
+		return false
+	}
+
+	for _, r := range runes[index+1 : index+colourMarkerLen] {
+		if !isASCIIHexDigit(r) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isASCIIHexDigit(r rune) bool {
+	return (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+}
+
+// truncateBanner режет объявление и промо по лимиту ВИДИМЫХ знаков: маркеры
+// цвета `#RRGGBB` (см. BannerText на стороне интерфейса) нулевой ширины и
+// в лимит не входят, иначе панель с покрашенными словами теряла бы текст
+// раньше, чем без них. Зеркало truncate_banner на ПК; хвост «…» — наш.
+func truncateBanner(value string, max int) string {
+	runes := []rune(value)
+
+	var out []rune
+
+	visible := 0
+
+	for index := 0; index < len(runes); {
+		if colourMarkerAt(runes, index) {
+			out = append(out, runes[index:index+colourMarkerLen]...)
+			index += colourMarkerLen
+
+			continue
+		}
+
+		if visible == max {
+			return strings.TrimSpace(string(out)) + "…"
+		}
+
+		out = append(out, runes[index])
+		visible++
+		index++
+	}
+
+	return value
 }
 
 const (

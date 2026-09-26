@@ -328,6 +328,51 @@ func TestURLFilters(t *testing.T) {
 	}
 }
 
+// Фикстуры общие с ПК (banner-text.fixtures.json): вход, число видимых
+// знаков, лимит и что остаётся после обрезки (без нашего хвоста «…»).
+var bannerFixtures = []struct {
+	name, input string
+	visible     int
+	limit       int
+	truncated   string
+}{
+	{"обычный текст режется по лимиту", "Оплатите подписку до пятницы", 28, 8, "Оплатите"},
+	{"маркер красит слово и не входит в лимит", "#EF4444ВАЖНО: продление", 16, 6, "#EF4444ВАЖНО:"},
+	{"цепочка маркеров нулевой ширины", "#AAAAAA#BBBBBBскидка", 6, 3, "#AAAAAA#BBBBBBски"},
+	{"маркер перед пробелом — обычный текст и входит в лимит", "#EF4444 не маркер", 17, 9, "#EF4444 н"},
+	{"NEL после кода — пробел, маркера нет", "#EF4444\u0085хвост", 13, 8, "#EF4444\u0085"},
+	{"BOM — не пробел, маркер работает", "#EF4444\ufeffстарт", 6, 3, "#EF4444\ufeffст"},
+	{"вход короче лимита возвращается как есть", "#EF4444ВАЖНО", 5, 500, "#EF4444ВАЖНО"},
+}
+
+func TestTruncateBanner(t *testing.T) {
+	for _, fixture := range bannerFixtures {
+		got := truncateBanner(fixture.input, fixture.limit)
+		want := fixture.truncated
+
+		if fixture.visible > fixture.limit {
+			want = strings.TrimSpace(want) + "…"
+		}
+
+		if got != want {
+			t.Fatalf("%s: truncateBanner(%q, %d) = %q, ждали %q", fixture.name, fixture.input, fixture.limit, got, want)
+		}
+	}
+
+	// Хвост «…» и обрезка пробела на стыке — как у truncate.
+	if got := truncateBanner("аб  вг", 4); got != "аб…" {
+		t.Fatalf("truncateBanner = %q", got)
+	}
+
+	if got := truncateBanner("#EF4444"+strings.Repeat("a", announceMaxChars), announceMaxChars); got != "#EF4444"+strings.Repeat("a", announceMaxChars) {
+		t.Fatalf("маркер не должен съедать лимит: %q", got)
+	}
+
+	if got := []rune(truncateBanner("#XYZ123"+strings.Repeat("b", announceMaxChars), announceMaxChars)); len(got) != announceMaxChars+1 {
+		t.Fatalf("не-маркер входит в лимит: %d рун", len(got))
+	}
+}
+
 func TestTruncate(t *testing.T) {
 	if got := truncate("абвгд", 3); got != "абв…" {
 		t.Fatalf("truncate = %q", got)

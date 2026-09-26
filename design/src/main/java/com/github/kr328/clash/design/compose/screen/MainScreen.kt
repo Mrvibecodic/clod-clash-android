@@ -90,9 +90,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
@@ -122,6 +126,7 @@ import com.github.kr328.clash.design.model.HomeRoute
 import com.github.kr328.clash.design.model.ToggleIntent
 import com.github.kr328.clash.design.model.homeExtras
 import com.github.kr328.clash.design.model.effectiveMode
+import com.github.kr328.clash.design.model.parseBannerText
 import com.github.kr328.clash.design.model.promoFingerprint
 import com.github.kr328.clash.design.model.homeRoute
 import com.github.kr328.clash.design.model.providerLinks
@@ -1127,7 +1132,7 @@ private fun NoticeCard(
             )
             Spacer(Modifier.width(10.dp))
             Text(
-                text = text,
+                text = bannerAnnotated(text),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = if (expanded) Int.MAX_VALUE else collapsedLines,
@@ -1180,6 +1185,29 @@ private fun NoticeCard(
                         modifier = Modifier.size(20.dp),
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Провайдерский текст с подсветкой слов (`#RRGGBB` вплотную к слову) — как
+ * `BannerText` на ПК: покрашенный кусок берёт цвет как прислали и полужирный,
+ * непокрашенный наследует цвет карточки.
+ */
+private fun bannerAnnotated(text: String): AnnotatedString = buildAnnotatedString {
+    for (fragment in parseBannerText(text)) {
+        val color = fragment.color
+        if (color == null) {
+            append(fragment.text)
+        } else {
+            withStyle(
+                SpanStyle(
+                    color = Color(0xFF000000L or color.substring(1).toLong(16)),
+                    fontWeight = FontWeight.SemiBold,
+                ),
+            ) {
+                append(fragment.text)
             }
         }
     }
