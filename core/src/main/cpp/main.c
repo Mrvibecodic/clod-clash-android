@@ -102,17 +102,23 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeStartTun(JNIEnv *env, jobje
                                                               jstring stack,
                                                               jstring gateway,
                                                               jstring portal,
-                                                              jstring dns,
-                                                              jobject cb) {
+                                                              jstring dns) {
     TRACE_METHOD();
 
     scoped_string _stack = get_string(stack);
     scoped_string _gateway = get_string(gateway);
     scoped_string _portal = get_string(portal);
     scoped_string _dns = get_string(dns);
-    jobject _interface = new_global(cb);
 
-    return startTun(fd, _stack, _gateway, _portal, _dns, _interface);
+    return startTun(fd, _stack, _gateway, _portal, _dns);
+}
+
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeAttachSocketCallbacks(JNIEnv *env, jobject thiz,
+                                                                           jobject cb) {
+    TRACE_METHOD();
+
+    attachSocketCallbacks(new_global(cb));
 }
 
 JNIEXPORT void JNICALL

@@ -44,6 +44,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val close = install(CloseModule(self))
         val tun = install(TunModule(self))
+
+        // До загрузки конфига: ядро открывает сокеты уже при его применении
+        tun.attachSocketCallbacks()
+
         val config = install(ConfigurationModule(self))
         val network = install(NetworkObserveModule(self))
 

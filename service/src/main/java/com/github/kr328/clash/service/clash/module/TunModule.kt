@@ -58,6 +58,10 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
         return address?.let(::parseInetSocketAddress)
     }
 
+    fun attachSocketCallbacks() {
+        Clash.attachSocketCallbacks(markSocket = vpn::protect, querySocketUid = this::queryUid)
+    }
+
     fun attach(device: TunDevice) {
         ServiceLog.mark("tun: attach")
 
@@ -68,8 +72,6 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
                 gateway = device.gateway,
                 portal = device.portal,
                 dns = device.dns,
-                markSocket = vpn::protect,
-                querySocketUid = this::queryUid
             )
         } catch (e: Exception) {
             Log.e("Start tun failed", e)

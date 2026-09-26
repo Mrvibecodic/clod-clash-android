@@ -80,14 +80,33 @@ func (t *remoteTun) close() {
 	C.release_object(t.callback)
 }
 
-//export startTun
-func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.Pointer) (result C.int) {
-	started := false
-	handedOver := false
-
-	// Паника внутри tun.Start оставила бы применённый контекст и глобальную
-	// ссылку на колбэки мёртвой сессии: снимаем их на любом выходе без успеха.
+// Незащищённые сокеты ядра, открытые до установки VPN, после неё система
+// заворачивает в наш же туннель, и они виснут до тайм-аута: так умирают пробы
+// узлов, которые ядро само запускает при применении конфига. Поэтому колбэки
+// держит сессия службы с самого её начала, а не поднятый туннель.
+//
+//export attachSocketCallbacks
+func attachSocketCallbacks(callback unsafe.Pointer) {
 	remote := &remoteTun{callback: callback, limit: semaphore.NewWeighted(4)}
+
+	defer guard("attachSocketCallbacks", func() {})()
+
+	rTunLock.Lock()
+	defer rTunLock.Unlock()
+
+	if old := rTun; old != nil {
+		rTun = nil
+		old.close()
+	}
+
+	app.ApplyTunContext(remote.markSocket, remote.querySocketUid)
+
+	rTun = remote
+}
+
+//export startTun
+func startTun(fd C.int, stack, gateway, portal, dns C.c_string) (result C.int) {
+	handedOver := false
 
 	defer guard("startTun", func() { result = 1 })()
 
@@ -95,20 +114,22 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	defer rTunLock.Unlock()
 
 	defer func() {
-		if !started {
-			if !handedOver {
-				_ = syscall.Close(int(fd))
-			}
-
-			app.ApplyTunContext(nil, nil)
-
-			remote.close()
+		if !handedOver {
+			_ = syscall.Close(int(fd))
 		}
 	}()
 
-	if old := rTun; old != nil {
-		rTun = nil
-		old.close()
+	session := rTun
+	if session == nil {
+		log.Errorln("Start tun: socket callbacks not attached")
+
+		return 1
+	}
+
+	if session.closer != nil {
+		_ = session.closer.Close()
+
+		session.closer = nil
 	}
 
 	f := int(fd)
@@ -116,8 +137,6 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 	g := C.GoString(gateway)
 	p := C.GoString(portal)
 	d := C.GoString(dns)
-
-	app.ApplyTunContext(remote.markSocket, remote.querySocketUid)
 
 	handedOver = true
 
@@ -128,11 +147,7 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string, callback unsafe.
 		return 1
 	}
 
-	remote.closer = closer
-
-	rTun = remote
-
-	started = true
+	session.closer = closer
 
 	return 0
 }

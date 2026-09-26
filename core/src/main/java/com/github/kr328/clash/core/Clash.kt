@@ -81,16 +81,11 @@ object Clash {
         Bridge.nativeNotifyInstalledAppChanged(uidList)
     }
 
-    fun startTun(
-        fd: Int,
-        stack: String,
-        gateway: String,
-        portal: String,
-        dns: String,
+    fun attachSocketCallbacks(
         markSocket: (Int) -> Boolean,
         querySocketUid: (protocol: Int, source: InetSocketAddress, target: InetSocketAddress) -> Int
     ) {
-        val code = Bridge.nativeStartTun(fd, stack, gateway, portal, dns, object : TunInterface {
+        Bridge.nativeAttachSocketCallbacks(object : TunInterface {
             override fun markSocket(fd: Int) {
                 markSocket(fd)
             }
@@ -108,6 +103,16 @@ object Clash {
                 return querySocketUid(protocol, src, dst)
             }
         })
+    }
+
+    fun startTun(
+        fd: Int,
+        stack: String,
+        gateway: String,
+        portal: String,
+        dns: String,
+    ) {
+        val code = Bridge.nativeStartTun(fd, stack, gateway, portal, dns)
 
         if (code != 0) {
             throw ClashException("start tun failed")
