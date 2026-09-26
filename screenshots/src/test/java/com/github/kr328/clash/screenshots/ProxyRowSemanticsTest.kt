@@ -37,17 +37,17 @@ class ProxyRowSemanticsTest {
 
     @Test
     fun selectedServerIsAnnouncedAsSelected() {
-        row("Нидерланды 01", selected = true)
+        row("Сервер 1", selected = true)
 
-        compose.onNodeWithText("Нидерланды 01", substring = true)
+        compose.onNodeWithText("Сервер 1", substring = true)
             .assertIsSelected()
     }
 
     @Test
     fun otherServerIsAnnouncedAsNotSelected() {
-        row("Германия 02", selected = false)
+        row("Сервер 2", selected = false)
 
-        compose.onNodeWithText("Германия 02", substring = true)
+        compose.onNodeWithText("Сервер 2", substring = true)
             .assertIsNotSelected()
     }
 }
