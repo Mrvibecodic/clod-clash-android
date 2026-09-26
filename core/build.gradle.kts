@@ -14,7 +14,7 @@ val golangSource = file("src/main/golang/native")
 golang {
     sourceSets {
         create("standard") {
-            tags.set(listOf("foss","with_gvisor","cmfa"))
+            tags.set(listOf("foss","with_gvisor","cmfa") + listOfNotNull("pprof".takeIf { project.findProperty("clod.pprof") == "true" }))
             srcDir.set(file("src/foss/golang"))
         }
         all {
