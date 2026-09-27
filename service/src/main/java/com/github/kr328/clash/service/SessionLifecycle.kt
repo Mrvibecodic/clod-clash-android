@@ -7,14 +7,18 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.SystemClock
 import androidx.core.app.ServiceCompat
+import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.module.CloseModule
 import com.github.kr328.clash.service.clash.module.StaticNotificationModule
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStopped
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -128,6 +132,25 @@ class SessionLifecycle(
         reason?.let {
             if (systemStarted || unattendedStart) {
                 StaticNotificationModule.notifyStartFailed(service, it)
+            }
+        }
+
+        reportAlerts()
+    }
+
+    // Оповещения о подписке проверяет служба, хозяйка их данных, на каждой
+    // остановке сессии — открыт экран или нет.
+    private fun reportAlerts() {
+        val uuid = ServiceStore(service).activeProfile ?: return
+        val context = service.applicationContext
+
+        Global.launch {
+            try {
+                context.reportSubscriptionAlerts(uuid)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Subscription alerts of $uuid: $e", e)
             }
         }
     }

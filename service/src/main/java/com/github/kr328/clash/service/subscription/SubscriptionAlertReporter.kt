@@ -17,6 +17,10 @@ import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.readPanelInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
@@ -32,7 +36,16 @@ private const val ALERT_CHANNEL = "subscription_alert_channel"
 
 private const val STATE_FILE = "alerts.json"
 
-suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
+private val alertsLock = Mutex()
+
+// Проверка идёт только в процессе :background и по одной за раз: две параллельные
+// прочли бы одно и то же alerts.json и уведомили бы дважды. Ввод-вывод — не на
+// потоке вызывающего.
+suspend fun Context.reportSubscriptionAlerts(uuid: UUID) = alertsLock.withLock {
+    withContext(Dispatchers.IO) { checkSubscriptionAlerts(uuid) }
+}
+
+private suspend fun Context.checkSubscriptionAlerts(uuid: UUID) {
     if (!ServiceStore(this).enableSubNotifications) return
 
     if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
@@ -63,17 +76,19 @@ suspend fun Context.reportSubscriptionAlerts(uuid: UUID) {
         nowMillis = System.currentTimeMillis() + (panel?.clockSkewMillis() ?: 0),
     )
 
+    // Сначала уведомление, потом отметка «показано»: процесс службы после
+    // остановки могут убить в любой момент, и лучше повтор, чем пропуск.
+    if (outcome.alerts.isNotEmpty()) {
+        val name = displayProfileName(imported.uuid, imported.name, imported.nameManual)
+
+        createAlertChannel()
+
+        outcome.alerts.forEach { notifyAlert(uuid, it, name) }
+    }
+
     if (outcome.notified != previous) {
         writeState(uuid, outcome.notified)
     }
-
-    if (outcome.alerts.isEmpty()) return
-
-    val name = displayProfileName(imported.uuid, imported.name, imported.nameManual)
-
-    createAlertChannel()
-
-    outcome.alerts.forEach { notifyAlert(uuid, it, name) }
 }
 
 private fun Context.stateFile(uuid: UUID): File =

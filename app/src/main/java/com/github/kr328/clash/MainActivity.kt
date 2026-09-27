@@ -49,7 +49,6 @@ import com.github.kr328.clash.util.offlineGroup
 import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.ProfileUpdates
-import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.profileLogoFile
 import com.github.kr328.clash.service.util.SessionClock
 import com.github.kr328.clash.util.queryPanelInfo
@@ -232,18 +231,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                             offlineDelays = emptyMap()
 
                             design.fetch()
-
-                            launch {
-                                try {
-                                    withProfile { queryActive() }?.let {
-                                        reportSubscriptionAlerts(it.uuid)
-                                    }
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    Log.w("Subscription alerts: $e", e)
-                                }
-                            }
                         }
                         Event.ClashStarting -> {
                             stopRequestedAt = null
