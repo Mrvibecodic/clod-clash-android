@@ -179,6 +179,8 @@ func Load(path string) error {
 		return ErrLoadCancelled
 	}
 
+	forgetLegacyFakeIPs(cfg.DNS)
+
 	pendingGeneration.CompareAndSwap(generation, 0)
 
 	applyLocked(cfg, func() {
