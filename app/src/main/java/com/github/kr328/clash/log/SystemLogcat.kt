@@ -1,5 +1,6 @@
 package com.github.kr328.clash.log
 
+import com.github.kr328.clash.common.util.Redact
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -44,27 +45,7 @@ object SystemLogcat {
             val process = Runtime.getRuntime().exec(command)
 
             val result = process.inputStream.use { stream ->
-                val clipped = stream.reader().useLines { lines ->
-                    CrashLogClip.clip(
-                        lines.filterNot { it.startsWith("------") },
-                        HEAD_LINES,
-                        HEAD_CHARS,
-                        MAX_LINES - HEAD_LINES,
-                        MAX_CHARS - HEAD_CHARS,
-                    )
-                }
-
-                val text = ArrayList<String>(clipped.head.size + clipped.tail.size + 1)
-
-                text.addAll(clipped.head)
-
-                if (clipped.dropped > 0) {
-                    text.add(TRUNCATED.format(clipped.dropped))
-                }
-
-                text.addAll(clipped.tail)
-
-                text.joinToString("\n")
+                stream.reader().useLines(::render)
             }
 
             process.waitFor()
@@ -73,5 +54,29 @@ object SystemLogcat {
         } catch (e: Exception) {
             ""
         }
+    }
+
+    // Маскировка стоит у стока, а не у источников: рантайм Go (тег Go) и
+    // AndroidRuntime пишут в logcat мимо нашего журнала и redact ядра.
+    internal fun render(lines: Sequence<String>): String {
+        val clipped = CrashLogClip.clip(
+            lines.filterNot { it.startsWith("------") }.map(Redact::text),
+            HEAD_LINES,
+            HEAD_CHARS,
+            MAX_LINES - HEAD_LINES,
+            MAX_CHARS - HEAD_CHARS,
+        )
+
+        val text = ArrayList<String>(clipped.head.size + clipped.tail.size + 1)
+
+        text.addAll(clipped.head)
+
+        if (clipped.dropped > 0) {
+            text.add(TRUNCATED.format(clipped.dropped))
+        }
+
+        text.addAll(clipped.tail)
+
+        return text.joinToString("\n")
     }
 }

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- allowBackup="false" закрывает облачный бэкап, но при переносе на новое устройство
+     (D2D) система его игнорирует (targetSdk 31+, IGNORE_ALLOW_BACKUP_IN_D2D) и без правил
+     копирует все данные приложения. Адрес подписки с токеном, конфиги с паролями узлов и
+     кэш ядра устройство не покидают: исключён каждый домен по отдельности — исключение
+     сверяется с путём каталога домена, «root» соседние домены не накрывает. -->
+<data-extraction-rules>
+    <device-transfer>
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
+        <exclude domain="device_root" path="." />
+        <exclude domain="device_file" path="." />
+        <exclude domain="device_database" path="." />
+        <exclude domain="device_sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

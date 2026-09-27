@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import java.net.Inet6Address
 import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
 
@@ -139,7 +140,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         }
 
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
-            Log.i("NetworkObserve onLinkPropertiesChanged network=$network $linkProperties")
+            Log.i("NetworkObserve onLinkPropertiesChanged network=$network ${describe(linkProperties)}")
             networkInfos[network]?.dnsList = linkProperties.dnsServers
             notifyDnsChange()
 
@@ -211,6 +212,26 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         }
 
         return "$network/$transport"
+    }
+
+    // Для разбора DNS-жалоб нужны резолверы, private DNS, MTU и наличие маршрутов
+    // по умолчанию; адреса самого устройства и его сети в журнал не идут.
+    private fun describe(properties: LinkProperties): String {
+        val privateDns = when {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.P -> "n/a"
+            !properties.isPrivateDnsActive -> "off"
+            else -> properties.privateDnsServerName ?: "opportunistic"
+        }
+
+        val mtu = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) properties.mtu else 0
+
+        val defaults = properties.routes
+            .filter { it.isDefaultRoute }
+            .map { if (it.destination.address is Inet6Address) "v6" else "v4" }
+            .distinct()
+
+        return "iface=${properties.interfaceName} dns=${properties.dnsServers.map { it.hostAddress }} " +
+            "privateDns=$privateDns mtu=$mtu default=$defaults domains=${properties.domains}"
     }
 
     private fun markNetworkEvent(reason: String, network: Network?, outcome: String) {

@@ -68,22 +68,17 @@ Nothing else is transmitted. The app has no server of its own.
 
 Subscriptions, profiles, configuration files, credentials contained in them, selected
 servers, settings and logs are stored in the app's private storage. The app itself never
-uploads them anywhere; the one way they can leave the device is system backup, described
-below. The
+uploads them anywhere. The
 log screen and saved log files are written locally; they are shared only if you export and
 send them yourself. Note that logs and configuration files can contain your subscription
 address, so review a log before sharing it.
 
-System backup is currently enabled for the app (`allowBackup`), and the backup rules include
-the profile database, imported and pending profile directories, the config overrides and the
-app's settings (which contain the locally generated fallback identifier when `ANDROID_ID` was
-unavailable). No separate
-Android 12+ extraction rules are declared, so on newer versions the default set — which is
-wider than that list — applies. On a device
-where cloud backup is on, those files — including subscription addresses and any credentials
-inside the configuration — are copied by the operating system to the backup provider you use.
-That transfer is performed by the operating system, not by this app, but it does mean the data
-can leave the device. Turn off backup for the app in system settings if that is not wanted.
+System backup is disabled for the app (`allowBackup="false"`), and the Android 12+ data
+extraction rules exclude every data directory from device-to-device transfer as well. Your
+subscription addresses, the imported configurations and the app's settings therefore stay on
+the device: they are not copied to a cloud backup provider and are not carried over when the
+system migrates apps to a new phone. To move your subscriptions yourself, use the
+"Back up subscriptions" file export in the app settings and keep that file private.
 
 **Permissions**
 
