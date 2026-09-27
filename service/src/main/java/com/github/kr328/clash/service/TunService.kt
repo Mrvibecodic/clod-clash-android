@@ -222,10 +222,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val startedAt = SystemClock.elapsedRealtime()
 
-        TunModule.requestStop()
-
         session.destroy()
 
+        // Туннель закрывает сам рантайм в фоне; главный поток ждёт его не
+        // дольше срока ожидания.
         cancelAndJoinBlocking()
 
         Log.i(

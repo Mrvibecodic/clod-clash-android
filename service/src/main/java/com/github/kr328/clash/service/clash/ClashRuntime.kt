@@ -33,19 +33,24 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                         Clash.reset()
                         clearSessionOverride()
 
-                        val scope = object : ClashRuntimeScope {
-                            override fun <E, T : Module<E>> install(module: T): T {
-                                launch {
-                                    module.execute()
+                        // Сброс ядра и снятие замка ждут, пока модули доработают
+                        // свои finally: иначе прощание старой сессии (пустой DNS,
+                        // остановка туннеля) ложится поверх следующей.
+                        coroutineScope {
+                            val scope = object : ClashRuntimeScope {
+                                override fun <E, T : Module<E>> install(module: T): T {
+                                    launch {
+                                        module.execute()
+                                    }
+
+                                    return module
                                 }
-
-                                return module
                             }
+
+                            scope.block()
+
+                            cancel()
                         }
-
-                        scope.block()
-
-                        cancel()
                     } finally {
                         withContext(NonCancellable) {
                             val startedAt = SystemClock.elapsedRealtime()
