@@ -97,3 +97,63 @@ func TestFailedRemoveIsReported(t *testing.T) {
 		t.Fatal("неудачное удаление доложено как успех")
 	}
 }
+
+func TestStoreReadsDiskOnceAndMirrorsOwnWrites(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "override.json")
+	store := NewStore(path, "{}")
+
+	if got, err := store.Read(); err != nil || got != "{}" {
+		t.Fatalf("нет файла — заводские: %q, %v", got, err)
+	}
+
+	if err := store.Write(`{"ipv6":true}`); err != nil {
+		t.Fatal(err)
+	}
+
+	// Чужая запись мимо хранилища не видна: диск больше не читается.
+	if err := os.WriteFile(path, []byte(`{"ipv6":false}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, err := store.Read(); err != nil || got != `{"ipv6":true}` {
+		t.Fatalf("зеркало разошлось с записанным: %q, %v", got, err)
+	}
+
+	if err := store.Remove(); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, err := store.Read(); err != nil || got != "{}" {
+		t.Fatalf("после удаления не заводские: %q, %v", got, err)
+	}
+}
+
+func TestStoreKeepsReadErrorUntilWrite(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "override.json")
+
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	store := NewStore(path, "{}")
+
+	if _, err := store.Read(); err == nil {
+		t.Fatal("нечитаемый файл выдан за настройки")
+	}
+
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.Read(); err == nil {
+		t.Fatal("ошибка чтения забыта без записи")
+	}
+
+	if err := store.Write(`{}`); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, err := store.Read(); err != nil || got != `{}` {
+		t.Fatalf("запись не сняла ошибку: %q, %v", got, err)
+	}
+}

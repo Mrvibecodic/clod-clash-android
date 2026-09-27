@@ -268,7 +268,8 @@ object Clash {
         return try {
             CoreJson.decodeFromString(ConfigurationOverride.serializer(), json)
         } catch (e: SerializationException) {
-            throw IllegalStateException("override.json is not valid: ${e.message}", e)
+            // Без хвоста «JSON input: …» — там кусок файла, а в нём бывают пароли.
+            throw IllegalStateException("override.json is not valid: ${e.message?.substringBefore("\nJSON input:")}", e)
         }
     }
 

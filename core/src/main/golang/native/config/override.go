@@ -24,17 +24,24 @@ var (
 	sessionOverride = defaultSessionOverride
 )
 
-func overridePersistPath() string {
-	return constant.Path.Resolve("override.json")
-}
+// Файл читается один раз за жизнь процесса и держится в памяти, как и сессионный
+// слот: одна загрузка конфига спрашивает его несколько раз, а пишет его только ядро.
+var persistOverride = sync.OnceValue(func() *overridefile.Store {
+	store := overridefile.NewStore(constant.Path.Resolve("override.json"), defaultPersistOverride)
+
+	if _, err := store.Read(); err != nil {
+		log.Warnln("Read override: %s", err.Error())
+	}
+
+	return store
+})
 
 // ReadOverride — для сборки конфига: нечитаемые настройки не должны мешать
-// подключению, поэтому здесь они заводские, а причина уходит в журнал.
+// подключению, поэтому здесь они заводские; причина один раз уходит в журнал
+// при чтении с диска.
 func ReadOverride(slot OverrideSlot) string {
 	content, err := QueryOverride(slot)
 	if err != nil {
-		log.Warnln("Read override: %s", err.Error())
-
 		return defaultPersistOverride
 	}
 
@@ -45,7 +52,7 @@ func ReadOverride(slot OverrideSlot) string {
 func QueryOverride(slot OverrideSlot) (string, error) {
 	switch slot {
 	case OverrideSlotPersist:
-		return overridefile.Read(overridePersistPath(), defaultPersistOverride)
+		return persistOverride().Read()
 	case OverrideSlotSession:
 		sessionLock.RLock()
 		defer sessionLock.RUnlock()
@@ -59,7 +66,7 @@ func QueryOverride(slot OverrideSlot) (string, error) {
 func WriteOverride(slot OverrideSlot, content string) error {
 	switch slot {
 	case OverrideSlotPersist:
-		return overridefile.Write(overridePersistPath(), content)
+		return persistOverride().Write(content)
 	case OverrideSlotSession:
 		sessionLock.Lock()
 		sessionOverride = content
@@ -72,7 +79,7 @@ func WriteOverride(slot OverrideSlot, content string) error {
 func ClearOverride(slot OverrideSlot) error {
 	switch slot {
 	case OverrideSlotPersist:
-		return overridefile.Remove(overridePersistPath())
+		return persistOverride().Remove()
 	case OverrideSlotSession:
 		sessionLock.Lock()
 		sessionOverride = defaultSessionOverride
