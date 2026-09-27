@@ -1,10 +1,12 @@
 package com.github.kr328.clash.remote
 
+import android.app.ActivityManager
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
@@ -139,7 +141,21 @@ class Broadcasts(private val context: Application) {
         refreshRunning()
     }
 
+    // Туннель живёт только в процессе :background. Нет процесса — ответ известен
+    // без вопроса, а вопрос поднял бы этот процесс, и главный поток, откуда сюда
+    // приходят при каждом появлении приложения, ждал бы его запуска.
     private fun refreshRunning() {
-        clashRunning = StatusClient(context).isRunning()
+        clashRunning = backgroundAlive() && StatusClient(context).isRunning()
+    }
+
+    private fun backgroundAlive(): Boolean {
+        val processes = context.getSystemService<ActivityManager>()?.runningAppProcesses ?: return true
+        val name = context.packageName + BACKGROUND_PROCESS
+
+        return processes.any { it.processName == name }
+    }
+
+    private companion object {
+        const val BACKGROUND_PROCESS = ":background"
     }
 }

@@ -9,9 +9,9 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.remote.Remote
+import com.github.kr328.clash.remote.RemoteHandle
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.IProfileManager
-import com.github.kr328.clash.service.remote.IRemoteService
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -35,7 +35,7 @@ val serviceUnavailableHandler = CoroutineExceptionHandler { _, e ->
     }
 }
 
-private suspend fun awaitRemote(): IRemoteService {
+private suspend fun awaitRemote(): RemoteHandle {
     while (true) {
         withTimeoutOrNull(REMOTE_WAIT_MS) { Remote.service.remote.get() }?.let { return it }
 
@@ -52,7 +52,7 @@ private suspend fun awaitRemote(): IRemoteService {
 private suspend fun <R, T> withRemote(
     context: CoroutineContext,
     retry: Boolean,
-    select: (IRemoteService) -> R,
+    select: (RemoteHandle) -> R,
     block: suspend R.() -> T,
 ): T {
     while (true) {
@@ -84,10 +84,10 @@ suspend fun <T> withClash(
     context: CoroutineContext = Dispatchers.IO,
     retry: Boolean = true,
     block: suspend IClashManager.() -> T
-): T = withRemote(context, retry, { it.clash() }, block)
+): T = withRemote(context, retry, { it.clash }, block)
 
 suspend fun <T> withProfile(
     context: CoroutineContext = Dispatchers.IO,
     retry: Boolean = true,
     block: suspend IProfileManager.() -> T
-): T = withRemote(context, retry, { it.profile() }, block)
+): T = withRemote(context, retry, { it.profile }, block)

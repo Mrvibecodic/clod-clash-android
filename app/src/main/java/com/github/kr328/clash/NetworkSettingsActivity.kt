@@ -3,7 +3,7 @@ package com.github.kr328.clash
 import com.github.kr328.clash.design.NetworkSettingsDesign
 import com.github.kr328.clash.design.NetworkSettingsPrefs
 import com.github.kr328.clash.remote.StatusClient
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.service.util.readTunPrefs
@@ -16,8 +16,6 @@ import java.util.UUID
 
 class NetworkSettingsActivity : BaseActivity<NetworkSettingsDesign>() {
     override suspend fun main() {
-        val srvStore = ServiceStore(this)
-
         val loaded = withContext(Dispatchers.IO) {
             StatusClient(this@NetworkSettingsActivity).status()
                 .takeIf { it.running }
@@ -32,12 +30,11 @@ class NetworkSettingsActivity : BaseActivity<NetworkSettingsDesign>() {
                 activeTunPrefs()?.stack ?: ""
             }
         }
-        val prefs = withContext(Dispatchers.IO) { NetworkSettingsPrefs.read(srvStore) }
+        val prefs = ServiceSettings.access { NetworkSettingsPrefs.read(this) }
 
         val design = NetworkSettingsDesign(
             this,
             uiStore,
-            srvStore,
             prefs,
             clashRunning,
             activeLocalProxyPort() ?: 0,

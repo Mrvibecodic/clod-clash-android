@@ -5,22 +5,20 @@ import android.view.View
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.design.compose.screen.AccessControlAction
 import com.github.kr328.clash.design.compose.screen.AccessControlScreen
 import com.github.kr328.clash.design.compose.screen.AccessControlState
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.model.AccessControlMode
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AccessControlDesign(
     context: Context,
     private val uiStore: UiStore,
-    private val srvStore: ServiceStore,
+    mode: AccessControlMode,
     private val selected: MutableSet<String>,
     includeFromProfile: Set<String> = emptySet(),
     excludeFromProfile: Set<String> = emptySet(),
@@ -43,7 +41,7 @@ class AccessControlDesign(
             sort = uiStore.accessControlSort,
             reverse = uiStore.accessControlReverse,
             systemApps = uiStore.accessControlSystemApp,
-            mode = modes.indexOf(srvStore.accessControlMode).coerceAtLeast(0),
+            mode = modes.indexOf(mode).coerceAtLeast(0),
             includeFromProfile = includeFromProfile,
             excludeFromProfile = excludeFromProfile,
         ),
@@ -74,7 +72,7 @@ class AccessControlDesign(
             is AccessControlAction.Mode -> {
                 val mode = modes.getOrNull(action.index) ?: return
 
-                srvStore.accessControlMode = mode
+                ServiceSettings.write { accessControlMode = mode }
 
                 state = state.copy(mode = action.index)
             }
@@ -116,16 +114,10 @@ class AccessControlDesign(
 
         state = state.copy(selected = snapshot)
 
-        Global.launch(writer) {
-            srvStore.accessControlPackages = snapshot
-        }
+        ServiceSettings.write { accessControlPackages = snapshot }
     }
 
     fun request(request: Request) {
         requests.trySend(request)
-    }
-
-    private companion object {
-        val writer = Dispatchers.IO.limitedParallelism(1)
     }
 }

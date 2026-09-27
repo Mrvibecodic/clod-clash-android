@@ -1,6 +1,5 @@
 package com.github.kr328.clash
 
-import android.app.ActivityManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -9,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContract
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
 import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
@@ -27,12 +25,13 @@ import com.github.kr328.clash.design.util.resolveThemedColor
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.service.R as ServiceR
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
 import com.github.kr328.clash.util.ApplicationObserver
+import com.github.kr328.clash.util.applyHideFromRecents
 import com.github.kr328.clash.util.serviceUnavailableHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -112,8 +111,10 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         applyDayNight()
         syncAppLocale()
 
-        checkNotNull(getSystemService<ActivityManager>()).appTasks.forEach { task ->
-            task.setExcludeFromRecents(uiStore.hideFromRecents)
+        // Флаг хранится в задаче у системы и переживает и поворот, и смерть процесса:
+        // ставится новому экрану, а при смене настройки — явно (AppSettingsActivity).
+        if (savedInstanceState == null) {
+            applyHideFromRecents(uiStore.hideFromRecents)
         }
 
         launch {
@@ -321,10 +322,12 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
         if (tag.isEmpty()) return
 
-        val store = ServiceStore(this)
-
-        if (store.appLocale != tag) {
-            store.appLocale = tag
+        // Язык интерфейса ставит AppCompat; здесь только зеркало для служб на
+        // Android < 13, поэтому ждать его первому кадру незачем.
+        ServiceSettings.write {
+            if (appLocale != tag) {
+                appLocale = tag
+            }
         }
     }
 }

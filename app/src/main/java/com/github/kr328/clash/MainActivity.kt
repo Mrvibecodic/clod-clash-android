@@ -27,7 +27,7 @@ import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.ProxyGroup
 import com.github.kr328.clash.core.model.ProxyGroupNames
 import com.github.kr328.clash.service.model.PanelGroup
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
 import com.github.kr328.clash.design.compose.component.NoticeKind
@@ -41,7 +41,7 @@ import com.github.kr328.clash.design.model.toggleIntent
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
-import com.github.kr328.clash.util.applyDynamicShortcuts
+import com.github.kr328.clash.util.refreshDynamicShortcuts
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
 import com.github.kr328.clash.util.loadRouteGroups
@@ -639,9 +639,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         setSessionNotes(notes.restartedBySystem, notes.systemProxyRefused)
 
         val session = if (clashRunning) {
-            withContext(Dispatchers.IO) {
-                ServiceStore(this@MainActivity).run { clashStartedAt to clashStartedElapsed }
-            }
+            ServiceSettings.access { clashStartedAt to clashStartedElapsed }
         } else {
             0L to 0L
         }
@@ -1341,12 +1339,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q)
             return null
 
-        return withContext(Dispatchers.IO) {
-            when (ServiceStore(this@MainActivity).vpnAlwaysOn) {
-                1 -> true
-                0 -> false
-                else -> null
-            }
+        return when (ServiceSettings.access { vpnAlwaysOn }) {
+            1 -> true
+            0 -> false
+            else -> null
         }
     }
 
@@ -1440,6 +1436,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         watchStart()
 
         try {
+            // Служба при старте читает настройки сама: записи с экранов настроек
+            // должны лечь раньше.
+            ServiceSettings.access { }
+
             val vpnRequest = startClashService()
 
             if (vpnRequest != null) {
@@ -1796,6 +1796,6 @@ class MainActivity : BaseActivity<MainDesign>() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        applyDynamicShortcuts(uiStore.hideAppIcon)
+        refreshDynamicShortcuts(uiStore.hideAppIcon)
     }
 }

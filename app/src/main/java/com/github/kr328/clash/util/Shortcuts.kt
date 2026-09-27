@@ -3,16 +3,42 @@ package com.github.kr328.clash.util
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.pm.ShortcutInfoCompat
+import androidx.core.os.ConfigurationCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
 import com.github.kr328.clash.R
 import com.github.kr328.clash.ShortcutControlActivity
+import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.constants.Intents
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.github.kr328.clash.design.R as DesignR
 
 private val SHORTCUT_IDS = listOf("toggle_clash", "start_clash", "stop_clash")
 
-fun Context.applyDynamicShortcuts(hide: Boolean) {
+private val shortcutsQueue = Dispatchers.IO.limitedParallelism(1)
+
+// Трогается только из shortcutsQueue.
+private var appliedShortcuts: Pair<Boolean, String>? = null
+
+// Ярлыки хранит система между запусками: переустанавливать их нужно, только когда
+// поменялось то, что в них видно, — скрыт ли значок и язык подписей.
+fun Context.refreshDynamicShortcuts(hide: Boolean) {
+    val app = applicationContext
+
+    Global.launch(shortcutsQueue) {
+        val localized = app.withAppLocale()
+        val applied = hide to ConfigurationCompat.getLocales(localized.resources.configuration).toLanguageTags()
+
+        if (applied == appliedShortcuts) return@launch
+
+        localized.applyDynamicShortcuts(hide)
+
+        appliedShortcuts = applied
+    }
+}
+
+private fun Context.applyDynamicShortcuts(hide: Boolean) {
     if (hide) {
         ShortcutManagerCompat.removeAllDynamicShortcuts(this)
 

@@ -8,6 +8,8 @@ import android.os.IBinder
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.service.RemoteService
+import com.github.kr328.clash.service.remote.IClashManager
+import com.github.kr328.clash.service.remote.IProfileManager
 import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.unwrap
 import com.github.kr328.clash.common.Global
@@ -17,8 +19,15 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
+// Менеджеры RemoteService живут столько же, сколько он сам: запрашиваются один раз
+// на соединение, а не лишней транзакцией на каждый вызов.
+class RemoteHandle(service: IRemoteService) {
+    val clash: IClashManager by lazy { service.clash() }
+    val profile: IProfileManager by lazy { service.profile() }
+}
+
 class Service(private val context: Application, val crashed: () -> Unit) {
-    val remote = Resource<IRemoteService>()
+    val remote = Resource<RemoteHandle>()
 
     @Volatile
     var boundSince: Long = 0
@@ -63,7 +72,7 @@ class Service(private val context: Application, val crashed: () -> Unit) {
         private var lastCrashed: Long = -1
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder) {
-            remote.set(service.unwrap(IRemoteService::class))
+            remote.set(RemoteHandle(service.unwrap(IRemoteService::class)))
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {

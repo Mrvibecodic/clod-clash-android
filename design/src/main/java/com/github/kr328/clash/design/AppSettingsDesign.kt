@@ -19,17 +19,17 @@ import com.github.kr328.clash.design.model.DarkMode
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AppSettingsDesign(
     context: Context,
     private val uiStore: UiStore,
-    private val srvStore: ServiceStore,
     prefs: AppSettingsPrefs,
     private val behavior: Behavior,
     private val running: Boolean,
@@ -136,42 +136,47 @@ class AppSettingsDesign(
                 return@launch
             }
 
-            val prefs = withContext(Dispatchers.IO) {
-                behavior.autoRestart = false
+            // Дальше сброс доводится до конца, даже если экран закрыли посередине:
+            // иначе настройки интерфейса и службы остались бы сброшены наполовину.
+            withContext(NonCancellable) {
+                val prefs = ServiceSettings.access {
+                    behavior.autoRestart = false
 
-                onHideIconChange(false)
+                    onHideIconChange(false)
 
-                uiStore.reset()
-                uiStore.darkMode.applyToSystem(context)
-                srvStore.reset()
+                    uiStore.reset()
+                    uiStore.darkMode.applyToSystem(context)
 
-                srvStore.appLocale = languageTags[0]
+                    reset()
 
-                AppSettingsPrefs.read(srvStore)
-            }
+                    appLocale = languageTags[0]
 
-            withContext(Dispatchers.Main) {
-                applyLocale(languageTags[0])
+                    AppSettingsPrefs.read(this)
+                }
 
-                state = state.copy(
-                    autoRestart = false,
-                    darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
-                    language = 0,
-                    showGroupIcons = uiStore.showGroupIcons,
-                    showAllGroupsOnHome = uiStore.showAllGroupsOnHome,
-                    hideAppIcon = false,
-                    hideFromRecents = uiStore.hideFromRecents,
-                    allowExternalControl = uiStore.allowExternalControl,
-                    dynamicNotification = prefs.dynamicNotification,
-                    enableHwid = prefs.enableHwid,
-                    subNotifications = prefs.subNotifications,
-                    profileErrorNotifications = prefs.profileErrorNotifications,
-                    profileUpdateNotifications = prefs.profileUpdateNotifications,
-                    notificationsBlocked = notificationsBlocked(),
-                    resetEnabled = true,
-                )
+                withContext(Dispatchers.Main) {
+                    applyLocale(languageTags[0])
 
-                requests.trySend(Request.ReCreateAllActivities)
+                    state = state.copy(
+                        autoRestart = false,
+                        darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+                        language = 0,
+                        showGroupIcons = uiStore.showGroupIcons,
+                        showAllGroupsOnHome = uiStore.showAllGroupsOnHome,
+                        hideAppIcon = false,
+                        hideFromRecents = uiStore.hideFromRecents,
+                        allowExternalControl = uiStore.allowExternalControl,
+                        dynamicNotification = prefs.dynamicNotification,
+                        enableHwid = prefs.enableHwid,
+                        subNotifications = prefs.subNotifications,
+                        profileErrorNotifications = prefs.profileErrorNotifications,
+                        profileUpdateNotifications = prefs.profileUpdateNotifications,
+                        notificationsBlocked = notificationsBlocked(),
+                        resetEnabled = true,
+                    )
+
+                    requests.trySend(Request.ReCreateAllActivities)
+                }
             }
         }
     }
@@ -192,9 +197,7 @@ class AppSettingsDesign(
         val tag = languageTags.getOrNull(index) ?: return
 
         launch {
-            withContext(Dispatchers.IO) {
-                srvStore.appLocale = tag
-            }
+            ServiceSettings.access { appLocale = tag }
 
             withContext(Dispatchers.Main) {
                 applyLocale(tag)
@@ -303,33 +306,33 @@ class AppSettingsDesign(
                 state = state.copy(allowExternalControl = action.enabled)
             }
             is AppSettingsAction.SetEnableHwid -> {
-                srvStore.enableHwid = action.enabled
+                ServiceSettings.write { enableHwid = action.enabled }
 
                 state = state.copy(enableHwid = action.enabled)
             }
             is AppSettingsAction.SetSubNotifications -> {
-                srvStore.enableSubNotifications = action.enabled
+                ServiceSettings.write { enableSubNotifications = action.enabled }
 
                 state = state.copy(subNotifications = action.enabled)
 
                 askNotificationsIfNeeded(action.enabled)
             }
             is AppSettingsAction.SetProfileErrorNotifications -> {
-                srvStore.notifyProfileErrors = action.enabled
+                ServiceSettings.write { notifyProfileErrors = action.enabled }
 
                 state = state.copy(profileErrorNotifications = action.enabled)
 
                 askNotificationsIfNeeded(action.enabled)
             }
             is AppSettingsAction.SetProfileUpdateNotifications -> {
-                srvStore.notifyProfileUpdates = action.enabled
+                ServiceSettings.write { notifyProfileUpdates = action.enabled }
 
                 state = state.copy(profileUpdateNotifications = action.enabled)
 
                 askNotificationsIfNeeded(action.enabled)
             }
             is AppSettingsAction.SetDynamicNotification -> {
-                srvStore.dynamicNotification = action.enabled
+                ServiceSettings.write { dynamicNotification = action.enabled }
 
                 state = state.copy(dynamicNotification = action.enabled)
 

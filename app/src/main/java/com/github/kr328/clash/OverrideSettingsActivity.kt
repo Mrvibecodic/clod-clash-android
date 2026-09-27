@@ -9,7 +9,6 @@ import com.github.kr328.clash.design.compose.screen.ModeShadow
 import com.github.kr328.clash.design.model.PendingRestore
 import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.queryPanelInfo
@@ -35,7 +34,6 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             ?: (stored as? StoredOverride.Readable)?.let { PendingOverride.Draft(it.value) }
 
         this.draft = draft
-        val service = ServiceStore(this)
 
         val active = withProfile { queryActive() }
         val panel = active?.let { queryPanelInfo(it.uuid) }

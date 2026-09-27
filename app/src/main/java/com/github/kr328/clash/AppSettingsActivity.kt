@@ -27,11 +27,12 @@ import kotlinx.serialization.json.Json
 import com.github.kr328.clash.design.compose.screen.MIN_INTERVAL_MINUTES
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
 import com.github.kr328.clash.util.ProfileImports
-import com.github.kr328.clash.util.applyDynamicShortcuts
+import com.github.kr328.clash.util.applyHideFromRecents
+import com.github.kr328.clash.util.refreshDynamicShortcuts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -41,13 +42,11 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
     private val backupJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     override suspend fun main() {
-        val srvStore = ServiceStore(this)
-        val prefs = withContext(Dispatchers.IO) { AppSettingsPrefs.read(srvStore) }
+        val prefs = ServiceSettings.access { AppSettingsPrefs.read(this) }
 
         val design = AppSettingsDesign(
             this,
             uiStore,
-            srvStore,
             prefs,
             this,
             clashRunning,
@@ -97,10 +96,14 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        AppSettingsDesign.Request.ReCreateAllActivities ->
+                        AppSettingsDesign.Request.ReCreateAllActivities -> {
+                            // Пересозданный экран флаг не повторяет: он живёт в задаче у системы.
+                            applyHideFromRecents(uiStore.hideFromRecents)
+
                             ApplicationObserver.createdActivities.forEach { activity ->
                                 activity.recreate()
                             }
+                        }
 
                         AppSettingsDesign.Request.OpenSystemNotifications ->
                             openNotificationSettings()
@@ -354,7 +357,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             PackageManager.DONT_KILL_APP
         )
 
-        applyDynamicShortcuts(hide)
+        refreshDynamicShortcuts(hide)
     }
 
     private companion object {

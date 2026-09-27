@@ -16,15 +16,20 @@ class UiStore(context: Context) {
 
     private val appContext = context.applicationContext
 
-    private val hideAppIconDefault: Boolean by lazy {
-        appContext.packageManager.getComponentEnabledSetting(appContext.mainActivityAlias)
+    // Нужно только тем, кто тумблер не трогал: у них ключа нет. Состояние значка
+    // меняет лишь наш код и всегда вместе с ключом, поэтому хватает одного
+    // обращения к системе на процесс, а не на каждый экран.
+    private val hideAppIconDefault: Boolean
+        get() = componentHidden ?: appContext.packageManager.getComponentEnabledSetting(appContext.mainActivityAlias)
             .let { state ->
                 state != PackageManager.COMPONENT_ENABLED_STATE_ENABLED &&
                         state != PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
             }
-    }
+            .also { componentHidden = it }
 
     fun reset() {
+        componentHidden = null
+
         val editor = preferences.edit()
 
         SETTING_KEYS.forEach { editor.remove(it) }
@@ -148,6 +153,9 @@ class UiStore(context: Context) {
     )
 
     companion object {
+        @Volatile
+        private var componentHidden: Boolean? = null
+
         private const val PREFERENCE_NAME = "ui"
 
         private const val HIDE_APP_ICON = "hide_app_icon"

@@ -18,7 +18,7 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.accessControlFingerprint
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.util.SelectionOps
 import com.github.kr328.clash.util.startClashService
@@ -35,20 +35,23 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
     private var current: MutableSet<String>? = null
 
     override suspend fun main() {
-        val service = ServiceStore(this)
+        val (stored, mode) = ServiceSettings.access { accessControlPackages to accessControlMode }
 
-        val selected = restored?.getStringArray("selected")?.toMutableSet()
-            ?: withContext(Dispatchers.IO) { service.accessControlPackages.toMutableSet() }
+        val selected = restored?.getStringArray("selected")?.toMutableSet() ?: stored.toMutableSet()
 
         this.current = selected
 
         defer {
-            val restart = withContext(Dispatchers.IO) {
-                service.accessControlPackages = selected.toSet()
+            // Через очередь настроек: отпечаток считается по режиму и списку уже
+            // после всех записей, сделанных на экране.
+            val changed = ServiceSettings.access {
+                accessControlPackages = selected.toSet()
 
-                accessControlFingerprint(service.accessControlMode, selected) != service.accessControlApplied &&
-                    uiStore.enableVpn &&
-                    StatusClient(this@AccessControlActivity).isActive()
+                accessControlFingerprint(accessControlMode, selected) != accessControlApplied
+            }
+
+            val restart = changed && uiStore.enableVpn && withContext(Dispatchers.IO) {
+                StatusClient(this@AccessControlActivity).isActive()
             }
             if (restart) {
                 val app = applicationContext
@@ -72,7 +75,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         val design = AccessControlDesign(
             this,
             uiStore,
-            service,
+            mode,
             selected,
             tunPrefs?.includePackages?.filter { runCatching { packageManager.getApplicationInfo(it, 0) }.isSuccess }?.toSet() ?: emptySet(),
             tunPrefs?.excludePackages?.toSet() ?: emptySet(),

@@ -10,13 +10,12 @@ import com.github.kr328.clash.design.compose.screen.NetworkSettingsAction
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsScreen
 import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.store.UiStore
-import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.resolveTunStack
 
 class NetworkSettingsDesign(
     context: Context,
     private val uiStore: UiStore,
-    private val srvStore: ServiceStore,
     prefs: NetworkSettingsPrefs,
     running: Boolean,
     localProxyPort: Int,
@@ -61,44 +60,44 @@ class NetworkSettingsDesign(
                 state = state.copy(enableVpn = action.enabled)
             }
             is NetworkSettingsAction.SetBypassPrivateNetwork -> {
-                srvStore.bypassPrivateNetwork = action.enabled
+                ServiceSettings.write { bypassPrivateNetwork = action.enabled }
 
                 state = state.copy(bypassPrivateNetwork = action.enabled)
             }
             is NetworkSettingsAction.SetDnsHijacking -> {
-                srvStore.dnsHijacking = action.enabled
+                ServiceSettings.write { dnsHijacking = action.enabled }
 
                 state = state.copy(dnsHijacking = action.enabled)
             }
             is NetworkSettingsAction.SetAllowBypass -> {
-                srvStore.allowBypass = action.enabled
+                ServiceSettings.write { allowBypass = action.enabled }
 
                 state = state.copy(allowBypass = action.enabled)
             }
             is NetworkSettingsAction.SetAllowIpv6 -> {
-                srvStore.allowIpv6 = action.enabled
+                ServiceSettings.write { allowIpv6 = action.enabled }
 
                 state = state.copy(allowIpv6 = action.enabled)
             }
             is NetworkSettingsAction.SetResetConnections -> {
-                srvStore.resetConnectionsOnNetworkChange = action.enabled
+                ServiceSettings.write { resetConnectionsOnNetworkChange = action.enabled }
 
                 state = state.copy(resetConnections = action.enabled)
             }
             is NetworkSettingsAction.SetKeepAwake -> {
-                srvStore.keepAwake = action.enabled
+                ServiceSettings.write { keepAwake = action.enabled }
 
                 state = state.copy(keepAwake = action.enabled)
             }
             is NetworkSettingsAction.SetSystemProxy -> {
-                srvStore.systemProxy = action.enabled
+                ServiceSettings.write { systemProxy = action.enabled }
 
                 state = state.copy(systemProxy = action.enabled)
             }
             is NetworkSettingsAction.SetTunStack -> {
                 val stack = tunStacks.getOrNull(action.index) ?: return
 
-                srvStore.tunStackMode = stack
+                ServiceSettings.write { tunStackMode = stack }
 
                 state = state.copy(
                     tunStack = action.index,
