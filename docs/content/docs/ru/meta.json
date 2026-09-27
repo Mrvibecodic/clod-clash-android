@@ -1,4 +1,4 @@
 {
   "title": "Документация",
-  "pages": ["index", "install", "subscription", "connect", "modes", "settings", "faq", "provider", "help"]
+  "pages": ["index", "install", "subscription", "connect", "modes", "settings", "faq", "help", "---Провайдерам---", "provider", "headers", "clod-headers"]
 }

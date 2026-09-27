@@ -1,45 +1,78 @@
 ---
 title: "Install & update"
-description: "Which APK to download, how to install it and how updates work afterwards"
+description: "Which APK to download, how updates work and which core is inside"
 ---
 
 ## Which file to download
 
-Every build is listed on the [download page](/en/download), together with permanent links and
-file sizes. File names stay the same from version to version, so a bookmarked link always points
-at the latest regular version:
+All builds are on the [download page](/en/download). File names do not change between
+versions, so a link always leads to the latest regular release:
 
 | File | For |
 | --- | --- |
 | `clodclash-arm64-v8a.apk` | Almost every modern phone |
-| `clodclash-armeabi-v7a.apk` | Older 32-bit devices |
-| `clodclash-x86_64.apk` | Emulators and the rare Intel tablet |
-| `clodclash-universal.apk` | If you are not sure: fits everything, twice the size |
+| `clodclash-armeabi-v7a.apk` | Old 32-bit devices |
+| `clodclash-x86_64.apk` | Emulators and rare Intel tablets |
+| `clodclash-universal.apk` | Not sure? It fits every device but is noticeably larger |
 
 <Callout title="How to tell which one you need">
-A phone bought after 2019 is almost certainly `arm64-v8a`. Guessing wrong is harmless —
-Android simply refuses to install an incompatible file.
+A phone bought after 2019 is almost certainly `arm64-v8a`. A wrong pick is harmless: the
+system simply refuses to install a file that does not fit.
 </Callout>
 
 ## Installing
 
-1. Download the APK to your phone.
-2. Open the file — Android will ask whether apps from this source may be installed.
+1. Download the APK to the phone.
+2. Open the file — Android asks to allow installing apps from this source.
 3. Allow it and confirm the installation.
 
-The app needs the VPN permission (the system asks for it on your first connection) and,
-starting with Android 13, the notification permission — without it you will not see the
-ongoing notification with the tunnel status.
+On the first connection the system asks for the VPN permission. On Android 13 and newer the app
+also asks for the notification permission — without it you will not see the tunnel status
+notification, subscription reminders or update errors.
 
 ## Updates
 
-The app checks for updates on its own and shows a dialog with the changelog.
-To check manually: **More → About → Check for update**.
-
-The core is updated together with the app — there is no separate button for it, and none is needed.
+Once a day the app checks for updates by itself and shows a window with the changes.
+It is all in **More → About**: **Check for updates** (manually), **Check automatically**
+(on by default) and **Pre-releases** (off).
 
 <Callout type="warn" title="Pre-releases">
-Pre-release versions carry a suffix in the number, for example `0.1.16-alpha`. The app offers
-those only to people who opted in. Permanent download links always point at the latest
-regular build.
+Preview versions carry a suffix in the number, for example `0.1.22-alpha.6`. The app offers
+them only when **Pre-releases** is on. The permanent download links always lead to the latest
+regular release.
 </Callout>
+
+## Core
+
+The core is updated together with the app; there is no separate button for it. Inside right
+now is the stable [mihomo](https://github.com/MetaCubeX/mihomo) v1.19.31 with five Android
+patches:
+
+- while the network is switching or the app was asleep, failed checks are not recorded
+  against nodes — live servers are not marked dead;
+- on a network change, shared node sessions (smux, anytls, tuic, hysteria2, gRPC, ssh) are
+  reset, so new connections do not land on a dead session of the old network;
+- servers in manual-select groups are checked with the expected status code set in the group;
+- if the subscription or provider address redirects from `https` to `http`, the download is
+  refused instead of going out in the clear;
+- the core cleans up memory after it switches to running mode, not before.
+
+### Clod Core
+
+[Clod Core](https://github.com/Mrvibecodic/clod-core) is our fork of stable Mihomo (it can
+already be picked on desktop). **It is not built into Android yet.** Its `android` branch
+already contains the patches above, plus:
+
+- **A newer TLS fingerprint library** — utls v1.9.0-mod-meta: Firefox 148 and Safari 26.3
+  fingerprints with a post-quantum key, fixes for TLS session resumption. The chrome, ios and
+  edge fingerprints do not change.
+- **Nodes do not "blink" dead.** If a check hangs or breaks off, a second one starts a second
+  later; a node counts as dead only if both fail. A closed port, an unknown name or a wrong
+  status code mean the node is dead at once.
+- **An unstable node loses to a stable one.** Automatic selection adds a penalty to its latency —
+  a quarter of the timeout for each failure among the last three checks.
+- **Fewer extra checks.** A node that sits in several groups is checked once per round, and
+  nodes on one server are checked 250 ms apart instead of in a burst, so a blocker does not take
+  the checks for an attack.
+- **Data survives a crash.** Rule sets, providers and geo databases are written through a
+  temporary file: if a write breaks off, the old file stays intact.

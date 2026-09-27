@@ -1,0 +1,77 @@
+---
+title: "clod-* headers"
+description: "Clod Clash's own headers that Android understands: values and what each one does"
+---
+
+Only Clod Clash understands `clod-*`. The panel does not send them by itself — add them in the
+subscription settings under `customResponseHeaders`. Each one works only within its own
+subscription.
+
+## All headers
+
+| Header | Value | What it does |
+| --- | --- | --- |
+| `clod-portal-url` | `https://` link | "Customer portal" button — where the plan is renewed |
+| `clod-bot-url` | `https://`, `tg:` or `mailto:` link | "Bot" button |
+| `clod-monitor-url` | `https://` link | "Server status" button |
+| `clod-guide-url` | `https://` link | "Setup guide" button |
+| `clod-announce` | text | permanent announcement; wins over `announce` |
+| `clod-promo` | text | promo banner that can be closed |
+| `clod-promo-url` | `https://` link | where a tap on the promo leads |
+| `clod-lock-mode` | `true`, `lock` or `false` | locks the routing mode to `mode` from the template |
+| `clod-ping` | `A/B` in ms, for example `150/300` | latency colour bounds. Without the header — `200/400` |
+| `clod-disable-ping` | `true` only | a check mark or cross instead of milliseconds |
+| `clod-show-0hosts` | `true` or `false` | show the panel's placeholder nodes as they are |
+
+Instead of `true` / `false` you can use `1` / `0`, `yes` / `no`, `on` / `off` — except for
+`clod-disable-ping`, which accepts only `true`. A value that is not understood counts as no
+header. Send non-ASCII text as `base64:<text in base64>`.
+
+`clod-*` headers that work on desktop only are not listed here — Android does not understand them.
+
+## Provider links
+
+"Customer portal", "Support" (`support-url`), "Bot", "Server status" and "Setup guide" are
+gathered in a block named after the subscription at the top of the **More** tab. Only the links
+that were sent are shown; with none, there is no block. "Customer portal" and "Support" also
+appear on the subscription card when expiry is near or has passed.
+
+## Announcement and promo
+
+- **`clod-announce`** — a permanent announcement on the home screen, shown while the panel
+  sends it.
+- **`clod-promo`** — a banner for offers under the announcement, collapsed to two lines. It can
+  be closed with a cross; a new text brings it back, and without the header it disappears with
+  the next update. **`clod-promo-url`** makes it clickable.
+- Length — up to 300 visible characters.
+- Words can be coloured: a `#RRGGBB` code right before a word, for example
+  `#EF4444IMPORTANT: node under maintenance`. The colour lasts until the next space and does
+  not count towards the length.
+
+## Routing mode: `clod-lock-mode`
+
+Locks the mode to the one in the template's `mode:` (without it — "Rule mode"). The mode row
+says "set by your provider" and the mode cannot be changed.
+
+| Value | What happens |
+| --- | --- |
+| `true` | the mode is locked while the panel confirms it. If the subscription has not updated successfully for more than 72 hours (or three update intervals, if longer), the lock lifts by itself; the next successful update brings it back |
+| `lock` | the mode is locked with no expiry |
+| `false` | no lock |
+
+For compatibility with Prizrak-Box, `global-mode: false` is read as `clod-lock-mode: true` and
+`global-mode: true` as "no lock". `clod-lock-mode` wins.
+
+## Latency
+
+- **`clod-ping: A/B`** — up to `A` ms latency is green, up to `B` yellow, red beyond. Two
+  integers separated by `/`, `1 ≤ A < B ≤ 60000`, otherwise the header is skipped.
+- **`clod-disable-ping: true`** — on the home screen and the Servers tab a check mark (the server
+  answers), a cross (it did not) or a dash (not checked yet) instead of milliseconds.
+
+## Placeholder nodes: `clod-show-0hosts`
+
+Without the header the app recognises the panel's placeholder nodes (expired subscription, no
+traffic left, "no servers") and shows its own screen with the reason instead. With `true` the
+panel's nodes go into the server list as they are. The device limit screen does not depend on
+this header.

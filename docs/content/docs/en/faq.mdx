@@ -1,73 +1,70 @@
 ---
 title: "FAQ"
-description: "Dropped connections, an empty server list, red latency and other common cases"
+description: "Dropped connections, an empty server list, a server that does not answer and other common cases"
 ---
 
-## The connection drops while the phone sits in my pocket
+## The connection drops while the phone is in my pocket
 
-That is Android putting background apps to sleep. Three things help, all in
-**More → Connection**:
+Android puts background apps to sleep. In **More → Connection** turn on:
 
-1. **Battery restrictions** — remove the restriction for the app.
-2. **Always-on connection** — enable it in the system VPN settings.
-3. **Keep the tunnel awake with the screen off** — in the Network section.
+1. **Unrestricted battery** — lift the restriction for the app.
+2. **Always-on connection** — turn on always-on VPN in the system.
 
-Xiaomi, Huawei, Samsung and Oppo phones add their own autostart and "memory protection"
-lists — the app has to be added there by hand, it cannot do that for you.
+If the first request after sleep hangs, **More → Network → Keep the tunnel active while the
+screen is off** helps — at the cost of noticeable battery drain.
+
+Xiaomi, Huawei, Samsung and Oppo phones also have their own autostart and "memory protection"
+lists — the app has to be added there by hand.
 
 ## The server list is empty
 
-Usually this is the subscription, not the app. The app spells out the reason:
+Most often it is the subscription. The app names the reason:
 
-- **the subscription expired** — renew it with your provider;
-- **traffic is used up** — wait for the package to reset, or renew;
-- **the device is not identified** — the provider requires device identification;
-- **the device limit is reached** — contact your provider's support.
+- **Subscription expired** — renew it with your provider;
+- **Out of traffic** — wait for the refill or renew;
+- **Device not identified** — turn on **More → Look and behavior → Identify this device**;
+- **Device limit reached** — contact your provider's support;
+- **The provider sent no servers** — a question for the provider.
 
-After renewing, refresh the subscription with the icon in the home screen header.
+After renewing, update the subscription with the icon in the home screen header.
 
-## Latency is red, or there is a cross
+## Latency is red or shows a dash
 
-Red means the server answers slower than 400 ms (or than the limit your provider set),
-a cross means it did not answer at all.
-Tap the bolt on the Servers tab to re-measure and pick another server. Right after switching
-between Wi-Fi and mobile data the first measurements can be inflated — that is normal,
-try again in a few seconds.
+Red means the server answers slower than 400 ms (or the provider's bound), a dash means it did not
+answer. Tap the lightning bolt on the Servers tab and pick another server. Right after switching
+between Wi-Fi and mobile data the first measurements can be inflated — try again in a few seconds.
 
-## The internet is gone completely
+## No internet at all
 
-Turn the tunnel off with the button on the home screen and check whether the network works
-without it. If it does, switch servers and reconnect; if the problem persists, attach the logs
-(**More → Logs → the log → Export**) to a support request.
+Turn the tunnel off and check whether the network works without it. If it does, switch servers
+and connect again. If that does not help, collect a log: **More → Logs → Core log** (start
+recording), reproduce the problem, **Stop recording**, open the log and tap **Export**. Attach
+the file to your support request.
 
-## Some apps must bypass the tunnel
+## Some apps should bypass the tunnel
 
-**More → Apps** — choose "Deny selected apps" and tick them. Banking apps and local services
-are the usual candidates.
+**More → Apps** → "Deny selected apps" and tick them. People usually do this with banking apps
+and local services.
 
-## The app asks for notification permission
+## How do I switch language or theme
 
-From Android 13 on, without it you cannot see the ongoing tunnel notification, and the system
-is quicker to put the service to sleep. It is worth granting.
+**More → Look and behavior**: "Dark mode" (system default, always light, always dark) and
+"Language" (system default, English, Russian).
 
-## How do I change the language or the theme
+## Widget, tile and shortcuts
 
-**More → Appearance and behaviour**: "Dark mode" (follow system, always light, always dark)
-and "Language" (follow system, English, Russian).
+The 1×1 widget is added from the home screen, the tile from the quick settings editor, and the
+"Toggle", "Connect", "Disconnect" shortcuts with a long press on the app icon. All of them switch
+the tunnel without opening the app.
 
-## The widget and the quick-settings tile
+## Automation: Tasker and the like
 
-The 1×1 widget is added like any widget from the home screen, the tile from Android's
-quick-settings editor. Both toggle the tunnel without opening the app.
+The client understands the external commands "start", "stop" and "toggle". They are blocked by
+default so that another app cannot turn your VPN off without asking. To allow them —
+**More → Look and behavior → Allow external control**.
 
-## Automation: Tasker and friends
+## My question is not here
 
-The client understands the external commands "start", "stop" and "toggle". They are
-forbidden by default — otherwise any installed app could switch the VPN off without asking.
-One switch allows them: **More → Application → "Allow external control"**. The app's own
-shortcuts, the tile and the widget do not depend on this setting and always work.
-
-## Your case is not here
-
-Ask in the [Telegram chat](https://t.me/+8BJQXYXYLqM4YWYy) — include the app version, your Android version and phone
-model, what you did and what you got. News and releases are in the [Telegram group](https://t.me/+2lmP1yhxpCE3MDcy).
+Ask in the [Telegram chat](https://t.me/+8BJQXYXYLqM4YWYy): app version, Android version, phone
+model, what you did and what you got. News and releases are in the
+[Telegram group](https://t.me/+2lmP1yhxpCE3MDcy).

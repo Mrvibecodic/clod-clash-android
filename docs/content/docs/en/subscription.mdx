@@ -1,45 +1,62 @@
 ---
 title: "Subscription"
-description: "Add a link, refresh the server list, keep an eye on traffic and expiry"
+description: "Add a link, keep it updated, watch traffic and expiry"
 ---
 
 ## Adding a subscription
 
-Open the **Subscriptions** tab, tap **+**, paste the link and tap "Add subscription".
-The app downloads the server list and makes the subscription active right away.
-Only `https` links are accepted — an address like `https://example.com/sub/…`.
+On the **Subscriptions** tab tap **Add subscription** (once you have subscriptions — **+** in the
+header), paste the link and tap "Add subscription". `https://…` links work, and so do
+`clash://install-config?url=…` and `clodclash://install-config?url=…` — those can be opened
+straight from a browser or the provider's portal.
 
 <Shots>
   <Shot src="en/add-profile.png" alt="Adding a subscription: the link field" />
   <Shot src="en/subscriptions.png" alt="The Subscriptions tab with an active subscription" />
 </Shots>
 
-You can keep several subscriptions — exactly one is active, and its name is shown in the
-header of the home screen.
+The first subscription becomes active right away. You can have several; to switch, tap the card
+of the one you want. The active subscription's name is shown in the home screen header.
 
-## Refreshing
+**Other ways to import** — load a config from a file or from an arbitrary URL.
 
-A subscription refreshes itself on the interval set by the provider (usually every few hours).
-To refresh right now, use the refresh icon in the home screen header or on the subscription card.
+### Secure connection
 
-If a refresh fails, the app shows a notification and retries later. Notifications about
-successful and failed refreshes are toggled separately in **More → Appearance and behaviour**.
+A switch on the adding screen. **Requires support from your VPN provider.** It is not plain HTTPS
+(that is always used anyway) but an extra layer of encryption on top of it: the
+link, device details and config travel inside it. Turn it on only if your provider says it
+supports it, otherwise the subscription will not be added. It cannot be turned off later — only
+by adding the subscription again.
+
+## Updating
+
+The subscription updates by itself if the provider sets an interval. Your own interval is in the
+card menu (**⋮**) → **Edit** → **Auto update** — at least 15 minutes; **Use the panel value**
+brings back the provider's one. With no interval from either side, the subscription only updates
+manually.
+
+Manually: the update icon in the home screen header, **Update** in the card menu, or
+**Update all** in the tab header. When the subscription's expiry from the panel comes, the app
+updates it once more by itself, so a renewal or the "expired" notice shows up right away.
+
+**Subscription update errors** and **Successful subscription updates** notifications are on by
+default and can be turned off in **More → Look and behavior**.
 
 ## Traffic and expiry
 
-While the tunnel is off, the home screen shows two cards: how much of your traffic package is
-used and how many days are left. The same numbers are repeated in short next to the name in
-the header.
+While the tunnel is off, the home screen shows the "Traffic" and "Expires in" cards — if the
+provider sends these numbers. When three days or fewer are left, traffic has run out or the
+subscription has expired, a subscription card with "Customer portal" and "Support" buttons takes
+their place.
 
 <Shot src="en/home.png" alt="Traffic and expiry cards on the home screen" />
 
-<Callout title="Where the numbers come from">
-Your provider's panel sends them along with the subscription. If the provider does not send
-them, the cards are simply absent — that is not an app error.
-</Callout>
+**Subscription reminders** (also in "Look and behavior") warn you in advance about expiry and
+traffic; the provider sets the thresholds, otherwise 7, 3 and 1 days before and at 80, 90 and
+100 % of traffic.
 
 ## Moving to another device
 
-**More → Appearance and behaviour → Export subscriptions** writes the list of links to a file.
-On the new device pick **Import subscriptions** and choose that file — links that are already
-known will not be added twice.
+**More → Look and behavior → Back up subscriptions** saves your link subscriptions to a file
+together with names and intervals. Keep the file private: the links give access to your
+subscription. On the new device use **Restore subscriptions**; links already added are skipped.

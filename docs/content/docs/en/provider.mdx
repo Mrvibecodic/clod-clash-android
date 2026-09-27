@@ -1,37 +1,21 @@
 ---
-title: "For providers"
+title: "Panel setup"
 description: "What to set up in the Remnawave panel so subscriptions open in Clod Clash for Android"
 ---
 
-This page is for those who run a Remnawave panel. Users don't need to do
-anything here.
+This page is for those who run a Remnawave panel. Users do not need to do anything here.
 
 ## Response rule for the client
 
-The app introduces itself to the panel as `ClodClash/<version> (Android)`. The
-stock Remnawave rules don't know it: without a rule of your own the panel returns
-its default response instead of a mihomo config, and the subscription won't be
-added or updated — the app shows an error.
+The app introduces itself as `ClodClash/<version> (Android)`. Without a rule of its own the panel
+returns its default answer instead of a mihomo config, and the subscription will not be added.
 
-In **Subscription response rules** add a rule:
+In **Subscription response rules** add a rule: regular expression `^clodclash` (case does not
+matter), response format **MIHOMO**. The same rule serves the desktop version too.
 
-| Field | Value |
-| --- | --- |
-| Regular expression | `^clodclash` |
-| Response format | **MIHOMO** |
-
-Matching is case-insensitive. The expression is anchored to the start of the
-string, so a stranger client with `clodclash` in the middle of its User-Agent
-won't get your template by accident. It is the same rule as for the desktop
-version: one rule serves both platforms.
-
-## Server descriptions
-
-Every host in the panel has a **Server description** field. The app shows it under
-the server name instead of the protocol type. The panel sends this field only to
-"extended clients", so in the same rule where MIHOMO is selected add `^ClodClash/`
-to `responseModifications.additionalExtendedClientsRegex` — as a prefix, not an
-exact string, or the rule breaks with the next app update.
+To show each server's **Server description** under its name, add `^ClodClash/` to
+`responseModifications.additionalExtendedClientsRegex` in the same rule — as a prefix, otherwise
+the rule breaks with the next app update.
 
 ```json
 {
@@ -57,28 +41,25 @@ exact string, or the rule breaks with the next app update.
 ```
 
 <Callout title="How to check">
-Request the subscription link with the header `User-Agent: ClodClash/0.0.1 (Android)`:
-the answer must be mihomo YAML, and the nodes must carry a `serverDescription` field
-next to `name` and `server`.
+Request the subscription link with `User-Agent: ClodClash/0.0.1 (Android)`: you should get mihomo
+YAML, and the nodes should carry a `serverDescription` field.
 </Callout>
 
-## Template and headers
+The MIHOMO template and the keys the client overrides are in the
+[panel setup guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
+Response headers are on the [Subscription headers](/en/docs/headers) and
+[clod-* headers](/en/docs/clod-headers) pages.
 
-How the MIHOMO template is built and which of its keys the client overwrites is
-covered in the [panel setup guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
-Plan name, logo, announcement, links to the account page and support, the mode lock
-and the ping colour bounds come from the panel as response headers — the full
-reference is [docs/HEADERS_en.md](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/HEADERS_en.md),
-and how Android differs from the desktop is in the
-[repository README](https://github.com/Mrvibecodic/clod-clash-android#заголовки-подписки).
+## Secure connection
+
+If the user turned on "Secure connection", the subscription is requested through a separate
+encrypted channel rather than a plain HTTPS request. This works only if the provider supports
+such a channel on their side; otherwise the app reports that the address has no subscription
+with a secure channel.
 
 ## Network stack
 
-Android takes the tunnel stack from the template: `tun.stack` (when the template has
-`tun.enable: true`) or `stack` on a `type: tun` listener. `system`, `gvisor`, `mixed`
-and `mips` are accepted, anything else is skipped. Without a stack in the template the
-client uses `gvisor`. A stack the user picked in **More → Network → Network stack** wins
-over the template.
-
-The desktop client also takes `tun.stack` from the template and passes it to the core,
-`mips` included; on Windows only `system` and `mixed` are not taken from the template.
+The tunnel stack is taken from the template: `tun.stack` (with `tun.enable: true`) or `stack` on
+a `type: tun` listener. `system`, `gvisor`, `mixed` and `mips` are accepted, other values are
+skipped. Without a stack in the template — `gvisor`. The stack the user picks in
+**More → Network → Stack mode** wins over the template.

@@ -1,0 +1,46 @@
+---
+title: "Subscription headers"
+description: "What the app sends to the panel and what it understands in the answer"
+---
+
+## What the app sends
+
+| Header | Value |
+| --- | --- |
+| `User-Agent` | `ClodClash/<version> (Android)` |
+| `Accept` | `*/*` |
+| `x-hwid` | device identifier — a hash, the raw value never leaves the phone |
+| `x-device-os`, `x-ver-os`, `x-device-model` | `Android`, system version, model |
+
+`x-hwid` and the three headers with it are sent while **Identify this device** is on (on by
+default). With "Secure connection" all of this travels inside the encrypted request.
+
+## What it understands in the answer
+
+| Header | What it does |
+| --- | --- |
+| `profile-title` | subscription name; if the user set their own name, it shows as "Own name (panel name)" |
+| `profile-logo` | logo in the home screen header (`https` only) |
+| `subscription-userinfo` | traffic and expiry on the home screen; after expiry the subscription updates once more by itself |
+| `subscription-refill-date` | traffic refill date |
+| `profile-update-interval` | auto-update interval in hours, until the user sets their own |
+| `support-url` | the "Support" button (`https`, `tg:`, `mailto:`) |
+| `announce`, `announce-url` | announcement on the home screen and the link it opens |
+| `new-url`, `new-domain` | moving the subscription to a new address |
+| `fallback-url`, `fallback-domain` | backup addresses of the same panel if the main one fails |
+| `x-hwid-not-supported` | the panel requires device identification: a "Device not identified" card, previous servers are removed |
+| `x-hwid-max-devices-reached`, `x-hwid-limit` | device limit: the device limit screen, previous servers are removed |
+| `notify-expire-days`, `notify-traffic-percent` | reminder thresholds, for example `7,3,1` and `80,90,100`; `off` turns them off |
+| `Date` | expiry is counted by the panel's clock, a wrong time on the phone does not shift it |
+| `clod-*` | the client's own headers — see [clod-* headers](/en/docs/clod-headers) |
+
+## How values are parsed
+
+- Header names are case-insensitive.
+- Send non-ASCII text as `base64:<text in base64>`.
+- Links are `https://` only; `support-url` and `clod-bot-url` also take `tg:` and `mailto:`.
+- Links, announcement, promo and logo live for one answer: once the panel stops sending a
+  header, they disappear with the next update. Name, traffic, expiry and interval stay as they
+  were when their header is missing.
+
+Extra headers are set in the panel via `customResponseHeaders`.

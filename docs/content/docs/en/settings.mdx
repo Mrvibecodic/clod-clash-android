@@ -3,79 +3,77 @@ title: "Settings"
 description: "What lives in the More tab: connection, apps, network, appearance"
 ---
 
-Every setting lives in the **More** tab, split into three sections.
+All settings are on the **More** tab. If the provider sent links, a block with the subscription's
+name sits on top: "Customer portal", "Support", "Bot", "Server status", "Setup guide".
 
-<Shot src="en/more.png" alt="The More tab: connection, application, help" />
+<Shot src="en/more.png" alt="The More tab: connection, app, help" />
 
 ## Connection
 
-**Mode** — rule, global or direct (see [Modes](/en/docs/modes)).
+**Mode** — rules, global or direct (see [Modes](/en/docs/modes)).
 
-**Apps** — which apps go through the tunnel. Three options:
+**Apps** — which apps go through the tunnel: "Allow all apps", "Allow selected apps" or
+"Deny selected apps". If the subscription sends its own lists, they are applied as is.
 
-- let every app through;
-- allow only the selected ones;
-- deny the selected ones, everything else uses the tunnel.
-
-A subscription may ship its own lists as well — those apps are marked in the list and you do
-not need to tick them by hand.
-
-**Battery restrictions** and **Always-on connection** lead into Android's own settings.
-The first keeps the system from putting the app to sleep, the second makes the system keep
-the tunnel up at all times. Both rows show the current state — restricted by the system, or on.
-
-**Start after reboot** — bring the tunnel back after the phone restarts and after the app
-updates, if it was on. The switch has no effect on recovery after a crash — that is always on.
+**Unrestricted battery** and **Always-on connection** lead to Android's system settings: the
+first stops the system from killing the app in the background, the second keeps the VPN up at
+all times. The current state is shown next to each.
 
 **Network** — tunnel options:
 
-| Setting | What it is for |
+| Setting | What it does | Default |
+| --- | --- | --- |
+| Route system traffic | A device-wide tunnel; off — only a local proxy | on |
+| Bypass private network | The local network and printers stay reachable directly | on |
+| DNS hijacking | Catches any DNS request to port 53, IPv6 included | on |
+| Allow bypass | Apps that bind to a network themselves (some messengers, banks) can go around the VPN | off |
+| Allow IPv6 | Let IPv6 through the tunnel | off |
+| System proxy | Tell apps the proxy address (Android 10 and newer) | on |
+| Stack mode | How traffic is captured, see [Modes](/en/docs/modes#network-stack) | Auto |
+| Drop connections when the network changes | On Wi-Fi ⇄ mobile data switches apps reconnect right away | on |
+| Keep the tunnel active while the screen is off | Keeps the CPU awake. Noticeably drains the battery; needed if the server drops idle connections | off |
+
+## App
+
+**Look and behavior**:
+
+- **Dark mode**, **Language**, **Group icons**, **All groups on Home**;
+- **Start after reboot** — bring the tunnel back after a phone reboot and an app update if it
+  was on;
+- **Hide app icon** and **Hide from recents**;
+- **Show traffic** — a counter in the notification every second (drains the battery);
+- **Identify this device** — send the provider a device identifier (for device limits); on by
+  default;
+- subscription update notifications and **Subscription reminders**;
+- **Allow external control** — lets Tasker, MacroDroid and the like turn the tunnel on and off;
+  off by default;
+- **Back up subscriptions** / **Restore subscriptions**;
+- **Reset settings** — subscriptions stay.
+
+**Hiding the icon** removes the app from the launcher. You can still open it with a **long press
+on the quick settings tile** (a short tap only toggles the tunnel) or through the app info in
+the system settings — add the tile beforehand. App shortcuts are disabled while the icon is
+hidden. TVs and Android 6 do not have this setting.
+
+**Core features** — sniffer, config overrides, loading your own geo files. For those who know
+what they are changing.
+
+DNS is set in **Core features → Override → DNS**, the **Strategy** item:
+
+| Value | What happens |
 | --- | --- |
-| Route system traffic | A device-wide tunnel, or a local proxy |
-| Bypass private networks | Your LAN and printers stay reachable directly |
-| DNS hijacking | Catches every DNS query on port 53, not only the ones addressed to our resolver |
-| Allow bypass | Lets other VPN apps bypass our tunnel |
-| Allow IPv6 | Carries IPv6 through the tunnel |
-| System proxy | Tells the system the proxy address (Android 10 and newer) |
-| Network stack | How traffic is intercepted: auto (from the subscription, gVisor without one), system, gVisor, mixed, MIPS |
-| Reset connections on network change | Wi-Fi ⇄ mobile switches recover faster |
-| Keep the tunnel awake with the screen off | The connection does not sleep with the display |
+| Do not modify | DNS from the subscription. If it has none — the built-in set below |
+| Use built-in | The subscription's DNS is replaced with the built-in one: `1.0.0.1`, `8.8.4.4`, `9.9.9.10` and the system resolver, fake-ip mode |
+| Force enable | If the subscription has no DNS — the core's defaults: `redir-host` and the core vendor's public resolvers (Chinese ones included); requests go to them from the phone's IP |
 
-## Application
+**Append system DNS** adds the carrier's DNS to the subscription's servers: whoever answers first
+wins.
 
-**Appearance and behaviour** — dark theme, interface language, group icons from the
-subscription, hiding the launcher icon, notifications about subscription refreshes, export and
-import of the subscription list.
-
-**Hiding the launcher icon** takes the app out of the launcher, not off the device. After that
-you open it by **pressing and holding the quick settings tile** — a short tap only turns the
-tunnel on and off, while a long press opens the main screen. Without that tile the only way in
-is the app's entry in the system settings, so add the tile before you hide the icon. The setting
-is absent on televisions and on Android 6: they have no tiles, so there would be no way back.
-
-**Allow external control** — off by default. While it is off, other apps cannot turn the
-tunnel on or off: an attempt ends with a message instead of an action. Turn it on if you use
-automation (Tasker, MacroDroid and similar) — that is exactly how it talks to the client. The
-app's own shortcuts, the quick settings tile and the widget always work, regardless of this
-setting.
-
-**Core features** — sniffer, routing database sources, config overrides. This section is for
-people who know what they are changing; an ordinary user has no reason to go in.
-
-The first three rows below live in **Core features → Override → DNS**, DNS hijacking lives in
-**More → Network**:
-
-| Setting | What happens |
-| --- | --- |
-| Use built-in | The subscription's DNS is replaced wholesale by the built-in list: `1.0.0.1`, `8.8.4.4`, `9.9.9.10` and the system resolver (`system://`). `default-nameserver` and `fallback-filter` stay as the core defines them |
-| Force enable | If the subscription carries no `dns` block at all, the core's own default kicks in: `redir-host` instead of fake-ip, the core vendor's public resolvers (Chinese ones among them) and the core's live `default-nameserver` — app queries reach those servers from the phone's own IP |
-| Append system DNS | The carrier's plain DNS joins the list and competes with the subscription's encrypted servers: whichever answers first wins |
-| DNS hijacking | Every query on port 53 inside the tunnel is intercepted, whoever it is addressed to, IPv6 included; queries to 853 (DoT) and 443 (DoH) go their own way |
-
-**Databases and providers** — the country, site and network lists the rules rely on.
-Refreshed with a button.
+**Routing data and providers** — routing data (countries, sites, networks) and the
+subscription's providers; each has its own update button, the header has "Update all". Providers update at once,
+new routing data applies after reconnecting.
 
 ## Help
 
-**Help** and **Logs**. Logs are useful when the connection behaves oddly: you can export them
-to a file and attach it to a support request.
+**Help**, **Logs** and **About** (version and updates). How to collect a log for support — in
+the [FAQ](/en/docs/faq#no-internet-at-all).

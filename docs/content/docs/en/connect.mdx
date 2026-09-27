@@ -6,40 +6,41 @@ description: "How to connect, pick a server, measure latency and mark favourites
 ## Connecting
 
 Tap the big button on the home screen. The first time, Android asks for the VPN permission —
-you have to grant it, otherwise the tunnel cannot start.
+without it the tunnel cannot start.
 
-Once connected, the button turns green, with the session timer underneath and counters for
-what was downloaded and uploaded during this session.
+Once connected, the button turns green with the session timer inside, and below it you see what
+was downloaded and uploaded during the session.
 
 <Shots>
   <Shot src="en/home.png" alt="Disconnected: the 'Tap to connect' hint" />
   <Shot src="en/connected.png" alt="Connected: session timer and traffic" />
 </Shots>
 
-<Callout title="The prompt on your first connection">
-Once, the app shows a reminder titled "Keep the connection alive": it links to the system
-battery and always-on settings. It is neither an ad nor an error — without those permissions
-Android puts the tunnel to sleep. The same items live in **More → Connection** afterwards.
+<Callout title="The reminder on your first connection">
+Once, the app shows a "Keep the connection from dropping" reminder with links to the system
+battery and always-on VPN settings. Without them Android may put the tunnel to sleep. The same
+items live in **More → Connection** later.
 </Callout>
 
-## Choosing a server
+## Picking a server
 
-The **Selected server** row on the home screen opens the **Servers** tab with the full list
-from your subscription. Tapping a row selects that server; you can pick one before connecting
-and the choice is remembered.
+The **Selected server** row (**Connected to** once connected) opens the **Servers** tab with the
+list from the subscription. A tap selects a server; you can pick one before connecting too.
 
 <Shot src="en/servers.png" alt="The Servers tab: servers with their latency" />
 
-- **Latency** is the number on the right. Green up to 200 ms, amber up to 400 ms, red beyond;
-  your provider may set its own limits.
-  A cross means the server did not answer.
-- **The star** marks a server as a favourite — favourites float to the top of the list.
-- **The bolt** in the header measures latency again for the whole group.
+- **Latency** is the number on the right: green up to 200 ms, yellow up to 400 ms, red beyond
+  (the provider can set its own bounds). A grey dash means the server did not answer or has not
+  been checked yet.
+- **The star** adds a server to favourites — favourites move to the top.
+- **The lightning bolt** in the header measures latency again: the open group first, then the
+  others in the background. Without a connection latency is measured directly.
 
-When there is more than one group (say, "All servers" and "Streaming"), a group selector
-appears above the list.
+With two or three groups, switches appear above the list; with more, a drop-down. The selected
+server of every group can be shown on the home screen: **More → Look and behavior → All groups
+on Home**.
 
-<Callout title="A dash instead of milliseconds">
-If your provider disabled latency display, you get a tick, a cross or a dash instead of
-numbers — the server is reachable, did not answer, or has not been probed yet.
+<Callout title="Marks instead of milliseconds">
+If the provider turned latency numbers off, you see a check mark (the server answers), a cross
+(it did not answer) or a dash (not checked yet).
 </Callout>
