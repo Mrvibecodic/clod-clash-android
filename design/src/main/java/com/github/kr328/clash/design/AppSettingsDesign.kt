@@ -98,9 +98,9 @@ class AppSettingsDesign(
     }
 
     // Ход показывается, пока диалог открыт; закрытый человеком диалог не возвращается.
-    fun showRestoreProgress(restored: Int, total: Int) {
+    fun showRestoreProgress(processed: Int, total: Int) {
         if (state.restore is RestoreDialog.Running) {
-            state = state.copy(restore = RestoreDialog.Running(restored, total))
+            state = state.copy(restore = RestoreDialog.Running(processed, total))
         }
     }
 

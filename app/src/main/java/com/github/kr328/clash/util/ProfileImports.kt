@@ -44,7 +44,7 @@ object ProfileImports {
 
     sealed interface BatchState {
         data object Idle : BatchState
-        data class Running(val restored: Int, val total: Int) : BatchState
+        data class Running(val processed: Int, val total: Int) : BatchState
         data class Done(
             val restored: Int,
             val total: Int,
@@ -138,7 +138,7 @@ object ProfileImports {
             var restored = 0
             val failed = AtomicReference(emptyList<String>())
 
-            for (item in items) {
+            for ((index, item) in items.withIndex()) {
                 try {
                     val uuid = withProfile(retry = false) {
                         create(Profile.Type.Url, item.name, item.source, secure = item.secure)
@@ -157,13 +157,13 @@ object ProfileImports {
                     }
 
                     restored += 1
-
-                    batch_.value = BatchState.Running(restored, total)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
                     Log.w("Restore subscription: $e", e)
                 }
+
+                batch_.value = BatchState.Running(index + 1, total)
             }
 
             batch_.value = BatchState.Done(restored, total, failed.get())

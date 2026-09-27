@@ -492,6 +492,7 @@
     <string name="clod_backup_restore_action">Restore</string>
     <string name="clod_backup_restore_active">Will become active: %1$s</string>
     <string name="clod_backup_restore_busy">A restore is already in progress</string>
+    <string name="clod_backup_restore_progress">Processed %1$d of %2$d</string>
     <string name="clod_access_sub_include">Via VPN (subscription)</string>
     <string name="clod_access_sub_exclude">Bypasses VPN (subscription)</string>
     <string name="clod_access_import_none">The clipboard has no names of installed apps</string>

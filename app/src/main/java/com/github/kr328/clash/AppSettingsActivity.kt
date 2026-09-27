@@ -61,7 +61,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         launch {
             ProfileImports.batch.collect { state ->
                 if (state is ProfileImports.BatchState.Running) {
-                    design.showRestoreProgress(state.restored, state.total)
+                    design.showRestoreProgress(state.processed, state.total)
                 }
 
                 if (state is ProfileImports.BatchState.Done) {
@@ -265,7 +265,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         val activeName = items.firstOrNull { it.active }?.name
             ?.takeIf { withProfile { queryActive() } == null }
 
-        val entries = items.map { "${it.name} · ${Uri.parse(it.source).host ?: it.source}" }
+        val entries = items.map { "${it.name} · ${Uri.parse(it.source).host ?: "?"}" }
 
         if (!design.confirmRestore(entries, activeName)) return
 

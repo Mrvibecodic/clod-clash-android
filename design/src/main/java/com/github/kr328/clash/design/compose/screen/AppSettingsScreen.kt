@@ -57,7 +57,7 @@ data class AppSettingsState(
 @Immutable
 sealed interface RestoreDialog {
     data class Confirm(val entries: List<String>, val activeName: String?) : RestoreDialog
-    data class Running(val restored: Int, val total: Int) : RestoreDialog
+    data class Running(val processed: Int, val total: Int) : RestoreDialog
 }
 
 sealed interface AppSettingsAction {
@@ -264,11 +264,11 @@ private fun RestoreDialog(dialog: RestoreDialog, onAction: (AppSettingsAction) -
 
                 is RestoreDialog.Running -> Column {
                     LinearProgressIndicator(
-                        progress = { if (dialog.total > 0) dialog.restored.toFloat() / dialog.total else 0f },
+                        progress = { if (dialog.total > 0) dialog.processed.toFloat() / dialog.total else 0f },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(12.dp))
-                    Text(stringResource(R.string.clod_backup_restored, dialog.restored, dialog.total))
+                    Text(stringResource(R.string.clod_backup_restore_progress, dialog.processed, dialog.total))
                 }
             }
         },
