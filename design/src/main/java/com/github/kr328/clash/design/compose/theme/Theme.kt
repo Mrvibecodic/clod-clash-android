@@ -12,14 +12,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalContext
-import com.github.kr328.clash.design.model.DarkMode
-import com.github.kr328.clash.design.store.UiStore
 
 private val LightColors: ColorScheme = lightColorScheme(
     primary = LightPrimary,
@@ -173,18 +169,6 @@ fun Color.statusText(): Color = if (ClodTheme.extraColors.dark) {
     this
 } else {
     lerp(this, Color.Black, STATUS_TEXT_DARKEN)
-}
-
-@Composable
-fun appDarkTheme(): Boolean {
-    val context = LocalContext.current
-    val mode = remember(context) { UiStore(context).darkMode }
-
-    return when (mode) {
-        DarkMode.Auto -> isSystemInDarkTheme()
-        DarkMode.ForceLight -> false
-        DarkMode.ForceDark -> true
-    }
 }
 
 @Composable
