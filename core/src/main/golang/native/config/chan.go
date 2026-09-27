@@ -12,7 +12,6 @@ import (
 	P "path"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"cfa/native/app"
@@ -27,8 +26,6 @@ import (
 	"github.com/metacubex/mihomo/log"
 )
 
-var secureChannel atomic.Bool
-
 var errChanFingerprint = errors.New("clod-chan: chrome fingerprint is not available in the core")
 
 var errChanAlpn = errors.New("clod-chan: relay negotiated a protocol other than http/1.1")
@@ -39,14 +36,6 @@ var errChanDowngrade = errors.New("clod-chan: refused redirect from https to pla
 
 func refusedByChanRedirect(err error) bool {
 	return errors.Is(err, errChanDowngrade) || errors.Is(err, errChanRedirects)
-}
-
-func SetSecureChannel(enabled bool) {
-	secureChannel.Store(enabled)
-}
-
-func SecureChannel() bool {
-	return secureChannel.Load()
 }
 
 var chanBrowserHeaders = [][2]string{

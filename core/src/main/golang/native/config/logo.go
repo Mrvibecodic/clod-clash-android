@@ -73,7 +73,7 @@ func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
 	}
 
 	name := logoBaseName + extension
-	if err := os.WriteFile(P.Join(dir, name), body, 0o644); err != nil {
+	if err := os.WriteFile(P.Join(dir, name), body, 0o600); err != nil {
 		return ""
 	}
 

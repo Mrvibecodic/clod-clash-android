@@ -26,5 +26,5 @@ var (
 
 		"WORKGROUP",
 	}
-	defaultFakeIPRange = "28.0.0.0/8"
+	defaultFakeIPRange = "198.18.0.1/16"
 )

@@ -105,11 +105,9 @@ object ProfileProcessor {
                     pending
                 }
 
-                Clash.setSecureChannel(snapshot.secure)
-
                 val force = snapshot.type != Profile.Type.File
                 val subscriptionInfo =
-                    fetchProfile(context, context.processingDir, snapshot.source, force, false, callback).info
+                    fetchProfile(context, context.processingDir, snapshot.source, force, false, snapshot.secure, callback).info
 
                 profileLock.withLock {
                     val current = PendingDao().queryByUUID(snapshot.uuid)
@@ -160,7 +158,7 @@ object ProfileProcessor {
                     context.sendProfileChanged(snapshot.uuid)
                 }
 
-                followMigration(context, snapshot.uuid, snapshot.source, callback)
+                followMigration(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
             }
         }
     }
@@ -185,9 +183,7 @@ object ProfileProcessor {
                     imported
                 }
 
-                Clash.setSecureChannel(snapshot.secure)
-
-                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, null)
+                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, snapshot.secure, null)
                 val subscriptionInfo = fetched.info
 
                 profileLock.withLock {
@@ -228,7 +224,7 @@ object ProfileProcessor {
                     }
                 }
 
-                val migrated = followMigration(context, snapshot.uuid, snapshot.source)
+                val migrated = followMigration(context, snapshot.uuid, snapshot.source, snapshot.secure)
 
                 (fetched.failedProviders + migrated).distinct()
             }
@@ -239,9 +235,10 @@ object ProfileProcessor {
         context: Context,
         uuid: UUID,
         current: String,
+        secure: Boolean,
         callback: IFetchObserver? = null,
     ): List<String> = try {
-        migrateToOfferedAddress(context, uuid, current, callback)
+        migrateToOfferedAddress(context, uuid, current, secure, callback)
     } catch (e: Exception) {
         Log.w("Follow the address of $uuid offered by the provider: $e", e)
 
@@ -252,6 +249,7 @@ object ProfileProcessor {
         context: Context,
         uuid: UUID,
         current: String,
+        secure: Boolean,
         callback: IFetchObserver?,
     ): List<String> {
         val profileDir = context.importedDir.resolve(uuid.toString())
@@ -289,7 +287,7 @@ object ProfileProcessor {
             profileDir.resolve(CHAN_SKEW_FILE).takeIf { it.isFile }
                 ?.copyTo(probe.resolve(CHAN_SKEW_FILE), overwrite = true)
 
-            fetchProfile(context, probe, candidate, true, true, callback)
+            fetchProfile(context, probe, candidate, true, true, secure, callback)
         } catch (e: Exception) {
             Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
 
@@ -423,6 +421,7 @@ object ProfileProcessor {
         source: String,
         force: Boolean,
         probe: Boolean,
+        secure: Boolean,
         callback: IFetchObserver?,
     ): Fetched {
         val reports = FetchReports(callback)
@@ -433,7 +432,7 @@ object ProfileProcessor {
 
         context.seedSystemDns()
 
-        Clash.fetchAndValid(dir, source, force, probe) {
+        Clash.fetchAndValid(dir, source, force, probe, secure) {
             if (reports.record(it)) {
                 val observer = reports.observer()
 

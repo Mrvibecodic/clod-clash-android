@@ -251,8 +251,8 @@ func openContent(url string) (io.ReadCloser, error) {
 	return app.OpenContent(url)
 }
 
-func fetchConfig(url *U.URL, file string, budget *budgets.Budget, limit time.Duration) (fetchHeader, error) {
-	if !SecureChannel() || (url.Scheme != "http" && url.Scheme != "https") {
+func fetchConfig(url *U.URL, file string, secure bool, budget *budgets.Budget, limit time.Duration) (fetchHeader, error) {
+	if !secure || (url.Scheme != "http" && url.Scheme != "https") {
 		return fetch(url, file, true, budget, limit)
 	}
 
@@ -443,6 +443,7 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 func fetchFromSpare(
 	spares []string,
 	configPath string,
+	secure bool,
 	cause error,
 	budget *budgets.Budget,
 	reportStatus func(string),
@@ -479,7 +480,7 @@ func fetchFromSpare(
 
 		reportStatus(string(bytes))
 
-		header, err := fetchConfig(parsed, configPath, budget, limit)
+		header, err := fetchConfig(parsed, configPath, secure, budget, limit)
 		if errors.Is(err, errDeviceRefused) {
 			return header, err
 		}
@@ -503,6 +504,7 @@ func FetchAndValid(
 	url string,
 	force bool,
 	probe bool,
+	secure bool,
 	reportStatus func(string),
 ) error {
 	configPath := P.Join(path, "config.yaml")
@@ -544,9 +546,9 @@ func FetchAndValid(
 
 		previous, _ = os.ReadFile(configPath)
 
-		header, err := fetchConfig(url, configPath, budget, limit)
+		header, err := fetchConfig(url, configPath, secure, budget, limit)
 		if err != nil && !errors.Is(err, errDeviceRefused) {
-			header, err = fetchFromSpare(spares, configPath, err, budget, reportStatus)
+			header, err = fetchFromSpare(spares, configPath, secure, err, budget, reportStatus)
 		}
 
 		refused = errors.Is(err, errDeviceRefused) || (err == nil && panel.RefusesDevice(header.Raw))

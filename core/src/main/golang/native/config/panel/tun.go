@@ -102,7 +102,7 @@ func WriteTunPrefs(dir string, prefs TunPrefs) {
 
 	tmp := tunPath(dir) + ".tmp"
 
-	if err := os.WriteFile(tmp, bytes, 0o644); err != nil {
+	if err := os.WriteFile(tmp, bytes, 0o600); err != nil {
 		return
 	}
 

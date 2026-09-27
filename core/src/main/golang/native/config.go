@@ -23,7 +23,7 @@ func (r *remoteValidCallback) reportStatus(json string) {
 }
 
 //export fetchAndValid
-func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C.int) {
+func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe, secure C.int) {
 	defer guard("fetchAndValid", func() {})()
 
 	p, u := C.GoString(path), C.GoString(url)
@@ -36,7 +36,7 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C
 				err = panicError("fetch", r)
 			})()
 
-			return config.FetchAndValid(p, u, force != 0, probe != 0, cb.reportStatus)
+			return config.FetchAndValid(p, u, force != 0, probe != 0, secure != 0, cb.reportStatus)
 		}()
 
 		C.fetch_complete(callback, marshalError(err))
@@ -45,13 +45,6 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe C
 
 		runtime.GC()
 	})
-}
-
-//export setSecureChannel
-func setSecureChannel(enabled C.int) {
-	defer guard("setSecureChannel", func() {})()
-
-	config.SetSecureChannel(enabled != 0)
 }
 
 //export load

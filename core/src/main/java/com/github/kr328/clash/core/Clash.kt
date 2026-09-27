@@ -198,15 +198,12 @@ object Clash {
         }
     }
 
-    fun setSecureChannel(enabled: Boolean) {
-        Bridge.nativeSetSecureChannel(enabled)
-    }
-
     fun fetchAndValid(
         path: File,
         url: String,
         force: Boolean,
         probe: Boolean,
+        secure: Boolean,
         reportStatus: (FetchStatus) -> Unit
     ): CompletableDeferred<Unit> {
         return CompletableDeferred<Unit>().apply {
@@ -228,7 +225,8 @@ object Clash {
                 path.absolutePath,
                 url,
                 force,
-                probe
+                probe,
+                secure,
             )
         }
     }
