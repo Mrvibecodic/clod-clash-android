@@ -1,8 +1,7 @@
 package com.github.kr328.clash.design.compose.screen
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,7 +34,6 @@ data class NewProfileState(
 sealed interface NewProfileAction {
     data object Back : NewProfileAction
     data class Select(val provider: ProfileProvider) : NewProfileAction
-    data class Detail(val provider: ProfileProvider) : NewProfileAction
 }
 
 @Composable
@@ -54,28 +52,21 @@ fun NewProfileScreen(
                 ProviderRow(
                     provider = provider,
                     onClick = { onAction(NewProfileAction.Select(provider)) },
-                    onLongClick = { onAction(NewProfileAction.Detail(provider)) },
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ProviderRow(
     provider: ProfileProvider,
     onClick: () -> Unit,
-    onLongClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClickLabel = stringResource(R.string.detail),
-                onLongClick = onLongClick,
-            )
+            .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Start,

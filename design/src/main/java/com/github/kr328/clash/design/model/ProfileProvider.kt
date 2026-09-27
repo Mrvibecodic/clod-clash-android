@@ -1,7 +1,6 @@
 package com.github.kr328.clash.design.model
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.drawable.Drawable
 import com.github.kr328.clash.common.compat.getDrawableCompat
 import com.github.kr328.clash.design.R
@@ -25,13 +24,6 @@ sealed class ProfileProvider {
         override val icon: Drawable?
             get() = context.getDrawableCompat(R.drawable.ic_baseline_cloud_download)
     }
-
-    class External(
-        override val name: String,
-        override val summary: String,
-        override val icon: Drawable?,
-        val intent: Intent,
-    ) : ProfileProvider()
 
     abstract val name: String
     abstract val summary: String

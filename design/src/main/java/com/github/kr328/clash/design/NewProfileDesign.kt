@@ -16,7 +16,6 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
     sealed interface Request {
         data object Back : Request
         data class Create(val provider: ProfileProvider) : Request
-        data class OpenDetail(val provider: ProfileProvider.External) : Request
     }
 
     private var state by mutableStateOf(NewProfileState())
@@ -29,11 +28,6 @@ class NewProfileDesign(context: Context) : Design<NewProfileDesign.Request>(cont
         when (action) {
             NewProfileAction.Back -> requests.trySend(Request.Back)
             is NewProfileAction.Select -> requests.trySend(Request.Create(action.provider))
-            is NewProfileAction.Detail -> {
-                val provider = action.provider as? ProfileProvider.External ?: return
-
-                requests.trySend(Request.OpenDetail(provider))
-            }
         }
     }
 
