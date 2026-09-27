@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -50,7 +51,14 @@ data class AppSettingsState(
     val profileUpdateNotifications: Boolean = true,
     val notificationsBlocked: Boolean = false,
     val resetEnabled: Boolean = true,
+    val restore: RestoreDialog? = null,
 )
+
+@Immutable
+sealed interface RestoreDialog {
+    data class Confirm(val entries: List<String>, val activeName: String?) : RestoreDialog
+    data class Running(val restored: Int, val total: Int) : RestoreDialog
+}
 
 sealed interface AppSettingsAction {
     data object Back : AppSettingsAction
@@ -70,6 +78,8 @@ sealed interface AppSettingsAction {
     data object OpenSystemNotifications : AppSettingsAction
     data object ExportProfiles : AppSettingsAction
     data object ImportProfiles : AppSettingsAction
+    data object ConfirmRestore : AppSettingsAction
+    data object CancelRestore : AppSettingsAction
     data object ResetSettings : AppSettingsAction
 }
 
@@ -230,6 +240,53 @@ fun AppSettingsScreen(
             Spacer(Modifier.height(24.dp))
         }
     }
+
+    state.restore?.let { RestoreDialog(it, onAction) }
+}
+
+@Composable
+private fun RestoreDialog(dialog: RestoreDialog, onAction: (AppSettingsAction) -> Unit) {
+    val confirming = dialog is RestoreDialog.Confirm
+
+    AlertDialog(
+        onDismissRequest = { onAction(AppSettingsAction.CancelRestore) },
+        title = { Text(stringResource(R.string.clod_backup_import_title)) },
+        text = {
+            when (dialog) {
+                is RestoreDialog.Confirm -> Column(Modifier.verticalScroll(rememberScrollState())) {
+                    dialog.entries.forEach { Text(it) }
+
+                    dialog.activeName?.let {
+                        Spacer(Modifier.height(12.dp))
+                        Text(stringResource(R.string.clod_backup_restore_active, it))
+                    }
+                }
+
+                is RestoreDialog.Running -> Column {
+                    LinearProgressIndicator(
+                        progress = { if (dialog.total > 0) dialog.restored.toFloat() / dialog.total else 0f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Text(stringResource(R.string.clod_backup_restored, dialog.restored, dialog.total))
+                }
+            }
+        },
+        confirmButton = {
+            if (confirming) {
+                TextButton(onClick = { onAction(AppSettingsAction.ConfirmRestore) }) {
+                    Text(stringResource(R.string.clod_backup_restore_action))
+                }
+            }
+        },
+        dismissButton = {
+            if (confirming) {
+                TextButton(onClick = { onAction(AppSettingsAction.CancelRestore) }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        },
+    )
 }
 
 @Composable

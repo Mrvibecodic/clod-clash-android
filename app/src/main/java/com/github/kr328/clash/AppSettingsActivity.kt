@@ -60,7 +60,12 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         launch {
             ProfileImports.batch.collect { state ->
+                if (state is ProfileImports.BatchState.Running) {
+                    design.showRestoreProgress(state.restored, state.total)
+                }
+
                 if (state is ProfileImports.BatchState.Done) {
+                    design.hideRestore()
                     ProfileImports.resetBatch()
 
                     design.showToast(
@@ -180,6 +185,12 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
     }
 
     private suspend fun importProfiles(design: AppSettingsDesign) {
+        if (ProfileImports.batch.value !is ProfileImports.BatchState.Idle) {
+            design.showToast(DesignR.string.clod_backup_restore_busy, ToastDuration.Long)
+
+            return
+        }
+
         val input = startActivityForResult(
             ActivityResultContracts.GetContent(),
             "application/json",
@@ -245,7 +256,20 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             )
         }
 
-        ProfileImports.startBatch(items, wanted.size)
+        if (items.isEmpty()) {
+            design.showToast(getString(DesignR.string.clod_backup_restored, 0, wanted.size), ToastDuration.Long)
+
+            return
+        }
+
+        val activeName = items.firstOrNull { it.active }?.name
+            ?.takeIf { withProfile { queryActive() } == null }
+
+        val entries = items.map { "${it.name} · ${Uri.parse(it.source).host ?: it.source}" }
+
+        if (!design.confirmRestore(entries, activeName)) return
+
+        ProfileImports.startBatch(items, items.size)
     }
 
     override var autoRestart: Boolean
