@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sync/semaphore"
 
 	"cfa/native/app"
+	"cfa/native/common/safego"
 	"cfa/native/tun"
 
 	"github.com/metacubex/mihomo/log"
@@ -33,7 +34,13 @@ type remoteTun struct {
 	limit  *semaphore.Weighted
 }
 
+// Закрытый туннель не встаёт в очередь семафора: там может ждать фоновое
+// освобождение колбэка из close().
 func (t *remoteTun) markSocket(fd int) {
+	if t.closed.Load() {
+		return
+	}
+
 	_ = t.limit.Acquire(context.Background(), 1)
 	defer t.limit.Release(1)
 
@@ -45,6 +52,10 @@ func (t *remoteTun) markSocket(fd int) {
 }
 
 func (t *remoteTun) querySocketUid(protocol int, source, target string) int {
+	if t.closed.Load() {
+		return -1
+	}
+
 	_ = t.limit.Acquire(context.Background(), 1)
 	defer t.limit.Release(1)
 
@@ -69,8 +80,18 @@ func (t *remoteTun) close() {
 
 	app.ApplyTunContext(nil, nil)
 
+	// Колбэк держит всю службу VPN, а освободить его, пока в нём стоит
+	// обращение к Android, нельзя: отпускаем, когда вернётся последнее.
 	if !acquired {
-		log.Warnln("Stop tun: socket callbacks still busy after %s, leaking callback", closeTimeout)
+		log.Warnln("Stop tun: socket callbacks still busy after %s, releasing callback once they return", closeTimeout)
+
+		safego.Go("releaseTunCallback", func() {
+			_ = t.limit.Acquire(context.Background(), 4)
+
+			t.limit.Release(4)
+
+			C.release_object(t.callback)
+		})
 
 		return
 	}
