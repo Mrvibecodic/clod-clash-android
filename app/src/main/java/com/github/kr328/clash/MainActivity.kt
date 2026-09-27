@@ -19,7 +19,6 @@ import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
-import com.github.kr328.clash.common.util.ticker
 import android.net.Uri
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Provider
@@ -82,6 +81,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -180,10 +181,67 @@ class MainActivity : BaseActivity<MainDesign>() {
             UpdateTask.check(this, manual = false)
         }
 
-        val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
+        // Всё, что читает или меняет группы и узлы, исполняется по одному в порядке
+        // поступления: так изменения приходят в ядро в порядке нажатий, а индексы
+        // групп не уезжают под рукой. Цикл событий только раздаёт эту работу и потому
+        // не глохнет, пока служба занята (загрузка конфига держит ядро секундами):
+        // нажатия принимаются, переходы по экранам срабатывают сразу.
+        val work = Channel<suspend () -> Unit>(Channel.UNLIMITED)
+
+        launch {
+            for (item in work) {
+                reportFailures("Main work") { item() }
+            }
+        }
+
+        // Пачка событий «состояние поменялось» перечитывается одним разом.
+        var fetchWanted = false
+
+        fun requestFetch() {
+            if (fetchWanted) return
+
+            fetchWanted = true
+
+            work.trySend {
+                if (fetchWanted) {
+                    fetchWanted = false
+
+                    design.fetch()
+                }
+            }
+        }
+
+        // Трафик и таймер сессии порядка не требуют и не ждут исполнителя.
+        launch {
+            while (isActive) {
+                delay(TICK_MS)
+
+                if (!clashRunning || !activityStarted) continue
+
+                reportFailures("Main tick") {
+                    if (design.selectedTab == MainTab.Home) {
+                        design.fetchTraffic()
+                        design.fetchSession()
+
+                        // url-test и fallback ядро переключает само, без событий
+                        val now = SystemClock.elapsedRealtime()
+
+                        if (now - homeRouteReadAt >= HOME_ROUTE_REFRESH_MS) {
+                            homeRouteReadAt = now
+
+                            work.trySend { design.reloadProxyGroup(design.selectedGroup) }
+                        }
+                    }
+
+                    ProfileUpdates.prune()
+
+                    if (design.verifyRunning()) requestFetch()
+                }
+            }
+        }
 
         while (isActive) {
-            try {
+            reportFailures("Main loop") {
                 select<Unit> {
                 events.onReceive {
                     when (it) {
@@ -191,37 +249,41 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
                             startRequestedAt = null
 
-                            reconcileUpdatingProfiles()
+                            work.trySend {
+                                reconcileUpdatingProfiles()
 
-                            val started = design.fetch()
+                                fetchWanted = false
 
-                            design.showAddedProfile()
+                                val started = design.fetch()
 
-                            design.fetchReliability()
+                                design.showAddedProfile()
 
-                            if (design.selectedTab == MainTab.Servers &&
-                                shouldAutoHealthCheck(
-                                    clashRunning = clashRunning,
-                                    startedByReload = started,
-                                    groupsKnown = proxyGroupNames.isNotEmpty(),
-                                    readOnly = serversReadOnly,
-                                    sinceLastCheckMs = SystemClock.elapsedRealtime() - lastHealthCheckAt,
-                                    staleMs = HEALTH_STALE_MS,
-                                )
-                            ) {
-                                launch { design.runHealthCheck(manual = false) }
-                            }
+                                design.fetchReliability()
 
-                            if (ApkInstaller.canInstall(this@MainActivity) &&
-                                withContext(Dispatchers.IO) {
-                                    AppStore(this@MainActivity).awaitingInstallPermission
-                                }
-                            ) {
-                                withContext(Dispatchers.IO) {
-                                    AppStore(this@MainActivity).awaitingInstallPermission = false
+                                if (design.selectedTab == MainTab.Servers &&
+                                    shouldAutoHealthCheck(
+                                        clashRunning = clashRunning,
+                                        startedByReload = started,
+                                        groupsKnown = proxyGroupNames.isNotEmpty(),
+                                        readOnly = serversReadOnly,
+                                        sinceLastCheckMs = SystemClock.elapsedRealtime() - lastHealthCheckAt,
+                                        staleMs = HEALTH_STALE_MS,
+                                    )
+                                ) {
+                                    launch { design.runHealthCheck(manual = false) }
                                 }
 
-                                design.launchUpdate()
+                                if (ApkInstaller.canInstall(this@MainActivity) &&
+                                    withContext(Dispatchers.IO) {
+                                        AppStore(this@MainActivity).awaitingInstallPermission
+                                    }
+                                ) {
+                                    withContext(Dispatchers.IO) {
+                                        AppStore(this@MainActivity).awaitingInstallPermission = false
+                                    }
+
+                                    design.launchUpdate()
+                                }
                             }
                         }
                         Event.ClashStop -> {
@@ -230,7 +292,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             offlineDelays = emptyMap()
 
-                            design.fetch()
+                            requestFetch()
                         }
                         Event.ClashStarting -> {
                             stopRequestedAt = null
@@ -241,7 +303,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
                             startRequestedAt = null
 
-                            design.fetch()
+                            requestFetch()
 
                             if (!uiStore.reliabilityAsked) {
                                 launch { design.askReliability() }
@@ -255,27 +317,26 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
                             startRequestedAt = null
 
-                            design.fetch()
+                            requestFetch()
                         }
                         Event.ProfileLoaded -> {
                             healthCheckedGroups = emptyList()
 
-                            design.fetch()
+                            requestFetch()
                         }
-                        Event.ProfileChanged -> design.fetch()
+                        Event.ProfileChanged -> requestFetch()
                         else -> Unit
                     }
                 }
                 design.requests.onReceive { request ->
                     when (request) {
-                        MainDesign.Request.ToggleStatus -> {
-                            when (toggleIntent(design.status)) {
-                                ToggleIntent.Start -> design.startClash()
-                                ToggleIntent.Stop -> requestStopClash()
-                                ToggleIntent.Ignore -> Unit
-                            }
+                        MainDesign.Request.ToggleStatus -> when (toggleIntent(design.status)) {
+                            ToggleIntent.Start -> startInOrder(work)
+                            // Стоп — только рассылка службе, очередь ему не нужна.
+                            ToggleIntent.Stop -> requestStopClash()
+                            ToggleIntent.Ignore -> Unit
                         }
-                        MainDesign.Request.ReloadProxies -> {
+                        MainDesign.Request.ReloadProxies -> work.trySend {
                             val liveGroups = offlineGroups.isEmpty() && proxyGroupNames.isNotEmpty()
 
                             val started = when (serversReload(panelRunning == clashRunning, liveGroups)) {
@@ -303,33 +364,18 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 launch { design.runHealthCheck(manual = false) }
                             }
                         }
-                        is MainDesign.Request.ReloadGroup ->
-                            design.reloadProxyGroup(request.index)
+                        is MainDesign.Request.ReloadGroup -> work.trySend {
+                            proxyGroupNames.indexOf(request.group).takeIf { it >= 0 }
+                                ?.let { design.reloadProxyGroup(it) }
+                        }
                         is MainDesign.Request.SelectProxy -> {
-                            proxyGroupNames.getOrNull(request.index)?.let { group ->
-                                if (serversReadOnly) {
-                                    return@let
-                                }
+                            val group = request.group
 
-                                if (offlineGroups.isNotEmpty()) {
-                                    withClash { rememberSelection(group, request.name) }
+                            if (group in proxyGroupNames && !serversReadOnly) {
+                                design.markProxySelected(group, request.name)
 
-                                    offlineSelections[group] = request.name
-
-                                    design.fillOfflineProxyGroup(request.index)
-
-                                    return@let
-                                }
-
-                                val patched = withClash { patchSelector(group, request.name) }
-
-                                if (patched) {
-                                    design.reloadProxyGroup(request.index)
-                                } else {
-                                    design.showToast(
-                                        DesignR.string.clod_select_failed,
-                                        ToastDuration.Long,
-                                    )
+                                if (pendingSelections.put(group, request.name) == null) {
+                                    work.trySend { design.applySelection(group) }
                                 }
                             }
                         }
@@ -351,7 +397,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         is MainDesign.Request.DismissPromo ->
                             uiStore.setDismissedPromo(request.profile, request.fingerprint)
-                        is MainDesign.Request.PatchMode -> {
+                        is MainDesign.Request.PatchMode -> work.trySend {
                             val locked = withClash { queryProfileMode() }.source ==
                                 ProfileMode.Source.Locked
 
@@ -428,7 +474,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 }
                             }
                         }
-                        is MainDesign.Request.ActivateProfile -> {
+                        is MainDesign.Request.ActivateProfile -> work.trySend {
                             val profile = request.profile
 
                             if (profile.imported) {
@@ -468,7 +514,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             startActivity(
                                 PropertiesActivity::class.intent.setUUID(request.profile.uuid),
                             )
-                        is MainDesign.Request.DeleteProfile -> {
+                        is MainDesign.Request.DeleteProfile -> work.trySend {
                             withProfile(retry = false) { delete(request.profile.uuid) }
 
                             uiStore.clearFavorites(request.profile.uuid)
@@ -483,9 +529,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                                 uiStore.notificationsRequested = true
 
-                                if (!clashRunning) {
-                                    design.startClash()
-                                }
+                                startInOrder(work)
                             }
                         }
                         MainDesign.Request.SkipNotifications -> {
@@ -494,9 +538,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             design.setNotificationPrompt(false)
 
-                            if (!clashRunning) {
-                                design.startClash()
-                            }
+                            startInOrder(work)
                         }
                         MainDesign.Request.DismissNotifications ->
                             design.setNotificationPrompt(false)
@@ -523,7 +565,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 prompt = false,
                             )
                         }
-                        is MainDesign.Request.SetSubscriptionGroup -> {
+                        is MainDesign.Request.SetSubscriptionGroup -> work.trySend {
                             patchSubscriptionGroup(request.profile.uuid, request.group)
 
                             design.fetch()
@@ -574,41 +616,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             RoutingDataUpdate.startProvider(request.key)
                     }
                 }
-                if (clashRunning && activityStarted) {
-                    ticker.onReceive {
-                        if (design.selectedTab == MainTab.Home) {
-                            design.fetchTraffic()
-                            design.fetchSession()
-
-                            // url-test и fallback ядро переключает само, без событий
-                            val now = SystemClock.elapsedRealtime()
-
-                            if (now - homeRouteReadAt >= HOME_ROUTE_REFRESH_MS) {
-                                homeRouteReadAt = now
-
-                                design.reloadProxyGroup(design.selectedGroup)
-                            }
-                        }
-
-                        ProfileUpdates.prune()
-
-                        design.verifyRunning()
-                    }
                 }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: ServiceUnavailableException) {
-                Log.w("Main loop: $e")
-
-                design.showExceptionToast(e)
-            } catch (e: Exception) {
-                // Отказ службы приходит через binder любым из разрешённых Parcel
-                // типов (IllegalArgument, IllegalState, Security, NullPointer…) —
-                // экран показывает причину и живёт дальше, а не падает.
-                Log.w("Main loop: $e", e)
-
-                design.showExceptionToast(e)
             }
         }
     }
@@ -740,6 +748,11 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
     private val offlineSelections: MutableMap<String, String> = mutableMapOf()
+
+    // Последний выбранный в группе узел, ещё не применённый: из серии нажатий,
+    // пришедших, пока ядро занято, применяется последнее, а до тех пор любая
+    // перерисовка группы показывает его, а не прежний.
+    private val pendingSelections: MutableMap<String, String> = mutableMapOf()
 
     private var favoritesProfile: UUID? = null
 
@@ -992,7 +1005,11 @@ class MainActivity : BaseActivity<MainDesign>() {
         val group = offlineGroups.getOrNull(index) ?: return null
 
         val readOnly = serversReadOnly
-        val shown = offlineGroup(group, offlineSelections[group.name], offlineHides)
+        val shown = offlineGroup(
+            group,
+            pendingSelections[group.name] ?: offlineSelections[group.name],
+            offlineHides,
+        )
 
         setProxyGroup(
             index = index,
@@ -1063,7 +1080,12 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Пока шёл запрос, список групп мог смениться — тогда слот уже чужой
         if (proxyGroupNames.getOrNull(index) == name) {
-            setProxyGroup(index, group.now, group.type in SELECTABLE_GROUPS, group.proxies)
+            setProxyGroup(
+                index,
+                pendingSelections[name] ?: group.now,
+                group.type in SELECTABLE_GROUPS,
+                group.proxies,
+            )
         }
 
         return group
@@ -1076,6 +1098,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         private const val DELAY_UNKNOWN = 0xffff
 
         private val HOME_ROUTE_REFRESH_MS = TimeUnit.SECONDS.toMillis(60)
+
+        private val TICK_MS = TimeUnit.SECONDS.toMillis(1)
 
         private val UPDATES_ACTIVE_POLL_MS = TimeUnit.SECONDS.toMillis(3)
 
@@ -1216,6 +1240,17 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
+    // Старт идёт в общей очереди экрана: не обгоняет выбор узла, сохраняемый для
+    // незапущенного ядра. Если к своему ходу он уже не нужен (ядро запущено или
+    // запускается по прошлому нажатию) — пропускается.
+    private fun startInOrder(work: SendChannel<suspend () -> Unit>) {
+        work.trySend {
+            val target = design ?: return@trySend
+
+            if (toggleIntent(target.status) == ToggleIntent.Start) target.startClash()
+        }
+    }
+
     private fun requestStopClash() {
         val target = design ?: return
 
@@ -1261,14 +1296,15 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
-    private suspend fun MainDesign.verifyRunning() {
+    // true — служба пропала без сообщения, и экран надо перечитать.
+    private suspend fun MainDesign.verifyRunning(): Boolean {
         if (!clashRunning)
-            return
+            return false
 
         val now = SystemClock.elapsedRealtime()
 
         if (now - runningProbeAt < RUNNING_PROBE_INTERVAL_MS)
-            return
+            return false
 
         runningProbeAt = now
 
@@ -1279,19 +1315,79 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (running) {
             runningProbeMisses = 0
 
-            return
+            return false
         }
 
         runningProbeMisses++
 
         if (runningProbeMisses < RUNNING_PROBE_MISSES)
-            return
+            return false
 
         runningProbeMisses = 0
 
         Remote.broadcasts.clashRunning = false
 
-        fetch()
+        return true
+    }
+
+    // Отказ службы приходит через binder любым из разрешённых Parcel типов
+    // (IllegalArgument, IllegalState, Security, NullPointer…): экран показывает
+    // причину и живёт дальше, а не падает — обработчик области активности
+    // пропускает только ServiceUnavailableException.
+    private suspend fun reportFailures(where: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ServiceUnavailableException) {
+            Log.w("$where: $e")
+
+            design?.showExceptionToast(e)
+        } catch (e: Exception) {
+            Log.w("$where: $e", e)
+
+            design?.showExceptionToast(e)
+        }
+    }
+
+    // Узел уже отмечен на экране в момент нажатия. Здесь выбор уходит в ядро (или
+    // запоминается для незапущенного), затем группа перерисовывается из источника:
+    // при отказе отметка откатывается. Если в очереди более поздний выбор той же
+    // группы, перерисует он.
+    private suspend fun MainDesign.applySelection(group: String) {
+        val name = pendingSelections.remove(group) ?: return
+
+        var failure: Exception? = null
+
+        val applied = try {
+            when {
+                serversReadOnly -> true
+                offlineGroups.isNotEmpty() -> {
+                    withClash { rememberSelection(group, name) }
+
+                    offlineSelections[group] = name
+
+                    true
+                }
+                else -> withClash { patchSelector(group, name) }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failure = e
+
+            false
+        }
+
+        if (group !in pendingSelections) {
+            proxyGroupNames.indexOf(group).takeIf { it >= 0 }?.let { reloadProxyGroup(it) }
+
+            if (!applied && failure == null) {
+                showToast(DesignR.string.clod_select_failed, ToastDuration.Long)
+            }
+        }
+
+        failure?.let { throw it }
     }
 
     private suspend fun MainDesign.fetchTraffic() {

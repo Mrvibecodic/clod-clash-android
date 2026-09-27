@@ -59,8 +59,8 @@ class MainDesign(
         data class UpdateRoutingDataProvider(val key: String) : Request
 
         data object ReloadProxies : Request
-        data class ReloadGroup(val index: Int) : Request
-        data class SelectProxy(val index: Int, val name: String) : Request
+        data class ReloadGroup(val group: String) : Request
+        data class SelectProxy(val group: String, val name: String) : Request
         data class ToggleFavorite(val name: String) : Request
         data class DismissPromo(val profile: UUID, val fingerprint: String) : Request
         data object UrlTest : Request
@@ -169,7 +169,7 @@ class MainDesign(
             is MainAction.DeleteProfile -> request(Request.DeleteProfile(action.profile))
             is MainAction.SelectGroup -> {
                 state = state.copy(servers = state.servers.copy(selected = action.index))
-                request(Request.ReloadGroup(action.index))
+                state.servers.groups.getOrNull(action.index)?.let { request(Request.ReloadGroup(it.name)) }
             }
             is MainAction.OpenGroup -> {
                 state = state.copy(servers = state.servers.copy(selected = action.index))
@@ -182,7 +182,7 @@ class MainDesign(
                     state.servers.readOnly -> toast(R.string.clod_servers_direct)
                     group?.selectable != true -> toast(R.string.clod_select_not_selectable)
                     else -> {
-                        request(Request.SelectProxy(state.servers.selected, action.name))
+                        request(Request.SelectProxy(group.name, action.name))
 
                         if (state.servers.offline) {
                             toast(R.string.clod_select_offline)
@@ -367,6 +367,17 @@ class MainDesign(
                             proxies = proxies.filterNot { state.active?.panel?.hides(it.name) == true },
                         )
                     },
+                ),
+            )
+        }
+    }
+
+    // Отметка выбора до ответа ядра: иначе нажатие не видно, пока ядро занято.
+    suspend fun markProxySelected(group: String, name: String) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                servers = state.servers.copy(
+                    groups = state.servers.groups.map { if (it.name == group) it.copy(now = name) else it },
                 ),
             )
         }
