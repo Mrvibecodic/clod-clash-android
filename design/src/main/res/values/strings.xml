@@ -523,7 +523,7 @@
     <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
     <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and server checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
     <string name="clod_secure_channel">Secure connection</string>
-    <string name="clod_secure_channel_hint">Requires support from your VPN provider. This is not plain HTTPS but an extra layer of encryption on top of it. Once enabled it cannot be turned off — you would have to add the subscription again.</string>
+    <string name="clod_secure_channel_hint">(make sure your provider supports this option)</string>
     <string name="clod_home_connected_to">Connected to</string>
     <string name="clod_home_selected_server">Selected server</string>
     <string name="clod_home_direct">Direct, no servers</string>

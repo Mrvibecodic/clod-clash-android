@@ -124,25 +124,23 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
                 onAction(AddProfileAction.SecureChanged(it))
             },
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.clod_secure_channel),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = stringResource(R.string.clod_secure_channel_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(R.string.clod_secure_channel),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
         Spacer(Modifier.width(12.dp))
         Switch(
             checked = state.secure,
             onCheckedChange = null,
         )
     }
+    Text(
+        text = stringResource(R.string.clod_secure_channel_hint),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     Spacer(Modifier.height(24.dp))
     Button(
         onClick = { onAction(AddProfileAction.Submit) },

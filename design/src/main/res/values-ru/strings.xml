@@ -521,7 +521,7 @@
     <string name="clod_keep_awake">Держать туннель активным при выключенном экране</string>
     <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки серверов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
     <string name="clod_secure_channel">Защищённое соединение</string>
-    <string name="clod_secure_channel_hint">Требуется поддержка со стороны вашего провайдера VPN. Это не обычный HTTPS, а дополнительное шифрование обмена с провайдером поверх него. Включённую защиту нельзя снять — придётся добавить подписку заново.</string>
+    <string name="clod_secure_channel_hint">(убедитесь, что ваш провайдер поддерживает эту опцию)</string>
     <string name="clod_home_connected_to">Подключено к</string>
     <string name="clod_home_selected_server">Выбран сервер</string>
     <string name="clod_home_direct">Напрямую, без серверов</string>
