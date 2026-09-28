@@ -17,6 +17,7 @@ import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.DraftFreshness
 import com.github.kr328.clash.service.util.directoryLastModified
+import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.migrationDir
@@ -115,7 +116,7 @@ object ProfileProcessor {
                     if (current == null || !current.sameDraft(snapshot)) {
                         Log.w("Draft $uuid changed while its subscription was loading, result dropped")
 
-                        throw IllegalStateException(context.getString(R.string.clod_draft_changed))
+                        throw IllegalStateException(UpdateFailures.DRAFT_CHANGED)
                     }
 
                     ProfileSwap.replace(

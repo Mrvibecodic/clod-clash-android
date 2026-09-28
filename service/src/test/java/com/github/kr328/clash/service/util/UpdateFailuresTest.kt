@@ -34,6 +34,15 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `a draft changed during loading is explained`() {
+        assertEquals(
+            Reason(Cause.DraftChanged),
+            UpdateFailures.classify("java.lang.IllegalStateException: ${UpdateFailures.DRAFT_CHANGED}"),
+        )
+        assertNull(UpdateFailures.detail(UpdateFailures.DRAFT_CHANGED))
+    }
+
+    @Test
     fun `an empty subscription is explained`() {
         assertEquals(
             Reason(Cause.NoServers),

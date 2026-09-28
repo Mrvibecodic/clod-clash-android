@@ -18,6 +18,7 @@ object UpdateFailures {
         ServerError,
         Status,
         Rejected,
+        DraftChanged,
         Timeout,
         Tls,
         Dns,
@@ -46,6 +47,8 @@ object UpdateFailures {
         if (text.contains(UNSUPPORTED_SCHEME)) return Reason(Cause.Scheme)
 
         if (text.contains(CONFIG_REJECTED)) return Reason(Cause.Rejected)
+
+        if (text.contains(DRAFT_CHANGED)) return Reason(Cause.DraftChanged)
 
         val status = statusOf(text) ?: return transportOf(text.lowercase())
 
@@ -101,6 +104,10 @@ object UpdateFailures {
 
     private const val CONFIG_REJECTED_MARK = "$CONFIG_REJECTED: "
 
+    // Отказ службы доходит до экрана только текстом (kaidl не сохраняет тип
+    // исключения), поэтому причина передаётся меткой, а фразу выбирает экран.
+    const val DRAFT_CHANGED = "clod-draft-changed"
+
     private val DETAILED = setOf(Cause.Rejected, Cause.Tls)
 
     private val TIMEOUT = listOf(
@@ -147,6 +154,7 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
         UpdateFailures.Cause.Status ->
             getString(R.string.clod_update_cause_status, reason.status)
         UpdateFailures.Cause.Rejected -> getString(R.string.clod_update_cause_rejected)
+        UpdateFailures.Cause.DraftChanged -> getString(R.string.clod_draft_changed)
         UpdateFailures.Cause.Timeout -> getString(R.string.clod_update_cause_timeout)
         UpdateFailures.Cause.Tls -> getString(R.string.clod_update_cause_tls)
         UpdateFailures.Cause.Dns -> getString(R.string.clod_update_cause_dns)
