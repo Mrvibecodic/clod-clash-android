@@ -81,6 +81,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.delay
@@ -88,6 +89,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -118,6 +120,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         val design = MainDesign(this, restoredState(), restored?.getString(KEY_GROUP))
 
         setContentDesign(design)
+
+        // Выбор, не успевший уйти в ядро с прежнего экрана, досылается раньше,
+        // чем этот экран что-либо прочитает или применит.
+        selectionFlush?.join()
 
         try {
             design.fetch()
@@ -188,7 +194,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         // нажатия принимаются, переходы по экранам срабатывают сразу.
         val work = Channel<suspend () -> Unit>(Channel.UNLIMITED)
 
-        launch {
+        worker = launch {
             for (item in work) {
                 reportFailures("Main work") { item() }
             }
@@ -754,6 +760,98 @@ class MainActivity : BaseActivity<MainDesign>() {
     // перерисовка группы показывает его, а не прежний.
     private val pendingSelections: MutableMap<String, String> = mutableMapOf()
 
+    private var worker: Job? = null
+
+    // Выбор, который прямо сейчас уходит в ядро: отмена экрана может оборвать его до
+    // отправки. Досылка повторяет его, только если он не дошёл: повторный выбор в ядре
+    // заново рвёт соединения группы.
+    private class Sending(val group: String, val name: String) {
+        @Volatile
+        var delivered = false
+    }
+
+    private var sendingSelection: Sending? = null
+
+    // Экран закрывается или пересоздаётся (поворот, тема), а отмеченный на нём узел ещё
+    // не ушёл в ядро: досылаем в фоне, после обращения, которое уже в пути. В onStop —
+    // до того, как приложение, уходя с экрана, отпустит службу, и чтобы новый экран,
+    // открытый сразу после закрытия, уже ждал досылку; onDestroy подбирает остаток.
+    override fun onStop() {
+        if (isFinishing || isChangingConfigurations) handOffSelections()
+
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        handOffSelections()
+
+        super.onDestroy()
+    }
+
+    private fun handOffSelections() {
+        val sending = sendingSelection
+        val left = pendingSelections.toMap()
+
+        sendingSelection = null
+        pendingSelections.clear()
+
+        val profile = favoritesProfile
+
+        if ((left.isEmpty() && sending == null) || serversReadOnly || profile == null) return
+
+        val previous = worker
+        val prior = selectionFlush
+
+        // Держит службу, пока досылка не закончится (служба сама отпустится не позже
+        // чем через 90 с — досылка укладывается в минуту или бросается).
+        Remote.service.beginOperation()
+
+        selectionFlush = Global.launch {
+            try {
+                prior?.join()
+                previous?.join()
+
+                // Прежняя очередь остановлена: теперь известно, дошёл ли выбор, что был в пути.
+                val all = LinkedHashMap<String, String>()
+
+                sending?.takeUnless { it.delivered }?.let { all[it.group] = it.name }
+                all.putAll(left)
+
+                withTimeoutOrNull(SELECTION_HANDOFF_MS) {
+                    // Выбор принадлежит подписке, в которой его сделали; ядро решает
+                    // по состоянию на момент отправки, а не на момент ухода с экрана.
+                    if (withProfile(retry = false) { queryActive() }?.uuid != profile) {
+                        return@withTimeoutOrNull
+                    }
+
+                    val running = withContext(Dispatchers.Main) { Remote.broadcasts.clashRunning }
+
+                    for ((group, name) in all) {
+                        try {
+                            withClash(retry = false) {
+                                if (running) {
+                                    patchSelector(group, name)
+                                } else {
+                                    rememberSelection(group, name)
+                                }
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.w("Apply selection $name for $group: $e", e)
+                        }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Hand off selections: $e", e)
+            } finally {
+                Remote.service.endOperation()
+            }
+        }
+    }
+
     private var favoritesProfile: UUID? = null
 
     private var modeShownFor: UUID? = null
@@ -1095,6 +1193,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         if (uiStore.showAllGroupsOnHome) proxyGroupNames else listOfNotNull(mainGroup)
 
     private companion object {
+        private var selectionFlush: Job? = null
+
+        private val SELECTION_HANDOFF_MS = TimeUnit.SECONDS.toMillis(60)
+
         private const val DELAY_UNKNOWN = 0xffff
 
         private val HOME_ROUTE_REFRESH_MS = TimeUnit.SECONDS.toMillis(60)
@@ -1359,17 +1461,25 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         var failure: Exception? = null
 
+        val sending = Sending(group, name)
+
+        sendingSelection = sending
+
         val applied = try {
             when {
                 serversReadOnly -> true
                 offlineGroups.isNotEmpty() -> {
-                    withClash { rememberSelection(group, name) }
+                    withClash {
+                        rememberSelection(group, name)
+
+                        sending.delivered = true
+                    }
 
                     offlineSelections[group] = name
 
                     true
                 }
-                else -> withClash { patchSelector(group, name) }
+                else -> withClash { patchSelector(group, name).also { sending.delivered = true } }
             }
         } catch (e: CancellationException) {
             throw e
@@ -1378,6 +1488,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             false
         }
+
+        sendingSelection = null
 
         if (group !in pendingSelections) {
             proxyGroupNames.indexOf(group).takeIf { it >= 0 }?.let { reloadProxyGroup(it) }
