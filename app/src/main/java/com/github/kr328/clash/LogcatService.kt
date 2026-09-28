@@ -77,6 +77,14 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             subscribe(service ?: return stopSelf())
         }
+
+        // Процесс падал раз за разом, и система больше его не поднимает: ждать
+        // нечего, запись заканчивается (закрытый канал останавливает цикл записи).
+        override fun onBindingDied(name: ComponentName?) {
+            remote = null
+
+            channel.close()
+        }
     }
 
     override fun onCreate() {
@@ -153,19 +161,27 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                 LogcatWriter(this@LogcatService).use {
                     while (isActive) {
-                        val msg = channel.receive()
+                        val msg = channel.receiveCatching().getOrNull()
 
-                        if (!it.appendMessage(msg)) {
-                            val last = notice("log file size limit reached, recording stopped")
+                        if (msg != null && it.appendMessage(msg)) {
+                            cache.append(msg)
 
-                            it.appendLast(last)
-
-                            cache.append(last)
-
-                            break
+                            continue
                         }
 
-                        cache.append(msg)
+                        val last = notice(
+                            if (msg == null) {
+                                "background process is not restarted any more, recording stopped"
+                            } else {
+                                "log file size limit reached, recording stopped"
+                            },
+                        )
+
+                        it.appendLast(last)
+
+                        cache.append(last)
+
+                        break
                     }
                 }
             } catch (e: IOException) {
