@@ -13,6 +13,7 @@ import com.github.kr328.clash.design.AppSettingsDesign
 import com.github.kr328.clash.design.AppSettingsPrefs
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.design.compose.component.NoticeKind
+import com.github.kr328.clash.design.compose.screen.RestoreDialog
 import com.github.kr328.clash.design.model.Behavior
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
@@ -59,12 +60,17 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         launch {
             ProfileImports.batch.collect { state ->
-                if (state is ProfileImports.BatchState.Running) {
-                    design.showRestoreProgress(state.processed, state.total)
-                }
+                design.showRestore(
+                    when (state) {
+                        is ProfileImports.BatchState.Confirm ->
+                            RestoreDialog.Confirm(state.entries, state.activeName)
+                        is ProfileImports.BatchState.Running ->
+                            RestoreDialog.Running(state.processed, state.total).takeIf { state.shown }
+                        else -> null
+                    },
+                )
 
                 if (state is ProfileImports.BatchState.Done) {
-                    design.hideRestore()
                     ProfileImports.resetBatch()
 
                     design.showToast(
@@ -116,6 +122,12 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
                         AppSettingsDesign.Request.ImportProfiles ->
                             importProfiles(design)
+
+                        AppSettingsDesign.Request.ConfirmRestore ->
+                            ProfileImports.confirmBatch()
+
+                        AppSettingsDesign.Request.DismissRestore ->
+                            ProfileImports.dismissBatch()
 
                         AppSettingsDesign.Request.Back -> finish()
                     }
@@ -270,9 +282,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         val entries = items.map { "${it.name} · ${Uri.parse(it.source).host ?: "?"}" }
 
-        if (!design.confirmRestore(entries, activeName)) return
-
-        ProfileImports.startBatch(items, items.size)
+        ProfileImports.offerBatch(items, entries, activeName)
     }
 
     override var autoRestart: Boolean

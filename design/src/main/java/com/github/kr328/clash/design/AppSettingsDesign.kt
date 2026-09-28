@@ -21,7 +21,6 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.service.store.ServiceSettings
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
@@ -43,6 +42,8 @@ class AppSettingsDesign(
         data object RequestNotifications : Request
         data object ExportProfiles : Request
         data object ImportProfiles : Request
+        data object ConfirmRestore : Request
+        data object DismissRestore : Request
         data object Back : Request
     }
 
@@ -82,34 +83,9 @@ class AppSettingsDesign(
         state = state.copy(notificationsBlocked = notificationsBlocked())
     }
 
-    private var restoreAnswer: CompletableDeferred<Boolean>? = null
-
-    suspend fun confirmRestore(entries: List<String>, activeName: String?): Boolean {
-        val answer = CompletableDeferred<Boolean>()
-
-        restoreAnswer = answer
-        state = state.copy(restore = RestoreDialog.Confirm(entries, activeName))
-
-        return try {
-            answer.await()
-        } finally {
-            restoreAnswer = null
-        }
-    }
-
-    // Ход показывается, пока диалог открыт; закрытый человеком диалог не возвращается.
-    fun showRestoreProgress(processed: Int, total: Int) {
-        if (state.restore is RestoreDialog.Running) {
-            state = state.copy(restore = RestoreDialog.Running(processed, total))
-        }
-    }
-
-    // Закрывает только прогресс: диалог подтверждения следующего импорта живёт своей
-    // жизнью и ждёт ответа человека, иначе confirmRestore повис бы навсегда.
-    fun hideRestore() {
-        if (state.restore is RestoreDialog.Running) {
-            state = state.copy(restore = null)
-        }
+    // Диалог восстановления показывает состояние, которое хранит приложение, а не экран.
+    fun showRestore(dialog: RestoreDialog?) {
+        state = state.copy(restore = dialog)
     }
 
     private fun resetSettings() {
@@ -250,16 +226,10 @@ class AppSettingsDesign(
                 requests.trySend(Request.ImportProfiles)
             }
             AppSettingsAction.ConfirmRestore -> {
-                val entries = (state.restore as? RestoreDialog.Confirm)?.entries.orEmpty()
-
-                state = state.copy(restore = RestoreDialog.Running(0, entries.size))
-
-                restoreAnswer?.complete(true)
+                requests.trySend(Request.ConfirmRestore)
             }
             AppSettingsAction.CancelRestore -> {
-                restoreAnswer?.complete(false)
-
-                state = state.copy(restore = null)
+                requests.trySend(Request.DismissRestore)
             }
             is AppSettingsAction.SetLanguage -> {
                 state = state.copy(language = action.index)

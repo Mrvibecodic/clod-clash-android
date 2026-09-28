@@ -42,9 +42,18 @@ object ProfileImports {
         data class Failed(override val token: Long, val message: String, val detail: String?) : State
     }
 
+    // Весь ход восстановления — от вопроса «восстановить?» до итога — хранится здесь,
+    // а не в экране настроек: экран пересоздаётся (поворот, тема, старт и остановка
+    // VPN) и только показывает это состояние. shown — открыт ли диалог хода: закрытый
+    // человеком не возвращается и после пересоздания.
     sealed interface BatchState {
         data object Idle : BatchState
-        data class Running(val processed: Int, val total: Int) : BatchState
+        data class Confirm(
+            val items: List<Item>,
+            val entries: List<String>,
+            val activeName: String?,
+        ) : BatchState
+        data class Running(val processed: Int, val total: Int, val shown: Boolean = true) : BatchState
         data class Done(
             val restored: Int,
             val total: Int,
@@ -129,8 +138,20 @@ object ProfileImports {
     }
 
     @Synchronized
-    fun startBatch(items: List<Item>, total: Int): Boolean {
-        if (batchJob?.isActive == true) return false
+    fun offerBatch(items: List<Item>, entries: List<String>, activeName: String?) {
+        if (batch_.value is BatchState.Idle) {
+            batch_.value = BatchState.Confirm(items, entries, activeName)
+        }
+    }
+
+    @Synchronized
+    fun confirmBatch() {
+        val confirm = batch_.value as? BatchState.Confirm ?: return
+
+        if (batchJob?.isActive == true) return
+
+        val items = confirm.items
+        val total = items.size
 
         batch_.value = BatchState.Running(0, total)
 
@@ -163,13 +184,23 @@ object ProfileImports {
                     Log.w("Restore subscription: $e", e)
                 }
 
-                batch_.value = BatchState.Running(index + 1, total)
+                batch_.update { (it as? BatchState.Running)?.copy(processed = index + 1) ?: it }
             }
 
             batch_.value = BatchState.Done(restored, total, failed.get())
         }
+    }
 
-        return true
+    // Отказ от предпросмотра — конец восстановления; закрытие хода — только диалога.
+    @Synchronized
+    fun dismissBatch() {
+        batch_.update {
+            when (it) {
+                is BatchState.Confirm -> BatchState.Idle
+                is BatchState.Running -> it.copy(shown = false)
+                else -> it
+            }
+        }
     }
 
     @Synchronized
