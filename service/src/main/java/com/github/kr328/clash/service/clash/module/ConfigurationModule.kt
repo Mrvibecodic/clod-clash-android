@@ -38,7 +38,9 @@ import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 import java.util.*
 
-class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(service) {
+class ConfigurationModule(
+    service: Service,
+) : Module<ConfigurationModule.Event>(service) {
     companion object {
         val coreLoad = Mutex()
 

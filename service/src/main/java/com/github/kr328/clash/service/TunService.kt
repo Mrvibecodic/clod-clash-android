@@ -62,6 +62,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         val apps = install(AppListCacheModule(self, notifyChanges = true))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
+        install(DiagnosticsModule(self))
 
         var opened = false
         var profile: UUID? = null

@@ -11,6 +11,7 @@ import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.model.DiagnosticsState
 import java.util.*
 
 class Broadcasts(private val context: Application) {
@@ -25,10 +26,12 @@ class Broadcasts(private val context: Application) {
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
         fun onProfileLoaded()
         fun onProfileLoadFailed(uuid: UUID?, reason: String?)
+        fun onDiagnosticsStatusChanged(status: DiagnosticsState)
     }
 
     @Volatile
     var clashRunning: Boolean = false
+    var diagnosticsState: DiagnosticsState = DiagnosticsState.STOPPED
 
     private var registered = false
     private val receivers = mutableListOf<Observer>()
@@ -98,6 +101,12 @@ class Broadcasts(private val context: Application) {
                             intent.getStringExtra(Intents.EXTRA_FAIL_REASON))
                     }
                 }
+                Intents.ACTION_DIAGNOSTICS_STATUS -> {
+                    diagnosticsState = intent.getStringExtra(Intents.EXTRA_DIAGNOSTICS_STATUS)
+                        ?.let { runCatching { DiagnosticsState.valueOf(it) }.getOrNull() }
+                        ?: DiagnosticsState.STOPPED
+                    receivers.forEach { it.onDiagnosticsStatusChanged(diagnosticsState) }
+                }
             }
         }
     }
@@ -130,6 +139,7 @@ class Broadcasts(private val context: Application) {
                     addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
                     addAction(Intents.ACTION_PROFILE_LOADED)
                     addAction(Intents.ACTION_PROFILE_LOAD_FAILED)
+                    addAction(Intents.ACTION_DIAGNOSTICS_STATUS)
                 }, Permissions.RECEIVE_SELF_BROADCASTS)
 
                 registered = true

@@ -47,6 +47,37 @@ func fetchAndValid(callback unsafe.Pointer, path, url C.c_string, force, probe, 
 	})
 }
 
+//export useLocalControllerAccess
+func useLocalControllerAccess() (result C.int) {
+	result = controllerConfigurationEntropyUnavailable
+	defer guard("useLocalControllerAccess", func() {})()
+
+	if err := config.RotateExternalControllerSecret(); err != nil {
+		return result
+	}
+	return controllerConfigurationSucceeded
+}
+
+//export useDiagnosticsControllerAccess
+func useDiagnosticsControllerAccess(secret C.c_string) (result C.int) {
+	result = controllerConfigurationSecretInvalid
+	defer guard("useDiagnosticsControllerAccess", func() {})()
+
+	if secret == nil {
+		return result
+	}
+	if err := config.SetExternalControllerSecret(C.GoString(secret)); err != nil {
+		return result
+	}
+	return controllerConfigurationSucceeded
+}
+
+const (
+	controllerConfigurationSucceeded C.int = iota
+	controllerConfigurationEntropyUnavailable
+	controllerConfigurationSecretInvalid
+)
+
 //export load
 func load(completable unsafe.Pointer, path C.c_string) {
 	defer guard("load", func() {})()

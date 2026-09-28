@@ -1,5 +1,6 @@
 package com.github.kr328.clash.core
 
+import com.github.kr328.clash.common.model.DiagnosticsLogEvent
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.core.model.*
 import com.github.kr328.clash.core.util.parseInetSocketAddress
@@ -10,6 +11,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import java.io.File
@@ -30,6 +32,31 @@ internal fun CompletableDeferred<Unit>.completeFetchResult(error: String?) {
     }
 }
 
+@Serializable
+enum class DiagnosticsRuntimeState {
+    CONNECTING,
+    READY,
+    CONFIGURATION_ERROR,
+    ACCESS_DENIED,
+    UNREACHABLE,
+}
+
+@Serializable
+data class DiagnosticsStatus(
+    val state: DiagnosticsRuntimeState,
+)
+
+@kotlinx.serialization.Serializable
+data class DiagnosticsBootstrap(
+    val state: DiagnosticsRuntimeState,
+    @SerialName("controller_secret") val controllerSecret: String = "",
+    @SerialName("remote_port") val remotePort: Int = 0,
+)
+
+private const val CONTROLLER_CONFIGURATION_SUCCEEDED = 0
+private const val CONTROLLER_CONFIGURATION_ENTROPY_UNAVAILABLE = 1
+private const val CONTROLLER_CONFIGURATION_SECRET_INVALID = 2
+
 object Clash {
     enum class OverrideSlot {
         Persist, Session
@@ -48,6 +75,50 @@ object Clash {
 
     fun reset() {
         Bridge.nativeReset()
+    }
+
+    fun startDiagnostics(endpoint: String, access: DiagnosticsAccess) {
+        Bridge.nativeStartDiagnostics(
+            endpoint,
+            access.tunnelAuth,
+            access.controllerSecret,
+            access.remotePort,
+        )
+    }
+
+    fun bootstrapDiagnostics(endpoint: String, tunnelAuth: String): DiagnosticsBootstrap {
+        return CoreJson.decodeFromString(
+            DiagnosticsBootstrap.serializer(),
+            Bridge.nativeBootstrapDiagnostics(endpoint, tunnelAuth),
+        )
+    }
+
+    fun stopDiagnostics() {
+        Bridge.nativeStopDiagnostics()
+    }
+
+    fun queryDiagnostics(): DiagnosticsStatus {
+        return CoreJson.decodeFromString(DiagnosticsStatus.serializer(), Bridge.nativeQueryDiagnostics())
+    }
+
+    fun recordDiagnosticsEvent(event: DiagnosticsLogEvent) {
+        Bridge.nativeRecordDiagnosticsEvent(event.code)
+    }
+
+    fun configureExternalController(access: ExternalControllerAccess) {
+        val result = when (access) {
+            ExternalControllerAccess.LocalOnly -> Bridge.nativeUseLocalControllerAccess()
+            is ExternalControllerAccess.Diagnostics ->
+                Bridge.nativeUseDiagnosticsControllerAccess(access.secret)
+        }
+        when (result) {
+            CONTROLLER_CONFIGURATION_SUCCEEDED -> Unit
+            CONTROLLER_CONFIGURATION_ENTROPY_UNAVAILABLE ->
+                error("failed to generate external controller secret")
+            CONTROLLER_CONFIGURATION_SECRET_INVALID ->
+                error("external controller secret was rejected")
+            else -> error("unknown external controller configuration result: $result")
+        }
     }
 
     fun forceGc() {

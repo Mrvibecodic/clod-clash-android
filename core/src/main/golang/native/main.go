@@ -44,7 +44,11 @@ func reset() {
 	defer guard("reset", func() {})()
 
 	tunnel.CancelHealthChecks()
+	diagnosticsStop()
 	tunnel.CloseProviders()
+	if err := config.RotateExternalControllerSecret(); err != nil {
+		panic(err)
+	}
 	config.LoadDefault()
 	tunnel.ResetStatistic()
 	tunnel.CloseAllConnections()
@@ -53,6 +57,46 @@ func reset() {
 		runtime.GC()
 		debug.FreeOSMemory()
 	})
+}
+
+//export startDiagnostics
+func startDiagnostics(endpoint, tunnelAuth, controllerSecret C.c_string, remotePort C.int) {
+	defer guard("startDiagnostics", func() {})()
+
+	diagnosticsStart(
+		C.GoString(endpoint),
+		C.GoString(tunnelAuth),
+		C.GoString(controllerSecret),
+		int(remotePort),
+	)
+}
+
+//export bootstrapDiagnostics
+func bootstrapDiagnostics(endpoint, tunnelAuth C.c_string) (result *C.char) {
+	defer guard("bootstrapDiagnostics", func() {})()
+
+	return C.CString(diagnosticsBootstrap(C.GoString(endpoint), C.GoString(tunnelAuth)))
+}
+
+//export stopDiagnostics
+func stopDiagnostics() {
+	defer guard("stopDiagnostics", func() {})()
+
+	diagnosticsStop()
+}
+
+//export queryDiagnostics
+func queryDiagnostics() (result *C.char) {
+	defer guard("queryDiagnostics", func() {})()
+
+	return C.CString(diagnosticsQuery())
+}
+
+//export recordDiagnosticsEvent
+func recordDiagnosticsEvent(code C.int) {
+	defer guard("recordDiagnosticsEvent", func() {})()
+
+	diagnosticsRecordEvent(int(code))
 }
 
 //export forceGc

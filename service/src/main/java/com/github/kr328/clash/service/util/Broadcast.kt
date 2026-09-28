@@ -5,6 +5,10 @@ import android.content.Intent
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.common.constants.Permissions
+import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.model.DiagnosticsLogEvent
+import com.github.kr328.clash.common.model.DiagnosticsMode
+import com.github.kr328.clash.common.model.DiagnosticsState
 import java.util.*
 
 fun Context.sendBroadcastSelf(intent: Intent) {
@@ -59,6 +63,36 @@ fun Context.sendOverrideChanged() {
     val intent = Intent(Intents.ACTION_OVERRIDE_CHANGED)
 
     sendBroadcastSelf(intent)
+}
+
+fun Context.sendDiagnosticsChanged(mode: DiagnosticsMode, event: DiagnosticsLogEvent? = null) {
+    val persistCommand = mode.isRestartSafeDiagnosticsMode()
+    val commandId = if (persistCommand) DiagnosticsModeCommandStore(this).append(mode, event) else null
+    if (persistCommand && commandId == null) {
+        DiagnosticsEventJournal(this).append(DiagnosticsLogEvent.UiModeCommandStoreFailed)
+    }
+    Log.i("[Diagnostics] event=${event?.wireName ?: "mode_changed"} result=broadcast mode=${mode.name.lowercase()}")
+    sendBroadcastSelf(
+        Intent(Intents.ACTION_DIAGNOSTICS_CHANGED)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_MODE, mode.name)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_MODE_COMMAND_ID, commandId)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_LOG_EVENT, event?.code ?: -1)
+    )
+}
+
+fun Context.sendDiagnosticsLogEvent(event: DiagnosticsLogEvent) {
+    Log.i("[Diagnostics] event=${event.wireName} result=broadcast")
+    sendBroadcastSelf(
+        Intent(Intents.ACTION_DIAGNOSTICS_LOG_EVENT)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_LOG_EVENT, event.code)
+    )
+}
+
+fun Context.sendDiagnosticsStatus(status: DiagnosticsState) {
+    sendBroadcastSelf(
+        Intent(Intents.ACTION_DIAGNOSTICS_STATUS)
+            .putExtra(Intents.EXTRA_DIAGNOSTICS_STATUS, status.name)
+    )
 }
 
 fun Context.sendServiceRecreated() {
