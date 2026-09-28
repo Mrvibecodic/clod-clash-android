@@ -92,11 +92,11 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override suspend fun querySelections(): Map<String, String> =
         guard { delegate.querySelections() }
 
-    override suspend fun queryProfileMode(): ProfileMode =
-        guard { delegate.queryProfileMode() }
+    override suspend fun queryProfileMode(uuid: UUID): ProfileMode =
+        guard { delegate.queryProfileMode(uuid) }
 
-    override suspend fun setProfileMode(mode: TunnelState.Mode) =
-        guard { delegate.setProfileMode(mode) }
+    override suspend fun setProfileMode(uuid: UUID, mode: TunnelState.Mode) =
+        guard { delegate.setProfileMode(uuid, mode) }
 
     override suspend fun healthCheck(group: String) =
         guard { delegate.healthCheck(group) }

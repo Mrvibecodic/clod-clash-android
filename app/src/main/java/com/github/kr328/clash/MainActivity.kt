@@ -405,7 +405,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                         is MainDesign.Request.DismissPromo ->
                             uiStore.setDismissedPromo(request.profile, request.fingerprint)
                         is MainDesign.Request.PatchMode -> work.trySend {
-                            val locked = withClash { queryProfileMode() }.source ==
+                            // Режим выбирается для подписки, что на экране: и замок
+                            // проверяется, и выбор пишется ей, а не «активной» службы.
+                            val profile = favoritesProfile ?: return@trySend
+
+                            val locked = withClash { queryProfileMode(profile) }.source ==
                                 ProfileMode.Source.Locked
 
                             if (locked) {
@@ -414,7 +418,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     ToastDuration.Long,
                                 )
                             } else {
-                                withClash { setProfileMode(request.mode) }
+                                withClash { setProfileMode(profile, request.mode) }
 
                                 design.showToast(
                                     if (clashRunning) {
@@ -664,8 +668,15 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         fetchSession()
 
-        val mode = try {
-            withClash { queryProfileMode() }
+        val profiles = withProfile { queryAll() }
+        val activeUuid = profiles.firstOrNull { it.active }?.uuid
+
+        // Режим спрашивается о той подписке, что будет показана, и до первой
+        // перерисовки: отказ службы здесь оставляет экран целиком прежним. Сбой
+        // запроса — не «режим из шаблона»: показ остаётся прежним, но только для
+        // той же подписки — замок и режим чужой показывать нельзя.
+        val mode = if (activeUuid == null) ProfileMode() else try {
+            withClash { queryProfileMode(activeUuid) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: ServiceUnavailableException) {
@@ -676,7 +687,6 @@ class MainActivity : BaseActivity<MainDesign>() {
             null
         }
 
-        val profiles = withProfile { queryAll() }
         val groups = querySubscriptionGroups()
         val items = profiles.map {
             val panel = queryPanelInfo(it.uuid)
@@ -689,10 +699,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         val active = items.firstOrNull { it.profile.active }
 
         setActiveProfile(active)
-
-        // Сбой запроса режима — не «режим из шаблона»: показ остаётся прежним, но
-        // только для той же подписки — замок и режим чужой показывать нельзя.
-        val activeUuid = active?.profile?.uuid
 
         if (mode != null) {
             setMode(mode)
@@ -853,6 +859,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var modeShownFor: UUID? = null
 
+    private var groupsShownFor: UUID? = null
+
     private var serversReadOnly: Boolean = false
 
     private var globalSelection: String? = null
@@ -861,7 +869,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.reloadProxyGroups(): Boolean {
         val running = clashRunning
-        val snapshot = if (running) queryLiveGroupNames() ?: return false else ProxyGroupNames()
+        val loaded = if (running) loadedProfile() else null
+        val snapshot = if (running) queryLiveGroupNames(loaded) ?: return false else ProxyGroupNames()
         val names = snapshot.names
 
         setAllGroupsOnHome(uiStore.showAllGroupsOnHome)
@@ -880,6 +889,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         offlineGroups = emptyList()
         serversReadOnly = false
         mainGroup = mainGroupOf(names, snapshot.main)
+        groupsShownFor = loaded
 
         setProxyGroupNames(names, main = mainGroup)
 
@@ -1028,11 +1038,18 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    // Сбой запроса при живом ядре — не «групп нет»: живой список остаётся как был,
-    // офлайн-список убирается (выбор в нём к ядру не применяется), причина — в
-    // уведомлении. panelRunning не выставляется, и следующая перезагрузка панели
-    // повторит запрос.
-    private suspend fun MainDesign.queryLiveGroupNames(): ProxyGroupNames? = try {
+    // Живой список групп принадлежит подписке, загруженной в ядро, а не выбранной:
+    // она читается до запроса, и гонка двух чтений может дать лишнюю очистку, но
+    // не чужой список.
+    private suspend fun loadedProfile(): UUID? = withContext(Dispatchers.IO) {
+        StatusClient(this@MainActivity).status().uuid
+    }?.let { runCatching { UUID.fromString(it) }.getOrNull() }
+
+    // Сбой запроса при живом ядре — не «групп нет»: живой список той же подписки
+    // остаётся как был; офлайн-список (выбор в нём к ядру не применяется) и список
+    // другой подписки убираются, причина — в уведомлении. panelRunning не
+    // выставляется, и следующая перезагрузка панели повторит запрос.
+    private suspend fun MainDesign.queryLiveGroupNames(loaded: UUID?): ProxyGroupNames? = try {
         withClash { queryProxyGroupNames(true) }
     } catch (e: CancellationException) {
         throw e
@@ -1041,7 +1058,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     } catch (e: Exception) {
         Log.w("Query proxy group names: $e", e)
 
-        if (offlineGroups.isNotEmpty()) {
+        if (offlineGroups.isNotEmpty() || groupsShownFor != loaded) {
             offlineGroups = emptyList()
             proxyGroupNames = emptyList()
             mainGroup = null
@@ -1064,6 +1081,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         proxyGroupNames = offlineGroups.map { it.name }
         mainGroup = mainGroupOf(proxyGroupNames, panel?.main)
         healthCheckedGroups = emptyList()
+        groupsShownFor = active?.uuid
 
         setGroupIcons(emptyMap())
 

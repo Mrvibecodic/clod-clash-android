@@ -5,6 +5,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.*
 import com.github.kr328.clash.service.clash.module.ConfigurationModule
+import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.ModeChoice
 import com.github.kr328.clash.service.data.ModeChoiceDao
 import com.github.kr328.clash.service.data.Selection
@@ -49,11 +50,15 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryOverride(slot)
     }
 
+    // Выбор принадлежит подписке, загруженной в ядро: пока грузится новая
+    // активная, ядро и список на экране ещё прежние. Метки нет (ядро ещё не
+    // загрузилось или останавливается) — выбор, как и раньше, у активной.
     override fun patchSelector(group: String, name: String): Boolean {
+        val loaded = StatusProvider.currentProfileUuid?.let(UUID::fromString)
         val result = Clash.patchSelector(group, name)
 
         persistSelection(group, name) {
-            store.activeProfile?.let { current ->
+            (loaded ?: store.activeProfile)?.let { current ->
                 when (result) {
                     Clash.PatchResult.Done ->
                         SelectionDao().setSelected(Selection(current, group, name))
@@ -101,24 +106,26 @@ class ClashManager(private val context: Context) : IClashManager,
         context.sendOverrideChanged()
     }
 
-    override suspend fun queryProfileMode(): ProfileMode = withContext(Dispatchers.IO) {
-        val current = store.activeProfile ?: return@withContext ProfileMode()
-
+    // Режим — свойство подписки (её файл и её выбор), а не «активной»: экран
+    // спрашивает о той, что показывает, и чужой ответ получить не может.
+    override suspend fun queryProfileMode(uuid: UUID): ProfileMode = withContext(Dispatchers.IO) {
         ProfileProcessor.queryMode(
             context,
-            current,
-            sessionOverrideFor(ModeChoiceDao().queryChoice(current)),
+            uuid,
+            sessionOverrideFor(ModeChoiceDao().queryChoice(uuid)),
         )
     }
 
-    override suspend fun setProfileMode(mode: TunnelState.Mode) = withContext(Dispatchers.IO) {
-        val current = store.activeProfile ?: return@withContext
+    // Выбор для неактивной подписки — только запись: перезагрузку ядра заказывает
+    // лишь выбор активной, а удалённой подписке записывать нечего.
+    override suspend fun setProfileMode(uuid: UUID, mode: TunnelState.Mode) = withContext(Dispatchers.IO) {
+        if (ImportedDao().queryByUUID(uuid) == null) return@withContext
 
-        if (!modeChoiceChanged(ModeChoiceDao().queryChoice(current), mode)) return@withContext
+        if (!modeChoiceChanged(ModeChoiceDao().queryChoice(uuid), mode)) return@withContext
 
-        ModeChoiceDao().setChoice(ModeChoice(current, mode))
+        ModeChoiceDao().setChoice(ModeChoice(uuid, mode))
 
-        if (!switchModeLive(current, mode)) {
+        if (!switchModeLive(uuid, mode) && uuid == store.activeProfile) {
             context.sendOverrideChanged()
         }
     }

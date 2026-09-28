@@ -41,7 +41,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
         // Режим здесь только для подсказок (замок, тень выбора): при сбое экран
         // открывается без них — замок всё равно проверяет служба.
         val profileMode = try {
-            withClash { queryProfileMode() }
+            active?.let { withClash { queryProfileMode(it.uuid) } } ?: ProfileMode()
         } catch (e: CancellationException) {
             throw e
         } catch (e: ServiceUnavailableException) {

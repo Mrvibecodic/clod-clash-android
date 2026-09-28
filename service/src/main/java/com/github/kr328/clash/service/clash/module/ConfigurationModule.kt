@@ -222,6 +222,13 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 loadedInputs = inputs
                 lockUntil = lockDeadline(active.uuid)
 
+                // Ядро уже на новой подписке: метка публикуется сразу, а не после
+                // возврата выбора узлов, — по ней пишется выбор, сделанный человеком.
+                StatusProvider.currentProfile =
+                    service.displayProfileName(active.uuid, active.name, active.nameManual)
+
+                StatusProvider.currentProfileUuid = active.uuid.toString()
+
                 if (first) stage(Intents.STAGE_SELECTING)
 
                 withContext(Selections.queue) {
@@ -233,11 +240,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                     SelectionDao().removeSelections(active.uuid, remove)
                 }
-
-                StatusProvider.currentProfile =
-                    service.displayProfileName(active.uuid, active.name, active.nameManual)
-
-                StatusProvider.currentProfileUuid = active.uuid.toString()
 
                 service.sendProfileLoaded(current)
 
