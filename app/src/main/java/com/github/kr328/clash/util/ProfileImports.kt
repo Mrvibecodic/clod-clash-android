@@ -19,7 +19,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
@@ -99,7 +98,7 @@ object ProfileImports {
 
         state_.value = State.Running(token, null)
 
-        job = Global.launch {
+        job = launchHoldingService {
             val context = Global.application.withAppLocale()
             val failed = AtomicReference(emptyList<String>())
 
@@ -155,7 +154,7 @@ object ProfileImports {
 
         batch_.value = BatchState.Running(0, total)
 
-        batchJob = Global.launch {
+        batchJob = launchHoldingService {
             var restored = 0
             val failed = AtomicReference(emptyList<String>())
 
@@ -212,7 +211,7 @@ object ProfileImports {
         state_.value = State.Running(token, null)
         committing = profile.uuid
 
-        job = Global.launch {
+        job = launchHoldingService {
             val context = Global.application.withAppLocale()
             val failed = AtomicReference(emptyList<String>())
 

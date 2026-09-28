@@ -13,8 +13,11 @@ import com.github.kr328.clash.remote.RemoteHandle
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.IProfileManager
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
@@ -91,3 +94,14 @@ suspend fun <T> withProfile(
     retry: Boolean = true,
     block: suspend IProfileManager.() -> T
 ): T = withRemote(context, retry, { it.profile }, block)
+
+// Работа из нескольких вызовов держит службу целиком, а не каждый вызов по
+// отдельности: иначе привязка, отпущенная между вызовами (приложение ушло с
+// экрана), остановила бы следующий шаг до возвращения человека в приложение.
+fun launchHoldingService(block: suspend CoroutineScope.() -> Unit): Job {
+    Remote.service.beginOperation()
+
+    return Global.launch(block = block).apply {
+        invokeOnCompletion { Remote.service.endOperation() }
+    }
+}

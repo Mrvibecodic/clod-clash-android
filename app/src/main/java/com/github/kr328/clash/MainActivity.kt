@@ -67,6 +67,7 @@ import com.github.kr328.clash.util.serversReload
 import com.github.kr328.clash.util.shouldAutoHealthCheck
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
+import com.github.kr328.clash.util.launchHoldingService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.util.showNoAppForLink
@@ -804,9 +805,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Держит службу, пока досылка не закончится (служба сама отпустится не позже
         // чем через 90 с — досылка укладывается в минуту или бросается).
-        Remote.service.beginOperation()
-
-        selectionFlush = Global.launch {
+        selectionFlush = launchHoldingService {
             try {
                 prior?.join()
                 previous?.join()
@@ -846,8 +845,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                 throw e
             } catch (e: Exception) {
                 Log.w("Hand off selections: $e", e)
-            } finally {
-                Remote.service.endOperation()
             }
         }
     }

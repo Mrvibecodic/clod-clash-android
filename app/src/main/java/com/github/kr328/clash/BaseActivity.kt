@@ -142,15 +142,12 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         super.onDestroy()
     }
 
-    @Volatile
-    private var closeAnyway = false
-
-    // Приложение закрывает все экраны разом (служба упала, APK повреждён):
-    // отказ defer закрыть экран здесь не действует.
+    // Приложение закрывает все экраны разом (служба упала, APK повреждён): экран
+    // закрывается сразу, а defer (запись правок) доделывается уже без него.
     fun finishAnyway() {
-        closeAnyway = true
-
         finish()
+
+        super.finish()
     }
 
     override fun finish() {
@@ -161,12 +158,12 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
             var close = true
 
             try {
-                defer()
+                // Запись правок не прерывается закрытием экрана: она дождётся
+                // службы, даже если экран уже уничтожен.
+                withContext(NonCancellable) { defer() }
             } catch (e: FinishCancelled) {
-                if (!closeAnyway) {
-                    close = false
-                    deferRunning = false
-                }
+                close = false
+                deferRunning = false
             } finally {
                 if (close) {
                     withContext(NonCancellable) {

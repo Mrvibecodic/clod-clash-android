@@ -4,7 +4,9 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.service.RemoteService
@@ -14,6 +16,8 @@ import com.github.kr328.clash.service.remote.IRemoteService
 import com.github.kr328.clash.service.remote.unwrap
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.util.unbindServiceSilent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
@@ -35,18 +39,24 @@ class Service(private val context: Application, val crashed: () -> Unit) {
 
     private val inFlight = AtomicInteger(0)
 
-    @Volatile
+    // Привязка и отвязка решаются только на главном потоке — там же приходят
+    // появление и уход приложения, поэтому отвязка не может обогнать привязку,
+    // сделанную в то же мгновение.
+    private val main = Handler(Looper.getMainLooper())
+
     private var unbindRequested = false
+
+    private var unbindTimer: Job? = null
 
     fun beginOperation() {
         inFlight.incrementAndGet()
     }
 
     fun endOperation() {
-        if (inFlight.decrementAndGet() == 0 && unbindRequested) {
-            unbindRequested = false
-
-            unbind()
+        if (inFlight.decrementAndGet() == 0) {
+            main.post {
+                if (inFlight.get() == 0) unbindIfRequested()
+            }
         }
     }
 
@@ -57,15 +67,20 @@ class Service(private val context: Application, val crashed: () -> Unit) {
 
         unbindRequested = true
 
-        Global.launch {
+        unbindTimer?.cancel()
+        unbindTimer = Global.launch(Dispatchers.Main) {
             delay(UNBIND_HOLD_MS)
 
-            if (unbindRequested) {
-                unbindRequested = false
-
-                unbind()
-            }
+            unbindIfRequested()
         }
+    }
+
+    private fun unbindIfRequested() {
+        if (!unbindRequested) return
+
+        unbindRequested = false
+
+        unbind()
     }
 
     private val connection = object : ServiceConnection {
@@ -79,18 +94,24 @@ class Service(private val context: Application, val crashed: () -> Unit) {
             remote.set(null)
 
             if (System.currentTimeMillis() - lastCrashed < TOGGLE_CRASHED_INTERVAL) {
-                unbind()
-
-                crashed()
+                giveUp()
             }
 
             lastCrashed = System.currentTimeMillis()
             Log.w("RemoteService killed or crashed")
         }
+
+        // Служба падала раз за разом, и система её больше не поднимает.
+        override fun onBindingDied(name: ComponentName?) {
+            remote.set(null)
+
+            giveUp()
+        }
     }
 
     fun bind() {
         try {
+            unbindTimer?.cancel()
             unbindRequested = false
 
             boundSince = System.currentTimeMillis()
@@ -98,23 +119,25 @@ class Service(private val context: Application, val crashed: () -> Unit) {
             if (!context.bindService(RemoteService::class.intent, connection, Context.BIND_AUTO_CREATE)) {
                 Log.w("RemoteService bind refused")
 
-                unbind()
-
-                crashed()
+                giveUp()
             }
         } catch (e: Exception) {
-            unbind()
-
-            crashed()
+            giveUp()
         }
     }
 
-    fun unbind() {
+    private fun unbind() {
         boundSince = 0
 
         context.unbindServiceSilent(connection)
 
         remote.set(null)
+    }
+
+    private fun giveUp() {
+        unbind()
+
+        crashed()
     }
 
     companion object {
