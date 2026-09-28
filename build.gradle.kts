@@ -6,11 +6,17 @@ import java.net.URL
 import java.util.*
 import org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension
 
+// Плагин сборки Go и kaidl (Kr328) есть только на изменяемой ветке чужого зеркала
+// без контрольных сумм, поэтому лежат в дереве (maven/, байт в байт с зеркала) и
+// ищутся только там.
 buildscript {
     repositories {
+        exclusiveContent {
+            forRepository { maven(rootProject.projectDir.resolve("maven")) }
+            filter { includeGroupByRegex("com\\.github\\.kr328\\..*") }
+        }
         mavenCentral()
         google()
-        maven("https://raw.githubusercontent.com/MetaCubeX/maven-backup/main/releases")
     }
     dependencies {
         classpath(libs.build.r8)
@@ -25,9 +31,12 @@ buildscript {
 
 subprojects {
     repositories {
+        exclusiveContent {
+            forRepository { maven(rootProject.projectDir.resolve("maven")) }
+            filter { includeGroupByRegex("com\\.github\\.kr328\\..*") }
+        }
         mavenCentral()
         google()
-        maven("https://raw.githubusercontent.com/MetaCubeX/maven-backup/main/releases")
     }
 
     val isApp = name == "app"
