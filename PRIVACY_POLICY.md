@@ -30,9 +30,9 @@ crash-reporting code. Everything described below covers the requests this app ma
     is down, or the connection through it breaks — the app retries that request outside the
     tunnel, directly from your network. In that case the provider sees your real IP address
     together with the device headers above. Every failed attempt is retried directly at most
-    once, and one refresh can make several attempts: the address you entered plus up to two
-    spare addresses supplied by the provider, and, with the secure channel, up to three
-    rounds per address. So a single refresh can produce up to three such direct requests, or
+    once, and one refresh can make several attempts: the address you entered, the spare
+    address supplied by the provider, and one check of that spare address when the provider
+    moves the subscription to it, and, with the secure channel, up to three rounds per address. So a single refresh can produce up to three such direct requests, or
     up to nine when the secure channel is in use; the time budget of the refresh may cut that
     short. The retry is made only for the subscription address, never for other hosts, and
     only after the attempt through the tunnel has failed.

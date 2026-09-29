@@ -22,9 +22,11 @@ subscription.
 | `clod-ping` | `A/B` in ms, for example `150/300` | latency colour bounds. Without the header — `200/400` |
 | `clod-disable-ping` | `true` only | a check mark or cross instead of milliseconds |
 | `clod-show-0hosts` | `true` or `false` | show the panel's placeholder nodes as they are |
+| `clod-new-sub` | a domain, for example `backup.example.com` | spare subscription address (domain) — in case the main one does not answer |
+| `clod-move-sub` | `true` only, together with `clod-new-sub` | move everyone to the spare address |
 
 Instead of `true` / `false` you can use `1` / `0`, `yes` / `no`, `on` / `off` — except for
-`clod-disable-ping`, which accepts only `true`. A value that is not understood counts as no
+`clod-disable-ping` and `clod-move-sub`, which accept only `true`. A value that is not understood counts as no
 header. Send non-ASCII text as `base64:<text in base64>`.
 
 `clod-*` headers that work on desktop only are not listed here — Android does not understand them.
@@ -75,3 +77,22 @@ Without the header the app recognises the panel's placeholder nodes (expired sub
 traffic left, "no servers") and shows its own screen with the reason instead. With `true` the
 panel's nodes go into the server list as they are. The device limit screen does not depend on
 this header.
+
+## Spare address: `clod-new-sub` and `clod-move-sub`
+
+- **`clod-new-sub`** — a domain only: `backup.example.com`, without `https://`, port, path, `?`
+  or `#`. Anything else is skipped. The spare address is `https://`, this domain and the path
+  with parameters of the main address: for `https://panel.example.com:8443/sub/abc` it is
+  `https://backup.example.com/sub/abc` (the main address's port is not carried over).
+- The spare address is used only when the main one does not answer. The subscription from it is
+  applied as a normal update. A device limit refusal is not retried on the spare address — it
+  is the same panel.
+- Every successful update decides again: the header came — the domain is remembered (a new one
+  replaces the old one), it did not come — there is no spare address any more. The domain of the
+  main address does nothing.
+- **`clod-move-sub: true`** works only together with `clod-new-sub`. After an update with it the
+  app checks the spare address. If it returns the subscription, the subscription address changes
+  to the spare one for good and the user sees the notification "The provider updated the
+  subscription address"; server choice, mode and subscription name stay. If it does not answer
+  or refuses, nothing changes, and the next update with this header tries again. On the new
+  address the same header does nothing.

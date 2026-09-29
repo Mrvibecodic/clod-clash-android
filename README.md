@@ -77,7 +77,7 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
   User-Agent «имя/версия» и заголовки опознания устройства;
 * [FlClash](https://github.com/chen08209/FlClash) от chen08209 и его форк
   [FlClashX](https://github.com/pluralplay/FlClashX) от pluralplay — подмена хоста подписки
-  (`new-domain`, `fallback-domain`) и состав заголовков.
+  на другой домен и состав заголовков.
 
 ## Настройка панели
 
@@ -110,6 +110,8 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 | `clod-ping` | `A/B` в мс, например `150/300` | границы цвета задержки; без заголовка — `200/400` |
 | `clod-disable-ping` | только `true` | галочка или крестик вместо миллисекунд |
 | `clod-show-0hosts` | `true` или `false` | показывать узлы-заглушки панели как есть |
+| `clod-new-sub` | домен, например `backup.example.com` | запасной адрес подписки (домен): `https://<домен>` и путь основного, если основной не ответил |
+| `clod-move-sub` | только `true`, вместе с `clod-new-sub` | перевести всех на запасной адрес: проверив его, приложение навсегда меняет адрес подписки |
 
 ## Лицензия
 
