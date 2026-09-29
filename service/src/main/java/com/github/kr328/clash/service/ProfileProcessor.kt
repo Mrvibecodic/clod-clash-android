@@ -263,6 +263,10 @@ object ProfileProcessor {
         val moved = profileLock.withLock {
             val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock false
 
+            // Адрес для перевода построен от того основного, с которого шло обновление; сменили
+            // его за это время — перевод к подписке уже не относится.
+            if (imported.source != current) return@withLock false
+
             ProfileSwap.replace(profileDir, probe, warn = { Log.w(it) })
 
             ImportedDao().update(

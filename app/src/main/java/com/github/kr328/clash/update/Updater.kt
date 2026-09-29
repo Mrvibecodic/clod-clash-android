@@ -55,23 +55,12 @@ object Updater {
 
     suspend fun check(context: Context, prerelease: Boolean, mixedPort: Int?): Result<Available?> =
         withContext(Dispatchers.IO) {
-            val release = load(MANIFEST_RELEASE, mixedPort)
+            // Канал пре-релизов — только свой манифест: релиз кладёт туда любую свежую
+            // сборку, обычную тоже. Запасной обычный манифест при сбое этого подсунул бы
+            // старую версию — «обновлений нет» вместо ошибки.
+            val manifest = load(if (prerelease) MANIFEST_PRERELEASE else MANIFEST_RELEASE, mixedPort)
+                .getOrElse { return@withContext Result.failure(it) }
             val current = currentVersionCode(context)
-            val manifest = if (prerelease) {
-                val preview = if (release.getOrNull()?.let { it.versionCode > current } == true) {
-                    null
-                } else {
-                    load(MANIFEST_PRERELEASE, mixedPort).getOrNull()
-                }
-
-                listOfNotNull(release.getOrNull(), preview).maxByOrNull { it.versionCode }
-                    ?: return@withContext Result.failure(
-                        release.exceptionOrNull()
-                            ?: UpdateException(UpdateException.Kind.Network, "манифест недоступен"),
-                    )
-            } else {
-                release.getOrElse { return@withContext Result.failure(it) }
-            }
 
             if (manifest.versionCode <= current) {
                 return@withContext Result.success(null)
