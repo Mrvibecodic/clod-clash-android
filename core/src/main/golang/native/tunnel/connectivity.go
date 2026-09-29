@@ -163,6 +163,15 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 			return 0, own.outcome, own.err
 		}
 
+		// Очередь проб к одному хосту ждём до отсчёта тайм-аута пробы: внутри
+		// URLTest ожидание съело бы до двух секунд из её пяти
+		if err := C.ProbePace(ctx, C.ProbeHost(px.Addr())); err != nil {
+			own.err = err
+			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
+
+			return 0, own.outcome, own.err
+		}
+
 		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал
 		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < healthCheckProbeTimeout {
 			own.err = context.DeadlineExceeded
@@ -171,7 +180,7 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 			return 0, own.outcome, own.err
 		}
 
-		probe, cancel := context.WithTimeout(ctx, healthCheckProbeTimeout)
+		probe, cancel := context.WithTimeout(C.MarkProbePaced(ctx), healthCheckProbeTimeout)
 		defer cancel()
 
 		own.delay, own.err = px.URLTest(probe, url, expected)

@@ -173,7 +173,7 @@
 
     <string name="document">Документация</string>
     <string name="sources">Исходный код</string>
-    <string name="clash_meta_core">Ядро Clash Meta</string>
+    <string name="clash_meta_core">Ядро Clod Core</string>
 
     <string name="app">Приложение</string>
     <string name="service">Сервис</string>

@@ -67,9 +67,10 @@ Besides the patches above, it has:
 - **A newer TLS fingerprint library** — utls v1.9.0-mod-meta: Firefox 148 and Safari 26.3
   fingerprints with a post-quantum key, fixes for TLS session resumption. The chrome, ios and
   edge fingerprints do not change.
-- **Nodes do not "blink" dead.** If a check hangs or breaks off, a second one starts a second
-  later; a node counts as dead only if both fail. A closed port, an unknown name or a wrong
-  status code mean the node is dead at once.
+- **Nodes do not "blink" dead.** If a scheduled group check hangs or breaks off, a second one
+  starts a second later; a node counts as dead only if both fail. A closed port, an unknown name
+  or a wrong status code mean the node is dead at once. A check started by the button on the
+  "Servers" screen makes a single attempt.
 - **An unstable node loses to a stable one.** Automatic selection adds a penalty to its latency —
   a quarter of the timeout for each failure among the last three checks.
 - **Fewer extra checks.** A node that sits in several groups is checked once per round, and

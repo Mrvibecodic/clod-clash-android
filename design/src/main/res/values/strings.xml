@@ -186,9 +186,9 @@
 
     <string name="document">Documentation</string>
     <string name="sources">Sources</string>
-    <string name="clash_meta_core">Clash Meta core</string>
+    <string name="clash_meta_core">Clod Core</string>
     <string name="meta_github_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android</string>
-    <string name="clash_meta_core_url" translatable="false">https://github.com/MetaCubeX/mihomo</string>
+    <string name="clash_meta_core_url" translatable="false">https://github.com/Mrvibecodic/clod-core</string>
 
     <string name="app">App</string>
     <string name="service">Service</string>
