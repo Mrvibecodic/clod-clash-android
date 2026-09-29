@@ -34,6 +34,16 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `an answer without a subscription is explained`() {
+        assertEquals(
+            Reason(Cause.NotDelivered),
+            UpdateFailures.classify(
+                "clod-not-delivered: the address answered with an empty answer or a web page instead of the subscription",
+            ),
+        )
+    }
+
+    @Test
     fun `a draft changed during loading is explained`() {
         assertEquals(
             Reason(Cause.DraftChanged),

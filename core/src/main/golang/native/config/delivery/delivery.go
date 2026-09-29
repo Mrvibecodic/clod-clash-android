@@ -13,7 +13,7 @@ var bom = []byte{0xEF, 0xBB, 0xBF}
 
 // ErrNotDelivered means the address answered, but what it answered with cannot
 // be a subscription at all.
-var ErrNotDelivered = errors.New("the address answered with a web page instead of the subscription")
+var ErrNotDelivered = errors.New("clod-not-delivered: the address answered with an empty answer or a web page instead of the subscription")
 
 type readCloser struct {
 	io.Reader

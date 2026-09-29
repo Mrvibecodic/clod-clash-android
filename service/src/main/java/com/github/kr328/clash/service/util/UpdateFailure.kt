@@ -10,6 +10,7 @@ object UpdateFailures {
         Clock,
         Mismatch,
         BadAnswer,
+        NotDelivered,
         NoServers,
         TooLarge,
         Scheme,
@@ -39,6 +40,8 @@ object UpdateFailures {
         if (text.contains(CHAN_MISMATCH)) return Reason(Cause.Mismatch)
 
         if (text.contains(CHAN_BAD_ANSWER)) return Reason(Cause.BadAnswer)
+
+        if (text.contains(NOT_DELIVERED)) return Reason(Cause.NotDelivered)
 
         if (text.contains(NO_SERVERS)) return Reason(Cause.NoServers)
 
@@ -92,6 +95,8 @@ object UpdateFailures {
 
     private const val CHAN_BAD_ANSWER = "clod-chan-bad-answer"
 
+    private const val NOT_DELIVERED = "clod-not-delivered"
+
     private const val NO_SERVERS = "does not contain"
 
     private const val TOO_LARGE = "response larger than"
@@ -142,6 +147,7 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
         UpdateFailures.Cause.Clock -> getString(R.string.clod_update_cause_clock)
         UpdateFailures.Cause.Mismatch -> getString(R.string.clod_update_cause_mismatch)
         UpdateFailures.Cause.BadAnswer -> getString(R.string.clod_update_cause_bad_answer)
+        UpdateFailures.Cause.NotDelivered -> getString(R.string.clod_update_cause_not_delivered)
         UpdateFailures.Cause.NoServers -> getString(R.string.clod_update_cause_no_servers)
         UpdateFailures.Cause.TooLarge -> getString(R.string.clod_update_cause_too_large)
         UpdateFailures.Cause.Scheme -> getString(R.string.clod_update_cause_scheme)
