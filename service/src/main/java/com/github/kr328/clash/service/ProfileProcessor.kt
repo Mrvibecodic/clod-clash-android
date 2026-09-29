@@ -15,12 +15,12 @@ import com.github.kr328.clash.service.data.PendingDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.subscription.notifySubscriptionMoved
 import com.github.kr328.clash.service.util.DraftFreshness
 import com.github.kr328.clash.service.util.directoryLastModified
 import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.importedDir
-import com.github.kr328.clash.service.util.migrationDir
 import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.ActiveProfileAction
@@ -36,28 +36,11 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 object ProfileProcessor {
-    private const val MAX_MIGRATION_HOPS = 3
-
-    private const val MAX_MIGRATION_HISTORY = 10
-
-    private val MIGRATION_HOPS_WINDOW_MS = TimeUnit.DAYS.toMillis(1)
-
-    private val MIGRATION_HISTORY_WINDOW_MS = TimeUnit.DAYS.toMillis(7)
-
-    private const val MIGRATION_FILE = "migration.json"
-
-    private const val PROVIDERS_DIR = "providers"
-
-    private const val CHAN_SKEW_FILE = "chan.skew"
-
     private fun Pending.sameDraft(other: Pending): Boolean =
         name == other.name &&
             type == other.type &&
@@ -68,8 +51,6 @@ object ProfileProcessor {
             nameManual == other.nameManual
 
     class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
-
-    private val migrationJson = Json { ignoreUnknownKeys = true }
 
     private val profileLock = Mutex()
     private val processLock = Mutex()
@@ -97,8 +78,6 @@ object ProfileProcessor {
 
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
-
-                    context.migrationDir.deleteRecursively()
 
                     context.pendingDir.resolve(pending.uuid.toString())
                         .copyRecursively(context.processingDir, overwrite = true)
@@ -159,7 +138,7 @@ object ProfileProcessor {
                     context.sendProfileChanged(snapshot.uuid)
                 }
 
-                followMigration(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
+                followMove(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
             }
         }
     }
@@ -175,8 +154,6 @@ object ProfileProcessor {
 
                     context.processingDir.deleteRecursively()
                     context.processingDir.mkdirs()
-
-                    context.migrationDir.deleteRecursively()
 
                     context.importedDir.resolve(imported.uuid.toString())
                         .copyRecursively(context.processingDir, overwrite = true)
@@ -225,72 +202,56 @@ object ProfileProcessor {
                     }
                 }
 
-                val migrated = followMigration(context, snapshot.uuid, snapshot.source, snapshot.secure)
+                val moved = followMove(context, snapshot.uuid, snapshot.source, snapshot.secure)
 
-                (fetched.failedProviders + migrated).distinct()
+                (fetched.failedProviders + moved).distinct()
             }
         }
     }
 
-    private suspend fun followMigration(
+    private suspend fun followMove(
         context: Context,
         uuid: UUID,
         current: String,
         secure: Boolean,
         callback: IFetchObserver? = null,
     ): List<String> = try {
-        migrateToOfferedAddress(context, uuid, current, secure, callback)
+        moveToSpareAddress(context, uuid, current, secure, callback)
     } catch (e: Exception) {
-        Log.w("Follow the address of $uuid offered by the provider: $e", e)
+        Log.w("Move $uuid to the spare address: $e", e)
 
         emptyList()
     }
 
-    private suspend fun migrateToOfferedAddress(
+    // Провайдер велел перевести подписку на запасной адрес (clod-move-sub). Адрес меняется
+    // навсегда, только если запасной сам отдал годную подписку; проба идёт в копии каталога
+    // подписки, живой до удачи не трогается. Выбор узлов, режим и имя не сбрасываются.
+    // Петли нет: запасной домен, совпавший с хостом основного адреса, пустой (panel.go).
+    private suspend fun moveToSpareAddress(
         context: Context,
         uuid: UUID,
         current: String,
         secure: Boolean,
         callback: IFetchObserver?,
     ): List<String> {
+        val target = context.readPanelInfo(uuid)?.moveUrl.orEmpty()
+        if (target.isBlank() || target == current) {
+            return emptyList()
+        }
+
         val profileDir = context.importedDir.resolve(uuid.toString())
-        val stateFile = profileDir.resolve(MIGRATION_FILE)
+        val probe = context.processingDir
 
-        val candidate = context.readPanelInfo(uuid)?.migrateUrl.orEmpty()
-        if (candidate.isBlank() || candidate == current) {
-            return emptyList()
+        profileLock.withLock {
+            probe.deleteRecursively()
+
+            profileDir.copyRecursively(probe, overwrite = true)
         }
-
-        val now = System.currentTimeMillis()
-
-        val state = ageMigrationState(readMigration(stateFile, now), now)
-
-        if (state.history.any { it.url == candidate }) {
-            Log.w("Migration of $uuid ignored: the address was already left behind, looks like a loop")
-
-            return emptyList()
-        }
-
-        if (state.hops >= MAX_MIGRATION_HOPS) {
-            Log.w("Migration of $uuid ignored: ${state.hops} hops already followed")
-
-            return emptyList()
-        }
-
-        val probe = context.migrationDir
 
         val fetched = try {
-            probe.deleteRecursively()
-            probe.mkdirs()
-
-            profileDir.resolve(PROVIDERS_DIR).takeIf { it.isDirectory }
-                ?.copyRecursively(probe.resolve(PROVIDERS_DIR), overwrite = true)
-            profileDir.resolve(CHAN_SKEW_FILE).takeIf { it.isFile }
-                ?.copyTo(probe.resolve(CHAN_SKEW_FILE), overwrite = true)
-
-            fetchProfile(context, probe, candidate, true, true, secure, callback)
+            fetchProfile(context, probe, target, true, true, secure, callback)
         } catch (e: Exception) {
-            Log.w("Migration of $uuid to a new address failed, keeping the current one: $e", e)
+            Log.w("Spare address of $uuid did not answer, keeping the current one: $e", e)
 
             probe.deleteRecursively()
 
@@ -299,14 +260,14 @@ object ProfileProcessor {
 
         val info = fetched.info
 
-        profileLock.withLock {
-            val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock
+        val moved = profileLock.withLock {
+            val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock false
 
             ProfileSwap.replace(profileDir, probe, warn = { Log.w(it) })
 
             ImportedDao().update(
                 imported.copy(
-                    source = candidate,
+                    source = target,
                     upload = info?.subUpload ?: imported.upload,
                     download = info?.subDownload ?: imported.download,
                     total = info?.subTotal ?: imported.total,
@@ -317,56 +278,19 @@ object ProfileProcessor {
 
             Clash.markProfileUpdated(profileDir, imported.interval)
 
-            writeMigration(
-                stateFile,
-                MigrationState(
-                    hops = state.hops + 1,
-                    history = (state.history + MigrationVisit(current, now)).takeLast(MAX_MIGRATION_HISTORY),
-                    lastAt = now,
-                ),
-            )
+            true
         }
 
         probe.deleteRecursively()
 
-        Log.i("Subscription $uuid migrated to a new address by the provider")
+        if (!moved) return emptyList()
+
+        Log.i("Subscription $uuid moved to the spare address by the provider")
 
         context.sendProfileChanged(uuid)
+        context.notifySubscriptionMoved(uuid)
 
         return fetched.failedProviders
-    }
-
-    @Serializable
-    internal data class MigrationState(
-        val hops: Int = 0,
-        val history: List<MigrationVisit> = emptyList(),
-        val lastAt: Long = 0,
-        val previous: List<String> = emptyList(),
-    )
-
-    @Serializable
-    internal data class MigrationVisit(
-        val url: String,
-        val at: Long,
-    )
-
-    internal fun ageMigrationState(state: MigrationState, now: Long): MigrationState =
-        state.copy(
-            hops = if (state.hops > 0 && now - state.lastAt > MIGRATION_HOPS_WINDOW_MS) 0 else state.hops,
-            history = state.history.filter { visit -> now - visit.at < MIGRATION_HISTORY_WINDOW_MS },
-        )
-
-    internal fun upgradeMigrationState(raw: MigrationState, now: Long): MigrationState {
-        if (raw.lastAt > 0 && raw.previous.isEmpty()) return raw
-
-        return raw.copy(
-            history = if (raw.history.isEmpty()) {
-                raw.previous.map { MigrationVisit(it, now) }.takeLast(MAX_MIGRATION_HISTORY)
-            } else {
-                raw.history
-            },
-            previous = emptyList(),
-        )
     }
 
     suspend fun repair(context: Context) {
@@ -391,28 +315,6 @@ object ProfileProcessor {
                 is ProfileSwap.Repair.Restored -> Log.w("Profile ${repair.name} restored from an interrupted update")
                 is ProfileSwap.Repair.Dropped -> Log.i("Profile ${repair.name}: leftover of a finished update removed")
             }
-        }
-    }
-
-    internal fun readMigration(file: File, now: Long): MigrationState {
-        if (!file.isFile) return MigrationState()
-
-        val raw = try {
-            migrationJson.decodeFromString(MigrationState.serializer(), file.readText())
-        } catch (e: Exception) {
-            Log.w("Read $MIGRATION_FILE: $e", e)
-
-            return MigrationState()
-        }
-
-        return upgradeMigrationState(raw, now)
-    }
-
-    private fun writeMigration(file: File, state: MigrationState) {
-        try {
-            file.writeText(migrationJson.encodeToString(MigrationState.serializer(), state))
-        } catch (e: Exception) {
-            Log.w("Write $MIGRATION_FILE: $e", e)
         }
     }
 

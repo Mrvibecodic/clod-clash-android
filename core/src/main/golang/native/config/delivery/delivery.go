@@ -35,7 +35,7 @@ func NotAConfiguration(start []byte) bool {
 
 // Guard looks at the beginning of the body and returns a reader over the whole
 // of it, first byte included. A body that cannot be a subscription is reported
-// as ErrNotDelivered, so the caller can move on to the spare addresses of the
+// as ErrNotDelivered, so the caller can move on to the spare address of the
 // provider. The body is left to the caller to close in every case.
 func Guard(body io.ReadCloser) (io.ReadCloser, error) {
 	buffered := bufio.NewReader(body)

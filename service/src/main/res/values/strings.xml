@@ -37,6 +37,7 @@
     <string name="clod_alert_channel">Subscription reminders</string>
     <string name="clod_alert_expired">Subscription has ended</string>
     <string name="clod_alert_traffic">%d%% of traffic used</string>
+    <string name="clod_alert_moved">The provider updated the subscription address</string>
     <plurals name="clod_alert_expires_in">
         <item quantity="one">%d day of subscription left</item>
         <item quantity="other">%d days of subscription left</item>

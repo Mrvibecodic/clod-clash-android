@@ -441,62 +441,49 @@ func reportSubscriptionInfo(header fetchHeader, reportStatus func(string)) {
 }
 
 func fetchFromSpare(
-	spares []string,
+	spare string,
 	configPath string,
 	secure bool,
 	cause error,
 	budget *budgets.Budget,
 	reportStatus func(string),
 ) (fetchHeader, error) {
-	if len(spares) == 0 {
+	parsed, err := U.Parse(spare)
+	if spare == "" || err != nil {
 		return fetchHeader{}, cause
 	}
 
-	log.Warnln("Subscription address failed (%s), trying %d spare address(es) from the provider", cause.Error(), len(spares))
+	log.Warnln("Subscription address failed (%s), trying the spare address %s from the provider", cause.Error(), parsed.Host)
 
-	for index, spare := range spares {
-		parsed, err := U.Parse(spare)
-		if err != nil {
-			continue
-		}
+	if budget.Remaining(time.Now()) < budgets.MinAttempt {
+		log.Warnln("Spare address %s skipped: %s", parsed.Host, errFetchBudget.Error())
 
-		limit := fetchQuickTimeout
-		if index == len(spares)-1 {
-			limit = fetchTimeout
-		}
-
-		if budget.Remaining(time.Now()) < budgets.MinAttempt {
-			log.Warnln("Spare address %s skipped: %s", parsed.Host, errFetchBudget.Error())
-
-			break
-		}
-
-		bytes, _ := json.Marshal(&Status{
-			Action:      "FetchConfiguration",
-			Args:        []string{parsed.Host},
-			Progress:    -1,
-			MaxProgress: -1,
-		})
-
-		reportStatus(string(bytes))
-
-		header, err := fetchConfig(parsed, configPath, secure, budget, limit)
-		if errors.Is(err, errDeviceRefused) {
-			return header, err
-		}
-
-		if err != nil {
-			log.Warnln("Spare address %s failed as well: %s", parsed.Host, err.Error())
-
-			continue
-		}
-
-		log.Infoln("Subscription fetched from the spare address %s", parsed.Host)
-
-		return header, nil
+		return fetchHeader{}, cause
 	}
 
-	return fetchHeader{}, cause
+	bytes, _ := json.Marshal(&Status{
+		Action:      "FetchConfiguration",
+		Args:        []string{parsed.Host},
+		Progress:    -1,
+		MaxProgress: -1,
+	})
+
+	reportStatus(string(bytes))
+
+	header, err := fetchConfig(parsed, configPath, secure, budget, fetchTimeout)
+	if errors.Is(err, errDeviceRefused) {
+		return header, err
+	}
+
+	if err != nil {
+		log.Warnln("Spare address %s failed as well: %s", parsed.Host, err.Error())
+
+		return fetchHeader{}, cause
+	}
+
+	log.Infoln("Subscription fetched from the spare address %s", parsed.Host)
+
+	return header, nil
 }
 
 func FetchAndValid(
@@ -511,7 +498,7 @@ func FetchAndValid(
 
 	total := budgets.Total
 	if probe {
-		total = budgets.MigrationPart
+		total = budgets.MovePart
 	}
 
 	budget := budgets.Within(time.Now(), total)
@@ -537,10 +524,10 @@ func FetchAndValid(
 
 		info := readPanelInfo(path)
 
-		spares := info.SpareAddresses(url.String())
+		spare := info.SpareAddress(url.String())
 
 		limit := fetchTimeout
-		if len(spares) > 0 {
+		if spare != "" {
 			limit = fetchQuickTimeout
 		}
 
@@ -548,7 +535,7 @@ func FetchAndValid(
 
 		header, err := fetchConfig(url, configPath, secure, budget, limit)
 		if err != nil && !errors.Is(err, errDeviceRefused) {
-			header, err = fetchFromSpare(spares, configPath, secure, err, budget, reportStatus)
+			header, err = fetchFromSpare(spare, configPath, secure, err, budget, reportStatus)
 		}
 
 		refused = errors.Is(err, errDeviceRefused) || (err == nil && panel.RefusesDevice(header.Raw))

@@ -12,9 +12,9 @@ import java.util.concurrent.TimeUnit
 object ProfileUpdates {
     private val FETCH_BUDGET = TimeUnit.SECONDS.toMillis(180)
 
-    private val MIGRATION_PROBE_BUDGET = TimeUnit.SECONDS.toMillis(60)
+    private val MOVE_PROBE_BUDGET = TimeUnit.SECONDS.toMillis(60)
 
-    val WORST_CASE = FETCH_BUDGET + MIGRATION_PROBE_BUDGET + GeoAssets.READY_TIMEOUT
+    val WORST_CASE = FETCH_BUDGET + MOVE_PROBE_BUDGET + GeoAssets.READY_TIMEOUT
 
     val TIMEOUT = WORST_CASE * 2
 

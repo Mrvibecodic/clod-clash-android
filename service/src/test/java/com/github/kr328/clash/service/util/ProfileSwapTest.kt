@@ -32,7 +32,6 @@ class ProfileSwapTest {
         "providers/rules.yaml" to "old-rules",
         "panel.json" to "{\"v\":1}",
         "alerts.json" to "{\"shown\":[80]}",
-        "migration.json" to "{\"hops\":1}",
     )
 
     private val newVersion = arrayOf(
@@ -55,7 +54,6 @@ class ProfileSwapTest {
                 "providers/rules.yaml" to "new-rules",
                 "panel.json" to "{\"v\":2}",
                 "alerts.json" to "{\"shown\":[80]}",
-                "migration.json" to "{\"hops\":1}",
             ),
             snapshot(live),
         )
@@ -172,7 +170,6 @@ class ProfileSwapTest {
             }
 
             assertEquals("$step", "{\"shown\":[80]}", live.resolve("alerts.json").readText())
-            assertEquals("$step", "{\"hops\":1}", live.resolve("migration.json").readText())
 
             when (step) {
                 ProfileSwap.Step.KEEP_OWN_FILES, ProfileSwap.Step.PARK_LIVE -> {
@@ -269,7 +266,6 @@ class ProfileSwapTest {
 
         assertEquals("new", root.resolve("p/config.yaml").readText())
         assertEquals("{\"shown\":[80]}", root.resolve("p/alerts.json").readText())
-        assertEquals("{\"hops\":1}", root.resolve("p/migration.json").readText())
         assertEquals(listOf("p"), root.list()!!.toList())
     }
 

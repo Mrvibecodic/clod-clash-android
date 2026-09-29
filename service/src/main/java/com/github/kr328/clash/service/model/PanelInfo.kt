@@ -25,7 +25,7 @@ data class PanelInfo(
     val clockSkew: Long = 0,
     val clockSkewAt: Long = 0,
 
-    val migrateUrl: String = "",
+    val moveUrl: String = "",
 
     val noServers: Boolean = false,
 

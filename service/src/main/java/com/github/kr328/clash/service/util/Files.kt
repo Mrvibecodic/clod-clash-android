@@ -12,9 +12,6 @@ val Context.pendingDir: File
 val Context.processingDir: File
     get() = filesDir.resolve("processing")
 
-val Context.migrationDir: File
-    get() = filesDir.resolve("migration")
-
 val File.directoryLastModified: Long?
     get() {
         return walk().map { it.lastModified() }.maxOrNull()

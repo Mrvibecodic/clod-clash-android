@@ -10,7 +10,7 @@ object ProfileSwap {
 
     const val CONFIG_FILE = "config.yaml"
 
-    val OWN_FILES = listOf("alerts.json", "migration.json")
+    val OWN_FILES = listOf("alerts.json")
 
     enum class Step { KEEP_OWN_FILES, PARK_LIVE, PROMOTE_FRESH, DROP_STALE }
 

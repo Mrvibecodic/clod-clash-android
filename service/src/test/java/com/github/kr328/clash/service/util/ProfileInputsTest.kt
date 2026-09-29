@@ -35,7 +35,7 @@ class ProfileInputsTest {
     @Test
     fun `файлы для интерфейса на отпечаток не влияют`() {
         val changed = base.map { if (it.first == "panel.json") it.first to "{\"quota\":2}" else it } +
-            listOf("migration.json" to "{}", "alerts.json" to "{}")
+            listOf("alerts.json" to "{}")
 
         assertEquals(
             ProfileInputs.fingerprint(profile(*base)),

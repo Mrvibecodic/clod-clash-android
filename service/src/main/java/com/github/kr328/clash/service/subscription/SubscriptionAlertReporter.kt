@@ -156,6 +156,31 @@ private fun Context.notifyAlert(uuid: UUID, alert: SubscriptionAlert, name: Stri
         is SubscriptionAlert.TrafficUsed -> getString(R.string.clod_alert_traffic, alert.percent)
     }
 
+    postAlert(uuid, id, title, name)
+}
+
+// Провайдер перевёл подписку на запасной адрес (clod-move-sub). Сообщение о смене адреса,
+// а не напоминание о сроке и трафике, поэтому переключатель напоминаний его не глушит.
+suspend fun Context.notifySubscriptionMoved(uuid: UUID) {
+    try {
+        if (!NotificationManagerCompat.from(this).areNotificationsEnabled()) return
+
+        val imported = ImportedDao().queryByUUID(uuid) ?: return
+
+        createAlertChannel()
+
+        postAlert(
+            uuid,
+            R.id.nf_subscription_moved,
+            getString(R.string.clod_alert_moved),
+            displayProfileName(imported.uuid, imported.name, imported.nameManual),
+        )
+    } catch (e: Exception) {
+        Log.w("Notify the move of $uuid: $e", e)
+    }
+}
+
+private fun Context.postAlert(uuid: UUID, id: Int, title: String, name: String) {
     val intent = PendingIntent.getActivity(
         this,
         id,

@@ -44,7 +44,8 @@ type Info struct {
 	ClockSkew   int64 `json:"clockSkew,omitempty"`
 	ClockSkewAt int64 `json:"clockSkewAt,omitempty"`
 
-	MigrateURL string `json:"migrateUrl,omitempty"`
+	SpareDomain string `json:"spareDomain,omitempty"`
+	MoveURL     string `json:"moveUrl,omitempty"`
 
 	LockMode      *bool `json:"lockMode,omitempty"`
 	LockPermanent bool  `json:"lockPermanent,omitempty"`
@@ -55,9 +56,6 @@ type Info struct {
 	NoServers bool `json:"noServers,omitempty"`
 
 	Sentinels []string `json:"sentinels,omitempty"`
-
-	FallbackURL    string `json:"fallbackUrl,omitempty"`
-	FallbackDomain string `json:"fallbackDomain,omitempty"`
 
 	Descriptions map[string]string `json:"descriptions,omitempty"`
 
@@ -170,13 +168,12 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 		info.ClockSkewAt = now
 	}
 
-	info.MigrateURL = firstNonEmpty(
-		validateNewURL(current, headerValue(header, "new-url")),
-		swapDomain(current, headerValue(header, "new-domain")),
-	)
+	info.SpareDomain = spareDomain(headerValue(header, "clod-new-sub"))
 
-	info.FallbackURL = httpsURL(headerValue(header, "fallback-url"))
-	info.FallbackDomain = strings.TrimSpace(headerValue(header, "fallback-domain"))
+	info.MoveURL = ""
+	if strings.EqualFold(headerValue(header, "clod-move-sub"), "true") {
+		info.MoveURL = spareAddress(current, info.SpareDomain)
+	}
 
 	info.ShowZeroHosts = boolHeader(header, "clod-show-0hosts")
 
@@ -513,74 +510,6 @@ func serverTime(header map[string][]string) int64 {
 	return 0
 }
 
-func validateNewURL(current, candidate string) string {
-	candidate = strings.TrimSpace(candidate)
-	if candidate == "" {
-		return ""
-	}
-
-	parsed, err := url.Parse(candidate)
-	if err != nil || parsed.Host == "" {
-		return ""
-	}
-
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return ""
-	}
-
-	if now, err := url.Parse(current); err == nil && now.Scheme == "https" && parsed.Scheme != "https" {
-		return ""
-	}
-
-	if parsed.String() == current {
-		return ""
-	}
-
-	return parsed.String()
-}
-
-func swapDomain(current, domain string) string {
-	domain = strings.TrimRight(strings.TrimSpace(domain), "/")
-	if domain == "" || current == "" {
-		return ""
-	}
-
-	if _, rest, ok := strings.Cut(domain, "://"); ok {
-		domain = rest
-	}
-
-	domain, _, _ = strings.Cut(domain, "/")
-	if domain == "" {
-		return ""
-	}
-
-	if at := strings.LastIndex(domain, ":"); at >= 0 && !strings.HasSuffix(domain, "]") {
-		host, port := domain[:at], domain[at+1:]
-
-		if host == "" || port == "" {
-			return ""
-		}
-
-		number, err := strconv.Atoi(port)
-		if err != nil || number < 1 || number > 65535 || strings.ContainsAny(port, "+-") {
-			return ""
-		}
-	}
-
-	parsed, err := url.Parse(current)
-	if err != nil || parsed.Host == "" {
-		return ""
-	}
-
-	parsed.Host = domain
-
-	if parsed.String() == current {
-		return ""
-	}
-
-	return parsed.String()
-}
-
 func optionalBool(header map[string][]string, name string) *bool {
 	switch strings.ToLower(strings.TrimSpace(headerValue(header, name))) {
 	case "true", "1", "yes", "on":
@@ -670,30 +599,45 @@ func Hidden(raw any) bool {
 	}
 }
 
-func (i Info) SpareAddresses(current string) []string {
-	spares := make([]string, 0, 2)
+// SpareAddress — запасной адрес подписки из clod-new-sub: https, домен из
+// заголовка, путь и параметры основного адреса. Порт и логин основного не
+// переносятся. Домен, совпавший с хостом основного адреса, запасным не считается.
+func (i Info) SpareAddress(current string) string {
+	return spareAddress(current, i.SpareDomain)
+}
 
-	for _, candidate := range []string{
-		httpsURL(i.FallbackURL),
-		swapDomain(current, i.FallbackDomain),
-	} {
-		if candidate == "" || candidate == current {
-			continue
-		}
+func spareAddress(current, domain string) string {
+	if domain == "" {
+		return ""
+	}
 
-		duplicate := false
-		for _, known := range spares {
-			if known == candidate {
-				duplicate = true
+	parsed, err := url.Parse(current)
+	if err != nil || parsed.Host == "" || strings.EqualFold(parsed.Hostname(), domain) {
+		return ""
+	}
 
-				break
-			}
-		}
+	spare := url.URL{Scheme: "https", Host: domain, Path: parsed.Path, RawPath: parsed.RawPath, RawQuery: parsed.RawQuery}
 
-		if !duplicate {
-			spares = append(spares, candidate)
+	return spare.String()
+}
+
+const domainMaxLen = 253
+
+// spareDomain принимает только имя хоста: латиница, цифры, точки и дефисы,
+// без схемы, порта, пути, логина, `?`, `#` и пробелов. Хранится в нижнем регистре.
+func spareDomain(raw string) string {
+	domain := strings.ToLower(raw)
+
+	if domain == "" || len(domain) > domainMaxLen ||
+		strings.HasPrefix(domain, ".") || strings.HasSuffix(domain, ".") || strings.Contains(domain, "..") {
+		return ""
+	}
+
+	for _, r := range domain {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') && r != '.' && r != '-' {
+			return ""
 		}
 	}
 
-	return spares
+	return domain
 }

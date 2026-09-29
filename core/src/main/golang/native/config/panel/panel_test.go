@@ -123,69 +123,6 @@ func TestParseRefillDate(t *testing.T) {
 	}
 }
 
-func TestValidateNewURL(t *testing.T) {
-	const current = "https://panel.example.com/sub/token"
-
-	cases := []struct {
-		name      string
-		current   string
-		candidate string
-		want      string
-	}{
-		{name: "пусто", current: current, candidate: "", want: ""},
-		{name: "новый адрес", current: current, candidate: "https://new.example.com/sub/token", want: "https://new.example.com/sub/token"},
-		{name: "тот же адрес переездом не считается", current: current, candidate: current, want: ""},
-		{name: "понижение до http", current: current, candidate: "http://new.example.com/sub", want: ""},
-		{name: "http остаётся http", current: "http://panel.example.com/sub", candidate: "http://new.example.com/sub", want: "http://new.example.com/sub"},
-		{name: "чужая схема", current: current, candidate: "ftp://new.example.com/sub", want: ""},
-		{name: "javascript", current: current, candidate: "javascript:alert(1)", want: ""},
-		{name: "без хоста", current: current, candidate: "new.example.com/sub", want: ""},
-	}
-
-	for _, item := range cases {
-		t.Run(item.name, func(t *testing.T) {
-			if got := validateNewURL(item.current, item.candidate); got != item.want {
-				t.Fatalf("validateNewURL(%q, %q) = %q, ожидалось %q", item.current, item.candidate, got, item.want)
-			}
-		})
-	}
-}
-
-func TestSwapDomain(t *testing.T) {
-	const current = "https://panel.example.com/sub/token?key=1"
-
-	cases := []struct {
-		name    string
-		current string
-		domain  string
-		want    string
-	}{
-		{name: "голый хост", current: current, domain: "new.example.com", want: "https://new.example.com/sub/token?key=1"},
-		{name: "со схемой", current: current, domain: "https://new.example.com", want: "https://new.example.com/sub/token?key=1"},
-		{name: "с хвостом пути", current: current, domain: "new.example.com/ignored", want: "https://new.example.com/sub/token?key=1"},
-		{name: "с косой чертой на конце", current: current, domain: "new.example.com/", want: "https://new.example.com/sub/token?key=1"},
-		{name: "с портом", current: current, domain: "new.example.com:8443", want: "https://new.example.com:8443/sub/token?key=1"},
-		{name: "порт буквами", current: current, domain: "new.example.com:abc", want: ""},
-		{name: "порт вне диапазона", current: current, domain: "new.example.com:99999", want: ""},
-		{name: "порт нулевой", current: current, domain: "new.example.com:0", want: ""},
-		{name: "порт со знаком", current: current, domain: "new.example.com:+80", want: ""},
-		{name: "порт пустой", current: current, domain: "new.example.com:", want: ""},
-		{name: "IPv6 с портом", current: current, domain: "[2001:db8::1]:8443", want: "https://[2001:db8::1]:8443/sub/token?key=1"},
-		{name: "IPv6 без порта", current: current, domain: "[2001:db8::1]", want: "https://[2001:db8::1]/sub/token?key=1"},
-		{name: "тот же хост переездом не считается", current: current, domain: "panel.example.com", want: ""},
-		{name: "пустой домен", current: current, domain: "", want: ""},
-		{name: "пустой текущий адрес", current: "", domain: "new.example.com", want: ""},
-	}
-
-	for _, item := range cases {
-		t.Run(item.name, func(t *testing.T) {
-			if got := swapDomain(item.current, item.domain); got != item.want {
-				t.Fatalf("swapDomain(%q, %q) = %q, ожидалось %q", item.current, item.domain, got, item.want)
-			}
-		})
-	}
-}
-
 func TestHeaderValue(t *testing.T) {
 	header := map[string][]string{
 		"Profile-Title": {"Провайдер"},
@@ -490,7 +427,8 @@ func TestApplyHeaders(t *testing.T) {
 		"notify-expire-days":       {"7,3,1"},
 		"notify-traffic-percent":   {"80,90,100"},
 		"x-hwid-active":            {"true"},
-		"new-domain":               {"new.example.com"},
+		"clod-new-sub":             {"New.Example.com"},
+		"clod-move-sub":            {"true"},
 		"global-mode":              {"false"},
 	}, current)
 
@@ -526,27 +464,12 @@ func TestApplyHeaders(t *testing.T) {
 		t.Fatalf("пороги трафика = %#v", info.NotifyTrafficPercent)
 	}
 
-	if info.MigrateURL != "https://new.example.com/sub/token" {
-		t.Fatalf("переезд = %q", info.MigrateURL)
+	if info.MoveURL != "https://new.example.com/sub/token" {
+		t.Fatalf("перевод на запасной адрес = %q", info.MoveURL)
 	}
 
 	if info.LockMode == nil || !*info.LockMode {
 		t.Fatalf("замок режимов должен быть выставлен")
-	}
-}
-
-func TestApplyHeadersNewURLWinsOverDomain(t *testing.T) {
-	const current = "https://panel.example.com/sub/token"
-
-	var info Info
-
-	ApplyHeaders(&info, map[string][]string{
-		"new-url":    {"https://first.example.com/sub"},
-		"new-domain": {"second.example.com"},
-	}, current)
-
-	if info.MigrateURL != "https://first.example.com/sub" {
-		t.Fatalf("адрес целиком приоритетнее домена, получено %q", info.MigrateURL)
 	}
 }
 
@@ -804,66 +727,115 @@ func TestApplyHeadersShowZeroHostsFollowsPanel(t *testing.T) {
 	}
 }
 
-func TestApplyHeadersFallbackAddresses(t *testing.T) {
-	info := Info{FallbackURL: "https://old.example/sub", FallbackDomain: "old.example"}
-
-	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, "https://panel.example/sub")
-
-	if info.FallbackURL != "" || info.FallbackDomain != "" {
-		t.Fatalf("молчание панели должно снимать запасные адреса, получено %q / %q", info.FallbackURL, info.FallbackDomain)
+func TestSpareDomain(t *testing.T) {
+	cases := []struct {
+		raw  string
+		want string
+	}{
+		{raw: "spare.example.com", want: "spare.example.com"},
+		{raw: "Spare.EXAMPLE.com", want: "spare.example.com"},
+		{raw: "xn--e1afmkfd.example", want: "xn--e1afmkfd.example"},
+		{raw: "", want: ""},
+		{raw: "https://spare.example.com", want: ""},
+		{raw: "spare.example.com:8443", want: ""},
+		{raw: "spare.example.com/sub", want: ""},
+		{raw: "user@spare.example.com", want: ""},
+		{raw: "spare.example.com?x=1", want: ""},
+		{raw: "spare.example.com#x", want: ""},
+		{raw: "spare example.com", want: ""},
+		{raw: ".spare.example.com", want: ""},
+		{raw: "spare.example.com.", want: ""},
+		{raw: "spare..example.com", want: ""},
+		{raw: "[2001:db8::1]", want: ""},
+		{raw: "пример.рф", want: ""},
 	}
 
-	ApplyHeaders(&info, http.Header{
-		"Fallback-Url":    []string{"https://backup.example/sub"},
-		"Fallback-Domain": []string{" backup.example:8443 "},
-	}, "https://panel.example/sub")
-
-	if info.FallbackURL != "https://backup.example/sub" {
-		t.Fatalf("fallback-url разобран неверно: %q", info.FallbackURL)
-	}
-
-	if info.FallbackDomain != "backup.example:8443" {
-		t.Fatalf("fallback-domain разобран неверно: %q", info.FallbackDomain)
+	for _, item := range cases {
+		if got := spareDomain(item.raw); got != item.want {
+			t.Fatalf("spareDomain(%q) = %q, ожидалось %q", item.raw, got, item.want)
+		}
 	}
 }
 
-func TestApplyHeadersFallbackURLRejectsPlainHTTP(t *testing.T) {
+func TestSpareAddress(t *testing.T) {
+	cases := []struct {
+		current string
+		domain  string
+		want    string
+	}{
+		{current: "https://panel.example.com/sub/token?key=1", domain: "spare.example.com", want: "https://spare.example.com/sub/token?key=1"},
+		{current: "http://user:pass@panel.example.com:8443/sub/token", domain: "spare.example.com", want: "https://spare.example.com/sub/token"},
+		{current: "https://panel.example.com/sub%2Ftoken", domain: "spare.example.com", want: "https://spare.example.com/sub%2Ftoken"},
+		{current: "https://Panel.Example.com:8443/sub", domain: "panel.example.com", want: ""},
+		{current: "https://panel.example.com/sub", domain: "", want: ""},
+		{current: "", domain: "spare.example.com", want: ""},
+	}
+
+	for _, item := range cases {
+		if got := (Info{SpareDomain: item.domain}).SpareAddress(item.current); got != item.want {
+			t.Fatalf("SpareAddress(%q, %q) = %q, ожидалось %q", item.current, item.domain, got, item.want)
+		}
+	}
+}
+
+func TestApplyHeadersSpareDomainFollowsPanel(t *testing.T) {
+	const current = "https://panel.example.com/sub"
+
 	var info Info
 
-	ApplyHeaders(&info, http.Header{"Fallback-Url": []string{"http://backup.example/sub"}}, "https://panel.example/sub")
+	ApplyHeaders(&info, http.Header{"Clod-New-Sub": []string{"spare.example.com"}}, current)
 
-	if info.FallbackURL != "" {
-		t.Fatalf("http-адрес принимать нельзя, получено %q", info.FallbackURL)
+	if info.SpareDomain != "spare.example.com" {
+		t.Fatalf("запасной домен не запомнен: %q", info.SpareDomain)
+	}
+
+	ApplyHeaders(&info, http.Header{"Clod-New-Sub": []string{"other.example.com"}}, current)
+
+	if info.SpareDomain != "other.example.com" {
+		t.Fatalf("новый запасной домен должен заменить прежний: %q", info.SpareDomain)
+	}
+
+	ApplyHeaders(&info, http.Header{"Clod-New-Sub": []string{"https://other.example.com/sub"}}, current)
+
+	if info.SpareDomain != "" {
+		t.Fatalf("не домен — запасного адреса нет, получено %q", info.SpareDomain)
+	}
+
+	info.SpareDomain = "spare.example.com"
+
+	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Подписка"}}, current)
+
+	if info.SpareDomain != "" {
+		t.Fatalf("молчание панели должно стирать запасной домен, получено %q", info.SpareDomain)
 	}
 }
 
-func TestSpareAddresses(t *testing.T) {
-	const current = "https://panel.example/sub/token"
+func TestApplyHeadersMoveSub(t *testing.T) {
+	const current = "https://panel.example.com/sub/token"
 
-	info := Info{
-		FallbackURL:    "https://backup.example/sub",
-		FallbackDomain: "spare.example",
+	cases := []struct {
+		name   string
+		header http.Header
+		want   string
+	}{
+		{name: "флаг с доменом", header: http.Header{"Clod-New-Sub": {"spare.example.com"}, "Clod-Move-Sub": {"TRUE"}}, want: "https://spare.example.com/sub/token"},
+		{name: "флаг без домена", header: http.Header{"Clod-Move-Sub": {"true"}}, want: ""},
+		{name: "флаг с негодным доменом", header: http.Header{"Clod-New-Sub": {"spare.example.com:8443"}, "Clod-Move-Sub": {"true"}}, want: ""},
+		{name: "домен без флага", header: http.Header{"Clod-New-Sub": {"spare.example.com"}}, want: ""},
+		{name: "флаг не true", header: http.Header{"Clod-New-Sub": {"spare.example.com"}, "Clod-Move-Sub": {"1"}}, want: ""},
+		{name: "домен основного адреса", header: http.Header{"Clod-New-Sub": {"panel.example.com"}, "Clod-Move-Sub": {"true"}}, want: ""},
 	}
 
-	got := info.SpareAddresses(current)
-	want := []string{"https://backup.example/sub", "https://spare.example/sub/token"}
+	for _, item := range cases {
+		t.Run(item.name, func(t *testing.T) {
+			info := Info{MoveURL: "https://stale.example.com/sub/token"}
 
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("порядок и состав запасных адресов: получено %#v, ожидалось %#v", got, want)
-	}
-}
+			ApplyHeaders(&info, item.header, current)
 
-func TestSpareAddressesSkipsCurrentAndEmpty(t *testing.T) {
-	const current = "https://panel.example/sub"
-
-	info := Info{FallbackURL: current, FallbackDomain: "panel.example"}
-
-	if got := info.SpareAddresses(current); len(got) != 0 {
-		t.Fatalf("совпадающие с основным адреса должны отбрасываться, получено %#v", got)
-	}
-
-	if got := (Info{}).SpareAddresses(current); len(got) != 0 {
-		t.Fatalf("без заголовков запасных адресов быть не должно, получено %#v", got)
+			if info.MoveURL != item.want {
+				t.Fatalf("перевод = %q, ожидалось %q", info.MoveURL, item.want)
+			}
+		})
 	}
 }
 
