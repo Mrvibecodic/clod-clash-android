@@ -400,7 +400,7 @@
     <string name="clod_action_connect">Подключиться</string>
     <string name="clod_action_disconnect">Отключиться</string>
     <string name="clod_refresh_profile">Обновить подписку</string>
-    <string name="clod_about_core">Ядро %1$s</string>
+    <string name="clod_about_core">Ядро Clod Core %1$s</string>
     <string name="clod_about_note">Ядро встроено в приложение и обновляется вместе с ним.</string>
     <string name="clod_update_auto">Проверять автоматически</string>
     <string name="clod_update_auto_subtitle">Раз в сутки при запуске</string>

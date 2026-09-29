@@ -31,8 +31,22 @@ if (GIT_FOUND AND EXISTS "${CLASH_SOURCE_DIR}")
                 RESULT_VARIABLE CLASH_TAG_RESULT
         )
 
+        # Clod Core ставит теги core-v<версия mihomo>-clod.N только на коммиты main;
+        # у коммита ветки android своего тега нет, поэтому версия берётся из
+        # ближайшего такого тега — иначе ядро назвалось бы именем ветки.
+        if (NOT CLASH_TAG_RESULT EQUAL 0 OR "${CLASH_TAG}" STREQUAL "")
+            execute_process(
+                    COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0 --match "core-v*" ${CLASH_COMMIT}
+                    WORKING_DIRECTORY ${CLASH_SOURCE_DIR}
+                    OUTPUT_VARIABLE CLASH_TAG
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                    RESULT_VARIABLE CLASH_TAG_RESULT
+            )
+        endif ()
+
         if (CLASH_TAG_RESULT EQUAL 0 AND NOT "${CLASH_TAG}" STREQUAL "")
-            set(CORE_LABEL "${CLASH_TAG}")
+            string(REGEX REPLACE "^core-(v[0-9]+\\.[0-9]+\\.[0-9]+).*$" "\\1" CORE_LABEL "${CLASH_TAG}")
         else ()
             execute_process(
                     COMMAND ${GIT_EXECUTABLE} branch -r --contains ${CLASH_COMMIT}

@@ -429,7 +429,7 @@
     <string name="clod_action_connect">Connect</string>
     <string name="clod_action_disconnect">Disconnect</string>
     <string name="clod_refresh_profile">Update subscription</string>
-    <string name="clod_about_core">Core %1$s</string>
+    <string name="clod_about_core">Clod Core %1$s</string>
     <string name="clod_about_note">The core ships inside the app and updates with it.</string>
     <string name="clod_update_auto">Check automatically</string>
     <string name="clod_update_auto_subtitle">Once a day on launch</string>
