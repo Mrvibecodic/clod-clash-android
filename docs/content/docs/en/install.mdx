@@ -45,8 +45,8 @@ regular release.
 ## Core
 
 The core is updated together with the app; there is no separate button for it. Inside right
-now is the stable [mihomo](https://github.com/MetaCubeX/mihomo) v1.19.31 with five Android
-patches:
+now is [Clod Core](https://github.com/Mrvibecodic/clod-core), our fork of the stable
+[mihomo](https://github.com/MetaCubeX/mihomo) v1.19.31. Five of its patches are made for Android:
 
 - while the network is switching or the app was asleep, failed checks are not recorded
   against nodes — live servers are not marked dead;
@@ -59,9 +59,10 @@ patches:
 
 ### Clod Core
 
-[Clod Core](https://github.com/Mrvibecodic/clod-core) is our fork of stable Mihomo (it can
-already be picked on desktop). **It is not built into Android yet.** Its `android` branch
-already contains the patches above, plus:
+Android has the `android` branch of Clod Core built in (on desktop this core can be picked too).
+Besides the patches above, it has:
+
+- **A fresh MIPS network stack** — with TCP and ICMP fixes; "Auto" uses it by default.
 
 - **A newer TLS fingerprint library** — utls v1.9.0-mod-meta: Firefox 148 and Safari 26.3
   fingerprints with a post-quantum key, fixes for TLS session resumption. The chrome, ios and

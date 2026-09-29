@@ -28,7 +28,7 @@ func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
 
 	tunStack, ok := C.StackTypeMapping[strings.ToLower(stack)]
 	if !ok {
-		tunStack = C.TunGvisor
+		tunStack = C.TunMips
 	}
 
 	var prefix4 []netip.Prefix

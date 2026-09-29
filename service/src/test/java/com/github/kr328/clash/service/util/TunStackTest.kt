@@ -20,14 +20,14 @@ class TunStackTest {
     }
 
     @Test
-    fun autoWithoutProfileUsesGvisor() {
-        assertEquals("gvisor", resolveTunStack("auto", ""))
-        assertEquals("gvisor", resolveTunStack("auto", "lwip"))
+    fun autoWithoutProfileUsesMips() {
+        assertEquals("mips", resolveTunStack("auto", ""))
+        assertEquals("mips", resolveTunStack("auto", "lwip"))
     }
 
     @Test
-    fun unknownModeUsesProfileThenGvisor() {
+    fun unknownModeUsesProfileThenMips() {
         assertEquals("mixed", resolveTunStack("", "mixed"))
-        assertEquals("gvisor", resolveTunStack("", ""))
+        assertEquals("mips", resolveTunStack("", ""))
     }
 }

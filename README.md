@@ -38,7 +38,7 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 | Что | Откуда | Лицензия |
 |---|---|---|
 | **Оболочка приложения**: `VpnService`, мост Go↔Kotlin, сервисный слой, хранилище профилей, сборка ядра, CI | [MetaCubeX/ClashMetaForAndroid](https://github.com/MetaCubeX/ClashMetaForAndroid) — база репозитория, история сохранена | GPL-3.0 |
-| **Ядро** | [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo) v1.19.31, submodule с пином `ab405bad`; наши правки для Android лежат в `.github/patch-core/` и накладываются в CI (для локальной сборки — `patch -p1` из каталога ядра). Пин двигать вместе с обоими `go.mod` | GPL-3.0 |
+| **Ядро** | [Mrvibecodic/clod-core](https://github.com/Mrvibecodic/clod-core), ветка `android` — наш форк стабильного [MetaCubeX/mihomo](https://github.com/MetaCubeX/mihomo) с utls `v1.9.0-mod-meta`, общими правками проб из ветки `main` и патчами Android, которые лежат там обычными коммитами; подключено submodule'ом (`.gitmodules`: `branch = android`), CI тянет его только по `--init`, без `--remote`, поэтому пин держится. Двигать пин осознанно и вместе с обоими `go.mod`: `replace` для utls из ядра Go в клиент не наследует, его копия стоит в обоих модулях | GPL-3.0 |
 | **Интерфейс** | наш, Jetpack Compose; разметок CMFA не осталось | GPL-3.0 |
 | **Подписки и заголовки Remnawave** | наши: заголовки разбирает Go (`core/…/config/panel/`), решения по подписке — Kotlin (`service/…/subscription/`). Правила те же, что в [десктопном клиенте](https://github.com/Mrvibecodic/clod-clash), код отдельный | GPL-3.0 |
 
@@ -55,7 +55,7 @@ Android-клиент [Clod Clash](https://github.com/Mrvibecodic/clod-clash) —
 после перехода ядра в рабочий режим.
 
 [Clod Core](https://github.com/Mrvibecodic/clod-core) — наш форк стабильного Mihomo, ветка
-`android`. **В приложение пока не встроен.** Кроме правок выше, в нём:
+`android`, встроен в приложение. Кроме правок выше, в нём:
 
 * utls v1.9.0-mod-meta — отпечатки Firefox 148 и Safari 26.3 с постквантовым ключом;
 * узел считается мёртвым только после второй неудачной проверки (вторая идёт через секунду

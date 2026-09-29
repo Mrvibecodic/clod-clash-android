@@ -153,15 +153,22 @@ jobs:
       - name: Подтянуть submodule ядра
         run: git submodule update --init --recursive --force
 
-      - name: Патчи ядра mihomo
+      # Патчи Android живут коммитами в ветке android репозитория Mrvibecodic/clod-core,
+      # submodule смотрит туда; маркеры ниже проверяют, что они в подтянутом ядре есть.
+      - name: Патчи ядра на месте
         run: |
           set -euo pipefail
           cd core/src/foss/golang/clash
-          for p in $GITHUB_WORKSPACE/.github/patch-core/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
           grep -q ProbeHolding adapter/adapter.go
           grep -qF 'ctx.Err() == context.Canceled' adapter/adapter.go
           grep -q ProbeHolding adapter/outboundgroup/groupbase.go
           grep -q ProbeFreezeGap constant/probehold.go
+          # Общие правки проб из main clod-core: повторная проба рядом с первой,
+          # штраф нестабильным узлам в url-test, шаг между пробами к одному хосту
+          grep -q HeldProbe constant/probeconfirm.go
+          grep -q probeHedgeDelay adapter/provider/healthcheck.go
+          grep -q flakyPenalty adapter/outboundgroup/urltest.go
+          grep -q ProbePace constant/probepace.go
           grep -Eq 'expectedStatus +string' adapter/outboundgroup/selector.go
           grep -Eq '"expectedStatus": +s\.expectedStatus,' adapter/outboundgroup/selector.go
           grep -Eq 'expectedStatus: +option\.ExpectedStatus,' adapter/outboundgroup/selector.go
@@ -169,13 +176,11 @@ jobs:
           grep -q ErrRedirectDowngrade component/http/http.go
           grep -A1 -F 'loadProvider(cfg.RuleProviders)' hub/executor/executor.go | grep -qF 'tunnel.OnRunning()'
           grep -A1 -F 'tunnel.OnRunning()' hub/executor/executor.go | grep -qF 'runtime.GC()'
-          # -F 0 запрещает нечёткий контекст, но не смещение: остатки .orig/.rej
-          # означают, что патч лёг не туда, куда писался.
-          if [ -n "$(find . \( -name '*.orig' -o -name '*.rej' \) -print -quit)" ]; then
-            echo "::error::патч ядра лёг со смещением или с отказом"
-            find . \( -name '*.orig' -o -name '*.rej' \)
-            exit 1
-          fi
+          # utls ядра закреплён replace в go.mod ядра, но replace зависимости Go не
+          # наследует: без своей копии в обоих модулях клиента соберётся utls v1.8.7
+          for m in ../go.mod ../../../main/golang/go.mod; do grep -q '^replace github.com/metacubex/utls => ' "$m"; done
+          test "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' go.mod)" = "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' ../go.mod)"
+          test "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' go.mod)" = "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' ../../../main/golang/go.mod)"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
