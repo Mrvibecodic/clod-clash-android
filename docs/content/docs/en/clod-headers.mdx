@@ -84,6 +84,15 @@ this header.
   or `#`. Anything else is skipped. The spare address is `https://`, this domain and the path
   with parameters of the main address: for `https://panel.example.com:8443/sub/abc` it is
   `https://backup.example.com/sub/abc` (the main address's port is not carried over).
+- How to write the domain so the app accepts and recognises it:
+  - an internationalised domain only in punycode: `xn--e1afmkfd.xn--p1ai`, not `пример.рф`;
+  - no trailing dot: `backup.example.com`, not `backup.example.com.`;
+  - letter case does not matter;
+  - the spare server answers on port 443.
+- Write the domain in the users' subscription links the same way — in punycode and without a
+  trailing dot. Otherwise the app does not recognise the main address's domain in
+  `clod-new-sub`, takes it for a spare one, and with `clod-move-sub` "moves" the subscription to
+  the same server.
 - The spare address is used only when the main one does not answer. The subscription from it is
   applied as a normal update. A device limit refusal is not retried on the spare address — it
   is the same panel.
