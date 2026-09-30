@@ -1118,16 +1118,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         val group = offlineGroups.getOrNull(index) ?: return null
 
         val readOnly = serversReadOnly
-        val shown = offlineGroup(
-            group,
-            pendingSelections[group.name] ?: offlineSelections[group.name],
-            offlineHides,
-        )
+        val saved = pendingSelections[group.name] ?: offlineSelections[group.name]
+        val shown = offlineGroup(group, saved?.takeIf { it.isNotEmpty() }, offlineHides)
 
         setProxyGroup(
             index = index,
             now = shown.now,
             selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
+            pinned = if (!readOnly && group.type in OFFLINE_PINNABLE_GROUPS) saved.orEmpty() else null,
             proxies = shown.proxies.map { name ->
                 Proxy(
                     name = name,
@@ -1193,11 +1191,14 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Пока шёл запрос, список групп мог смениться — тогда слот уже чужой
         if (proxyGroupNames.getOrNull(index) == name) {
+            val pending = pendingSelections[name]
+
             setProxyGroup(
                 index,
-                pendingSelections[name] ?: group.now,
+                pending?.takeIf { it.isNotEmpty() } ?: group.now,
                 group.type in SELECTABLE_GROUPS,
                 group.proxies,
+                pinned = if (!serversReadOnly && group.type in PINNABLE_GROUPS) pending ?: group.pinned else null,
             )
         }
 
@@ -1225,6 +1226,11 @@ class MainActivity : BaseActivity<MainDesign>() {
         private val SELECTABLE_GROUPS = setOf("Selector", "URLTest", "Fallback")
 
         private val OFFLINE_SELECTABLE_GROUPS = setOf("select", "url-test", "fallback")
+
+        // Группы, что выбирают узел сами: выбор человека в них — закрепление
+        private val PINNABLE_GROUPS = setOf("URLTest", "Fallback")
+
+        private val OFFLINE_PINNABLE_GROUPS = setOf("url-test", "fallback")
 
 
         private const val HEALTH_STALE_MS = 300_000L
@@ -1490,7 +1496,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                         sending.delivered = true
                     }
 
-                    offlineSelections[group] = name
+                    if (name.isEmpty()) {
+                        offlineSelections.remove(group)
+                    } else {
+                        offlineSelections[group] = name
+                    }
 
                     true
                 }

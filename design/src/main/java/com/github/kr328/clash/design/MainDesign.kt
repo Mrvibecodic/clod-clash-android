@@ -354,7 +354,13 @@ class MainDesign(
         }
     }
 
-    suspend fun setProxyGroup(index: Int, now: String, selectable: Boolean, proxies: List<Proxy>) {
+    suspend fun setProxyGroup(
+        index: Int,
+        now: String,
+        selectable: Boolean,
+        proxies: List<Proxy>,
+        pinned: String? = null,
+    ) {
         withContext(Dispatchers.Main) {
             val groups = state.servers.groups
             if (index !in groups.indices) return@withContext
@@ -364,6 +370,7 @@ class MainDesign(
                         it[index] = it[index].copy(
                             now = now,
                             selectable = selectable,
+                            pinned = pinned,
                             proxies = proxies.filterNot { state.active?.panel?.hides(it.name) == true },
                         )
                     },
@@ -377,7 +384,14 @@ class MainDesign(
         withContext(Dispatchers.Main) {
             state = state.copy(
                 servers = state.servers.copy(
-                    groups = state.servers.groups.map { if (it.name == group) it.copy(now = name) else it },
+                    groups = state.servers.groups.map {
+                        when {
+                            it.name != group -> it
+                            // Снятие закрепления: какой узел выберет группа, скажет ядро
+                            name.isEmpty() -> it.copy(pinned = "")
+                            else -> it.copy(now = name, pinned = it.pinned?.let { name })
+                        }
+                    },
                 ),
             )
         }

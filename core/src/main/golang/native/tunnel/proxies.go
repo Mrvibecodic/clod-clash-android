@@ -27,6 +27,9 @@ type ProxyGroup struct {
 	Type    string   `json:"type"`
 	Now     string   `json:"now"`
 	Proxies []*Proxy `json:"proxies"`
+	// Pinned — узел, закреплённый вручную в url-test/fallback; пусто, если
+	// группа выбирает сама
+	Pinned string `json:"pinned"`
 }
 
 type ProxyGroupNames struct {
@@ -146,11 +149,17 @@ func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup
 
 	proxies := convertProxies(g.Proxies(), uiSubtitlePattern, GroupTestURL(g))
 
-	return &ProxyGroup{
+	group := &ProxyGroup{
 		Type:    g.Type().String(),
 		Now:     g.Now(),
 		Proxies: proxies,
 	}
+
+	if pin, ok := g.(outboundgroup.Pinnable); ok {
+		group.Pinned = pin.Pinned()
+	}
+
+	return group
 }
 
 // Исходы PatchSelector. Нулевое значение — «не получилось, запомненный выбор
@@ -184,7 +193,10 @@ func PatchSelector(selector, name string) int {
 		return PatchNoSelector
 	}
 
-	if err := s.Set(name); err != nil {
+	// Пустое имя снимает закрепление url-test/fallback: группа снова выбирает сама
+	if _, pinnable := g.(outboundgroup.Pinnable); pinnable && name == "" {
+		s.ForceSet("")
+	} else if err := s.Set(name); err != nil {
 		log.Warnln("Patch selector `%s`: %s", selector, err.Error())
 
 		return PatchFailed

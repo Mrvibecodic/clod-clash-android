@@ -60,8 +60,13 @@ class ClashManager(private val context: Context) : IClashManager,
         persistSelection(group, name) {
             (loaded ?: store.activeProfile)?.let { current ->
                 when (result) {
+                    // Пустое имя — закрепление снято, группа выбирает сама
                     Clash.PatchResult.Done ->
-                        SelectionDao().setSelected(Selection(current, group, name))
+                        if (name.isEmpty()) {
+                            SelectionDao().removeSelected(current, group)
+                        } else {
+                            SelectionDao().setSelected(Selection(current, group, name))
+                        }
                     Clash.PatchResult.NoSelector ->
                         SelectionDao().removeSelected(current, group)
                     Clash.PatchResult.Failed -> Unit
@@ -76,7 +81,11 @@ class ClashManager(private val context: Context) : IClashManager,
         val current = store.activeProfile ?: return
 
         persistSelection(group, name) {
-            SelectionDao().setSelected(Selection(current, group, name))
+            if (name.isEmpty()) {
+                SelectionDao().removeSelected(current, group)
+            } else {
+                SelectionDao().setSelected(Selection(current, group, name))
+            }
         }
     }
 

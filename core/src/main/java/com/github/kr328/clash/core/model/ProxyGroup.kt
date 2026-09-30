@@ -11,6 +11,8 @@ data class ProxyGroup(
     val type: String,
     val proxies: List<Proxy>,
     val now: String,
+    // Узел, закреплённый вручную в url-test/fallback; пусто, если группа выбирает сама
+    val pinned: String = "",
 ) : Parcelable {
     class SliceProxyList(data: List<Proxy>) : List<Proxy> by data, Parcelable {
         constructor(parcel: Parcel) : this(Proxy.createListFromParcelSlice(parcel, 0, PROXY_SLICE))
@@ -42,12 +44,14 @@ data class ProxyGroup(
         parcel.readString()!!,
         SliceProxyList(parcel),
         parcel.readString()!!,
+        parcel.readString()!!,
     )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(type)
         SliceProxyList(proxies).writeToParcel(parcel, 0)
         parcel.writeString(now)
+        parcel.writeString(pinned)
     }
 
     override fun describeContents(): Int {

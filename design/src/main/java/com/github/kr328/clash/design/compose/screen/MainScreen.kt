@@ -161,6 +161,9 @@ data class ProxyGroupState(
     val now: String,
     val selectable: Boolean,
     val proxies: List<Proxy>,
+    // Узел, закреплённый вручную; "" — url-test/fallback выбирает сама,
+    // null — группа сама не выбирает (select)
+    val pinned: String? = null,
 )
 
 @Immutable

@@ -198,8 +198,12 @@ fun ServersTab(
                         marksOnly = active?.panel?.disablePing == true,
                         pingBounds = active?.panel.pingBounds(),
                         selected = proxy.name == group.now,
+                        pinned = proxy.name == group.pinned,
                         favorite = proxy.name in state.favorites,
-                        onClick = { onAction(MainAction.SelectProxy(proxy.name)) },
+                        // Повторное нажатие на закреплённый узел возвращает автовыбор
+                        onClick = {
+                            onAction(MainAction.SelectProxy(if (proxy.name == group.pinned) "" else proxy.name))
+                        },
                         onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
                     )
                 }

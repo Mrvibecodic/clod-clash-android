@@ -223,6 +223,7 @@ fun ProxyRow(
     onToggleFavorite: () -> Unit,
     modifier: Modifier = Modifier,
     pingBounds: PingBounds = PingBounds(),
+    pinned: Boolean = false,
 ) {
     val (flag, name) = remember(title) { splitFlag(title) }
 
@@ -276,9 +277,13 @@ fun ProxyRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (subtitle.isNotBlank()) {
+            val caption = listOfNotNull(
+                stringResource(R.string.clod_proxy_pinned).takeIf { pinned },
+                subtitle.takeIf { it.isNotBlank() }?.bidiIsolated(),
+            ).joinToString(" · ")
+            if (caption.isNotEmpty()) {
                 Text(
-                    text = subtitle.bidiIsolated(),
+                    text = caption,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
