@@ -344,6 +344,9 @@
     <string name="clod_sub_until">until %1$s</string>
     <string name="clod_sub_expired_at">expired %1$s</string>
     <string name="clod_sub_last_day">less than a day</string>
+    <string name="clod_sub_stale">Not updated · updated %1$s</string>
+    <string name="clod_sub_stale_title">Update the subscription</string>
+    <string name="clod_sub_stale_detail">updated %1$s, auto-update keeps failing</string>
     <string name="clod_quota_traffic">Traffic</string>
     <string name="clod_quota_expiry">Expires in</string>
     <string name="clod_quota_left">%1$s left</string>

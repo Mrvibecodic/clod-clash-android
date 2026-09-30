@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.util
 
 import android.content.Context
 import java.io.File
+import java.util.UUID
 
 val Context.importedDir: File
     get() = filesDir.resolve("imported")
@@ -11,6 +12,10 @@ val Context.pendingDir: File
 
 val Context.processingDir: File
     get() = filesDir.resolve("processing")
+
+/** Когда подписку загружали в последний раз — mtime её `config.yaml`; 0, если ни разу. */
+fun Context.fetchedAt(uuid: UUID): Long =
+    importedDir.resolve(uuid.toString()).resolve("config.yaml").lastModified()
 
 val File.directoryLastModified: Long?
     get() {

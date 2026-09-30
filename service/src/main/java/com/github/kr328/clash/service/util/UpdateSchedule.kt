@@ -26,6 +26,19 @@ object UpdateSchedule {
         return panel
     }
 
+    /**
+     * Сколько автообновлений подряд пропущено (0, 1 или 2 — больше не различаем):
+     * считается от последней удачной загрузки [fetchedAt], запас [MIN_INTERVAL] —
+     * первая повторная попытка после сбоя. Удачная загрузка сдвигает [fetchedAt],
+     * и счёт обнуляется сам. Без автообновления или без загрузки — 0.
+     */
+    fun missedUpdates(interval: Long, fetchedAt: Long, now: Long): Int {
+        if (interval < MIN_INTERVAL || fetchedAt <= 0)
+            return 0
+
+        return ((now - fetchedAt - MIN_INTERVAL) / interval).coerceIn(0, 2).toInt()
+    }
+
     fun firstDelay(interval: Long, updatedAt: Long, now: Long): Long {
         if (updatedAt <= 0)
             return 0

@@ -172,3 +172,31 @@ class UpdateScheduleExpiryTest {
         )
     }
 }
+
+class UpdateScheduleMissedTest {
+    private val minutes15 = TimeUnit.MINUTES.toMillis(15)
+    private val hours6 = TimeUnit.HOURS.toMillis(6)
+
+    @Test
+    fun `nothing is missed until the period and the first retry have passed`() {
+        val hours12 = TimeUnit.HOURS.toMillis(12)
+        val fetched = 1_000_000_000L
+
+        assertEquals(0, UpdateSchedule.missedUpdates(hours12, fetched, fetched + hours12))
+        assertEquals(0, UpdateSchedule.missedUpdates(hours12, fetched, fetched + hours12 + minutes15 - 1))
+        assertEquals(1, UpdateSchedule.missedUpdates(hours12, fetched, fetched + hours12 + minutes15))
+        assertEquals(1, UpdateSchedule.missedUpdates(hours12, fetched, fetched + 2 * hours12 + minutes15 - 1))
+        assertEquals(2, UpdateSchedule.missedUpdates(hours12, fetched, fetched + 2 * hours12 + minutes15))
+        assertEquals(2, UpdateSchedule.missedUpdates(hours12, fetched, fetched + 30 * hours12))
+    }
+
+    @Test
+    fun `a profile without auto update or a download misses nothing`() {
+        val now = 5_000_000_000L
+
+        assertEquals(0, UpdateSchedule.missedUpdates(0, 1, now))
+        assertEquals(0, UpdateSchedule.missedUpdates(TimeUnit.MINUTES.toMillis(14), 1, now))
+        assertEquals(0, UpdateSchedule.missedUpdates(hours6, 0, now))
+        assertEquals(0, UpdateSchedule.missedUpdates(hours6, now + hours6, now))
+    }
+}

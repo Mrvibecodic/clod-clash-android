@@ -1,5 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -21,14 +22,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -69,6 +73,7 @@ import com.github.kr328.clash.design.compose.theme.statusText
 import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.formatDate
 import com.github.kr328.clash.design.util.localeCollator
+import com.github.kr328.clash.design.util.relativeTime
 import com.github.kr328.clash.service.model.Profile
 import java.util.concurrent.TimeUnit
 
@@ -238,6 +243,9 @@ private fun SubscriptionCard(
     val now = remember(profile) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
+    val clock = remember(profile) { System.currentTimeMillis() }
+    val missed = remember(profile) { item.missedUpdates(clock) }
+    val warn = ClodTheme.extraColors.statusConnecting
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     var picking by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
@@ -285,6 +293,7 @@ private fun SubscriptionCard(
                 MaterialTheme.colorScheme.surfaceContainerLow
             },
         ),
+        border = if (missed >= 2) BorderStroke(2.dp, warn) else null,
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
@@ -426,6 +435,53 @@ private fun SubscriptionCard(
                             .height(6.dp)
                             .clip(RoundedCornerShape(50)),
                     )
+                }
+
+                if (missed == 1) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(warn),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.clod_sub_stale, relativeTime(profile.fetchedAt, clock)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = warn.statusText(),
+                        )
+                    }
+                } else if (missed >= 2) {
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = warn.copy(alpha = 0.3f))
+                    Spacer(Modifier.height(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.clod_sub_stale_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = warn.statusText(),
+                            )
+                            Text(
+                                text = stringResource(R.string.clod_sub_stale_detail, relativeTime(profile.fetchedAt, clock)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Button(
+                            onClick = { onAction(MainAction.UpdateProfile(profile)) },
+                            enabled = !updating,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = warn,
+                                contentColor = MaterialTheme.colorScheme.surface,
+                            ),
+                        ) {
+                            Text(stringResource(R.string.update))
+                        }
+                    }
                 }
             }
         }

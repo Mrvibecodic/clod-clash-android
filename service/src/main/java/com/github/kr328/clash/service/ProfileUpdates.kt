@@ -15,7 +15,7 @@ import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.UpdateSchedule
-import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.fetchedAt
 import com.github.kr328.clash.service.util.readPanelInfo
 import java.util.concurrent.TimeUnit
 
@@ -89,7 +89,7 @@ object ProfileUpdates {
         val name = expiryName(imported)
 
         val skew = context.readPanelInfo(imported.uuid)?.clockSkewMillis() ?: 0
-        val fetchAt = UpdateSchedule.expiryFetchAt(imported.expire, skew, configUpdatedAt(context, imported))
+        val fetchAt = UpdateSchedule.expiryFetchAt(imported.expire, skew, context.fetchedAt(imported.uuid))
             ?: return if (caller == Caller.ExpiryRun) null else manager.cancelUniqueWork(name)
 
         val delay = (fetchAt - System.currentTimeMillis()).coerceAtLeast(0)
@@ -127,7 +127,7 @@ object ProfileUpdates {
         if (imported.interval < UpdateSchedule.MIN_INTERVAL)
             return manager.cancelUniqueWork(periodicName(imported))
 
-        val delay = UpdateSchedule.firstDelay(imported.interval, configUpdatedAt(context, imported), System.currentTimeMillis())
+        val delay = UpdateSchedule.firstDelay(imported.interval, context.fetchedAt(imported.uuid), System.currentTimeMillis())
 
         val request = PeriodicWorkRequestBuilder<ProfileUpdateWorker>(imported.interval, TimeUnit.MILLISECONDS)
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
@@ -137,13 +137,6 @@ object ProfileUpdates {
 
         return manager.enqueueUniquePeriodicWork(periodicName(imported), policy, request)
     }
-
-    /** Когда подписку загружали в последний раз — mtime её `config.yaml`; 0, если ни разу. */
-    private fun configUpdatedAt(context: Context, imported: Imported): Long =
-        context.importedDir
-            .resolve(imported.uuid.toString())
-            .resolve("config.yaml")
-            .lastModified()
 
     private fun periodicName(imported: Imported) = "profile-update-${imported.uuid}"
 

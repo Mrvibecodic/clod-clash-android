@@ -11,6 +11,7 @@ import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.remote.IProfileManager
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.directoryLastModified
+import com.github.kr328.clash.service.util.fetchedAt
 import com.github.kr328.clash.service.util.generateProfileUUID
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
@@ -202,6 +203,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
             intervalManual = pending?.intervalManual ?: imported?.intervalManual ?: false,
             quota = imported?.quota ?: false,
             nameManual = pending?.nameManual ?: imported?.nameManual ?: false,
+            fetchedAt = if (imported != null) context.fetchedAt(uuid) else 0,
         )
     }
 

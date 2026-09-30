@@ -300,6 +300,9 @@
     <string name="clod_sub_until">до %1$s</string>
     <string name="clod_sub_expired_at">истекла %1$s</string>
     <string name="clod_sub_last_day">меньше суток</string>
+    <string name="clod_sub_stale">Не обновилась · обновлено %1$s</string>
+    <string name="clod_sub_stale_title">Обновите подписку</string>
+    <string name="clod_sub_stale_detail">обновлено %1$s, автообновление не проходит</string>
     <string name="clod_quota_traffic">Трафик</string>
     <string name="clod_quota_expiry">Срок действия</string>
     <string name="clod_quota_left">осталось %1$s</string>

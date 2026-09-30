@@ -136,6 +136,7 @@ import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.GroupIcons
 import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.profileDisplayName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -194,6 +195,10 @@ data class SubscriptionItem(
         get() = profile.imported && profile.type != Profile.Type.File
 
     fun panelNow(): Long = System.currentTimeMillis() + (panel?.clockSkewMillis() ?: 0)
+
+    /** Сколько автообновлений подряд пропущено к [now] (часы устройства); 0 — без автообновления. */
+    fun missedUpdates(now: Long): Int =
+        if (updatable) UpdateSchedule.missedUpdates(profile.interval, profile.fetchedAt, now) else 0
 }
 
 @Immutable
@@ -761,10 +766,15 @@ private fun MainHeader(
             }
         }
         if (active != null && active.updatable) {
+            val stale = remember(active.profile) { active.missedUpdates(System.currentTimeMillis()) >= 2 }
+
             SyncIconButton(
                 spinning = active.profile.uuid in updatingUuids,
-                contentDescription = stringResource(R.string.clod_refresh_profile),
+                contentDescription = stringResource(
+                    if (stale) R.string.clod_sub_stale_title else R.string.clod_refresh_profile,
+                ),
                 onClick = { onAction(MainAction.UpdateProfile(active.profile)) },
+                highlight = stale,
             )
         }
     }
