@@ -3,7 +3,9 @@ package tunnel
 import (
 	"github.com/metacubex/mihomo/adapter/outbound"
 	"github.com/metacubex/mihomo/transport/anytls"
+	"github.com/metacubex/mihomo/transport/mekya"
 	"github.com/metacubex/mihomo/transport/tuic"
+	"github.com/metacubex/mihomo/transport/xhttp"
 )
 
 // resetProxyTransports looks ResetNetwork up at runtime, so a half applied
@@ -19,9 +21,12 @@ var (
 	_ resetsNetwork = (*outbound.SingMux)(nil)
 	_ resetsNetwork = (*outbound.Ssh)(nil)
 	_ resetsNetwork = (*outbound.Trojan)(nil)
+	_ resetsNetwork = (*outbound.TrustTunnel)(nil)
 	_ resetsNetwork = (*outbound.Tuic)(nil)
 	_ resetsNetwork = (*outbound.Vless)(nil)
 	_ resetsNetwork = (*outbound.Vmess)(nil)
 	_ resetsNetwork = (*anytls.Client)(nil)
 	_ resetsNetwork = (*tuic.PoolClient)(nil)
+	_ resetsNetwork = (*mekya.Client)(nil)
+	_ resetsNetwork = (*xhttp.Client)(nil)
 )
