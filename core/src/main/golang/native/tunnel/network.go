@@ -1,6 +1,10 @@
 package tunnel
 
 import (
+	"sync"
+	"time"
+
+	"cfa/native/common/safego"
 	"cfa/native/config"
 
 	"github.com/metacubex/mihomo/component/iface"
@@ -53,10 +57,17 @@ func OnNetworkChanged(closeConnections bool, holdProbes bool) {
 	log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset, %d connection(s) closed", closed)
 }
 
+// resetWait — сколько сброс ждёт узлы перед тем, как рвать соединения:
+// закрытие сессии узла ждёт идущее рукопожатие (до тайм-аута дозвона), и
+// приложения не должны висеть на соединениях прежней сети всё это время
+const resetWait = 300 * time.Millisecond
+
 func resetProxyTransports() {
 	seen := map[C.ProxyAdapter]struct{}{}
 
 	reset := 0
+
+	wg := &sync.WaitGroup{}
 
 	resetOne := func(p C.Proxy) {
 		a := p.Adapter()
@@ -68,7 +79,13 @@ func resetProxyTransports() {
 		seen[a] = struct{}{}
 
 		if r, ok := a.(interface{ ResetNetwork() }); ok {
-			r.ResetNetwork()
+			wg.Add(1)
+
+			safego.Go("resetNetwork", func() {
+				defer wg.Done()
+
+				r.ResetNetwork()
+			})
 
 			reset++
 		}
@@ -82,6 +99,20 @@ func resetProxyTransports() {
 		for _, p := range pd.Proxies() {
 			resetOne(p)
 		}
+	}
+
+	done := make(chan struct{})
+
+	safego.Go("resetNetworkWait", func() {
+		wg.Wait()
+
+		close(done)
+	})
+
+	select {
+	case <-done:
+	case <-time.After(resetWait):
+		log.Infoln("Network changed: some proxy transports still closing a handshake in progress")
 	}
 
 	if reset > 0 {

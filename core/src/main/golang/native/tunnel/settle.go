@@ -18,6 +18,8 @@ const (
 	networkReadyGrace = time.Second
 
 	heartbeatInterval = 10 * time.Second
+
+	settleStep = 250 * time.Millisecond
 )
 
 var (
@@ -49,6 +51,10 @@ func NoteNetworkReady() {
 
 	until := time.Now().Add(networkReadyGrace)
 
+	// Удержание могло начать и само ядро, проснувшись: подтверждённая сеть
+	// укорачивает его в любом случае
+	C.CapProbeHoldUntil(until)
+
 	for {
 		cur := settleUntil.Load()
 		if cur == nil || !until.Before(*cur) {
@@ -56,8 +62,6 @@ func NoteNetworkReady() {
 		}
 
 		if settleUntil.CompareAndSwap(cur, &until) {
-			C.SetProbeHoldUntil(until)
-
 			return
 		}
 	}
@@ -71,10 +75,10 @@ func StartHeartbeat() {
 
 func heartbeat() {
 	// Wall clock on purpose: the monotonic clock stops while the device sleeps,
-	// and a gap between ticks is how sleep is detected.
-	last := time.Now().UnixNano()
-
-	C.ProbeBeat(last)
+	// and a gap between beats is how sleep is detected. The gap is taken from
+	// the core's last beat: a probe that found the sleep first has already
+	// started the hold there, and the heartbeat must not start another.
+	C.ProbeBeat(time.Now().UnixNano())
 
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
@@ -82,7 +86,7 @@ func heartbeat() {
 	for range ticker.C {
 		now := time.Now().UnixNano()
 
-		if gap := time.Duration(now - last); gap > C.ProbeFreezeGap {
+		if gap := time.Duration(now - C.ProbeLastBeat()); gap > C.ProbeFreezeGap {
 			if time.Duration(now-networkReadyAt.Load()) > C.ProbeFreezeGap {
 				NoteNetworkChange()
 
@@ -91,8 +95,6 @@ func heartbeat() {
 				log.Infoln("Resumed after %s pause: network already confirmed, probes not held", gap.Round(time.Second))
 			}
 		}
-
-		last = now
 
 		C.ProbeBeat(now)
 	}
@@ -108,6 +110,12 @@ func waitNetworkSettled(ctx context.Context) error {
 		wait := time.Until(*until)
 		if wait <= 0 {
 			return nil
+		}
+
+		// Подтверждённая сеть сокращает окно: ждём шагами, чтобы проба
+		// пошла сразу после нового конца, а не после прежнего
+		if wait > settleStep {
+			wait = settleStep
 		}
 
 		timer := time.NewTimer(wait)
