@@ -27,6 +27,7 @@ import com.github.kr328.clash.service.util.ActiveProfileAction
 import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.activeProfileSelect
 import com.github.kr328.clash.service.util.applyDeviceInfo
+import com.github.kr328.clash.service.util.copyProfileTo
 import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.service.util.processingDir
 import com.github.kr328.clash.service.util.readPanelInfo
@@ -80,7 +81,7 @@ object ProfileProcessor {
                     context.processingDir.mkdirs()
 
                     context.pendingDir.resolve(pending.uuid.toString())
-                        .copyRecursively(context.processingDir, overwrite = true)
+                        .copyProfileTo(context.processingDir, overwrite = true)
 
                     pending
                 }
@@ -156,7 +157,7 @@ object ProfileProcessor {
                     context.processingDir.mkdirs()
 
                     context.importedDir.resolve(imported.uuid.toString())
-                        .copyRecursively(context.processingDir, overwrite = true)
+                        .copyProfileTo(context.processingDir, overwrite = true)
 
                     imported
                 }
@@ -245,7 +246,7 @@ object ProfileProcessor {
         profileLock.withLock {
             probe.deleteRecursively()
 
-            profileDir.copyRecursively(probe, overwrite = true)
+            profileDir.copyProfileTo(probe, overwrite = true)
         }
 
         val fetched = try {
@@ -446,7 +447,7 @@ object ProfileProcessor {
                 if (!source.exists()) throw FileNotFoundException("profile $uuid not found")
 
                 target.deleteRecursively()
-                source.copyRecursively(target)
+                source.copyProfileTo(target)
 
                 PendingDao().insert(draft(imported))
 

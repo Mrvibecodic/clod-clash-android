@@ -33,16 +33,20 @@ var logoExtensions = map[string]string{
 	"image/vnd.microsoft.icon": ".ico",
 }
 
+// Сбой загрузки оставляет прежний логотип: иначе он пропадал бы до следующего
+// удачного обновления. Убирается логотип, только когда панель перестала его слать.
 func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
-	removeLogos(dir)
-
 	if rawURL == "" {
+		removeLogos(dir)
+
 		return ""
 	}
 
+	kept := keptLogo(dir)
+
 	limit, ok := budget.Window(time.Now(), logoTimeout)
 	if !ok {
-		return ""
+		return kept
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), limit)
@@ -53,24 +57,26 @@ func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
 		"Accept":     {"image/*"},
 	}, nil)
 	if err != nil {
-		return ""
+		return kept
 	}
 
 	defer response.Body.Close()
 
 	if response.StatusCode/100 != 2 {
-		return ""
+		return kept
 	}
 
 	extension, ok := logoExtensions[strings.TrimSpace(strings.Split(response.Header.Get("Content-Type"), ";")[0])]
 	if !ok {
-		return ""
+		return kept
 	}
 
 	body, err := io.ReadAll(io.LimitReader(response.Body, logoMaxBytes+1))
 	if err != nil || len(body) > logoMaxBytes || len(body) == 0 {
-		return ""
+		return kept
 	}
+
+	removeLogos(dir)
 
 	name := logoBaseName + extension
 	if err := os.WriteFile(P.Join(dir, name), body, 0o600); err != nil {
@@ -78,6 +84,16 @@ func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
 	}
 
 	return name
+}
+
+func keptLogo(dir string) string {
+	for _, extension := range logoExtensions {
+		if _, err := os.Stat(P.Join(dir, logoBaseName+extension)); err == nil {
+			return logoBaseName + extension
+		}
+	}
+
+	return ""
 }
 
 func removeLogos(dir string) {
