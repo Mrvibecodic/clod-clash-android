@@ -114,7 +114,7 @@ func TestProfileDelays(path string) map[string]int {
 
 			// Очередь проб к одному хосту ждём до отсчёта тайм-аута пробы, как
 			// в замере при работающем туннеле; отмена ожидания — не приговор узлу
-			if C.ProbePace(ctx, C.ProbeHost(px.Addr())) != nil {
+			if paceProbe(ctx, px) != nil {
 				return
 			}
 

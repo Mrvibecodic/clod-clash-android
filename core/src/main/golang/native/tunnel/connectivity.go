@@ -165,7 +165,7 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 
 		// Очередь проб к одному хосту ждём до отсчёта тайм-аута пробы: внутри
 		// URLTest ожидание съело бы до двух секунд из её пяти
-		if err := C.ProbePace(ctx, C.ProbeHost(px.Addr())); err != nil {
+		if err := paceProbe(ctx, px); err != nil {
 			own.err = err
 			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
 
@@ -194,6 +194,20 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 
 		return own.delay, own.outcome, own.err
 	}
+}
+
+// paceProbe ждёт очередь проб к хосту узла так, чтобы до конца круга на саму
+// пробу осталось healthCheckProbeTimeout: ядро оставляет только C.ProbeReserve,
+// и проба, дождавшаяся очереди, иначе не укладывалась бы в круг, а её бронь
+// отодвигала бы следующие.
+func paceProbe(ctx context.Context, px C.Proxy) error {
+	if deadline, ok := ctx.Deadline(); ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithDeadline(ctx, deadline.Add(C.ProbeReserve-healthCheckProbeTimeout))
+		defer cancel()
+	}
+
+	return C.ProbePace(ctx, C.ProbeHost(px.Addr()))
 }
 
 // resolveSelected walks nested groups down to the leaf the group points at:
