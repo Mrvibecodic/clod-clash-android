@@ -203,7 +203,7 @@
     <string name="always_light">Always light</string>
 
     <string name="tun_stack_mode">Stack mode</string>
-    <string name="tun_stack_auto">Auto (from subscription)</string>
+    <string name="tun_stack_auto">Auto</string>
     <string name="tun_stack_system">System stack</string>
     <string name="tun_stack_gvisor">gVisor stack</string>
     <string name="tun_stack_mixed">Mixed stack</string>

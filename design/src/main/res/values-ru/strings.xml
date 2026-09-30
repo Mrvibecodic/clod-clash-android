@@ -315,7 +315,7 @@
     <string name="allow_ipv6">Разрешить IPv6</string>
     <string name="allow_ipv6_summary">Пропускать трафик IPv6 через VpnService</string>
     <string name="tun_stack_mode">Сетевой стек</string>
-    <string name="tun_stack_auto">Авто (из подписки)</string>
+    <string name="tun_stack_auto">Авто</string>
     <string name="tun_stack_system">Системный</string>
     <string name="tun_stack_gvisor">gVisor</string>
     <string name="tun_stack_mixed">Смешанный</string>
