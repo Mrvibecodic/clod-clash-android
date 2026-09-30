@@ -163,6 +163,15 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 			return 0, own.outcome, own.err
 		}
 
+		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал;
+		// проверка и до очереди, чтобы такая проба её не бронировала
+		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < healthCheckProbeTimeout+probePaceMargin {
+			own.err = context.DeadlineExceeded
+			own.outcome = probeoutcome.Expired
+
+			return 0, own.outcome, own.err
+		}
+
 		// Очередь проб к одному хосту ждём до отсчёта тайм-аута пробы: внутри
 		// URLTest ожидание съело бы до двух секунд из её пяти
 		if err := paceProbe(ctx, px); err != nil {
@@ -196,6 +205,11 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 	}
 }
 
+// probePaceMargin — запас сверх тайм-аута пробы: ожидание, упёршееся в свой
+// предел, кончается чуть позже расчётного, и без запаса проба после него не
+// проходила бы проверку «на пробу осталось пять секунд».
+const probePaceMargin = 100 * time.Millisecond
+
 // paceProbe ждёт очередь проб к хосту узла так, чтобы до конца круга на саму
 // пробу осталось healthCheckProbeTimeout: ядро оставляет только C.ProbeReserve,
 // и проба, дождавшаяся очереди, иначе не укладывалась бы в круг, а её бронь
@@ -203,7 +217,7 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 func paceProbe(ctx context.Context, px C.Proxy) error {
 	if deadline, ok := ctx.Deadline(); ok {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithDeadline(ctx, deadline.Add(C.ProbeReserve-healthCheckProbeTimeout))
+		ctx, cancel = context.WithDeadline(ctx, deadline.Add(C.ProbeReserve-healthCheckProbeTimeout-probePaceMargin))
 		defer cancel()
 	}
 
