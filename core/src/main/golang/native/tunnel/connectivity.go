@@ -119,6 +119,8 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 		if shared, ok := probeInflight[key]; ok {
 			probeMu.Unlock()
 
+			probeAdmitted(ctx)
+
 			select {
 			case <-shared.done:
 				stale := shared.outcome == probeoutcome.Superseded || shared.outcome == probeoutcome.Expired
@@ -156,6 +158,8 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 		select {
 		case pool.slots <- struct{}{}:
 			defer func() { <-pool.slots }()
+
+			probeAdmitted(ctx)
 		case <-ctx.Done():
 			own.err = ctx.Err()
 			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
@@ -209,6 +213,20 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 // предел, кончается чуть позже расчётного, и без запаса проба после него не
 // проходила бы проверку «на пробу осталось пять секунд».
 const probePaceMargin = 100 * time.Millisecond
+
+type probeAdmittedKey struct{}
+
+// withProbeAdmitted вешает на контекст пробы сигнал «проба получила слот»:
+// по нему остальные пробы круга перестают ждать своей очереди за ней
+func withProbeAdmitted(ctx context.Context, admitted func()) context.Context {
+	return context.WithValue(ctx, probeAdmittedKey{}, admitted)
+}
+
+func probeAdmitted(ctx context.Context) {
+	if admitted, ok := ctx.Value(probeAdmittedKey{}).(func()); ok {
+		admitted()
+	}
+}
 
 // paceProbe ждёт очередь проб к хосту узла так, чтобы до конца круга на саму
 // пробу осталось healthCheckProbeTimeout: ядро оставляет только C.ProbeReserve,
@@ -340,11 +358,12 @@ func healthCheckGroup(pool *probePool, name string) error {
 	}
 
 	url, statusKey, expectedStatus := groupCheckOptions(g)
+	now := currentMember(g)
 
 	targets := make([]checkTarget, 0, len(proxies))
 
 	for _, px := range proxies {
-		targets = append(targets, checkTarget{px, url, statusKey, expectedStatus})
+		targets = append(targets, checkTarget{proxy: px, url: url, status: statusKey, expected: expectedStatus, first: px.Name() == now})
 	}
 
 	log.Infoln("Health check `%s`: %d proxies via %s", name, len(proxies), url)
@@ -368,6 +387,9 @@ type checkTarget struct {
 	url      string
 	status   string
 	expected utils.IntRanges[uint16]
+	// first — то, на что группа указывает сейчас (узел или вложенная группа
+	// на пути к нему): идёт в очередь проб раньше остальных
+	first bool
 }
 
 func (t checkTarget) key() string {
@@ -393,6 +415,21 @@ func routesTraffic(g outboundgroup.ProxyGroup) bool {
 	return g.Name() != "GLOBAL" || tunnel.Mode() == tunnel.Global
 }
 
+// currentMember — имя того, на что группа указывает сейчас. У url-test и
+// fallback без нового выбора: выбор url-test кэшируется на 10 с и, сделанный
+// перед проверкой, пережил бы её результаты
+func currentMember(g outboundgroup.ProxyGroup) string {
+	if c, ok := g.(interface{ CurrentNode() C.Proxy }); ok {
+		if current := c.CurrentNode(); current != nil {
+			return current.Name()
+		}
+
+		return ""
+	}
+
+	return g.Now()
+}
+
 func groupTargets(name string) []checkTarget {
 	p := tunnel.Proxies()[name]
 	if p == nil {
@@ -405,6 +442,7 @@ func groupTargets(name string) []checkTarget {
 	}
 
 	url, statusKey, expectedStatus := groupCheckOptions(g)
+	now := currentMember(g)
 
 	targets := []checkTarget{}
 
@@ -413,7 +451,7 @@ func groupTargets(name string) []checkTarget {
 			continue
 		}
 
-		targets = append(targets, checkTarget{px, url, statusKey, expectedStatus})
+		targets = append(targets, checkTarget{proxy: px, url: url, status: statusKey, expected: expectedStatus, first: px.Name() == now})
 	}
 
 	return targets
@@ -442,10 +480,17 @@ func HealthCheckGroups(names []string, exclude []string, force bool) error {
 	targets := []checkTarget{}
 	skipped := 0
 	now := time.Now()
+	// Один узел в нескольких группах остаётся одной пробой; первым он идёт,
+	// если хоть одна из групп указывает на него
+	first := map[string]bool{}
 
 	for _, name := range names {
 		for _, t := range groupTargets(name) {
 			key := t.key()
+
+			if t.first {
+				first[key] = true
+			}
 
 			if seen[key] {
 				continue
@@ -461,6 +506,10 @@ func HealthCheckGroups(names []string, exclude []string, force bool) error {
 
 			targets = append(targets, t)
 		}
+	}
+
+	for i := range targets {
+		targets[i].first = first[targets[i].key()]
 	}
 
 	log.Infoln("Health check of %d groups: %d nodes to probe, %d fresh", len(names), len(targets), skipped)
@@ -491,6 +540,17 @@ func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int
 
 	var checked, alive atomic.Int32
 
+	// Узлы, которыми группы пользуются сейчас, получают слоты первыми: с десятью
+	// пробами за раз такой узел в длинном списке иначе ждал бы до конца круга.
+	// Остальные ждут, пока каждый из них возьмёт слот или отпадёт
+	head := &sync.WaitGroup{}
+
+	for _, target := range targets {
+		if target.first {
+			head.Add(1)
+		}
+	}
+
 	wg := &sync.WaitGroup{}
 
 	for _, target := range targets {
@@ -501,7 +561,21 @@ func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int
 		safego.Go("healthCheckProbe", func() {
 			defer wg.Done()
 
-			_, outcome, err := probeProxy(ctx, pool, t.proxy, t.url, t.status, t.expected)
+			probeCtx := ctx
+
+			if t.first {
+				var once sync.Once
+
+				admitted := func() { once.Do(head.Done) }
+
+				defer admitted()
+
+				probeCtx = withProbeAdmitted(ctx, admitted)
+			} else {
+				head.Wait()
+			}
+
+			_, outcome, err := probeProxy(probeCtx, pool, t.proxy, t.url, t.status, t.expected)
 
 			if outcome == probeoutcome.Superseded || outcome == probeoutcome.Expired {
 				return
@@ -668,7 +742,7 @@ func RecoverDeadNodes(force bool) {
 
 			seen[key] = true
 
-			targets = append(targets, checkTarget{px, url, statusKey, expected})
+			targets = append(targets, checkTarget{proxy: px, url: url, status: statusKey, expected: expected})
 		}
 	}
 
