@@ -32,23 +32,35 @@ if (GIT_FOUND AND EXISTS "${CLASH_SOURCE_DIR}")
         )
 
         # Clod Core ставит теги core-v<версия mihomo>-clod.N только на коммиты main;
-        # у коммита ветки android своего тега нет, поэтому версия берётся из
-        # файла базы ядра (.github/clod-base, по нему же называет релизы CI
-        # ядра) — иначе ядро назвалось бы именем ветки или версией старого тега.
+        # у коммита ветки android своего тега нет. Версия mihomo берётся из файла
+        # базы ядра (.github/clod-base, по нему же называет релизы CI ядра), а
+        # номер сборки — из самого свежего релиза ядра на этой базе: ветка android —
+        # это main с патчами Android. Иначе ядро назвалось бы именем ветки или
+        # версией старого тега.
         if (NOT CLASH_TAG_RESULT EQUAL 0 OR "${CLASH_TAG}" STREQUAL "")
             set(CLASH_TAG "")
             if (EXISTS "${CLASH_SOURCE_DIR}/.github/clod-base")
                 file(STRINGS "${CLASH_SOURCE_DIR}/.github/clod-base" CLASH_BASE LIMIT_COUNT 1)
                 string(REGEX MATCH "^v[0-9]+\\.[0-9]+\\.[0-9]+" CLASH_BASE "${CLASH_BASE}")
                 if (NOT "${CLASH_BASE}" STREQUAL "")
-                    set(CLASH_TAG "core-${CLASH_BASE}")
+                    execute_process(
+                            COMMAND ${GIT_EXECUTABLE} tag --list "core-${CLASH_BASE}-clod.*" --sort=-v:refname
+                            WORKING_DIRECTORY ${CLASH_SOURCE_DIR}
+                            OUTPUT_VARIABLE CLASH_RELEASES
+                            OUTPUT_STRIP_TRAILING_WHITESPACE
+                            ERROR_QUIET
+                    )
+                    string(REGEX MATCH "^[^\n]+" CLASH_TAG "${CLASH_RELEASES}")
+                    if ("${CLASH_TAG}" STREQUAL "")
+                        set(CLASH_TAG "core-${CLASH_BASE}")
+                    endif ()
                     set(CLASH_TAG_RESULT 0)
                 endif ()
             endif ()
         endif ()
 
         if (CLASH_TAG_RESULT EQUAL 0 AND NOT "${CLASH_TAG}" STREQUAL "")
-            string(REGEX REPLACE "^core-(v[0-9]+\\.[0-9]+\\.[0-9]+).*$" "\\1" CORE_LABEL "${CLASH_TAG}")
+            string(REGEX REPLACE "^core-" "" CORE_LABEL "${CLASH_TAG}")
         else ()
             execute_process(
                     COMMAND ${GIT_EXECUTABLE} branch -r --contains ${CLASH_COMMIT}
