@@ -144,7 +144,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             networkInfos[network]?.dnsList = linkProperties.dnsServers
             notifyDnsChange()
 
-            networks.trySend(network)
+            // Подложка — предпочтительная сеть, а не та, у которой сменились свойства:
+            // иначе фоновая мобильная сеть делала бы VPN лимитным при Wi-Fi
+            networks.trySend(preferredNetwork())
         }
 
         override fun onUnavailable() {
@@ -257,6 +259,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         currentNetwork = network
         currentValidatedSeen = false
+
+        networks.trySend(network)
 
         if (!networkKnown) {
             networkKnown = true
