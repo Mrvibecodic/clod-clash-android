@@ -2,7 +2,6 @@ package tunnel
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"cfa/native/probeoutcome"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
+	"github.com/metacubex/mihomo/adapter/provider"
 	"github.com/metacubex/mihomo/common/utils"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
@@ -29,6 +29,10 @@ const (
 	healthCheckTotalTimeout = 45 * time.Second
 
 	healthCheckFreshWindow = 60 * time.Second
+
+	// probeSpan — сколько может идти проба узла: ядро ставит повторную пробу
+	// рядом с зависшей первой, и у второй свой тайм-аут
+	probeSpan = provider.ProbeHedgeDelay + healthCheckProbeTimeout
 )
 
 type probeResult struct {
@@ -101,7 +105,7 @@ func CloseProviders() {
 }
 
 func healthCheckBudget(count int) time.Duration {
-	need := time.Duration(count/healthCheckConcurrency+2) * healthCheckProbeTimeout
+	need := time.Duration(count/healthCheckConcurrency+2) * probeSpan
 
 	if need < healthCheckTotalTimeout {
 		return healthCheckTotalTimeout
@@ -169,7 +173,7 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 
 		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал;
 		// проверка и до очереди, чтобы такая проба её не бронировала
-		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < healthCheckProbeTimeout+probePaceMargin {
+		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < probeSpan+probePaceMargin {
 			own.err = context.DeadlineExceeded
 			own.outcome = probeoutcome.Expired
 
@@ -186,21 +190,22 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 		}
 
 		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал
-		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < healthCheckProbeTimeout {
+		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < probeSpan {
 			own.err = context.DeadlineExceeded
 			own.outcome = probeoutcome.Expired
 
 			return 0, own.outcome, own.err
 		}
 
-		probe, cancel := context.WithTimeout(C.MarkProbePaced(ctx), healthCheckProbeTimeout)
-		defer cancel()
+		// Проба та же, что у плановой проверки ядра: провал подтверждается
+		// второй пробой, а идущая проба ядра того же узла отдаёт свой результат
+		own.delay, own.err = provider.ProbeNode(C.MarkProbePaced(ctx), px, url, expected, healthCheckProbeTimeout)
 
-		own.delay, own.err = px.URLTest(probe, url, expected)
+		// Проба на смене сети или после заморозки процесса об узле ничего не говорит
+		if errors.Is(own.err, provider.ErrProbeDiscarded) {
+			own.outcome = probeoutcome.Superseded
 
-		// Ответ с неподходящим кодом ядро возвращает без ошибки, но записывает провалом
-		if own.err == nil && !px.AliveForTestUrl(url) {
-			own.err = errUnexpectedStatus
+			return 0, own.outcome, own.err
 		}
 
 		own.outcome = probeoutcome.Classify(own.err, ctx.Err())
@@ -229,13 +234,13 @@ func probeAdmitted(ctx context.Context) {
 }
 
 // paceProbe ждёт очередь проб к хосту узла так, чтобы до конца круга на саму
-// пробу осталось healthCheckProbeTimeout: ядро оставляет только C.ProbeReserve,
+// пробу осталось probeSpan: ядро оставляет только C.ProbeReserve,
 // и проба, дождавшаяся очереди, иначе не укладывалась бы в круг, а её бронь
 // отодвигала бы следующие.
 func paceProbe(ctx context.Context, px C.Proxy) error {
 	if deadline, ok := ctx.Deadline(); ok {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithDeadline(ctx, deadline.Add(C.ProbeReserve-healthCheckProbeTimeout-probePaceMargin))
+		ctx, cancel = context.WithDeadline(ctx, deadline.Add(C.ProbeReserve-probeSpan-probePaceMargin))
 		defer cancel()
 	}
 
@@ -282,18 +287,11 @@ func groupCheckOptions(g outboundgroup.ProxyGroup) (string, string, utils.IntRan
 	url := ""
 	status := ""
 
-	if data, err := json.Marshal(g); err == nil {
-		var meta map[string]any
-
-		if json.Unmarshal(data, &meta) == nil {
-			if v, ok := meta["testUrl"].(string); ok {
-				url = strings.TrimSpace(v)
-			}
-
-			if v, ok := meta["expectedStatus"].(string); ok {
-				status = strings.TrimSpace(v)
-			}
-		}
+	// Не через JSON группы: он спрашивает текущий узел, а url-test на этом
+	// делает новый выбор и держит его 10 с — дольше, чем идёт проверка
+	if o, ok := g.(outboundgroup.CheckOptions); ok {
+		u, st := o.TestOptions()
+		url, status = strings.TrimSpace(u), strings.TrimSpace(st)
 	}
 
 	if url == "" {
@@ -398,8 +396,6 @@ func (t checkTarget) key() string {
 
 var errNothingChecked = errors.New("health check interrupted: no node was checked")
 
-var errUnexpectedStatus = errors.New("unexpected status code")
-
 // Встроенные исходящие (DIRECT, REJECT и др.) — не узлы: пробовать их нечего или незачем
 func builtin(p C.Proxy) bool {
 	switch p.Type() {
@@ -419,7 +415,7 @@ func routesTraffic(g outboundgroup.ProxyGroup) bool {
 // fallback без нового выбора: выбор url-test кэшируется на 10 с и, сделанный
 // перед проверкой, пережил бы её результаты
 func currentMember(g outboundgroup.ProxyGroup) string {
-	if c, ok := g.(interface{ CurrentNode() C.Proxy }); ok {
+	if c, ok := g.(outboundgroup.Pinnable); ok {
 		if current := c.CurrentNode(); current != nil {
 			return current.Name()
 		}
@@ -595,7 +591,19 @@ func probeTargets(pool *probePool, what string, targets []checkTarget) (int, int
 
 	wg.Wait()
 
+	resetChoices()
+
 	return int(checked.Load()), int(alive.Load()), errors.Is(context.Cause(ctx), errConfigReplaced)
+}
+
+// resetChoices — после проб клиента url-test выбирает заново по их
+// результатам, а не держит выбор, сделанный до них (он кэшируется на 10 с)
+func resetChoices() {
+	for _, p := range tunnel.Proxies() {
+		if u, ok := p.Adapter().(*outboundgroup.URLTest); ok {
+			u.ResetChoice()
+		}
+	}
 }
 
 func ProbeCurrentNodes() {
@@ -615,6 +623,7 @@ func ProbeCurrentNodes() {
 	release := func() {
 		if pending.Add(-1) == 0 {
 			cancel()
+			resetChoices()
 		}
 	}
 
@@ -780,6 +789,8 @@ func RecoverDeadNodes(force bool) {
 	}
 
 	wg.Wait()
+
+	resetChoices()
 
 	log.Infoln("Recover dead nodes: %d of %d revived", revived.Load(), len(targets))
 }

@@ -19,12 +19,18 @@ permissions:
 jobs:
   BuildDebug:
     runs-on: ubuntu-latest
+    env:
+      GOFLAGS: -mod=mod
     steps:
       - name: Checkout Repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       
       - name: Checkout submodules
-        run: git submodule update --init --recursive --force
+        run: |
+          # Ядро Clod Core — всегда голова ветки android на момент сборки, а не
+          # гитлинк клиента: пин в клиенте не поднимается (решение владельца).
+          git submodule update --init --recursive --force --remote
+          git -C core/src/foss/golang/clash log -1 --format='Clod Core: %H %s'
 
       # Патчи Android живут коммитами в ветке android репозитория Mrvibecodic/clod-core,
       # submodule смотрит туда. Маркеры из тела каждой правки проверяют, что подтянуто
@@ -52,11 +58,6 @@ jobs:
           grep -qF 'return ErrRedirectDowngrade' component/http/http.go
           grep -A1 -F 'loadProvider(cfg.RuleProviders)' hub/executor/executor.go | grep -qF 'tunnel.OnRunning()'
           grep -A1 -F 'tunnel.OnRunning()' hub/executor/executor.go | grep -qF 'runtime.GC()'
-          # utls ядра закреплён replace в go.mod ядра, но replace зависимости Go не
-          # наследует: без своей копии в обоих модулях клиента соберётся utls v1.8.7
-          for m in ../go.mod ../../../main/golang/go.mod; do grep -q '^replace github.com/metacubex/utls => ' "$m"; done
-          test "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' go.mod)" = "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' ../go.mod)"
-          test "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' go.mod)" = "$(sed -n 's/^replace github.com\/metacubex\/utls => //p' ../../../main/golang/go.mod)"
 
       - name: Check Core Connectivity Test Address
         run: |
@@ -91,11 +92,14 @@ jobs:
           check core/src/main/golang/native/tunnel/connectivity.go 'healthCheckConcurrency += *10$'
           check core/src/main/golang/native/tunnel/connectivity.go 'healthCheckProbeTimeout += *5 \* time\.Second'
           check core/src/main/golang/native/tunnel/connectivity.go 'healthCheckTotalTimeout += *45 \* time\.Second'
-          check core/src/main/golang/native/tunnel/connectivity.go 'need := time\.Duration\(count/healthCheckConcurrency\+2\) \* healthCheckProbeTimeout'
+          check core/src/main/golang/native/tunnel/connectivity.go 'need := time\.Duration\(count/healthCheckConcurrency\+2\) \* probeSpan'
+          check core/src/main/golang/native/tunnel/connectivity.go 'probeSpan += *provider\.ProbeHedgeDelay \+ healthCheckProbeTimeout'
+          check core/src/foss/golang/clash/adapter/provider/healthcheck.go 'const probeHedgeDelay = time\.Second$'
+          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'PROBE_HEDGE_SECONDS = 1$'
           check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'PROBE_CONCURRENCY = 10$'
           check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'PROBE_TIMEOUT_SECONDS = 5$'
           check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'TOTAL_TIMEOUT_SECONDS = 45$'
-          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'val need = \(total / PROBE_CONCURRENCY \+ 2\) \* PROBE_TIMEOUT_SECONDS'
+          check design/src/main/java/com/github/kr328/clash/design/util/MeasuringBudget.kt 'val need = \(total / PROBE_CONCURRENCY \+ 2\) \* \(PROBE_HEDGE_SECONDS \+ PROBE_TIMEOUT_SECONDS\)'
 
       - name: Check Update Budget Numbers Shared With The Core
         run: |
@@ -132,6 +136,19 @@ jobs:
 
       - name: Go
         run: .github/scripts/go.sh
+
+      # Ядро свежее, поэтому и его replace-правила (utls, protobuf) берутся из его
+      # go.mod: зависимостям Go их не передаёт, а без копии в модулях клиента
+      # соберётся стоковый utls. Версии остальных зависимостей до требований
+      # ядра поднимает сам Go (GOFLAGS=-mod=mod у задачи).
+      - name: Sync Core Module Rules
+        run: |
+          set -euo pipefail
+          rules=$(awk '$1 == "replace" && NF == 5 {print $2 "=" $4 "@" $5}' core/src/foss/golang/clash/go.mod)
+          echo "$rules" | grep -q '^github.com/metacubex/utls='
+          for m in core/src/foss/golang core/src/main/golang; do
+            for r in $rules; do (cd "$m" && go mod edit -replace="$r"); done
+          done
 
       - name: Apply Patches
         run: |

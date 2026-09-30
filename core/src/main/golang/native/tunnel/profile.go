@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"runtime"
@@ -118,13 +119,14 @@ func TestProfileDelays(path string) map[string]int {
 				return
 			}
 
-			probe, cancelProbe := context.WithTimeout(C.MarkProbePaced(ctx), healthCheckProbeTimeout)
-			defer cancelProbe()
+			delay, err := provider.ProbeNode(C.MarkProbePaced(ctx), px, url, nil, healthCheckProbeTimeout)
 
-			delay, err := px.URLTest(probe, url, nil)
+			// Отмена, истёкший бюджет и проба на смене сети — не приговор узлу:
+			// он остаётся непроверенным, как и в замере при работающем туннеле
+			if errors.Is(err, provider.ErrProbeDiscarded) {
+				return
+			}
 
-			// Отмена и истёкший бюджет — не приговор узлу: он остаётся
-			// непроверенным, как и в замере при работающем туннеле
 			switch probeoutcome.Classify(err, ctx.Err()) {
 			case probeoutcome.Superseded, probeoutcome.Expired:
 				return

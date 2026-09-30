@@ -13,21 +13,21 @@ class MeasuringBudgetTest {
 
     @Test
     fun `бюджет растёт по десяткам узлов`() {
-        assertEquals(60, measuringBudgetSeconds(100))
-        assertEquals(110, measuringBudgetSeconds(200))
-        assertEquals(160, measuringBudgetSeconds(300))
-        assertEquals(260, measuringBudgetSeconds(500))
-        assertEquals(510, measuringBudgetSeconds(1000))
+        assertEquals(72, measuringBudgetSeconds(100))
+        assertEquals(132, measuringBudgetSeconds(200))
+        assertEquals(192, measuringBudgetSeconds(300))
+        assertEquals(312, measuringBudgetSeconds(500))
+        assertEquals(612, measuringBudgetSeconds(1000))
     }
 
     @Test
     fun `оценка в минутах округляется вверх`() {
         assertEquals(1, measuringMinutes(0))
         assertEquals(1, measuringMinutes(1))
-        assertEquals(1, measuringMinutes(100))
-        assertEquals(2, measuringMinutes(200))
-        assertEquals(3, measuringMinutes(300))
-        assertEquals(5, measuringMinutes(500))
-        assertEquals(9, measuringMinutes(1000))
+        assertEquals(2, measuringMinutes(100))
+        assertEquals(3, measuringMinutes(200))
+        assertEquals(4, measuringMinutes(300))
+        assertEquals(6, measuringMinutes(500))
+        assertEquals(11, measuringMinutes(1000))
     }
 }

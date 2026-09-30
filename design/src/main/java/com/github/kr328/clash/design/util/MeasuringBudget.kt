@@ -4,10 +4,13 @@ private const val PROBE_CONCURRENCY = 10
 
 private const val PROBE_TIMEOUT_SECONDS = 5
 
+// Повторная проба ядра рядом с зависшей первой: проба идёт до hedge + тайм-аут
+private const val PROBE_HEDGE_SECONDS = 1
+
 private const val TOTAL_TIMEOUT_SECONDS = 45
 
 internal fun measuringBudgetSeconds(total: Int): Int {
-    val need = (total / PROBE_CONCURRENCY + 2) * PROBE_TIMEOUT_SECONDS
+    val need = (total / PROBE_CONCURRENCY + 2) * (PROBE_HEDGE_SECONDS + PROBE_TIMEOUT_SECONDS)
 
     return if (need < TOTAL_TIMEOUT_SECONDS) TOTAL_TIMEOUT_SECONDS else need
 }
