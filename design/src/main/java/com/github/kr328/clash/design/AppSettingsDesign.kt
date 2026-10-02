@@ -88,6 +88,14 @@ class AppSettingsDesign(
         state = state.copy(restore = dialog)
     }
 
+    private var resetting = false
+
+    // Замок следует за сессией службы, экран при этом не пересоздаётся — его
+    // уведомления и открытый выбор файла остаются на месте.
+    fun setLocked(locked: Boolean) {
+        state = state.copy(notificationEditable = !locked, resetEnabled = !locked && !resetting)
+    }
+
     private fun resetSettings() {
         if (isRunning()) {
             state = state.copy(resetEnabled = false)
@@ -97,6 +105,8 @@ class AppSettingsDesign(
             return
         }
 
+        resetting = true
+
         state = state.copy(resetEnabled = false)
 
         launch {
@@ -105,7 +115,9 @@ class AppSettingsDesign(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state = state.copy(resetEnabled = true)
+                resetting = false
+
+                state = state.copy(resetEnabled = !isRunning())
 
                 showExceptionToast(e)
 

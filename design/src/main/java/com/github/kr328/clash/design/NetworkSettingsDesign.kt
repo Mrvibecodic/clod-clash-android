@@ -51,6 +51,11 @@ class NetworkSettingsDesign(
         NetworkSettingsScreen(state = state, onAction = ::onAction)
     }
 
+    // Замок следует за сессией службы, экран при этом не пересоздаётся.
+    fun setLocked(locked: Boolean) {
+        state = state.copy(editable = !locked)
+    }
+
     private fun onAction(action: NetworkSettingsAction) {
         when (action) {
             NetworkSettingsAction.Back -> requests.trySend(Request.Back)

@@ -31,12 +31,13 @@ class NetworkSettingsActivity : BaseActivity<NetworkSettingsDesign>() {
             }
         }
         val prefs = ServiceSettings.access { NetworkSettingsPrefs.read(this) }
+        var locked = clashActive
 
         val design = NetworkSettingsDesign(
             this,
             uiStore,
             prefs,
-            clashRunning,
+            locked,
             activeLocalProxyPort() ?: 0,
             profileTunStack,
             strictPrivateDnsHost(),
@@ -44,12 +45,22 @@ class NetworkSettingsActivity : BaseActivity<NetworkSettingsDesign>() {
 
         setContentDesign(design)
 
+        fun syncLock() {
+            if (clashActive != locked) {
+                locked = clashActive
+
+                design.setLocked(locked)
+            }
+        }
+
         while (isActive) {
             select<Unit> {
                 events.onReceive {
                     when (it) {
-                        Event.ClashStart, Event.ClashStop, Event.ServiceRecreated ->
-                            recreate()
+                        // Экран показывает подписку, которую загружает сессия, и
+                        // от неё зависит только замком — тот переключается на месте.
+                        Event.ClashStarting, Event.ClashStart, Event.ClashStop, Event.ActivityStart -> syncLock()
+                        Event.ServiceRecreated -> recreate()
                         else -> Unit
                     }
                 }

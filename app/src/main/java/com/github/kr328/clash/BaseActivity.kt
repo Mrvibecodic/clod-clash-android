@@ -57,6 +57,9 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     protected var activityStarted: Boolean = false
     protected val clashRunning: Boolean
         get() = Remote.broadcasts.clashRunning
+
+    protected val clashActive: Boolean
+        get() = Remote.broadcasts.clashActive
     protected var design: D? = null
         set(value) {
             field = value

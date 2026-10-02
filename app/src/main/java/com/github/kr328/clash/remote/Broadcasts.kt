@@ -29,6 +29,32 @@ class Broadcasts(private val context: Application) {
 
     @Volatile
     var clashRunning: Boolean = false
+        private set
+
+    // Сессия жива — запускается или работает. Служба читает настройки с самого
+    // старта сессии, а не с готовности туннеля: экраны настроек запираются по этому.
+    @Volatile
+    var clashActive: Boolean = false
+        private set
+
+    // Счёт рассылок о состоянии службы: ответ службы, прочитанный мимо рассылок,
+    // применяется, только если за время чтения ни одна не пришла — рассылка свежее.
+    @Volatile
+    var epoch: Int = 0
+        private set
+
+    // Ответ службы (null — службы нет) к обоим признакам разом; since — epoch,
+    // снятый перед чтением ответа.
+    fun apply(status: StatusClient.Status?, since: Int) {
+        if (since != epoch) return
+
+        set(status)
+    }
+
+    private fun set(status: StatusClient.Status?) {
+        clashRunning = status?.running == true
+        clashActive = status?.let { it.running || it.starting } == true
+    }
 
     private var registered = false
     private val receivers = mutableListOf<Observer>()
@@ -46,14 +72,18 @@ class Broadcasts(private val context: Application) {
                     }
                 }
                 Intents.ACTION_CLASH_STARTING -> {
+                    epoch++
                     clashRunning = false
+                    clashActive = true
 
                     receivers.forEach {
                         it.onStarting(intent.getStringExtra(Intents.EXTRA_STAGE))
                     }
                 }
                 Intents.ACTION_CLASH_STARTED -> {
+                    epoch++
                     clashRunning = true
+                    clashActive = true
 
                     receivers.forEach {
                         it.onStarted()
@@ -145,7 +175,9 @@ class Broadcasts(private val context: Application) {
     // без вопроса, а вопрос поднял бы этот процесс, и главный поток, откуда сюда
     // приходят при каждом появлении приложения, ждал бы его запуска.
     private fun refreshRunning() {
-        clashRunning = backgroundAlive() && StatusClient(context).isRunning()
+        epoch++
+
+        set(if (backgroundAlive()) StatusClient(context).status() else null)
     }
 
     private fun backgroundAlive(): Boolean {

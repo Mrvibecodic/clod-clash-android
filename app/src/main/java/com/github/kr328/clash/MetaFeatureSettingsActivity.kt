@@ -241,7 +241,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             design?.showToast(
                 getString(R.string.geofile_imported, displayName),
                 ToastDuration.Long,
-                detail = if (clashRunning) getString(R.string.geofile_after_reconnect) else null,
+                detail = if (clashActive) getString(R.string.geofile_after_reconnect) else null,
             )
         } else {
             design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)

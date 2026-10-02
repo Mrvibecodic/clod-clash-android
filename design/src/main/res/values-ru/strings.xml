@@ -483,6 +483,8 @@
     <string name="clod_backup_empty">Нет подписок со ссылкой</string>
     <string name="clod_backup_invalid">Это не файл с копией подписок</string>
     <string name="clod_backup_restored">Восстановлено %1$d из %2$d</string>
+    <string name="clod_backup_restored_present">Восстановлено %1$d из %2$d, уже были: %3$d</string>
+    <string name="clod_backup_all_present">Все подписки из копии уже есть</string>
     <string name="clod_backup_restore_action">Восстановить</string>
     <string name="clod_backup_restore_active">Активной станет: %1$s</string>
     <string name="clod_backup_restore_busy">Восстановление уже идёт</string>

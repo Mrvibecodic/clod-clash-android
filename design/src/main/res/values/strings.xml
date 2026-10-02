@@ -493,6 +493,8 @@
     <string name="clod_backup_empty">No subscriptions with a link to back up</string>
     <string name="clod_backup_invalid">The file is not a subscription backup</string>
     <string name="clod_backup_restored">Restored %1$d of %2$d</string>
+    <string name="clod_backup_restored_present">Restored %1$d of %2$d, already here: %3$d</string>
+    <string name="clod_backup_all_present">All subscriptions from the backup are already here</string>
     <string name="clod_backup_restore_action">Restore</string>
     <string name="clod_backup_restore_active">Will become active: %1$s</string>
     <string name="clod_backup_restore_busy">A restore is already in progress</string>

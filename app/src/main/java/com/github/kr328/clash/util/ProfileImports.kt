@@ -47,15 +47,21 @@ object ProfileImports {
     // человеком не возвращается и после пересоздания.
     sealed interface BatchState {
         data object Idle : BatchState
+        // present — сколько подписок из копии уже есть, rejected — «запись: причина»
+        // для тех, что отброшены до загрузки; итог называет и то, и другое.
         data class Confirm(
             val items: List<Item>,
             val entries: List<String>,
             val activeName: String?,
+            val present: Int,
+            val rejected: List<String>,
         ) : BatchState
         data class Running(val processed: Int, val total: Int, val shown: Boolean = true) : BatchState
         data class Done(
             val restored: Int,
             val total: Int,
+            val present: Int,
+            val failures: List<String>,
             val failedProviders: List<String> = emptyList(),
         ) : BatchState
     }
@@ -137,9 +143,9 @@ object ProfileImports {
     }
 
     @Synchronized
-    fun offerBatch(items: List<Item>, entries: List<String>, activeName: String?) {
+    fun offerBatch(items: List<Item>, entries: List<String>, activeName: String?, present: Int, rejected: List<String>) {
         if (batch_.value is BatchState.Idle) {
-            batch_.value = BatchState.Confirm(items, entries, activeName)
+            batch_.value = BatchState.Confirm(items, entries, activeName, present, rejected)
         }
     }
 
@@ -155,7 +161,9 @@ object ProfileImports {
         batch_.value = BatchState.Running(0, total)
 
         batchJob = launchHoldingService {
+            val context = Global.application.withAppLocale()
             var restored = 0
+            val failures = confirm.rejected.toMutableList()
             val failed = AtomicReference(emptyList<String>())
 
             for ((index, item) in items.withIndex()) {
@@ -181,12 +189,14 @@ object ProfileImports {
                     throw e
                 } catch (e: Exception) {
                     Log.w("Restore subscription: $e", e)
+
+                    failures += "${confirm.entries.getOrElse(index) { item.name }}: ${context.failureMessage(e)}"
                 }
 
                 batch_.update { (it as? BatchState.Running)?.copy(processed = index + 1) ?: it }
             }
 
-            batch_.value = BatchState.Done(restored, total, failed.get())
+            batch_.value = BatchState.Done(restored, total + confirm.rejected.size, confirm.present, failures, failed.get())
         }
     }
 
@@ -256,9 +266,18 @@ object ProfileImports {
         return token
     }
 
+    private fun Context.humanFailure(e: Exception): String? {
+        val raw = e.message.orEmpty()
+
+        return humanizeUpdateFailure(raw) ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
+    }
+
+    private fun Context.failureMessage(e: Exception): String =
+        humanFailure(e) ?: getString(R.string.clod_sub_fetch_failed)
+
     private fun Context.failed(token: Long, e: Exception): State.Failed {
         val raw = e.message.orEmpty()
-        val human = humanizeUpdateFailure(raw) ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
+        val human = humanFailure(e)
 
         return State.Failed(
             token,

@@ -637,12 +637,14 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.fetch(): Boolean {
         panelRunning = null
 
+        val epoch = Remote.broadcasts.epoch
+
         val status = if (clashRunning) null else withContext(Dispatchers.IO) {
             StatusClient(this@MainActivity).status()
         }
 
-        if (status?.running == true) {
-            Remote.broadcasts.clashRunning = true
+        if (status != null) {
+            Remote.broadcasts.apply(status, epoch)
         }
 
         if (status?.starting == true) {
@@ -1348,12 +1350,13 @@ class MainActivity : BaseActivity<MainDesign>() {
             if (clashRunning)
                 return@launch
 
+            val epoch = Remote.broadcasts.epoch
+
             val status = withContext(Dispatchers.IO) {
                 StatusClient(this@MainActivity).status()
             }
 
-            if (status.running)
-                Remote.broadcasts.clashRunning = true
+            Remote.broadcasts.apply(status, epoch)
 
             if (status.starting) {
                 target.setConnecting(status.stage)
@@ -1435,6 +1438,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         runningProbeAt = now
 
+        val epoch = Remote.broadcasts.epoch
+
         val running = withContext(Dispatchers.IO) {
             StatusClient(this@MainActivity).isRunning()
         }
@@ -1452,7 +1457,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         runningProbeMisses = 0
 
-        Remote.broadcasts.clashRunning = false
+        Remote.broadcasts.apply(null, epoch)
 
         return true
     }

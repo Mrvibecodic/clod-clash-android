@@ -33,6 +33,7 @@ import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ApplicationObserver
 import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.applyHideFromRecents
+import com.github.kr328.clash.util.planRestore
 import com.github.kr328.clash.util.refreshDynamicShortcuts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
@@ -44,19 +45,28 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
     override suspend fun main() {
         val prefs = ServiceSettings.access { AppSettingsPrefs.read(this) }
+        var locked = clashActive
 
         val design = AppSettingsDesign(
             this,
             uiStore,
             prefs,
             this,
-            clashRunning,
+            locked,
             ::onHideIconChange,
-            { clashRunning },
+            { clashActive },
             ::onReset,
         )
 
         setContentDesign(design)
+
+        fun syncLock() {
+            if (clashActive != locked) {
+                locked = clashActive
+
+                design.setLocked(locked)
+            }
+        }
 
         launch {
             ProfileImports.batch.collect { state ->
@@ -73,19 +83,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                 if (state is ProfileImports.BatchState.Done) {
                     ProfileImports.resetBatch()
 
-                    design.showToast(
-                        getString(DesignR.string.clod_backup_restored, state.restored, state.total),
-                        ToastDuration.Long,
-                    )
-
-                    if (state.failedProviders.isNotEmpty()) {
-                        design.showToast(
-                            DesignR.string.clod_providers_failed_plural,
-                            ToastDuration.Long,
-                            detail = state.failedProviders.joinToString(", "),
-                            kind = NoticeKind.Error,
-                        )
-                    }
+                    design.showRestoreResult(state)
                 }
             }
         }
@@ -94,9 +92,15 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             select<Unit> {
                 events.onReceive {
                     when (it) {
-                        Event.ClashStart, Event.ClashStop, Event.ServiceRecreated ->
-                            recreate()
-                        Event.ActivityStart -> design.refreshNotifications()
+                        // Экран зависит от сессии только замком — он переключается на
+                        // месте, в том числе если сессия началась, пока экран был свёрнут.
+                        Event.ClashStarting, Event.ClashStart, Event.ClashStop -> syncLock()
+                        Event.ServiceRecreated -> recreate()
+                        Event.ActivityStart -> {
+                            syncLock()
+
+                            design.refreshNotifications()
+                        }
                         else -> Unit
                     }
                 }
@@ -249,17 +253,13 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             return
         }
 
-        val known = withProfile { queryAll() }.map { it.source }.toSet()
+        val known = withProfile { queryAll() }.map { it.source.trim() }.toSet()
 
-        val items = wanted.mapNotNull { item ->
-            val source = item.source.trim()
-
-            if (!ValidatorHttpUrl(source) || source in known) return@mapNotNull null
-
+        val candidates = wanted.map { item ->
             ProfileImports.Item(
                 name = item.name,
                 nameManual = item.nameManual,
-                source = source,
+                source = item.source.trim(),
                 interval = if (item.interval > 0) {
                     maxOf(item.interval, TimeUnit.MINUTES.toMillis(MIN_INTERVAL_MINUTES))
                 } else {
@@ -271,8 +271,13 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             )
         }
 
+        val plan = planRestore(candidates, known, ValidatorHttpUrl)
+
+        val items = plan.load
+        val rejected = plan.rejected.map { "${it.name.ifBlank { "?" }}: ${getString(DesignR.string.invalid_url)}" }
+
         if (items.isEmpty()) {
-            design.showToast(getString(DesignR.string.clod_backup_restored, 0, wanted.size), ToastDuration.Long)
+            design.showRestoreResult(ProfileImports.BatchState.Done(0, rejected.size, plan.present, rejected))
 
             return
         }
@@ -282,7 +287,33 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
 
         val entries = items.map { "${it.name} · ${Uri.parse(it.source).host ?: "?"}" }
 
-        ProfileImports.offerBatch(items, entries, activeName)
+        ProfileImports.offerBatch(items, entries, activeName, plan.present, rejected)
+    }
+
+    // Итог восстановления: сколько записей встало из тех, что шли на загрузку или
+    // были негодны, сколько подписок уже было, и по каждой невставшей — «запись: причина».
+    private suspend fun AppSettingsDesign.showRestoreResult(done: ProfileImports.BatchState.Done) {
+        val message = when {
+            done.total == 0 -> getString(DesignR.string.clod_backup_all_present)
+            done.present > 0 -> getString(DesignR.string.clod_backup_restored_present, done.restored, done.total, done.present)
+            else -> getString(DesignR.string.clod_backup_restored, done.restored, done.total)
+        }
+
+        showToast(
+            message,
+            ToastDuration.Long,
+            detail = done.failures.joinToString("\n").ifEmpty { null },
+            kind = if (done.failures.isEmpty()) NoticeKind.Info else NoticeKind.Error,
+        )
+
+        if (done.failedProviders.isNotEmpty()) {
+            showToast(
+                DesignR.string.clod_providers_failed_plural,
+                ToastDuration.Long,
+                detail = done.failedProviders.joinToString(", "),
+                kind = NoticeKind.Error,
+            )
+        }
     }
 
     override var autoRestart: Boolean
