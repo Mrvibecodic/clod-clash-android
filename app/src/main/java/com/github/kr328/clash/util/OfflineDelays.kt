@@ -16,11 +16,10 @@ object OfflineDelays {
     sealed interface State {
         data object Idle : State
 
-        data class Running(val profile: UUID, val total: Int, val manual: Boolean) : State
+        data class Running(val profile: UUID, val total: Int) : State
 
         data class Done(
             val profile: UUID,
-            val manual: Boolean,
             val delays: Map<String, Int>,
             val error: Exception?,
         ) : State
@@ -35,10 +34,10 @@ object OfflineDelays {
     val running: Boolean
         get() = current.value is State.Running
 
-    fun start(profile: UUID, total: Int, manual: Boolean) {
+    fun start(profile: UUID, total: Int) {
         if (current.value is State.Running) return
 
-        current.value = State.Running(profile, total, manual)
+        current.value = State.Running(profile, total)
 
         Global.launch {
             var delays = emptyMap<String, Int>()
@@ -62,7 +61,7 @@ object OfflineDelays {
                 failure = e
             }
 
-            current.value = State.Done(profile, manual, delays, failure)
+            current.value = State.Done(profile, delays, failure)
         }
     }
 

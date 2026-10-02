@@ -64,6 +64,8 @@ import com.github.kr328.clash.update.UpdateTask
 import com.github.kr328.clash.util.ServersReload
 import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.serversReload
+import com.github.kr328.clash.util.HealthCheckRoute
+import com.github.kr328.clash.util.healthCheckRoute
 import com.github.kr328.clash.util.shouldAutoHealthCheck
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
@@ -915,6 +917,10 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.runHealthCheck(manual: Boolean, force: Boolean = manual) {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
 
+        val route = healthCheckRoute(offlinePanel = offlineGroups.isNotEmpty(), manual = manual)
+
+        if (route == HealthCheckRoute.Skip) return
+
         if (healthChecking) {
             healthCheckRequested = true
 
@@ -933,8 +939,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         // очередь; замер, упавший с ошибкой, его снимает
         lastHealthCheckAt = SystemClock.elapsedRealtime()
 
-        if (offlineGroups.isNotEmpty()) {
-            startOfflineHealthCheck(manual)
+        if (route == HealthCheckRoute.Offline) {
+            startOfflineHealthCheck()
 
             return
         }
@@ -1001,14 +1007,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         runHealthCheck(manual = queuedManually, force = false)
     }
 
-    private suspend fun MainDesign.startOfflineHealthCheck(manual: Boolean) {
+    private suspend fun MainDesign.startOfflineHealthCheck() {
         if (OfflineDelays.running) return
 
         val active = withProfile { queryActive() } ?: return
 
         val total = offlineGroups.flatMap { it.proxies }.filterNot(offlineHides).distinct().size
 
-        OfflineDelays.start(active.uuid, total, manual)
+        OfflineDelays.start(active.uuid, total)
     }
 
     private suspend fun MainDesign.renderOfflineDelays(update: OfflineDelays.State) {
@@ -1022,12 +1028,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                     fillOfflineProxyGroup(selectedGroup)
 
-                    if (update.manual) {
-                        if (update.error != null) {
-                            showExceptionToast(update.error, DesignR.string.clod_delay_failed)
-                        } else {
-                            notifyDelaysUnavailable(update.delays.values.toList())
-                        }
+                    if (update.error != null) {
+                        showExceptionToast(update.error, DesignR.string.clod_delay_failed)
+                    } else {
+                        notifyDelaysUnavailable(update.delays.values.toList())
                     }
                 }
 

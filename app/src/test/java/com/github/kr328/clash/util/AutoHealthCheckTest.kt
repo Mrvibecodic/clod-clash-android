@@ -1,5 +1,6 @@
 package com.github.kr328.clash.util
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -103,5 +104,17 @@ class AutoHealthCheckTest {
                 staleMs = stale,
             ),
         )
+    }
+
+    @Test
+    fun `панель из подписки меряется только по кнопке, даже при запущенном туннеле`() {
+        assertEquals(HealthCheckRoute.Skip, healthCheckRoute(offlinePanel = true, manual = false))
+        assertEquals(HealthCheckRoute.Offline, healthCheckRoute(offlinePanel = true, manual = true))
+    }
+
+    @Test
+    fun `живые группы меряются и сами, и по кнопке`() {
+        assertEquals(HealthCheckRoute.Live, healthCheckRoute(offlinePanel = false, manual = false))
+        assertEquals(HealthCheckRoute.Live, healthCheckRoute(offlinePanel = false, manual = true))
     }
 }

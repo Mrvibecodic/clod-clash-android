@@ -69,22 +69,16 @@ data class PingBounds(val fast: Int = 200, val medium: Int = 400)
 fun PanelInfo?.pingBounds(): PingBounds =
     if (this != null && pingFast > 0 && pingMedium > pingFast) PingBounds(pingFast, pingMedium) else PingBounds()
 
-enum class DelayLevel { Fast, Medium, Slow }
+enum class DelayMark { Untested, Dead, Fast, Medium, Slow }
 
-fun delayLevel(delay: Int, bounds: PingBounds): DelayLevel = when {
-    delay < bounds.fast -> DelayLevel.Fast
-    delay < bounds.medium -> DelayLevel.Medium
-    else -> DelayLevel.Slow
-}
-
-@Composable
-private fun delayColor(delay: Int, bounds: PingBounds): Color = when {
-    delay <= 0 || delay >= DELAY_UNKNOWN -> ClodTheme.extraColors.statusStopped
-    else -> when (delayLevel(delay, bounds)) {
-        DelayLevel.Fast -> ClodTheme.extraColors.statusConnected
-        DelayLevel.Medium -> ClodTheme.extraColors.statusConnecting
-        DelayLevel.Slow -> MaterialTheme.colorScheme.error
-    }
+// Один ответ на всё, что показывает задержку: 0 — узел не мерили (серый прочерк),
+// 0xffff — мерили и он не ответил, тайм-аут или ошибка (красный, как на ПК).
+fun delayMark(delay: Int, bounds: PingBounds): DelayMark = when {
+    delay <= 0 -> DelayMark.Untested
+    delay >= DELAY_UNKNOWN -> DelayMark.Dead
+    delay < bounds.fast -> DelayMark.Fast
+    delay < bounds.medium -> DelayMark.Medium
+    else -> DelayMark.Slow
 }
 
 @Composable
@@ -95,29 +89,14 @@ fun PingBadge(
     bounds: PingBounds = PingBounds(),
     modifier: Modifier = Modifier,
 ) {
-    val color: Color
-    val label: String
+    val mark = delayMark(delay, bounds)
 
-    if (marksOnly) {
-        when {
-            delay <= 0 -> {
-                color = ClodTheme.extraColors.statusStopped
-                label = "—"
-            }
-            delay >= DELAY_UNKNOWN -> {
-                color = MaterialTheme.colorScheme.error
-                label = "✕"
-            }
-            else -> {
-                color = ClodTheme.extraColors.statusConnected
-                label = "✓"
-            }
-        }
-    } else {
-        val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
-
-        color = delayColor(delay, bounds)
-        label = if (unknown) "—" else stringResource(R.string.clod_delay_ms, delay)
+    val color = when {
+        mark == DelayMark.Untested -> ClodTheme.extraColors.statusStopped
+        mark == DelayMark.Dead -> MaterialTheme.colorScheme.error
+        marksOnly || mark == DelayMark.Fast -> ClodTheme.extraColors.statusConnected
+        mark == DelayMark.Medium -> ClodTheme.extraColors.statusConnecting
+        else -> MaterialTheme.colorScheme.error
     }
 
     Box(
@@ -127,12 +106,20 @@ fun PingBadge(
             .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
         Text(
-            text = label,
+            text = delayLabel(mark, delay, marksOnly),
             color = color.statusText(),
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
         )
     }
+}
+
+@Composable
+private fun delayLabel(mark: DelayMark, delay: Int, marksOnly: Boolean): String = when {
+    mark == DelayMark.Untested -> "—"
+    mark == DelayMark.Dead -> if (marksOnly) "✕" else "—"
+    marksOnly -> "✓"
+    else -> stringResource(R.string.clod_delay_ms, delay)
 }
 
 @Composable
@@ -143,32 +130,9 @@ fun DelayPill(
     bounds: PingBounds = PingBounds(),
     modifier: Modifier = Modifier,
 ) {
-    if (marksOnly && delay > 0) {
-        val failed = delay >= DELAY_UNKNOWN
-        val color = if (failed) ClodTheme.extraColors.delaySlow else ClodTheme.extraColors.delayFast
+    val mark = delayMark(delay, bounds)
 
-        Box(
-            modifier = modifier
-                .widthIn(min = 52.dp)
-                .clip(RoundedCornerShape(50))
-                .background(color.statusContainer(on))
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = if (failed) "✕" else "✓",
-                color = color.statusText(),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-
-        return
-    }
-
-    val unknown = delay <= 0 || delay >= DELAY_UNKNOWN
-
-    if (unknown) {
+    if (mark == DelayMark.Untested) {
         Box(
             modifier = modifier
                 .widthIn(min = 52.dp)
@@ -188,10 +152,11 @@ fun DelayPill(
         return
     }
 
-    val color = when (delayLevel(delay, bounds)) {
-        DelayLevel.Fast -> ClodTheme.extraColors.delayFast
-        DelayLevel.Medium -> ClodTheme.extraColors.delayMedium
-        DelayLevel.Slow -> ClodTheme.extraColors.delaySlow
+    val color = when {
+        mark == DelayMark.Dead -> ClodTheme.extraColors.delaySlow
+        marksOnly || mark == DelayMark.Fast -> ClodTheme.extraColors.delayFast
+        mark == DelayMark.Medium -> ClodTheme.extraColors.delayMedium
+        else -> ClodTheme.extraColors.delaySlow
     }
 
     Box(
@@ -203,7 +168,7 @@ fun DelayPill(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = stringResource(R.string.clod_delay_ms, delay),
+            text = delayLabel(mark, delay, marksOnly),
             color = color.statusText(),
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
