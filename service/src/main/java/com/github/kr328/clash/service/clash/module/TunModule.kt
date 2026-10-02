@@ -27,6 +27,7 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
 
     private val connectivity = service.getSystemService<ConnectivityManager>()!!
     private val close = Channel<Unit>(Channel.CONFLATED)
+    private var http: InetSocketAddress? = null
 
     private fun queryUid(
         protocol: Int,
@@ -50,12 +51,15 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
         }
     }
 
+    // Вход живёт всю сессию: пересборка туннеля отдаёт системе тот же адрес, иначе
+    // приложения, запомнившие прежний прокси, получают отказ до своего перезапуска.
     fun listenHttp(): InetSocketAddress? {
+        http?.let { return it }
+
         val r = { 1 + random.nextInt(199) }
         val listenAt = "127.${r()}.${r()}.${r()}:0"
-        val address = Clash.startHttp(listenAt)
 
-        return address?.let(::parseInetSocketAddress)
+        return Clash.startHttp(listenAt)?.let(::parseInetSocketAddress).also { http = it }
     }
 
     fun attachSocketCallbacks() {

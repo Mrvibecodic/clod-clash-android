@@ -72,9 +72,7 @@ class ClashService : BaseService() {
                 if (quit) break
             }
         } catch (e: Exception) {
-            Log.e("Create clash runtime: ${e.message}", e)
-
-            session.reason = e.message
+            session.recordFailure(e)
         } finally {
             withContext(NonCancellable) {
                 session.beginStop()

@@ -134,9 +134,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 if (quit) break
             }
         } catch (e: Exception) {
-            Log.e("Create clash runtime: ${e.message}", e)
-
-            session.reason = e.message
+            session.recordFailure(e)
         } finally {
             withContext(NonCancellable) {
                 session.beginStop()
@@ -367,9 +365,9 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     Log.w("System proxy requested but http listener is unavailable")
 
                     ServiceLog.mark("system proxy: local http inbound unavailable")
-
-                    session.systemProxyRefused = true
                 }
+
+                session.noteSystemProxy(refused = http == null)
 
                 http?.let {
                     setHttpProxy(

@@ -21,6 +21,8 @@ import com.github.kr328.clash.service.util.sendClashStopped
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -82,7 +84,7 @@ class SessionLifecycle(
     var unattendedStart = false
 
     @Volatile
-    var systemProxyRefused = false
+    private var systemProxyRefused = false
 
     @Volatile
     private var restartedBySystem = false
@@ -152,6 +154,34 @@ class SessionLifecycle(
             } catch (e: Exception) {
                 Log.w("Subscription alerts of $uuid: $e", e)
             }
+        }
+    }
+
+    // Вход системного прокси поднимается при каждом открытии туннеля, и признак
+    // «недоступен» следует за последним подъёмом: у готовой сессии он публикуется
+    // сразу, у запускающейся — вместе с готовностью.
+    fun noteSystemProxy(refused: Boolean) {
+        systemProxyRefused = refused
+
+        if (StatusProvider.serviceReady) {
+            StatusProvider.systemProxyRefused = refused
+        }
+    }
+
+    // Причина остановки — первое, что случилось с живой сессией. Отмена и отказ на уже
+    // сворачиваемой (отзыв VPN, уничтожение службы: туннель закрыт, а пересборка ещё
+    // шла) — следствие остановки: в журнал, но причину они не переписывают.
+    suspend fun recordFailure(e: Exception) {
+        if (!currentCoroutineContext().isActive) {
+            Log.i("Runtime stopped: ${e.message}", e)
+
+            return
+        }
+
+        Log.e("Create clash runtime: ${e.message}", e)
+
+        if (reason == null) {
+            reason = e.message
         }
     }
 
