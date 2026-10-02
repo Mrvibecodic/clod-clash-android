@@ -9,6 +9,7 @@ import (
 	"cfa/native/app"
 	"cfa/native/config/panel"
 
+	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
 	"github.com/metacubex/mihomo/hub"
@@ -65,6 +66,18 @@ var ErrLoadCancelled = errors.New("load cancelled by reset")
 
 func IsLoaded() bool {
 	return loaded.Load()
+}
+
+// UseProfileDelayMode — замер без туннеля считает задержку так же, как туннель
+// на этом профиле: unified-delay берётся из профиля. Флаг в ядре общий, поэтому
+// при загруженном конфиге его не трогаем; следующие загрузка или сброс ставят свой.
+func UseProfileDelayMode(rawCfg *config.RawConfig) {
+	parseMutex.Lock()
+	defer unlockParse()
+
+	if !loaded.Load() {
+		adapter.UnifiedDelay.Store(rawCfg.UnifiedDelay)
+	}
 }
 
 func applyDefaultLocked() {

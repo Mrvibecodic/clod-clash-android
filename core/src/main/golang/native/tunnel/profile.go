@@ -36,6 +36,8 @@ func TestProfileDelays(path string) map[string]int {
 		return result
 	}
 
+	config.UseProfileDelayMode(rawCfg)
+
 	cfg, err := config.Parse(rawCfg)
 	if err != nil {
 		log.Errorln("Test profile `%s`: %s", path, err.Error())
