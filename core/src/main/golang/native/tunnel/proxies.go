@@ -131,6 +131,32 @@ func matchTarget() string {
 	return ""
 }
 
+// shownMember — узел, который группа использует, для экрана. У fallback — без
+// снятия закрепления на мёртвом узле: это делает только соединение. У
+// url-test — без нового выбора, пока текущий узел жив; мёртвый текущий (после
+// проверки) и отсутствие текущего (до первого соединения) показываются тем,
+// что группа выберет при следующем соединении — закрепления url-test это не
+// трогает
+func shownMember(g outboundgroup.ProxyGroup) string {
+	c, ok := g.(outboundgroup.Pinnable)
+	if !ok {
+		return g.Now()
+	}
+
+	current := c.CurrentNode()
+	if current == nil {
+		return g.Now()
+	}
+
+	if g.Type() == C.URLTest {
+		if url, _ := g.(outboundgroup.CheckOptions).TestOptions(); !current.AliveForTestUrl(url) {
+			return g.Now()
+		}
+	}
+
+	return current.Name()
+}
+
 func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
 	p := tunnel.Proxies()[name]
 
@@ -151,7 +177,7 @@ func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup
 
 	group := &ProxyGroup{
 		Type:    g.Type().String(),
-		Now:     g.Now(),
+		Now:     shownMember(g),
 		Proxies: proxies,
 	}
 
