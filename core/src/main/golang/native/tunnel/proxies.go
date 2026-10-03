@@ -133,28 +133,46 @@ func matchTarget() string {
 
 // shownMember — узел, который группа использует, для экрана. У fallback — без
 // снятия закрепления на мёртвом узле: это делает только соединение. У
-// url-test — без нового выбора, пока текущий узел жив; мёртвый текущий (после
-// проверки) и отсутствие текущего (до первого соединения) показываются тем,
-// что группа выберет при следующем соединении — закрепления url-test это не
-// трогает
+// url-test — закреплённый узел, пока он жив (его возьмёт следующее
+// соединение), иначе текущий, пока он жив и в группе, — без нового выбора;
+// мёртвый или пропавший текущий и отсутствие текущего (до первого соединения)
+// показываются тем, что группа выберет при следующем соединении. Так же
+// показывает url-test ядро в /proxies
 func shownMember(g outboundgroup.ProxyGroup) string {
 	c, ok := g.(outboundgroup.Pinnable)
 	if !ok {
 		return g.Now()
 	}
 
-	current := c.CurrentNode()
-	if current == nil {
+	if g.Type() == C.URLTest {
+		url, _ := g.(outboundgroup.CheckOptions).TestOptions()
+		proxies := g.Proxies()
+		usable := func(name string) bool {
+			for _, p := range proxies {
+				if p.Name() == name {
+					return p.AliveForTestUrl(url)
+				}
+			}
+
+			return false
+		}
+
+		if pinned := c.Pinned(); pinned != "" && usable(pinned) {
+			return pinned
+		}
+
+		if current := c.CurrentNode(); current != nil && usable(current.Name()) {
+			return current.Name()
+		}
+
 		return g.Now()
 	}
 
-	if g.Type() == C.URLTest {
-		if url, _ := g.(outboundgroup.CheckOptions).TestOptions(); !current.AliveForTestUrl(url) {
-			return g.Now()
-		}
+	if current := c.CurrentNode(); current != nil {
+		return current.Name()
 	}
 
-	return current.Name()
+	return g.Now()
 }
 
 func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
