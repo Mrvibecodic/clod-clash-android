@@ -10,7 +10,8 @@ sealed interface HomeRoute {
 
     data object Direct : HomeRoute
 
-    data class Server(val group: String, val title: String?, val delay: Int?) : HomeRoute
+    // name — имя конечного узла, как его знает ядро: по нему ищутся пометки
+    data class Server(val group: String, val title: String?, val delay: Int?, val name: String? = title) : HomeRoute
 
     data class Bypass(val group: String) : HomeRoute
 
@@ -57,7 +58,7 @@ fun homeRoute(
         if (next == null || next.now.isBlank() || !seen.add(now)) {
             val leaf = current.proxies.firstOrNull { it.name == now }
 
-            return HomeRoute.Server(root.name, leaf?.title ?: now, leaf?.delay)
+            return HomeRoute.Server(root.name, leaf?.title ?: now, leaf?.delay, now)
         }
 
         current = next

@@ -459,6 +459,18 @@
     <string name="clod_profile_update_notify_title">Успешные обновления подписки</string>
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
     <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
+    <!-- clod:freeze — пометки «режется» / «не отвечает» рядом с пингом -->
+    <string name="clod_freeze_frozen">режется</string>
+    <string name="clod_freeze_dead">не отвечает</string>
+    <string name="clod_freeze_frozen_title">Режется в вашей сети</string>
+    <string name="clod_freeze_dead_title">Не отвечает в вашей сети</string>
+    <string name="clod_freeze_frozen_text">Через этот сервер в вашей сети трафик обрывается после первых килобайт: сайты открываются наполовину, видео и загрузки зависают. Выберите другой сервер и сообщите об этом в поддержку своего VPN.</string>
+    <string name="clod_freeze_dead_text">Через этот сервер в вашей сети не проходит ничего. Выберите другой сервер. Если не отвечают все серверы — проверьте интернет; если только этот — сообщите об этом в поддержку своего VPN.</string>
+    <string name="clod_freeze_frozen_current">Этот сервер режется в вашей сети — сайты могут открываться наполовину. Выберите другой сервер.</string>
+    <string name="clod_freeze_dead_current">Этот сервер не отвечает в вашей сети. Выберите другой сервер.</string>
+    <string name="clod_freeze_checked_here">Проверено в этой сети. В другой сети, например мобильной, сервер может работать.</string>
+    <string name="clod_freeze_support">Написать в поддержку</string>
+    <string name="clod_freeze_pick_another">Выбрать другой</string>
     <string name="clod_delay_failed">Не удалось проверить серверы</string>
     <string name="clod_global_nothing_to_use">Пропускать трафик некуда: в подписке нет скачанных серверов. Трафик заблокирован, а не отправлен напрямую. Обновите подписку</string>
     <string name="clod_override_pending_lost">Несохранённые правки пропали, пока приложение было в фоне</string>

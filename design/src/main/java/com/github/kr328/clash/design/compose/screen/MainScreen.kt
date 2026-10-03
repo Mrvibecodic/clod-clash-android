@@ -107,6 +107,9 @@ import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
+import com.github.kr328.clash.design.compose.component.FreezePill
+import com.github.kr328.clash.design.compose.component.FreezeSheet
+import com.github.kr328.clash.design.compose.component.freezeCurrentLine
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.PingBadge
 import com.github.kr328.clash.design.compose.component.PingBounds
@@ -179,6 +182,8 @@ data class ServersState(
     val offline: Boolean = false,
     val readOnly: Boolean = false,
     val favorites: Set<String> = emptySet(),
+    // clod:freeze — имя узла → frozen | dead в текущей сети
+    val freeze: Map<String, String> = emptyMap(),
 )
 
 @Immutable
@@ -229,6 +234,8 @@ data class MainScreenState(
     val restartedBySystem: Boolean = false,
     val systemProxyRefused: Boolean = false,
     val dismissedPromo: String = "",
+    // clod:freeze — открытая нижняя панель с объяснением пометки
+    val freezeSheet: String? = null,
 ) {
     val mode: TunnelState.Mode
         get() = effectiveMode(profileMode)
@@ -259,6 +266,8 @@ sealed interface MainAction {
     data class SelectProxy(val name: String) : MainAction
     data class ToggleFavorite(val name: String) : MainAction
     data class DismissPromo(val profile: Profile, val promo: String) : MainAction
+    data class ShowFreeze(val mark: String) : MainAction
+    data object HideFreeze : MainAction
 
     data class OpenUrl(val url: String) : MainAction
     data object CheckUpdate : MainAction
@@ -338,6 +347,10 @@ fun MainScreen(
 
         if (state.reliability.prompt) {
             ReliabilitySheet(state.reliability, onAction)
+        }
+
+        state.freezeSheet?.let { mark ->
+            FreezeSheet(mark = mark, supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
         }
 
         Row(modifier = Modifier.padding(padding)) {
@@ -621,8 +634,19 @@ private fun HomeTab(
             groups = state.servers.groups,
             marksOnly = state.active?.panel?.disablePing == true,
             pingBounds = state.active?.panel.pingBounds(),
+            freeze = state.servers.freeze,
             onAction = onAction,
         )
+
+        // clod:freeze — строка-предупреждение только у узла, через который идёт трафик
+        (route as? HomeRoute.Server)?.name?.let { state.servers.freeze[it] }?.let { mark ->
+            Text(
+                text = freezeCurrentLine(mark),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
 
         if (state.servers.allOnHome) {
             val extras = remember(state.mode, state.servers) {
@@ -647,6 +671,7 @@ private fun HomeTab(
                     groups = state.servers.groups,
                     marksOnly = state.active?.panel?.disablePing == true,
                     pingBounds = state.active?.panel.pingBounds(),
+                    freeze = state.servers.freeze,
                     onAction = onAction,
                 )
             }
@@ -664,6 +689,7 @@ private fun HomeRouteRow(
     groups: List<ProxyGroupState>,
     marksOnly: Boolean,
     pingBounds: PingBounds,
+    freeze: Map<String, String>,
     onAction: (MainAction) -> Unit,
 ) {
     if (route is HomeRoute.Direct) {
@@ -685,6 +711,7 @@ private fun HomeRouteRow(
     }
 
     val delay = (route as? HomeRoute.Server)?.delay
+    val mark = (route as? HomeRoute.Server)?.name?.let { freeze[it] }
 
     SelectorRow(
         label = label,
@@ -703,14 +730,26 @@ private fun HomeRouteRow(
                 onAction(MainAction.SelectTab(MainTab.Servers))
             }
         },
-        trailing = if (delay != null) {
+        trailing = if (delay != null || mark != null) {
             {
-                PingBadge(
-                    delay = delay,
-                    on = MaterialTheme.colorScheme.surfaceContainerLow,
-                    marksOnly = marksOnly,
-                    bounds = pingBounds,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (mark != null) {
+                        FreezePill(
+                            mark = mark,
+                            on = MaterialTheme.colorScheme.surfaceContainerLow,
+                            onClick = { onAction(MainAction.ShowFreeze(mark)) },
+                        )
+                        if (delay != null) Spacer(Modifier.width(6.dp))
+                    }
+                    if (delay != null) {
+                        PingBadge(
+                            delay = delay,
+                            on = MaterialTheme.colorScheme.surfaceContainerLow,
+                            marksOnly = marksOnly,
+                            bounds = pingBounds,
+                        )
+                    }
+                }
             }
         } else {
             null

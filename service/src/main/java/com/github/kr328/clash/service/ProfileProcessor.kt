@@ -12,6 +12,7 @@ import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
+import com.github.kr328.clash.service.freeze.FreezeStore
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.store.ServiceStore
@@ -371,6 +372,7 @@ object ProfileProcessor {
                 pending.deleteRecursively()
                 ProfileSwap.staleOf(imported).deleteRecursively()
                 imported.deleteRecursively()
+                FreezeStore.delete(context, uuid)
 
                 val store = ServiceStore(context)
 

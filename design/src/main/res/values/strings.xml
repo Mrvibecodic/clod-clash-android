@@ -469,6 +469,18 @@
     <string name="clod_profile_update_notify_title">Successful subscription updates</string>
     <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
     <string name="clod_delay_unavailable">No server responded to the delay test</string>
+    <!-- clod:freeze — marks “cut off” / “not responding” next to the ping -->
+    <string name="clod_freeze_frozen">cut off</string>
+    <string name="clod_freeze_dead">not responding</string>
+    <string name="clod_freeze_frozen_title">Cut off on your network</string>
+    <string name="clod_freeze_dead_title">Not responding on your network</string>
+    <string name="clod_freeze_frozen_text">On your network, traffic through this server stops after the first kilobytes: pages load halfway, videos and downloads hang. Pick another server and tell your VPN\'s support about it.</string>
+    <string name="clod_freeze_dead_text">On your network, nothing gets through this server. Pick another server. If no server responds, check your internet; if only this one, tell your VPN\'s support about it.</string>
+    <string name="clod_freeze_frozen_current">This server is cut off on your network — pages may load halfway. Pick another server.</string>
+    <string name="clod_freeze_dead_current">This server is not responding on your network. Pick another server.</string>
+    <string name="clod_freeze_checked_here">Checked on this network. On another network, mobile for example, the server may work.</string>
+    <string name="clod_freeze_support">Contact support</string>
+    <string name="clod_freeze_pick_another">Pick another</string>
     <string name="clod_delay_failed">Could not test the servers</string>
     <string name="clod_global_nothing_to_use">Nothing to route through: the subscription has no downloaded servers. Traffic is blocked, not sent directly. Update the subscription</string>
     <string name="clod_override_pending_lost">Unsaved changes were lost while the app was in the background</string>

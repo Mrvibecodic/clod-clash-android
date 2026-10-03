@@ -192,6 +192,16 @@ object Clash {
         return Bridge.nativeTestProfileDelays(path.absolutePath) ?: "{}"
     }
 
+    // clod:freeze — имя узла → отпечаток; null — узлы работающего туннеля
+    fun queryNodeFingerprints(path: File?): String {
+        return Bridge.nativeQueryNodeFingerprints(path?.absolutePath.orEmpty()) ?: "{}"
+    }
+
+    // clod:freeze — проверка загрузкой перечисленных узлов, имя → ok / frozen / dead / unknown
+    fun downloadChecks(request: String): String {
+        return Bridge.nativeDownloadChecks(request) ?: "{}"
+    }
+
     fun patchSelector(selector: String, name: String): PatchResult {
         return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(selector, name)) {
             PatchResult.Failed

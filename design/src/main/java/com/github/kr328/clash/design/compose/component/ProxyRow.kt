@@ -189,6 +189,9 @@ fun ProxyRow(
     modifier: Modifier = Modifier,
     pingBounds: PingBounds = PingBounds(),
     pinned: Boolean = false,
+    // clod:freeze — frozen | dead; пометка рядом с пингом, пинг как был
+    freeze: String? = null,
+    onFreezeClick: () -> Unit = {},
 ) {
     val (flag, name) = remember(title) { splitFlag(title) }
 
@@ -257,13 +260,18 @@ fun ProxyRow(
             }
         }
         Spacer(Modifier.width(10.dp))
+        val on = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        }
+        if (freeze != null) {
+            FreezePill(mark = freeze, on = on, onClick = onFreezeClick)
+            Spacer(Modifier.width(6.dp))
+        }
         DelayPill(
             delay = delay,
-            on = if (selected) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceContainerLow
-            },
+            on = on,
             marksOnly = marksOnly,
             bounds = pingBounds,
         )

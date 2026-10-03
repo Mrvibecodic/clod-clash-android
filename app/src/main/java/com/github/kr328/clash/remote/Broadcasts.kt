@@ -25,6 +25,7 @@ class Broadcasts(private val context: Application) {
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
         fun onProfileLoaded()
         fun onProfileLoadFailed(uuid: UUID?, reason: String?)
+        fun onFreezeMarksChanged(uuid: UUID?) {}
     }
 
     @Volatile
@@ -128,6 +129,11 @@ class Broadcasts(private val context: Application) {
                             intent.getStringExtra(Intents.EXTRA_FAIL_REASON))
                     }
                 }
+                Intents.ACTION_FREEZE_MARKS_CHANGED -> {
+                    receivers.forEach {
+                        it.onFreezeMarksChanged(intent.parseUUID())
+                    }
+                }
             }
         }
     }
@@ -160,6 +166,7 @@ class Broadcasts(private val context: Application) {
                     addAction(Intents.ACTION_PROFILE_UPDATE_FAILED)
                     addAction(Intents.ACTION_PROFILE_LOADED)
                     addAction(Intents.ACTION_PROFILE_LOAD_FAILED)
+                    addAction(Intents.ACTION_FREEZE_MARKS_CHANGED)
                 }, Permissions.RECEIVE_SELF_BROADCASTS)
 
                 registered = true

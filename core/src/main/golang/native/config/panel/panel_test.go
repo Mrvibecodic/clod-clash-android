@@ -628,6 +628,26 @@ func TestApplyHeadersShowZeroHosts(t *testing.T) {
 	}
 }
 
+func TestApplyHeadersFreezeCheck(t *testing.T) {
+	for _, raw := range []string{"true", "TRUE", " True "} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-16-20-Check": []string{raw}}, "https://panel.example/sub")
+
+		if !info.FreezeCheck {
+			t.Fatalf("%q должно включать проверку 16–20", raw)
+		}
+	}
+
+	for _, raw := range []string{"", "false", "0", "1", "yes", "on", "мусор"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-16-20-Check": []string{raw}}, "https://panel.example/sub")
+
+		if info.FreezeCheck {
+			t.Fatalf("%q не должно включать проверку 16–20", raw)
+		}
+	}
+}
+
 func TestApplyHeadersDisablePing(t *testing.T) {
 	for _, raw := range []string{"true", "TRUE", " True "} {
 		info := Info{}

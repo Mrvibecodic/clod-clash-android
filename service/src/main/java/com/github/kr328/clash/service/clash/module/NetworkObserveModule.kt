@@ -11,6 +11,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ServiceLog
+import com.github.kr328.clash.service.freeze.FreezeChecks
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
 import kotlinx.coroutines.CoroutineScope
@@ -147,6 +148,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             // Подложка — предпочтительная сеть, а не та, у которой сменились свойства:
             // иначе фоновая мобильная сеть делала бы VPN лимитным при Wi-Fi
             networks.trySend(preferredNetwork())
+
+            if (network == currentNetwork) FreezeChecks.networkSeen(network)
         }
 
         override fun onUnavailable() {
@@ -267,6 +270,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             markNetworkEvent(reason, network, "reacted=false (initial)")
 
+            FreezeChecks.networkSeen(network)
+
             return
         }
 
@@ -319,6 +324,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         )
 
         Clash.notifyNetworkChanged(reset, hold)
+
+        FreezeChecks.networkChanged(currentNetwork)
 
         if (awake) {
             probeNodes(force = true)

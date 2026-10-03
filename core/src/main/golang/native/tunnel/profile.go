@@ -22,30 +22,27 @@ import (
 	"github.com/metacubex/mihomo/tunnel"
 )
 
-func TestProfileDelays(path string) map[string]int {
-	result := map[string]int{}
-
-	// Корень проб берётся ДО разбора профиля: иначе отмена, пришедшая на старте
-	// службы, отменяет старый корень, а замер получает свежий и живёт дальше.
-	root := probeContext()
-
+// profileNodes — узлы подписки без туннеля: настоящие узлы из профиля и из
+// уже скачанных провайдеров, каждый по одному разу; url — адрес проверки
+// групп. release освобождает всё, что разобрано.
+func profileNodes(path string) (proxies []C.Proxy, url string, release func(), err error) {
 	rawCfg, err := config.UnmarshalAndPatch(path)
 	if err != nil {
-		log.Errorln("Test profile `%s`: %s", path, err.Error())
-
-		return result
+		return nil, "", func() {}, err
 	}
 
 	config.UseProfileDelayMode(rawCfg)
 
 	cfg, err := config.Parse(rawCfg)
 	if err != nil {
-		log.Errorln("Test profile `%s`: %s", path, err.Error())
-
-		return result
+		return nil, "", func() {}, err
 	}
 
-	defer func() {
+	fromProviders, closeProviders := providerProxies(path, rawCfg)
+
+	release = func() {
+		closeProviders()
+
 		for _, p := range cfg.Proxies {
 			_ = p.Close()
 		}
@@ -53,11 +50,8 @@ func TestProfileDelays(path string) map[string]int {
 		config.DestroyProviders(cfg)
 
 		runtime.GC()
-	}()
+	}
 
-	url := profileTestURL(rawCfg)
-
-	proxies := make([]C.Proxy, 0, len(cfg.Proxies))
 	seen := make(map[string]bool, len(cfg.Proxies))
 
 	add := func(p C.Proxy) {
@@ -78,11 +72,27 @@ func TestProfileDelays(path string) map[string]int {
 		add(p)
 	}
 
-	fromProviders, closeProviders := providerProxies(path, rawCfg)
-	defer closeProviders()
-
 	for _, p := range fromProviders {
 		add(p)
+	}
+
+	return proxies, profileTestURL(rawCfg), release, nil
+}
+
+func TestProfileDelays(path string) map[string]int {
+	result := map[string]int{}
+
+	// Корень проб берётся ДО разбора профиля: иначе отмена, пришедшая на старте
+	// службы, отменяет старый корень, а замер получает свежий и живёт дальше.
+	root := probeContext()
+
+	proxies, url, release, err := profileNodes(path)
+	defer release()
+
+	if err != nil {
+		log.Errorln("Test profile `%s`: %s", path, err.Error())
+
+		return result
 	}
 
 	if len(proxies) == 0 {

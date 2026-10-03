@@ -334,6 +334,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             requestFetch()
                         }
                         Event.ProfileChanged -> requestFetch()
+                        Event.FreezeMarksChanged -> work.trySend { design.fetchFreezeMarks() }
                         else -> Unit
                     }
                 }
@@ -716,6 +717,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         favoritesProfile = active?.profile?.uuid
         setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
+        fetchFreezeMarks(active?.profile?.uuid)
         setDismissedPromo(active?.profile?.uuid, active?.profile?.uuid?.let { uiStore.dismissedPromo(it) }.orEmpty())
 
         return reloadProxyGroups()
@@ -1007,6 +1009,15 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Нажатие во время круга: только что промеренные живые узлы не перемеряются
         runHealthCheck(manual = queuedManually, force = false)
+    }
+
+    // clod:freeze — пометки «режется» / «не отвечает» считает служба; экран только читает
+    private suspend fun MainDesign.fetchFreezeMarks(uuid: UUID?) {
+        setFreezeMarks(uuid?.let { withClash { queryFreezeMarks(it) } }.orEmpty())
+    }
+
+    private suspend fun MainDesign.fetchFreezeMarks() {
+        fetchFreezeMarks(withProfile { queryActive() }?.uuid)
     }
 
     private suspend fun MainDesign.startOfflineHealthCheck() {

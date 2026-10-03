@@ -35,6 +35,9 @@ data class PanelInfo(
 
     val disablePing: Boolean = false,
 
+    // clod:freeze — панель включила проверку 16–20 заголовком clod-16-20-check: true
+    val freezeCheck: Boolean = false,
+
     val pingFast: Int = 0,
     val pingMedium: Int = 0,
 

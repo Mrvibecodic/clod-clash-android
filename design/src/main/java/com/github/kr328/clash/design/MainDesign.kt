@@ -148,6 +148,8 @@ class MainDesign(
                 request(Request.DismissPromo(action.profile.uuid, fingerprint))
             }
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
+            is MainAction.ShowFreeze -> state = state.copy(freezeSheet = action.mark)
+            MainAction.HideFreeze -> state = state.copy(freezeSheet = null)
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
             MainAction.UpdateNow -> request(Request.UpdateNow)
@@ -400,6 +402,15 @@ class MainDesign(
     suspend fun setFavorites(favorites: Set<String>) {
         withContext(Dispatchers.Main) {
             state = state.copy(servers = state.servers.copy(favorites = favorites))
+        }
+    }
+
+    // clod:freeze — пометки «режется» / «не отвечает» текущей подписки в текущей сети
+    suspend fun setFreezeMarks(marks: Map<String, String>) {
+        withContext(Dispatchers.Main) {
+            if (state.servers.freeze != marks) {
+                state = state.copy(servers = state.servers.copy(freeze = marks))
+            }
         }
     }
 

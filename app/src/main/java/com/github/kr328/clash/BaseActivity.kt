@@ -231,6 +231,10 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileLoaded)
     }
 
+    override fun onFreezeMarksChanged(uuid: UUID?) {
+        events.trySend(Event.FreezeMarksChanged)
+    }
+
     override fun onProfileLoadFailed(uuid: UUID?, reason: String?) {
         events.trySend(Event.ProfileChanged)
 
@@ -309,6 +313,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         ProfileUpdateStarted,
         ProfileUpdateCompleted,
         ProfileUpdateFailed,
+        FreezeMarksChanged,
     }
 
     private fun syncAppLocale() {

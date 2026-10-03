@@ -32,6 +32,8 @@ object Bridge {
     external fun nativeRecoverDeadNodes(force: Boolean)
     external fun nativeNotifyNetworkReady()
     external fun nativeTestProfileDelays(path: String): String?
+    external fun nativeQueryNodeFingerprints(path: String): String?
+    external fun nativeDownloadChecks(request: String): String?
     external fun nativeSetDeviceInfo(hwid: String, os: String, osVersion: String, model: String)
     external fun nativePatchSelector(selector: String, name: String): Int
     external fun nativeFetchAndValid(

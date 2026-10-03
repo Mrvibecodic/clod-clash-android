@@ -26,6 +26,7 @@ import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
+import com.github.kr328.clash.service.freeze.FreezeChecks
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import com.github.kr328.clash.service.util.sendProfileUpdateStarted
@@ -232,6 +233,8 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         }
 
         context.sendProfileUpdateCompleted(uuid, warning)
+
+        FreezeChecks.profileUpdated(uuid)
     }
 
     private fun failed(uuid: UUID, name: String, reason: String, notify: Boolean) {

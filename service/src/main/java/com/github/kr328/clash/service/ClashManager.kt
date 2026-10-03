@@ -11,6 +11,7 @@ import com.github.kr328.clash.service.data.ModeChoiceDao
 import com.github.kr328.clash.service.data.Selection
 import com.github.kr328.clash.service.data.SelectionDao
 import com.github.kr328.clash.service.data.Selections
+import com.github.kr328.clash.service.freeze.FreezeChecks
 import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
@@ -104,6 +105,8 @@ class ClashManager(private val context: Context) : IClashManager,
 
         SelectionDao().querySelections(current).associate { it.proxy to it.selected }
     }
+
+    override fun queryFreezeMarks(uuid: UUID): Map<String, String> = FreezeChecks.marks(uuid)
 
     override suspend fun testProfileDelays(uuid: UUID): String = withContext(Dispatchers.IO) {
         Clash.testProfileDelays(context.importedDir.resolve(uuid.toString()))

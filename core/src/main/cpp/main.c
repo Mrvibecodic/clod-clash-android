@@ -217,6 +217,36 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeTestProfileDelays(JNIEnv *e
     return new_string(response);
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryNodeFingerprints(JNIEnv *env, jobject thiz,
+                                                                          jstring path) {
+    TRACE_METHOD();
+
+    scoped_string _path = get_string(path);
+
+    scoped_string response = queryNodeFingerprints(_path);
+
+    if (response == NULL)
+        return NULL;
+
+    return new_string(response);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeDownloadChecks(JNIEnv *env, jobject thiz,
+                                                                   jstring request) {
+    TRACE_METHOD();
+
+    scoped_string _request = get_string(request);
+
+    scoped_string response = downloadChecks(_request);
+
+    if (response == NULL)
+        return NULL;
+
+    return new_string(response);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetDeviceInfo(JNIEnv *env, jobject thiz,
                                                                   jstring hwid, jstring os,

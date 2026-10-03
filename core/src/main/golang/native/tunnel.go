@@ -113,6 +113,26 @@ func testProfileDelays(path C.c_string) (result *C.char) {
 	return marshalJson(tunnel.TestProfileDelays(C.GoString(path)))
 }
 
+//export queryNodeFingerprints
+func queryNodeFingerprints(path C.c_string) (result *C.char) {
+	defer guard("queryNodeFingerprints", func() {})()
+
+	return marshalJson(tunnel.NodeFingerprints(C.GoString(path)))
+}
+
+//export downloadChecks
+func downloadChecks(request C.c_string) (result *C.char) {
+	defer guard("downloadChecks", func() {})()
+
+	var req tunnel.DownloadRequest
+
+	if err := json.Unmarshal([]byte(C.GoString(request)), &req); err != nil {
+		return marshalJson(map[string]tunnel.DownloadOutcome{})
+	}
+
+	return marshalJson(tunnel.DownloadChecks(req))
+}
+
 //export notifyNetworkChanged
 func notifyNetworkChanged(closeConnections C.int, holdProbes C.int) {
 	defer guard("notifyNetworkChanged", func() {})()

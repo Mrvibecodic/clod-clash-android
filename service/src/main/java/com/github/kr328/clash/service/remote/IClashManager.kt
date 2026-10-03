@@ -22,6 +22,7 @@ interface IClashManager {
     suspend fun healthCheckGroups(groups: List<String>, exclude: List<String>, force: Boolean)
 
     suspend fun testProfileDelays(uuid: UUID): String
+    fun queryFreezeMarks(uuid: UUID): Map<String, String>
     suspend fun updateProvider(type: Provider.Type, name: String)
 
     fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride
