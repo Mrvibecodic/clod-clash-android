@@ -93,9 +93,11 @@ object NetworkKey {
 
     private fun seenOf(transport: String, link: LinkProperties): Seen {
         // hasGateway() — API 29; шлюз без адреса или нулевой — не шлюз
-        val gateways = link.routes
-            .filter { it.isDefaultRoute }
-            .mapNotNull { route -> route.gateway?.takeUnless { it.isAnyLocalAddress }?.hostAddress }
+        val gateways = preferIpv4(
+            link.routes
+                .filter { it.isDefaultRoute }
+                .mapNotNull { route -> route.gateway?.takeUnless { it.isAnyLocalAddress }?.hostAddress },
+        )
 
         // Подсеть — только IPv4: префикс IPv6 провайдер меняет сам
         val subnets = link.linkAddresses
@@ -113,10 +115,15 @@ object NetworkKey {
             gateways = gateways,
             subnets = subnets,
             dhcp = dhcp,
-            dns = link.dnsServers.mapNotNull { it.hostAddress },
+            dns = preferIpv4(link.dnsServers.mapNotNull { it.hostAddress }),
             domains = link.domains.orEmpty(),
         )
     }
+
+    // Шлюз и DNS по IPv6 приходят позже IPv4 и меняются с префиксом провайдера —
+    // ключ от них плыл бы. Они в счёт только в сети без IPv4
+    fun preferIpv4(addresses: List<String>): List<String> =
+        addresses.filter { ':' !in it }.ifEmpty { addresses }
 
     fun subnetOf(address: ByteArray, prefixLength: Int): String {
         val masked = address.copyOf()

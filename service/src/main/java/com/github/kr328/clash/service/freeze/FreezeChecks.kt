@@ -26,6 +26,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 // clod:freeze — проверка 16–20: режется ли трафик через узел в этой сети.
@@ -43,7 +44,8 @@ import java.util.concurrent.atomic.AtomicLong
 // Проверяются отпечатки без итога в текущей сети, «работает» и «режется»
 // старше 3 суток, «не отвечает» и попытки без итога старше 6 часов; одинаковые
 // узлы делят итог по отпечатку. Смена сети или подписки посреди захода его
-// бросает; заход, где не прошло ничего нигде, не записывается. Ядро без
+// бросает; заход, где не прошло ничего нигде, не записывается, и в этой сети
+// следующий — через 6 часов или после загрузки подписки. Ядро без
 // отпечатков — молчит.
 object FreezeChecks {
     private const val DOWNLOAD_URL = "https://speed.cloudflare.com/__down?bytes=65536"
@@ -80,6 +82,11 @@ object FreezeChecks {
     private var marksOf: Pair<UUID, Map<String, String>>? = null
 
     private var ticker: Job? = null
+
+    // Подписка/сеть, где в последнем заходе не прошло ничего ни через кого (нет
+    // интернета, страница входа Wi-Fi): там повтор не раньше чем через 6 часов,
+    // а не каждый повод. В памяти; загрузка подписки в ядро забывает всё
+    private val quiet = ConcurrentHashMap<String, Long>()
 
     private val context: Context
         get() = Global.application
@@ -131,6 +138,7 @@ object FreezeChecks {
     // Ядро отменяет пробы старого конфига — идущий заход бросается
     fun profileLoaded(uuid: UUID) {
         loaded = uuid
+        quiet.clear()
 
         synchronized(this) {
             if (ticker == null) {
@@ -178,6 +186,8 @@ object FreezeChecks {
         if (loaded != null) return
 
         if (ServiceStore(context).activeProfile != uuid) return
+
+        quiet.clear()
 
         kick("subscription updated", drop = false)
     }
@@ -278,7 +288,9 @@ object FreezeChecks {
         // Пометки этой сети показываются сразу, не дожидаясь проверок
         publish(uuid, FreezePlan.marks(fingerprints, net))
 
-        val due = FreezePlan.due(fingerprints, net, now)
+        val quietKey = "$uuid/$key"
+        val hushed = quiet[quietKey]?.let { now - it < FreezePlan.RETRY_AFTER } == true
+        val due = if (hushed) emptyList() else FreezePlan.due(fingerprints, net, now)
         var stored = false
 
         if (due.isNotEmpty()) {
@@ -298,6 +310,12 @@ object FreezeChecks {
             stored = FreezePlan.worthRecording(outcomes.values)
 
             if (stored) {
+                quiet.remove(quietKey)
+            } else {
+                quiet[quietKey] = now
+            }
+
+            if (stored) {
                 val nodes = net.nodes.toMutableMap()
 
                 for ((name, outcome) in outcomes) {
@@ -311,7 +329,7 @@ object FreezeChecks {
 
             ServiceLog.mark(
                 "freeze: $why, ${outcomes.size} of ${fingerprints.size} node(s) checked in network $key — " +
-                    counted(outcomes.values) + if (stored) "" else "; nothing passed anywhere, not recorded",
+                    counted(outcomes.values) + if (stored) "" else "; nothing passed anywhere, not recorded, next try in 6 h",
             )
         }
 

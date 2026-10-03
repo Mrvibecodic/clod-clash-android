@@ -45,6 +45,14 @@ class NetworkKeyTest {
     }
 
     @Test
+    fun `адреса IPv6 в счёт только в сети без IPv4`() {
+        assertEquals(listOf("192.168.0.1"), NetworkKey.preferIpv4(listOf("fe80::1%wlan0", "192.168.0.1")))
+        assertEquals(listOf("192.168.0.1"), NetworkKey.preferIpv4(listOf("192.168.0.1", "2001:db8::53")))
+        assertEquals(listOf("fe80::1%wlan0"), NetworkKey.preferIpv4(listOf("fe80::1%wlan0")))
+        assertEquals(emptyList<String>(), NetworkKey.preferIpv4(emptyList()))
+    }
+
+    @Test
     fun `подсеть считается по длине префикса`() {
         assertEquals("192.168.1.0/24", NetworkKey.subnetOf(byteArrayOf(192.toByte(), 168.toByte(), 1, 37), 24))
         assertEquals("10.0.0.0/8", NetworkKey.subnetOf(byteArrayOf(10, 20, 30, 40), 8))
