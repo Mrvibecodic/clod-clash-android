@@ -36,6 +36,27 @@ crash-reporting code. Everything described below covers the requests this app ma
     up to nine when the secure channel is in use; the time budget of the refresh may cut that
     short. The retry is made only for the subscription address, never for other hosts, and
     only after the attempt through the tunnel has failed.
+    When you add a subscription, the app first asks for it over the secure channel; if the
+    provider's server does not answer, it asks again over the secure channel, three times at
+    most, and if the provider has no secure channel, it then requests the address the usual way.
+*   **A quality report to your provider, over the secure channel only.** For a subscription
+    that uses the secure channel, after a successful scheduled refresh (not a manual one) and
+    at most once every 6 hours, the app sends the provider's subscription server what it has
+    already measured: latency results and the "16–20" check results per server of that
+    subscription, traffic volume per server, the kind of network (Wi-Fi, mobile, wired) and
+    the external IP address the measurements were made from. A network is identified by a
+    hash of its properties (gateway, subnet, DNS, operator code); the Wi-Fi name, location,
+    visited addresses and the list of apps are not included. The report carries the device
+    identifier described above, or a random per-install mark when the "device identifier"
+    setting is off. It is sent to the same address as the subscription, encrypted, and only
+    if the provider has turned on receiving reports; the app keeps unsent measurements for
+    at most 7 days.
+*   **To Yandex, to learn the external IP address.** For the report above, the app asks
+    `ipv4-internet.yandex.net` and `ipv6-internet.yandex.net` (operated by Yandex) for the
+    address your connection appears from — when the network changes and at most once an hour
+    on the same network, and only while it collects a report for a subscription with the
+    secure channel. The request goes outside the tunnel and carries no identifier or device
+    headers, but Yandex sees your IP address.
 *   **To a connectivity-check address, through each server.** Measuring latency (the
     "check" button, the automatic check when the Servers tab is opened, and the checks
     after a network change) sends a tiny request to a test address through every server

@@ -52,10 +52,17 @@ Response headers are on the [Subscription headers](/en/docs/headers) and
 
 ## Secure connection
 
-If the user turned on "Secure connection", the subscription is requested through a separate
-encrypted channel rather than a plain HTTPS request. This works only if the provider supports
-such a channel on their side; otherwise the app reports that the address has no subscription
-with a secure channel.
+When a subscription is added, the app first tries the secure channel of
+[remnawave-subscription-middleware](https://github.com/Mrvibecodic/remnawave-subscription-middleware);
+if the provider has no channel, the subscription is loaded with a plain HTTPS request. The user
+can turn the channel off in the subscription properties and on again.
+
+A subscription with the channel sends a node quality report after a scheduled refresh: latency
+and "16–20" results per node, traffic, the kind of network and the external address the
+measurements were made from. The middleware receives and shows the reports (Clod Clash →
+"Статистика" tab) when receiving is turned on there. Android learns the measurement address from Yandex
+outside the tunnel by itself; on the PC this needs `DIRECT` rules in the template — see the
+[panel setup guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
 
 ## Network stack
 

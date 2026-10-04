@@ -22,11 +22,29 @@ of the one you want. The active subscription's name is shown in the home screen 
 
 ### Secure connection
 
-A switch on the adding screen. **Requires support from your VPN provider.** It is not plain HTTPS
-(that is always used anyway) but an extra layer of encryption on top of it: the
-link, device details and config travel inside it. Turn it on only if your provider says it
-supports it, otherwise the subscription will not be added. It cannot be turned off later — only
-by adding the subscription again.
+It is not plain HTTPS (that is always used anyway) but an extra layer of encryption on top of
+it: the link, device details and config travel inside it, hidden from anyone on the way. It
+works when the provider has the channel.
+
+There is no switch on the adding screen: the app tries the secure channel first and shows
+what is going on — "Checking the provider's secure channel…".
+
+- The channel is there — the subscription is added over it.
+- The provider has no secure channel — the subscription is loaded the usual way, and the app
+  says it was added without the secure channel.
+- The server does not answer — the app tries the secure channel again, three attempts in all,
+  then says "The provider's server is not responding"; the subscription is not added.
+
+In the subscription properties (card menu **⋮** → **Edit**) the channel can be turned off —
+with a warning that this is not safe — and on again: turning it on is checked when you save,
+and if the channel does not answer, it stays off.
+
+A subscription with the secure channel sends the provider a **server quality report** after a
+scheduled refresh (at most once every 6 hours): latency and "16–20" check results per server,
+traffic through them, the kind of network (Wi-Fi, mobile, wired) and the external address the
+measurements were made from (the app learns it from Yandex, outside the tunnel). The network
+name, location, sites and apps are not included. The report goes only over the secure channel
+and only if the provider has turned on receiving it.
 
 ## Updating
 
