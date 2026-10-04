@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +24,12 @@ const (
 	maxAnswer = 32 << 20
 	padBlock  = 512
 	padKeyLen = 9
+
+	// Тело отчёта выравнивается вместе с меткой до кратного этому: по длине
+	// POST не видно, сколько в отчёте узлов и часов.
+	reportPadBlock = 3072
+	tagLen         = 16
+	opReport       = "rep"
 )
 
 var b64 = base64.RawURLEncoding
@@ -34,6 +41,8 @@ var (
 	// ErrBadURL — адрес подписки не подходит для канала (нет пути с меткой,
 	// не http): канала по такому адресу нет, подписка идёт обычным путём.
 	ErrBadURL = errors.New("clod-chan-bad-url")
+
+	errReportTooBig = errors.New("clod-chan-report-too-big")
 )
 
 func hkdf32(ikm []byte, salt, info string) []byte {
@@ -73,9 +82,10 @@ type Fields struct {
 }
 
 type request struct {
-	V int    `json:"v"`
-	T int64  `json:"t"`
-	N string `json:"n"`
+	V  int    `json:"v"`
+	T  int64  `json:"t"`
+	N  string `json:"n"`
+	Op string `json:"op,omitempty"`
 	Fields
 }
 
@@ -96,6 +106,16 @@ type Answer struct {
 }
 
 func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session, error) {
+	return build(base, pinnedSP, f, "", now)
+}
+
+// BuildReport — адрес POST с отчётом: тот же конверт, что у запроса
+// подписки, с операцией «rep»; тело запечатывает SealReport той же сессии.
+func BuildReport(base string, pinnedSP []byte, f Fields, now int64) (string, *Session, error) {
+	return build(base, pinnedSP, f, opReport, now)
+}
+
+func build(base string, pinnedSP []byte, f Fields, op string, now int64) (string, *Session, error) {
 	prefix, token, query, err := split(base)
 	if err != nil {
 		return "", nil, err
@@ -131,7 +151,7 @@ func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session,
 	}
 	nonce := b64.EncodeToString(raw)
 
-	plain, err := json.Marshal(request{V: Version, T: now, N: nonce, Fields: f})
+	plain, err := json.Marshal(request{V: Version, T: now, N: nonce, Op: op, Fields: f})
 	if err != nil {
 		return "", nil, err
 	}
@@ -146,6 +166,45 @@ func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session,
 	url := prefix + "/c1/" + kid + "/" + spid + "/" + b64.EncodeToString(concat(ephPub, cipher))
 
 	return url, &Session{psk: psk, kid: kid, dh: dh, ephPub: ephPub, priv: priv, nonce: nonce}, nil
+}
+
+// reportFrame — длина сжатого отчёта (4 байта, big-endian), сам отчёт и нули
+// до кратного reportPadBlock вместе с меткой.
+func reportFrame(gz []byte) ([]byte, error) {
+	if uint64(len(gz)) > uint64(^uint32(0)) {
+		return nil, errReportTooBig
+	}
+
+	size := 4 + len(gz)
+	need := (reportPadBlock - (size+tagLen)%reportPadBlock) % reportPadBlock
+
+	frame := make([]byte, 4, size+need)
+	binary.BigEndian.PutUint32(frame, uint32(len(gz)))
+	frame = append(frame, gz...)
+
+	return append(frame, make([]byte, need)...), nil
+}
+
+func (s *Session) reportKey() []byte {
+	return hkdf32(concat(s.psk, s.dh), s.kid, opReport+string(s.ephPub))
+}
+
+// SealReport — тело POST: сжатый отчёт, запечатанный ключом отчёта, base64url
+// без выравнивания.
+func (s *Session) SealReport(gz []byte) (string, error) {
+	frame, err := reportFrame(gz)
+	if err != nil {
+		return "", err
+	}
+
+	aead, err := chacha20poly1305.New(s.reportKey())
+	if err != nil {
+		return "", err
+	}
+
+	sealed := aead.Seal(nil, make([]byte, chacha20poly1305.NonceSize), frame, []byte("c1p"+s.kid+string(s.ephPub)))
+
+	return b64.EncodeToString(sealed), nil
 }
 
 func (s *Session) Open(wire []byte, now int64) (*Answer, error) {

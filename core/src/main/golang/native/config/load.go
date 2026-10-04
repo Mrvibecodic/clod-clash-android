@@ -8,6 +8,7 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/config/panel"
+	"cfa/native/report"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/common/yaml"
@@ -206,6 +207,8 @@ func Load(path string) error {
 		}
 
 		loaded.Store(true)
+
+		report.SetNodes(report.NodesOf(rawCfg.Proxy), report.ProvidersOf(rawCfg.ProxyProvider))
 
 		app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
 	})

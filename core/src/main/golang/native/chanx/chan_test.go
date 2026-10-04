@@ -32,6 +32,17 @@ type vectors struct {
 		BlobFirst  string `json:"blob_first"`
 		PathPinned string `json:"path_pinned"`
 	} `json:"request"`
+	Report struct {
+		PadBlock int    `json:"pad_block"`
+		Plain    string `json:"plain"`
+		Blob     string `json:"blob"`
+		Path     string `json:"path"`
+		Key      string `json:"key"`
+		JSON     string `json:"json"`
+		Gzip     string `json:"gzip"`
+		FrameLen int    `json:"frame_len"`
+		Body     string `json:"body"`
+	} `json:"report"`
 	Response struct {
 		Body       string `json:"body"`
 		BodyBinary string `json:"body_binary"`
@@ -303,5 +314,92 @@ func TestCorrection(t *testing.T) {
 			t.Fatalf("%s: Correction(%d, %d, %d) = %d, %v; want %d, %v",
 				row.name, row.served, row.now, row.current, got, changed, row.want, row.changed)
 		}
+	}
+}
+
+func TestReportMatchesVectors(t *testing.T) {
+	v := load(t)
+	r := v.Report
+	psk, ephPub, dh := Psk(v.Token), unhex(t, v.EphPublic), unhex(t, v.Dh)
+
+	var envelope map[string]any
+	if err := json.Unmarshal([]byte(r.Plain), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	plain, err := json.Marshal(request{
+		V:      Version,
+		T:      int64(envelope["t"].(float64)),
+		N:      envelope["n"].(string),
+		Op:     opReport,
+		Fields: Fields{Hwid: envelope["hwid"].(string), OS: envelope["os"].(string)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(pad(plain)); got != r.Plain {
+		t.Fatalf("конверт отчёта:\n%s\n%s", got, r.Plain)
+	}
+
+	aead, err := chacha20poly1305.New(hkdf32(concat(psk, dh), v.Kid, "req"+string(ephPub)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sealed := aead.Seal(nil, make([]byte, 12), []byte(r.Plain), []byte("c1"+v.Kid+string(ephPub)))
+	if got := b64.EncodeToString(concat(ephPub, sealed)); got != r.Blob {
+		t.Fatalf("blob отчёта: %s != %s", got, r.Blob)
+	}
+	if got := "/c1/" + v.Kid + "/" + v.Spid + "/" + r.Blob; got != r.Path {
+		t.Fatalf("путь отчёта: %s != %s", got, r.Path)
+	}
+
+	session := &Session{psk: psk, kid: v.Kid, dh: dh, ephPub: ephPub}
+	if got := hex.EncodeToString(session.reportKey()); got != r.Key {
+		t.Fatalf("ключ отчёта: %s != %s", got, r.Key)
+	}
+
+	gz, err := base64.StdEncoding.DecodeString(r.Gzip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame, err := reportFrame(gz)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(frame) != r.FrameLen || (len(frame)+tagLen)%r.PadBlock != 0 {
+		t.Fatalf("рамка отчёта: %d, ждали %d", len(frame), r.FrameLen)
+	}
+	body, err := session.SealReport(gz)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body != r.Body {
+		t.Fatal("тело отчёта не совпало с вектором")
+	}
+}
+
+func TestReportBodyHidesTheSize(t *testing.T) {
+	v := load(t)
+	session := &Session{psk: Psk(v.Token), kid: v.Kid, ephPub: unhex(t, v.EphPublic)}
+
+	small, err := session.SealReport(make([]byte, 10))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bigger, err := session.SealReport(make([]byte, 3000))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(small) != len(bigger) || len(small) != 4096 {
+		t.Fatalf("длина тела выдаёт размер отчёта: %d и %d", len(small), len(bigger))
+	}
+}
+
+func TestSubscriptionRequestCarriesNoOperation(t *testing.T) {
+	plain, err := json.Marshal(request{V: Version, T: 1, N: "x", Fields: Fields{Hwid: "a"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(plain) != `{"v":1,"t":1,"n":"x","hwid":"a"}` {
+		t.Fatalf("у запроса подписки лишнее поле: %s", plain)
 	}
 }

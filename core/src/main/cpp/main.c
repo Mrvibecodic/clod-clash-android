@@ -248,6 +248,16 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeDownloadChecks(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeClientReport(JNIEnv *env, jobject thiz,
+                                                                 jstring request) {
+    TRACE_METHOD();
+
+    scoped_string _request = get_string(request);
+
+    clientReport(_request);
+}
+
+JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetDeviceInfo(JNIEnv *env, jobject thiz,
                                                                   jstring hwid, jstring os,
                                                                   jstring os_version,

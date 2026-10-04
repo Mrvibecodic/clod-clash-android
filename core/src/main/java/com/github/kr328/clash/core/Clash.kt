@@ -202,6 +202,11 @@ object Clash {
         return Bridge.nativeDownloadChecks(request) ?: "{}"
     }
 
+    // Отчёт прослойке: запрос JSON с операцией target | network | freeze | send
+    fun clientReport(request: String) {
+        Bridge.nativeClientReport(request)
+    }
+
     fun patchSelector(selector: String, name: String): PatchResult {
         return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(selector, name)) {
             PatchResult.Failed
