@@ -56,7 +56,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                 if (it.token != token) return@collect
 
                 when (it) {
-                    is ProfileImports.State.Running -> design.setImporting(it.status)
+                    is ProfileImports.State.Running -> design.setImporting(it.status, it.stage)
                     is ProfileImports.State.Done -> {
                         ProfileImports.consume(token)
                         design.clearImporting()
@@ -66,6 +66,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                     is ProfileImports.State.Failed -> {
                         ProfileImports.consume(token)
                         design.clearImporting()
+                        if (it.channelOff) design.setSecure(false)
                         design.showToast(it.message, ToastDuration.Long, detail = it.detail, kind = NoticeKind.Error)
                     }
                     ProfileImports.State.Idle -> design.clearImporting()
@@ -96,7 +97,15 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                             if (saves) {
                                 withContext(NonCancellable) {
                                     withProfile(retry = false) {
-                                        patch(profile.uuid, profile.name, profile.nameManual, profile.source, profile.interval, profile.intervalManual)
+                                        patch(
+                                            profile.uuid,
+                                            profile.name,
+                                            profile.nameManual,
+                                            profile.source,
+                                            profile.interval,
+                                            profile.intervalManual,
+                                            profile.secure,
+                                        )
                                     }
                                 }
                             }
@@ -172,7 +181,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
             violation != null -> showToast(violationText(violation), ToastDuration.Long)
             !isValidSource(profile.type, profile.source) -> showToast(R.string.invalid_url, ToastDuration.Long)
             else -> {
-                val started = ProfileImports.commit(profile)
+                val started = ProfileImports.commit(profile, enablingChannel = profile.secure && !original.secure)
 
                 if (started != 0L) {
                     token = started

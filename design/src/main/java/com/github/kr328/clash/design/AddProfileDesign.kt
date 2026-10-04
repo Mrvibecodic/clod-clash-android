@@ -10,29 +10,26 @@ import com.github.kr328.clash.design.compose.screen.AddProfileAction
 import com.github.kr328.clash.design.compose.screen.AddProfileScreen
 import com.github.kr328.clash.design.compose.screen.AddProfileState
 import com.github.kr328.clash.design.compose.screen.AddProfileStep
+import com.github.kr328.clash.design.model.ChannelStage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class AddProfileDesign(
     context: Context,
     initialUrl: String = "",
-    initialSecure: Boolean = false,
     initialError: String? = null,
 ) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
-        data class Submit(val url: String, val secure: Boolean) : Request
+        data class Submit(val url: String) : Request
         data object OtherWays : Request
     }
 
     private var state by mutableStateOf(
-        AddProfileState(url = initialUrl, secure = initialSecure, error = initialError),
+        AddProfileState(url = initialUrl, error = initialError),
     )
 
     val url: String
         get() = state.url
-
-    val secure: Boolean
-        get() = state.secure
 
     val error: String?
         get() = state.error
@@ -44,9 +41,23 @@ class AddProfileDesign(
     private fun onAction(action: AddProfileAction) {
         when (action) {
             is AddProfileAction.UrlChanged -> state = state.copy(url = action.url, error = null)
-            is AddProfileAction.SecureChanged -> state = state.copy(secure = action.secure)
-            AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url, state.secure))
+            AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url))
             AddProfileAction.OtherWays -> requests.trySend(Request.OtherWays)
+        }
+    }
+
+    // Шаг защищённого канала: строка над ходом загрузки, чтобы было видно,
+    // что сейчас происходит — проверка канала, повтор или обычный путь.
+    suspend fun setStage(stage: ChannelStage?) {
+        val text = when (stage) {
+            null -> ""
+            ChannelStage.Checking -> context.getString(R.string.clod_chan_stage_checking)
+            is ChannelStage.Retry -> context.getString(R.string.clod_chan_stage_retry, stage.attempt, stage.total)
+            ChannelStage.Plain -> context.getString(R.string.clod_chan_stage_plain)
+        }
+
+        withContext(Dispatchers.Main) {
+            state = state.copy(step = AddProfileStep.Fetching, stageText = text)
         }
     }
 
@@ -80,7 +91,7 @@ class AddProfileDesign(
 
     suspend fun setError(message: String) {
         withContext(Dispatchers.Main) {
-            state = state.copy(step = AddProfileStep.Input, error = message)
+            state = state.copy(step = AddProfileStep.Input, error = message, stageText = "")
         }
     }
 }

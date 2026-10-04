@@ -7,7 +7,9 @@ import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.model.ChannelStage
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.R as ServiceR
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
@@ -16,6 +18,7 @@ import com.github.kr328.clash.store.AppStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -31,15 +34,40 @@ object ProfileImports {
             override val token: Long = 0
         }
 
-        data class Running(override val token: Long, val status: FetchStatus?) : State
+        // stage — шаг защищённого канала (при добавлении и включении канала),
+        // status — ход самой загрузки внутри шага.
+        data class Running(
+            override val token: Long,
+            val status: FetchStatus?,
+            val stage: ChannelStage? = null,
+        ) : State
         data class Done(
             override val token: Long,
             val uuid: UUID,
             val name: String,
             val failedProviders: List<String>,
+            val secure: Boolean = false,
         ) : State
-        data class Failed(override val token: Long, val message: String, val detail: String?) : State
+        // channelOff — канал включали, а он не ответил: переключатель вернуть в «выкл».
+        data class Failed(
+            override val token: Long,
+            val message: String,
+            val detail: String?,
+            val channelOff: Boolean = false,
+        ) : State
     }
+
+    // Канал так и не ответил: подписка не добавляется, причина — ниже.
+    private class ChannelSilent(cause: Exception) : Exception(cause.message, cause)
+
+    // Канал включали у добавленной подписки, а у провайдера его нет.
+    private class ChannelAbsent(cause: Exception) : Exception(cause.message, cause)
+
+    private const val CHANNEL_ATTEMPTS = 3
+
+    private const val CHANNEL_PAUSE_MS = 2_000L
+
+    private const val CHAN_SILENT_MARK = "clod-chan-silent: "
 
     // Весь ход восстановления — от вопроса «восстановить?» до итога — хранится здесь,
     // а не в экране настроек: экран пересоздаётся (поворот, тема, старт и остановка
@@ -94,44 +122,51 @@ object ProfileImports {
     fun runningAddToken(): Long =
         (state_.value as? State.Running)?.token?.takeIf { committing == null } ?: 0
 
+    // Новая подписка всегда сначала пробует защищённый канал: молчит — ещё
+    // раз (всего три попытки), у провайдера его нет — обычный путь, ответил
+    // отказом — показать отказ.
     @Synchronized
-    fun start(source: String, secure: Boolean): Long {
+    fun start(source: String): Long {
         if (job?.isActive == true) return 0
 
         val token = ++lastToken
 
         committing = null
 
-        state_.value = State.Running(token, null)
+        state_.value = State.Running(token, null, ChannelStage.Checking)
 
         job = launchHoldingService {
             val context = Global.application.withAppLocale()
             val failed = AtomicReference(emptyList<String>())
 
             try {
-                val uuid = withProfile(retry = false) {
-                    create(Profile.Type.Url, context.getString(R.string.new_profile), source, secure = secure)
-                }
+                val (profile, secure) = channelFirst(token, fallback = true) { secure, observer ->
+                    failed.set(emptyList())
 
-                val profile = import(uuid, true) { status ->
-                    runCatching {
-                        FailedProviders.accumulate(failed, status)
+                    val uuid = withProfile(retry = false) {
+                        create(Profile.Type.Url, context.getString(R.string.new_profile), source, secure = secure)
+                    }
 
-                        state_.value = State.Running(token, status)
-                    }.onFailure {
-                        Log.w("Report import status: $it", it)
+                    import(uuid, true) { status ->
+                        runCatching { FailedProviders.accumulate(failed, status) }
+                            .onFailure { Log.w("Report import status: $it", it) }
+
+                        observer(status)
                     }
                 }
+
+                val uuid = profile.uuid
 
                 val title = profileDisplayName(context.queryPanelInfo(uuid), profile.name, profile.nameManual)
 
                 AppStore(context).apply {
                     addedProfileName = title
+                    addedProfileSecure = secure
                     addedProfilePending = true
                     profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
                 }
 
-                state_.value = State.Done(token, uuid, title, failed.get())
+                state_.value = State.Done(token, uuid, title, failed.get(), secure)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -176,7 +211,7 @@ object ProfileImports {
                         val interval = if (item.intervalManual) item.interval else 0L
 
                         withProfile(retry = false) {
-                            patch(uuid, item.name, item.nameManual, item.source, interval, item.intervalManual)
+                            patch(uuid, item.name, item.nameManual, item.source, interval, item.intervalManual, item.secure)
                         }
                     }
 
@@ -212,30 +247,56 @@ object ProfileImports {
         }
     }
 
+    // Сохранение из свойств. Новая подписка по ссылке (ещё не загруженная)
+    // идёт тем же путём, что и добавление: сначала защищённый канал.
+    // enablingChannel — у добавленной подписки канал включили: он проверяется
+    // этим же сохранением и, если не ответил, остаётся выключенным.
     @Synchronized
-    fun commit(profile: Profile): Long {
+    fun commit(profile: Profile, enablingChannel: Boolean = false): Long {
         if (job?.isActive == true) return 0
 
         val token = ++lastToken
 
-        state_.value = State.Running(token, null)
+        val viaChannel = profile.type == Profile.Type.Url && (!profile.imported || enablingChannel && profile.secure)
+
+        state_.value = State.Running(token, null, ChannelStage.Checking.takeIf { viaChannel })
         committing = profile.uuid
 
         job = launchHoldingService {
             val context = Global.application.withAppLocale()
             val failed = AtomicReference(emptyList<String>())
 
-            try {
+            val save: suspend (Boolean, (FetchStatus) -> Unit) -> Unit = { secure, observer ->
+                failed.set(emptyList())
+
                 withProfile(retry = false) {
-                    patch(profile.uuid, profile.name, profile.nameManual, profile.source, profile.interval, profile.intervalManual)
+                    patch(
+                        profile.uuid,
+                        profile.name,
+                        profile.nameManual,
+                        profile.source,
+                        profile.interval,
+                        profile.intervalManual,
+                        secure,
+                    )
                 }
 
                 withProfile(retry = false) {
                     commit(profile.uuid) { status ->
                         FailedProviders.accumulate(failed, status)
 
-                        state_.value = State.Running(token, status)
+                        observer(status)
                     }
+                }
+            }
+
+            try {
+                val secure = if (viaChannel) {
+                    channelFirst(token, fallback = !profile.imported, save).second
+                } else {
+                    save(profile.secure) { status -> state_.value = State.Running(token, status) }
+
+                    profile.secure
                 }
 
                 if (withProfile { queryActive() } == null) {
@@ -249,21 +310,94 @@ object ProfileImports {
                             profile.name,
                             profile.nameManual,
                         )
+                        addedProfileSecure = secure
                         addedProfilePending = true
                     }
 
                     profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
                 }
 
-                state_.value = State.Done(token, profile.uuid, profile.name, failed.get())
+                state_.value = State.Done(token, profile.uuid, profile.name, failed.get(), secure)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state_.value = context.failed(token, e)
+                val off = profile.imported && viaChannel && (e is ChannelSilent || e is ChannelAbsent)
+
+                if (off) {
+                    // Остальные правки остаются в черновике, канал — выключенным.
+                    runCatching {
+                        withContext(NonCancellable) {
+                            withProfile(retry = false) {
+                                patch(
+                                    profile.uuid,
+                                    profile.name,
+                                    profile.nameManual,
+                                    profile.source,
+                                    profile.interval,
+                                    profile.intervalManual,
+                                    false,
+                                )
+                            }
+                        }
+                    }.onFailure { Log.w("Keep the channel off in the draft: $it", it) }
+                }
+
+                state_.value = context.failed(token, e).copy(channelOff = off)
             }
         }
 
         return token
+    }
+
+    // Попытки защищённого канала. fallback — без канала у провайдера идти
+    // обычным путём (добавление); без него — это ошибка (включение канала).
+    // Возвращает итог и то, пришёл ли он каналом.
+    private suspend fun <T> channelFirst(
+        token: Long,
+        fallback: Boolean,
+        attempt: suspend (secure: Boolean, observer: (FetchStatus) -> Unit) -> T,
+    ): Pair<T, Boolean> {
+        for (n in 1..CHANNEL_ATTEMPTS) {
+            val stage = if (n == 1) ChannelStage.Checking else ChannelStage.Retry(n, CHANNEL_ATTEMPTS)
+
+            state_.value = State.Running(token, null, stage)
+
+            try {
+                return attempt(true) { status -> report(token, status, stage) } to true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                when (UpdateFailures.channel(e.message.orEmpty())) {
+                    UpdateFailures.Channel.Answered -> throw e
+                    UpdateFailures.Channel.Absent -> {
+                        Log.i("Secure channel: the provider has none (${Redact.text(e.message.orEmpty())})")
+
+                        if (!fallback) throw ChannelAbsent(e)
+
+                        break
+                    }
+                    UpdateFailures.Channel.Silent -> {
+                        Log.w("Secure channel: no answer, attempt $n of $CHANNEL_ATTEMPTS (${Redact.text(e.message.orEmpty())})")
+
+                        if (n == CHANNEL_ATTEMPTS) throw ChannelSilent(e)
+
+                        delay(CHANNEL_PAUSE_MS)
+                    }
+                }
+            }
+        }
+
+        state_.value = State.Running(token, null, ChannelStage.Plain)
+
+        return attempt(false) { status -> report(token, status, ChannelStage.Plain) } to false
+    }
+
+    private fun report(token: Long, status: FetchStatus, stage: ChannelStage) {
+        runCatching {
+            state_.value = State.Running(token, status, stage)
+        }.onFailure {
+            Log.w("Report import status: $it", it)
+        }
     }
 
     private fun Context.humanFailure(e: Exception): String? {
@@ -276,6 +410,22 @@ object ProfileImports {
         humanFailure(e) ?: getString(R.string.clod_sub_fetch_failed)
 
     private fun Context.failed(token: Long, e: Exception): State.Failed {
+        when (e) {
+            is ChannelSilent -> {
+                // Заголовок — молчание сервера, ниже — сетевая причина, если она узнана.
+                val raw = e.message.orEmpty()
+                val cause = UpdateFailures.classify(raw)?.cause
+
+                return State.Failed(
+                    token,
+                    getString(ServiceR.string.clod_update_cause_silent),
+                    humanizeUpdateFailure(raw).takeIf { cause != null && cause != UpdateFailures.Cause.Silent }
+                        ?: Redact.text(raw.substringAfter(CHAN_SILENT_MARK)).ifBlank { null },
+                )
+            }
+            is ChannelAbsent -> return State.Failed(token, getString(R.string.clod_chan_absent), null)
+        }
+
         val raw = e.message.orEmpty()
         val human = humanFailure(e)
 

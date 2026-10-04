@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -20,13 +21,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -41,6 +45,8 @@ import com.github.kr328.clash.service.model.Profile
 data class FetchProgress(
     val text: String,
     val progress: Float = -1f,
+    // Шаг защищённого канала над ходом загрузки; пусто — канал не проверяется.
+    val stage: String = "",
 )
 
 @Immutable
@@ -52,6 +58,10 @@ data class PropertiesState(
     val intervalManual: Boolean = false,
     val type: Profile.Type = Profile.Type.Url,
     val secure: Boolean = false,
+    // Канал включается и выключается только у добавленной подписки по ссылке:
+    // новая сама сначала пробует канал при сохранении.
+    val secureEditable: Boolean = false,
+    val confirmingSecureOff: Boolean = false,
     val processing: FetchProgress? = null,
     val confirmingExit: Boolean = false,
 ) {
@@ -89,6 +99,9 @@ sealed interface PropertiesAction {
     data object IntervalFromPanel : PropertiesAction
     data object ConfirmExit : PropertiesAction
     data object CancelExit : PropertiesAction
+    data class SecureChanged(val on: Boolean) : PropertiesAction
+    data object ConfirmSecureOff : PropertiesAction
+    data object CancelSecureOff : PropertiesAction
 }
 
 @Composable
@@ -131,7 +144,7 @@ fun PropertiesScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             Column(modifier = Modifier.padding(horizontal = 18.dp)) {
-                Tip(type = state.type, secure = state.secure)
+                Tip(type = state.type)
 
                 Spacer(Modifier.height(16.dp))
 
@@ -220,6 +233,14 @@ fun PropertiesScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
+            if (state.secureEditable) {
+                SecureChannelRow(
+                    on = state.secure,
+                    enabled = !processing,
+                    onChange = { onAction(PropertiesAction.SecureChanged(it)) },
+                )
+            }
+
             ActionRow(
                 title = stringResource(R.string.browse_files),
                 subtitle = stringResource(R.string.browse_configuration_providers),
@@ -232,6 +253,24 @@ fun PropertiesScreen(
     }
 
     state.processing?.let { ProgressDialog(it) }
+
+    if (state.confirmingSecureOff) {
+        AlertDialog(
+            onDismissRequest = { onAction(PropertiesAction.CancelSecureOff) },
+            title = { Text(stringResource(R.string.clod_secure_off_title)) },
+            text = { Text(stringResource(R.string.clod_secure_off_body)) },
+            confirmButton = {
+                TextButton(onClick = { onAction(PropertiesAction.ConfirmSecureOff) }) {
+                    Text(stringResource(R.string.clod_secure_off_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onAction(PropertiesAction.CancelSecureOff) }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 
     if (state.confirmingExit) {
         AlertDialog(
@@ -253,7 +292,34 @@ fun PropertiesScreen(
 }
 
 @Composable
-private fun Tip(type: Profile.Type, secure: Boolean) {
+private fun SecureChannelRow(on: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .toggleable(value = on, enabled = enabled, role = Role.Switch, onValueChange = onChange)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.clod_secure_channel),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = stringResource(if (on) R.string.clod_secure_channel_on else R.string.clod_secure_channel_off),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (on) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = on, onCheckedChange = null, enabled = enabled)
+    }
+}
+
+@Composable
+private fun Tip(type: Profile.Type) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -295,14 +361,6 @@ private fun Tip(type: Profile.Type, secure: Boolean) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                if (secure) {
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.clod_properties_secure),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
         }
     }
@@ -315,6 +373,14 @@ private fun ProgressDialog(progress: FetchProgress) {
         title = { Text(stringResource(R.string.save)) },
         text = {
             Column {
+                if (progress.stage.isNotBlank()) {
+                    Text(
+                        text = progress.stage,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
                 Text(
                     text = progress.text,
                     style = MaterialTheme.typography.bodyMedium,

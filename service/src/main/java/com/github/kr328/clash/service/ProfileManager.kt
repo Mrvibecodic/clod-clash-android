@@ -78,7 +78,15 @@ class ProfileManager(private val context: Context) : IProfileManager,
         return uuid
     }
 
-    override suspend fun patch(uuid: UUID, name: String, nameManual: Boolean, source: String, interval: Long, intervalManual: Boolean) {
+    override suspend fun patch(
+        uuid: UUID,
+        name: String,
+        nameManual: Boolean,
+        source: String,
+        interval: Long,
+        intervalManual: Boolean,
+        secure: Boolean,
+    ) {
         val pending = PendingDao().queryByUUID(uuid)
 
         val opened = pending == null &&
@@ -93,7 +101,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                     total = 0,
                     download = 0,
                     expire = 0,
-                    secure = imported.secure,
+                    secure = secure,
                     intervalManual = intervalManual,
                     nameManual = nameManual,
                 )
@@ -115,6 +123,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 touchedAt = System.currentTimeMillis(),
                 intervalManual = intervalManual,
                 nameManual = nameManual,
+                secure = secure,
             )
 
             PendingDao().update(newPending)

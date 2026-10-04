@@ -24,7 +24,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
         val design = AddProfileDesign(
             this,
             restored?.getString(KEY_URL).orEmpty(),
-            restored?.getBoolean(KEY_SECURE) ?: false,
             restored?.getString(KEY_ERROR),
         )
 
@@ -36,8 +35,11 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
 
                 when (state) {
                     ProfileImports.State.Idle -> Unit
-                    is ProfileImports.State.Running ->
+                    is ProfileImports.State.Running -> {
+                        design.setStage(state.stage)
+
                         state.status?.let { design.setProgress(it) } ?: design.setFetching()
+                    }
 
                     is ProfileImports.State.Done -> {
                         ProfileImports.consume(token)
@@ -64,7 +66,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                 events.onReceive { }
                 design.requests.onReceive { request ->
                     when (request) {
-                        is AddProfileDesign.Request.Submit -> design.addProfile(request.url, request.secure)
+                        is AddProfileDesign.Request.Submit -> design.addProfile(request.url)
                         AddProfileDesign.Request.OtherWays -> {
                             val result = startActivityForResult(
                                 ActivityResultContracts.StartActivityForResult(),
@@ -90,12 +92,11 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
 
         design?.let {
             outState.putString(KEY_URL, it.url)
-            outState.putBoolean(KEY_SECURE, it.secure)
             outState.putString(KEY_ERROR, it.error)
         }
     }
 
-    private suspend fun AddProfileDesign.addProfile(input: String, secure: Boolean) {
+    private suspend fun AddProfileDesign.addProfile(input: String) {
         val source = normalizeSource(input)
 
         if (source == null) {
@@ -110,7 +111,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
             return
         }
 
-        val started = ProfileImports.start(source, secure)
+        val started = ProfileImports.start(source)
 
         if (started != 0L) {
             token = started
@@ -140,7 +141,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
 
     companion object {
         private const val KEY_URL = "url"
-        private const val KEY_SECURE = "secure"
         private const val KEY_TOKEN = "token"
         private const val KEY_ERROR = "error"
     }

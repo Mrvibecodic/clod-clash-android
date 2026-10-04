@@ -72,7 +72,8 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                         val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
 
                         create(type, name).also {
-                            patch(it, name, linkName != null, url, intervalMs, intervalMs > 0)
+                            // Канал выберет сохранение: сначала защищённый, без него — обычный путь.
+                            patch(it, name, linkName != null, url, intervalMs, intervalMs > 0, secure = false)
                         }
                     }
 

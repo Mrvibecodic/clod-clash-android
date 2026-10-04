@@ -370,7 +370,6 @@
     <string name="clod_profile_type_url">link</string>
     <string name="clod_profile_type_external">from another app</string>
     <string name="clod_profile_type_file">local file</string>
-    <string name="clod_properties_secure">Secure connection is on. It cannot be turned off — only by adding the subscription again.</string>
     <string name="clod_no_logs">No saved logs yet</string>
     <string name="clod_no_files">No files yet</string>
     <string name="clod_files_error">Could not read the files: %1$s</string>
@@ -541,7 +540,17 @@
     <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
     <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and server checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
     <string name="clod_secure_channel">Secure connection</string>
-    <string name="clod_secure_channel_hint">(make sure your provider supports this option)</string>
+    <string name="clod_secure_channel_on">The subscription is loaded over the provider\'s secure channel</string>
+    <string name="clod_secure_channel_off">Off — the subscription is loaded in the clear. This is not safe</string>
+    <string name="clod_secure_off_title">Turn off the secure connection?</string>
+    <string name="clod_secure_off_body">Without it, the subscription address, device data and server list travel to the provider in the clear, and anyone on the way can see them. Turn it off only if your provider asks you to.</string>
+    <string name="clod_secure_off_confirm">Turn off</string>
+    <string name="clod_chan_stage_checking">Checking the provider\'s secure channel\u2026</string>
+    <string name="clod_chan_stage_retry">No answer, trying again (%1$d of %2$d)\u2026</string>
+    <string name="clod_chan_stage_plain">The provider has no secure channel — loading the usual way\u2026</string>
+    <string name="clod_chan_absent">The provider does not support the secure connection</string>
+    <string name="clod_sub_channel_on">Secure channel</string>
+    <string name="clod_sub_channel_off">Without the secure channel — the provider does not support it</string>
     <string name="clod_home_connected_to">Connected to</string>
     <string name="clod_home_selected_server">Selected server</string>
     <string name="clod_home_direct">Direct, no servers</string>

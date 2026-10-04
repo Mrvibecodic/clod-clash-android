@@ -131,8 +131,15 @@ class GuardedProfileManager(private val delegate: IProfileManager) : IProfileMan
     override suspend fun delete(uuid: UUID) =
         guard { delegate.delete(uuid) }
 
-    override suspend fun patch(uuid: UUID, name: String, nameManual: Boolean, source: String, interval: Long, intervalManual: Boolean) =
-        guard { delegate.patch(uuid, name, nameManual, source, interval, intervalManual) }
+    override suspend fun patch(
+        uuid: UUID,
+        name: String,
+        nameManual: Boolean,
+        source: String,
+        interval: Long,
+        intervalManual: Boolean,
+        secure: Boolean,
+    ) = guard { delegate.patch(uuid, name, nameManual, source, interval, intervalManual, secure) }
 
     override suspend fun update(uuid: UUID) =
         guard { delegate.update(uuid) }

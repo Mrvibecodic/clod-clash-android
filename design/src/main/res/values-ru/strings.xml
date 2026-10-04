@@ -339,7 +339,6 @@
     <string name="clod_profile_type_url">по ссылке</string>
     <string name="clod_profile_type_external">из другого приложения</string>
     <string name="clod_profile_type_file">локальный файл</string>
-    <string name="clod_properties_secure">Защищённое соединение включено. Снять его нельзя — только добавить подписку заново.</string>
     <string name="clod_no_logs">Сохранённых журналов пока нет</string>
     <string name="clod_no_files">Файлов пока нет</string>
     <string name="clod_files_error">Не удалось прочитать файлы: %1$s</string>
@@ -539,7 +538,17 @@
     <string name="clod_keep_awake">Держать туннель активным при выключенном экране</string>
     <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки серверов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
     <string name="clod_secure_channel">Защищённое соединение</string>
-    <string name="clod_secure_channel_hint">(убедитесь, что ваш провайдер поддерживает эту опцию)</string>
+    <string name="clod_secure_channel_on">Подписка загружается через защищённый канал провайдера</string>
+    <string name="clod_secure_channel_off">Выключено — подписка идёт открытым текстом. Это небезопасно</string>
+    <string name="clod_secure_off_title">Выключить защищённое соединение?</string>
+    <string name="clod_secure_off_body">Без него адрес подписки, данные устройства и список серверов идут к провайдеру открытым текстом, и их видят посредники по пути. Выключайте, только если провайдер просит.</string>
+    <string name="clod_secure_off_confirm">Выключить</string>
+    <string name="clod_chan_stage_checking">Проверяем защищённый канал на стороне провайдера\u2026</string>
+    <string name="clod_chan_stage_retry">Нет ответа, пробуем ещё раз (%1$d из %2$d)\u2026</string>
+    <string name="clod_chan_stage_plain">У провайдера нет защищённого канала — загружаем обычным способом\u2026</string>
+    <string name="clod_chan_absent">Провайдер не поддерживает защищённое соединение</string>
+    <string name="clod_sub_channel_on">Защищённый канал</string>
+    <string name="clod_sub_channel_off">Без защищённого канала — провайдер его не поддерживает</string>
     <string name="clod_home_connected_to">Подключено к</string>
     <string name="clod_home_selected_server">Выбран сервер</string>
     <string name="clod_home_direct">Напрямую, без серверов</string>

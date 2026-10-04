@@ -13,6 +13,7 @@ import com.github.kr328.clash.design.compose.screen.PropertiesState
 import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.compose.screen.nameField
 import com.github.kr328.clash.design.compose.screen.withNameField
+import com.github.kr328.clash.design.model.ChannelStage
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.CancellableContinuation
@@ -43,6 +44,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
             source = state.url,
             interval = TimeUnit.MINUTES.toMillis(state.intervalMinutes.toLongOrNull() ?: 0),
             intervalManual = state.intervalManual,
+            secure = state.secure,
         )
         set(value) {
             base = value
@@ -57,6 +59,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
                 intervalManual = value.intervalManual,
                 type = value.type,
                 secure = value.secure,
+                secureEditable = value.type == Profile.Type.Url && value.imported,
             )
         }
 
@@ -86,11 +89,34 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
 
             PropertiesAction.ConfirmExit -> resumeExit(true)
             PropertiesAction.CancelExit -> resumeExit(false)
+            // Включение проверит сохранение; выключение — только после предупреждения.
+            is PropertiesAction.SecureChanged -> state = if (action.on) {
+                state.copy(secure = true)
+            } else {
+                state.copy(confirmingSecureOff = true)
+            }
+            PropertiesAction.ConfirmSecureOff -> state = state.copy(secure = false, confirmingSecureOff = false)
+            PropertiesAction.CancelSecureOff -> state = state.copy(confirmingSecureOff = false)
         }
     }
 
-    suspend fun setImporting(status: FetchStatus?) {
-        setProgress(status?.toProgress() ?: FetchProgress(context.getString(R.string.initializing)))
+    suspend fun setImporting(status: FetchStatus?, stage: ChannelStage? = null) {
+        val progress = status?.toProgress() ?: FetchProgress(context.getString(R.string.initializing))
+
+        setProgress(progress.copy(stage = stage?.let(::stageText).orEmpty()))
+    }
+
+    // Канал включали, а он не ответил: переключатель обратно в «выкл».
+    suspend fun setSecure(on: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(secure = on)
+        }
+    }
+
+    private fun stageText(stage: ChannelStage): String = when (stage) {
+        ChannelStage.Checking -> context.getString(R.string.clod_chan_stage_checking)
+        is ChannelStage.Retry -> context.getString(R.string.clod_chan_stage_retry, stage.attempt, stage.total)
+        ChannelStage.Plain -> context.getString(R.string.clod_chan_stage_plain)
     }
 
     suspend fun clearImporting() {

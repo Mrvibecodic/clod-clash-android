@@ -2,7 +2,6 @@ package com.github.kr328.clash.design.compose.screen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,27 +10,22 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Switch
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -50,12 +44,12 @@ data class AddProfileState(
     val progressText: String = "",
     val progress: Float = 0f,
     val error: String? = null,
-    val secure: Boolean = false,
+    // Что сейчас с защищённым каналом: проверка, повтор, обычный путь.
+    val stageText: String = "",
 )
 
 sealed interface AddProfileAction {
     data class UrlChanged(val url: String) : AddProfileAction
-    data class SecureChanged(val secure: Boolean) : AddProfileAction
     data object Submit : AddProfileAction
     data object OtherWays : AddProfileAction
 }
@@ -114,33 +108,6 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    Spacer(Modifier.height(16.dp))
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .minimumInteractiveComponentSize()
-            .toggleable(value = state.secure, role = Role.Switch) {
-                onAction(AddProfileAction.SecureChanged(it))
-            },
-    ) {
-        Text(
-            text = stringResource(R.string.clod_secure_channel),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
-        )
-        Spacer(Modifier.width(12.dp))
-        Switch(
-            checked = state.secure,
-            onCheckedChange = null,
-        )
-    }
-    Text(
-        text = stringResource(R.string.clod_secure_channel_hint),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
     Spacer(Modifier.height(24.dp))
     Button(
         onClick = { onAction(AddProfileAction.Submit) },
@@ -169,6 +136,15 @@ private fun FetchingStep(state: AddProfileState) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(modifier = Modifier.size(40.dp), strokeWidth = 3.dp)
             Spacer(Modifier.height(20.dp))
+            if (state.stageText.isNotBlank()) {
+                Text(
+                    text = state.stageText,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             Text(
                 text = state.progressText.ifBlank { stringResource(R.string.clod_sub_fetching) },
                 style = MaterialTheme.typography.bodyMedium,

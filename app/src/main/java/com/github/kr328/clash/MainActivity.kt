@@ -1324,22 +1324,26 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         store.addedProfileName = ""
 
+        val channel = getString(
+            if (store.addedProfileSecure) DesignR.string.clod_sub_channel_on else DesignR.string.clod_sub_channel_off,
+        )
+
         selectTab(MainTab.Home)
 
         if (providers.isNotBlank()) {
             showToast(
                 DesignR.string.clod_sub_added_partial,
                 ToastDuration.Long,
-                detail = listOfNotNull(name.takeIf { it.isNotBlank() }, providers).joinToString(" · "),
+                detail = listOfNotNull(name.takeIf { it.isNotBlank() }, channel, providers).joinToString(" · "),
             )
 
             return
         }
 
         if (name.isNotBlank()) {
-            showToast(getString(DesignR.string.clod_sub_added_named, name), ToastDuration.Long)
+            showToast(getString(DesignR.string.clod_sub_added_named, name), ToastDuration.Long, detail = channel)
         } else {
-            showToast(DesignR.string.clod_sub_added, ToastDuration.Long)
+            showToast(DesignR.string.clod_sub_added, ToastDuration.Long, detail = channel)
         }
     }
 

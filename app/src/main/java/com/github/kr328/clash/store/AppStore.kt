@@ -56,6 +56,12 @@ class AppStore(context: Context) {
         defaultValue = "",
     )
 
+    // Пришла ли добавленная подписка защищённым каналом — для сообщения «добавлена».
+    var addedProfileSecure: Boolean by store.boolean(
+        key = "added_profile_secure",
+        defaultValue = false,
+    )
+
     var profileProvidersFailed: String by store.string(
         key = "profile_providers_failed",
         defaultValue = "",
