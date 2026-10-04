@@ -219,7 +219,7 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 		}
 	}
 
-	if err != nil && pin != nil {
+	if err != nil && pin != nil && keyMayBeRefused(err) {
 		log.Warnln("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
 
 		if ctx, ok = rounds.start(); ok {
@@ -265,6 +265,17 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 	return io.NopCloser(strings.NewReader(answer.Body)), header, nil
 }
 
+// keyMayBeRefused — повторять без закрепления ключа прослойки есть смысл,
+// только если прослойка ответила, но закреплённый ключ не приняла: отказом
+// снаружи (ключ ей неизвестен — запрос ушёл в обычный конвейер) или
+// шифротекстом, который не открылся. Сетевой сбой — не повод: без закрепления
+// тело защищено одним адресом подписки, и повтор на любую ошибку позволил бы
+// снять закрепление, просто оборвав первый запрос. Ответ, который открылся
+// (часы, чужая метка), значит, что ключ в порядке.
+func keyMayBeRefused(err error) bool {
+	return errors.Is(err, chanx.ErrBadAnswer)
+}
+
 // ErrChanSilent помечает раунд, на который канал не ответил: сеть, таймаут,
 // сбой 5xx по дороге. Добавление подписки в этом случае пробует канал заново,
 // а не уходит на обычный путь, — молчание ещё не значит, что канала нет.
@@ -293,7 +304,37 @@ func abs(v int64) int64 {
 	return v
 }
 
+// chanRound — один раунд: через туннель, а если он не донёс — напрямую.
+// Каждый запрос собирает свой конверт: у повтора своя метка, иначе прослойка,
+// получившая первый, отбросила бы второй как повтор.
 func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, direct *directBudget) (*chanx.Answer, int64, error) {
+	answer, served, reached, err := chanRequest(ctx, url, pin, clockOffset, false)
+	if err == nil || reached || refusedByChanRedirect(err) {
+		return answer, served, err
+	}
+
+	tunnelErr := err
+
+	directCtx, ok := direct.start()
+	if !ok {
+		log.Warnln("Secure channel: request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
+
+		return nil, 0, tunnelErr
+	}
+
+	log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
+
+	answer, served, reached, err = chanRequest(directCtx, url, pin, clockOffset, true)
+	if err != nil && !reached {
+		return nil, 0, tunnelErr
+	}
+
+	return answer, served, err
+}
+
+// chanRequest — конверт, запрос и разбор ответа. reached — сервер ответил
+// (пусть и не тем): повторять напрямую незачем.
+func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64, direct bool) (*chanx.Answer, int64, bool, error) {
 	device := app.DeviceHeaders()
 
 	fields := chanx.Fields{
@@ -307,40 +348,21 @@ func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, d
 
 	secureURL, session, err := chanx.Build(url, pin, fields, time.Now().Unix()+clockOffset)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, true, err
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, true, err
 	}
 
 	for _, pair := range chanBrowserHeaders {
 		request.Header.Set(pair[0], pair[1])
 	}
 
-	response, err := chanClient(false).Do(request)
-	if err != nil && !refusedByChanRedirect(err) {
-		tunnelErr := err
-
-		directCtx, ok := direct.start()
-		if !ok {
-			log.Warnln("Secure channel: request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
-
-			return nil, 0, tunnelErr
-		}
-
-		log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
-
-		response, err = chanClient(true).Do(request.WithContext(directCtx))
-
-		if err != nil {
-			return nil, 0, tunnelErr
-		}
-	}
-
+	response, err := chanClient(direct).Do(request)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, false, err
 	}
 
 	defer response.Body.Close()
@@ -351,20 +373,20 @@ func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, d
 	// (старая прослойка или голая панель); 5xx — сбой по дороге, он считается
 	// молчанием.
 	if response.StatusCode >= 500 {
-		return nil, served, fmt.Errorf("server answered with status %d", response.StatusCode)
+		return nil, served, true, fmt.Errorf("server answered with status %d", response.StatusCode)
 	}
 	if response.StatusCode >= 400 {
-		return nil, served, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
+		return nil, served, true, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
 	}
 
 	wire, err := io.ReadAll(io.LimitReader(response.Body, 32<<20))
 	if err != nil {
-		return nil, served, err
+		return nil, served, true, err
 	}
 
 	answer, err := session.Open(wire, time.Now().Unix()+clockOffset)
 
-	return answer, served, err
+	return answer, served, true, err
 }
 
 func serverTime(header http.Header) int64 {
