@@ -58,6 +58,14 @@ object NetworkKey {
         }
     }
 
+    // Вид сети для отчёта прослойке: wired | wifi | mobile | other
+    fun kindOf(seen: Seen?): String = when (seen?.transport) {
+        "wifi" -> "wifi"
+        "ethernet", "usb" -> "wired"
+        "cellular" -> "mobile"
+        else -> "other"
+    }
+
     fun seen(context: Context, network: Network?): Seen? {
         val connectivity = context.getSystemService<ConnectivityManager>() ?: return null
         val chosen = network ?: connectivity.activeNetwork ?: return null

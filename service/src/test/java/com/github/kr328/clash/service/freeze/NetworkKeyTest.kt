@@ -58,4 +58,14 @@ class NetworkKeyTest {
         assertEquals("10.0.0.0/8", NetworkKey.subnetOf(byteArrayOf(10, 20, 30, 40), 8))
         assertEquals("172.16.4.0/22", NetworkKey.subnetOf(byteArrayOf(172.toByte(), 16, 7, 200.toByte()), 22))
     }
+
+    @Test
+    fun `вид сети для отчёта`() {
+        assertEquals("wifi", NetworkKey.kindOf(wifi("192.168.0.1")))
+        assertEquals("wired", NetworkKey.kindOf(wifi("192.168.0.1").copy(transport = "ethernet")))
+        assertEquals("wired", NetworkKey.kindOf(wifi("192.168.0.1").copy(transport = "usb")))
+        assertEquals("mobile", NetworkKey.kindOf(NetworkKey.Seen(transport = "cellular", operator = "25001")))
+        assertEquals("other", NetworkKey.kindOf(NetworkKey.Seen(transport = "bluetooth")))
+        assertEquals("other", NetworkKey.kindOf(null))
+    }
 }

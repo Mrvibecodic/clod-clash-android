@@ -27,6 +27,7 @@ import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.service.freeze.FreezeChecks
+import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import com.github.kr328.clash.service.util.sendProfileUpdateStarted
@@ -115,6 +116,16 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             throw e
         } catch (e: Exception) {
             Log.w("Subscription alerts of $uuid: $e", e)
+        }
+
+        if (result is Result.Success && kind != Kind.Manual) {
+            try {
+                ClientReports.afterScheduledUpdate(uuid)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Client report of $uuid: $e", e)
+            }
         }
 
         if (result is Result.Success) {

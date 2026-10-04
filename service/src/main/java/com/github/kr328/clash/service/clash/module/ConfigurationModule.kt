@@ -26,6 +26,7 @@ import com.github.kr328.clash.service.util.loadFailureKeepsRetained
 import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendProfileLoadFailed
 import com.github.kr328.clash.service.freeze.FreezeChecks
+import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.util.sendProfileLoaded
 import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.CancellationException
@@ -183,6 +184,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                     enqueueEvent(Event.Loaded(current))
 
                     FreezeChecks.profileLoaded(current)
+                    ClientReports.profileLoaded(current)
 
                     continue
                 }
@@ -249,6 +251,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 enqueueEvent(Event.Loaded(current))
 
                 FreezeChecks.profileLoaded(current)
+                ClientReports.profileLoaded(current)
 
                 ready = true
 

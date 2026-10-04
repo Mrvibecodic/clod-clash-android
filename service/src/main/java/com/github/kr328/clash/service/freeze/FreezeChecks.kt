@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ServiceLog
+import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.readPanelInfo
@@ -23,7 +24,6 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -115,23 +115,6 @@ object FreezeChecks {
         }
 
         return known.second
-    }
-
-    // Заготовка для прослойки: всё, что клиент знает о проверке 16–20 этой
-    // подписки, одним документом — по сетям (хеш) и отпечаткам узлов, с именем
-    // узла и кодом ответа последней проверки. Куда и когда отправлять, решится
-    // позже; здесь только форма
-    @Suppress("unused")
-    fun report(uuid: UUID): String {
-        val file = FreezeStore.load(context, uuid)
-
-        return buildJsonObject {
-            put("version", 1)
-            put("platform", "android")
-            put("client", runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty())
-            put("subscription", uuid.toString())
-            put("networks", json.encodeToJsonElement(FreezeFile.serializer(), file).jsonObject.getValue("networks"))
-        }.toString()
     }
 
     // Подписка загружена в ядро: старт туннеля, смена, обновление, перезапуск.
@@ -325,6 +308,8 @@ object FreezeChecks {
                 }
 
                 net = net.copy(nodes = nodes)
+
+                ClientReports.noteFreeze(uuid, path, key, NetworkKey.kindOf(NetworkKey.seen(context, network)), outcomes, now)
             }
 
             ServiceLog.mark(

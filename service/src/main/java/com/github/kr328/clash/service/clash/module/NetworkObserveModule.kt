@@ -12,6 +12,7 @@ import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.freeze.FreezeChecks
+import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
 import kotlinx.coroutines.CoroutineScope
@@ -132,7 +133,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             if (network == currentNetwork) {
                 preferred?.let { onNetworkMaybeChanged(it, "onLost") }
-                    ?: markNetworkEvent("onLost", network, "reacted=false (no network left)")
+                    ?: run {
+                        markNetworkEvent("onLost", network, "reacted=false (no network left)")
+                        ClientReports.network(null)
+                    }
             } else {
                 markNetworkEvent("onLost", network, "reacted=false (not current)")
             }
@@ -149,7 +153,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             // иначе фоновая мобильная сеть делала бы VPN лимитным при Wi-Fi
             networks.trySend(preferredNetwork())
 
-            if (network == currentNetwork) FreezeChecks.networkSeen(network)
+            if (network == currentNetwork) {
+                FreezeChecks.networkSeen(network)
+                ClientReports.network(network)
+            }
         }
 
         override fun onUnavailable() {
@@ -262,6 +269,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         currentNetwork = network
         currentValidatedSeen = false
+
+        ClientReports.network(network)
 
         networks.trySend(network)
 

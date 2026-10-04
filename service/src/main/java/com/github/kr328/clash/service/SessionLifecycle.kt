@@ -15,6 +15,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.module.CloseModule
 import com.github.kr328.clash.service.clash.module.StaticNotificationModule
 import com.github.kr328.clash.service.freeze.FreezeChecks
+import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.sendClashStarted
@@ -131,6 +132,7 @@ class SessionLifecycle(
         StatusProvider.serviceRunning = false
 
         FreezeChecks.sessionStopped()
+        ClientReports.sessionStopped()
 
         service.sendClashStopped(reason)
 
