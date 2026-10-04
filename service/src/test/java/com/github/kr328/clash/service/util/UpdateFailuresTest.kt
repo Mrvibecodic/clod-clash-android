@@ -34,6 +34,44 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `a silent channel is explained by the cause under the mark`() {
+        assertEquals(
+            Reason(Cause.Timeout),
+            UpdateFailures.classify("clod-chan-silent: Get \"https://p/c1/x\": context deadline exceeded"),
+        )
+        assertEquals(
+            Reason(Cause.ServerError, 502),
+            UpdateFailures.classify("clod-chan-silent: server answered with status 502"),
+        )
+        assertEquals(Reason(Cause.Silent), UpdateFailures.classify("clod-chan-silent: something odd"))
+    }
+
+    @Test
+    fun `the channel is told absent, silent or answered`() {
+        assertEquals(
+            UpdateFailures.Channel.Absent,
+            UpdateFailures.channel("clod-chan-bad-answer: relay answered with status 404"),
+        )
+        assertEquals(UpdateFailures.Channel.Absent, UpdateFailures.channel("clod-chan-bad-answer"))
+        // Адрес без пути с меткой: канала нет, подписка идёт обычным путём.
+        assertEquals(
+            UpdateFailures.Channel.Absent,
+            UpdateFailures.channel("clod-chan-bad-url: address without token: https://p/?token=x"),
+        )
+        assertEquals(
+            UpdateFailures.Channel.Silent,
+            UpdateFailures.channel("clod-chan-silent: dial tcp: i/o timeout"),
+        )
+        assertEquals(
+            UpdateFailures.Channel.Silent,
+            UpdateFailures.channel("clod-chan-silent: time budget for the update is exhausted"),
+        )
+        assertEquals(UpdateFailures.Channel.Answered, UpdateFailures.channel("clod-chan-stale"))
+        assertEquals(UpdateFailures.Channel.Answered, UpdateFailures.channel("server answered with status 404"))
+        assertEquals(UpdateFailures.Channel.Answered, UpdateFailures.channel("clod-config-rejected: yaml: line 3"))
+    }
+
+    @Test
     fun `an answer without a subscription is explained`() {
         assertEquals(
             Reason(Cause.NotDelivered),

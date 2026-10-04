@@ -258,7 +258,7 @@ func fetchConfig(url *U.URL, file string, secure bool, budget *budgets.Budget, l
 
 	window, ok := openAddressWindow(budget, limit, true)
 	if !ok {
-		return fetchHeader{}, errFetchBudget
+		return fetchHeader{}, chanSilence(errFetchBudget)
 	}
 
 	rounds := &roundBudget{budget: budget, deadline: window.deadline}

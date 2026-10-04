@@ -196,7 +196,7 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 
 	ctx, ok := rounds.start()
 	if !ok {
-		return nil, fetchHeader{}, errFetchBudget
+		return nil, fetchHeader{}, chanSilence(errFetchBudget)
 	}
 
 	answer, served, err := chanRound(ctx, url, pin, offset, direct)
@@ -232,7 +232,7 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 		}
 	}
 	if err != nil {
-		return nil, fetchHeader{}, err
+		return nil, fetchHeader{}, chanSilence(err)
 	}
 
 	writeChanPin(dir, answer.SP)
@@ -263,6 +263,26 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 	}
 
 	return io.NopCloser(strings.NewReader(answer.Body)), header, nil
+}
+
+// ErrChanSilent помечает раунд, на который канал не ответил: сеть, таймаут,
+// сбой 5xx по дороге. Добавление подписки в этом случае пробует канал заново,
+// а не уходит на обычный путь, — молчание ещё не значит, что канала нет.
+var ErrChanSilent = errors.New("clod-chan-silent")
+
+// chanSilence оставляет как есть то, что канал сказал сам (нет канала, чужой
+// ответ, часы, отказ редиректа) и адрес, с которым канала не бывает, и
+// помечает молчанием всё остальное.
+func chanSilence(err error) error {
+	if errors.Is(err, chanx.ErrBadAnswer) ||
+		errors.Is(err, chanx.ErrBadURL) ||
+		errors.Is(err, chanx.ErrStale) ||
+		errors.Is(err, chanx.ErrMismatch) ||
+		refusedByChanRedirect(err) {
+		return err
+	}
+
+	return fmt.Errorf("%w: %w", ErrChanSilent, err)
 }
 
 func abs(v int64) int64 {
@@ -326,6 +346,16 @@ func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, d
 	defer response.Body.Close()
 
 	served := serverTime(response.Header)
+
+	// Канал отвечает всегда 200. 4xx — сервер на месте, а канала у него нет
+	// (старая прослойка или голая панель); 5xx — сбой по дороге, он считается
+	// молчанием.
+	if response.StatusCode >= 500 {
+		return nil, served, fmt.Errorf("server answered with status %d", response.StatusCode)
+	}
+	if response.StatusCode >= 400 {
+		return nil, served, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
+	}
 
 	wire, err := io.ReadAll(io.LimitReader(response.Body, 32<<20))
 	if err != nil {

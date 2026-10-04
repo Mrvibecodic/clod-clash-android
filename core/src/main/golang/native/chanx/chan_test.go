@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 
@@ -203,8 +204,12 @@ func TestSplit(t *testing.T) {
 			t.Fatalf("%s → %s | %s", in, prefix, token)
 		}
 	}
-	if _, _, _, err := split("https://sub.dom/"); err == nil {
-		t.Fatal("адрес без токена обязан отбиваться")
+	// Адрес без пути с меткой (в том числе с меткой в query) — ErrBadURL: по
+	// нему канала не бывает, клиент идёт обычным путём, а не ждёт ответа.
+	for _, in := range []string{"https://sub.dom/", "https://sub.dom/?token=abc", "ftp://sub.dom/x"} {
+		if _, _, _, err := split(in); !errors.Is(err, ErrBadURL) {
+			t.Fatalf("%s: %v", in, err)
+		}
 	}
 }
 

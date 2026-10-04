@@ -24,6 +24,23 @@ object UpdateFailures {
         Tls,
         Dns,
         Connection,
+        Silent,
+    }
+
+    // Что сказал защищённый канал при добавлении подписки или его включении.
+    enum class Channel {
+        // Сервер на месте, а канала у него нет: можно загружать обычным путём.
+        Absent,
+        // Канал не ответил (сеть, таймаут, 5xx по дороге): пробовать его снова.
+        Silent,
+        // Канал ответил — отказом панели, сбитыми часами, чужим ответом: это и показать.
+        Answered,
+    }
+
+    fun channel(raw: String): Channel = when {
+        raw.contains(CHAN_SILENT) -> Channel.Silent
+        raw.contains(CHAN_BAD_ANSWER) || raw.contains(CHAN_BAD_URL) -> Channel.Absent
+        else -> Channel.Answered
     }
 
     data class Reason(val cause: Cause, val status: Int = 0)
@@ -53,7 +70,9 @@ object UpdateFailures {
 
         if (text.contains(DRAFT_CHANGED)) return Reason(Cause.DraftChanged)
 
-        val status = statusOf(text) ?: return transportOf(text.lowercase())
+        val status = statusOf(text)
+            ?: return transportOf(text.lowercase())
+                ?: Reason(Cause.Silent).takeIf { text.contains(CHAN_SILENT) }
 
         return when (status) {
             401, 402, 403 -> Reason(Cause.Unauthorized, status)
@@ -94,6 +113,12 @@ object UpdateFailures {
     private const val CHAN_MISMATCH = "clod-chan-mismatch"
 
     private const val CHAN_BAD_ANSWER = "clod-chan-bad-answer"
+
+    // Ядро (chanx): адрес без пути с меткой — канала по нему не бывает.
+    private const val CHAN_BAD_URL = "clod-chan-bad-url"
+
+    // Ядро (config/chan.go): канал не ответил, под меткой — сетевая причина.
+    private const val CHAN_SILENT = "clod-chan-silent"
 
     private const val NOT_DELIVERED = "clod-not-delivered"
 
@@ -165,5 +190,6 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
         UpdateFailures.Cause.Tls -> getString(R.string.clod_update_cause_tls)
         UpdateFailures.Cause.Dns -> getString(R.string.clod_update_cause_dns)
         UpdateFailures.Cause.Connection -> getString(R.string.clod_update_cause_connection)
+        UpdateFailures.Cause.Silent -> getString(R.string.clod_update_cause_silent)
     }
 }

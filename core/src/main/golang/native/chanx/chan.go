@@ -31,6 +31,9 @@ var (
 	ErrBadAnswer = errors.New("clod-chan-bad-answer")
 	ErrStale     = errors.New("clod-chan-stale")
 	ErrMismatch  = errors.New("clod-chan-mismatch")
+	// ErrBadURL — адрес подписки не подходит для канала (нет пути с меткой,
+	// не http): канала по такому адресу нет, подписка идёт обычным путём.
+	ErrBadURL = errors.New("clod-chan-bad-url")
 )
 
 func hkdf32(ikm []byte, salt, info string) []byte {
@@ -231,11 +234,11 @@ func split(base string) (prefix, token, query string, err error) {
 
 	i := strings.LastIndexByte(rest, '/')
 	if i < 0 || i+1 >= len(rest) {
-		return "", "", "", fmt.Errorf("clod-chan: address without token: %s", base)
+		return "", "", "", fmt.Errorf("%w: address without token: %s", ErrBadURL, base)
 	}
 	prefix, token = rest[:i], rest[i+1:]
 	if !strings.HasPrefix(prefix, "http://") && !strings.HasPrefix(prefix, "https://") {
-		return "", "", "", fmt.Errorf("clod-chan: not an http address: %s", base)
+		return "", "", "", fmt.Errorf("%w: not an http address: %s", ErrBadURL, base)
 	}
 
 	return prefix, token, query, nil
