@@ -277,7 +277,16 @@ object FreezeChecks {
         var stored = false
 
         if (due.isNotEmpty()) {
-            val outcomes = checks(path, due)
+            var outcomes = checks(path, due)
+
+            // Не прошло ничего — контрольный узел тем же заходом: прошёл он, значит
+            // сеть есть и мёртвые помечаются сразу, а не через 6 часов
+            val control = FreezePlan.control(fingerprints, net, outcomes)
+            if (control != null) {
+                ServiceLog.mark("freeze: $why, nothing passed, checking $control that worked here to tell the network from the nodes")
+
+                outcomes = outcomes + checks(path, listOf(control))
+            }
 
             val same = epoch.get() == startedAt &&
                 ServiceStore(context).activeProfile == uuid &&

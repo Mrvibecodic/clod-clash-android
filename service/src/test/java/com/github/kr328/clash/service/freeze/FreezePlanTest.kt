@@ -90,6 +90,25 @@ class FreezePlanTest {
     }
 
     @Test
+    fun `не прошло ничего — контрольный узел тот, что рабочий здесь свежее всех`() {
+        val fingerprints = mapOf("new" to "f0", "old" to "f1", "fresh" to "f2", "cut" to "f3", "twin" to "f2")
+        val network = FreezeNetwork(
+            nodes = mapOf(
+                "f1" to FreezeNode(verdict = "ok", at = 100),
+                "f2" to FreezeNode(verdict = "ok", at = 200),
+                "f3" to FreezeNode(verdict = "frozen", at = 300),
+            ),
+        )
+        val nothing = mapOf("new" to FreezeOutcome("unknown", 0))
+
+        assertEquals("fresh", FreezePlan.control(fingerprints, network, nothing))
+        assertEquals("old", FreezePlan.control(fingerprints, network.copy(nodes = network.nodes - "f2"), nothing))
+        assertEquals(null, FreezePlan.control(fingerprints, network, nothing + ("fresh" to FreezeOutcome("unknown", 0))))
+        assertEquals(null, FreezePlan.control(fingerprints, network, mapOf("new" to FreezeOutcome("dead", 0), "cut" to FreezeOutcome("frozen", 200))))
+        assertEquals(null, FreezePlan.control(fingerprints, FreezeNetwork(), nothing))
+    }
+
+    @Test
     fun `файл в той же схеме, что на ПК, и терпит чужие поля`() {
         val json = Json { ignoreUnknownKeys = true }
         val file = FreezeFile(networks = mapOf("k" to FreezeNetwork(lastSeen = now, nodes = mapOf("fp" to checked("dead", 0)))))

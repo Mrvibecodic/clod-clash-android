@@ -93,6 +93,24 @@ object FreezePlan {
     // прошло ничего нигде, это скорее сеть, чем серверы
     fun worthRecording(outcomes: Collection<FreezeOutcome>): Boolean = outcomes.any { it.answered }
 
+    // Через проверенные узлы не прошло ничего — это сеть или только они? Узел,
+    // который в этой сети отмечен рабочим (свежее всех) и в этот заход не
+    // проверялся, — контрольный: прошёл он, значит сеть есть и итоги остальных в
+    // счёт. Без такого узла или если что-то уже прошло — проверять нечего
+    fun control(fingerprints: Map<String, String>, network: FreezeNetwork, outcomes: Map<String, FreezeOutcome>): String? {
+        if (worthRecording(outcomes.values)) return null
+
+        val tried = outcomes.keys.mapNotNull { fingerprints[it] }.toSet()
+
+        return fingerprints.entries
+            .filter { it.value !in tried }
+            .mapNotNull { (name, fingerprint) ->
+                network.nodes[fingerprint]?.takeIf { it.verdict == FreezeVerdict.OK }?.let { name to it.at }
+            }
+            .maxByOrNull { it.second }
+            ?.first
+    }
+
     // Выбросить забытые сети и отпечатки, которых в подписке больше нет
     fun prune(file: FreezeFile, now: Long, live: Set<String>): FreezeFile = FreezeFile(
         networks = file.networks
