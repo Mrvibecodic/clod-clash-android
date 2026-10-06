@@ -103,7 +103,8 @@ class FreezePlanTest {
 
         assertEquals("fresh", FreezePlan.control(fingerprints, network, nothing))
         assertEquals("old", FreezePlan.control(fingerprints, network.copy(nodes = network.nodes - "f2"), nothing))
-        assertEquals(null, FreezePlan.control(fingerprints, network, nothing + ("fresh" to FreezeOutcome("unknown", 0))))
+        assertEquals("old", FreezePlan.control(fingerprints, network, nothing + ("fresh" to FreezeOutcome("unknown", 0))))
+        assertEquals(null, FreezePlan.control(fingerprints, network, nothing + ("fresh" to FreezeOutcome("unknown", 0)) + ("old" to FreezeOutcome("unknown", 0))))
         assertEquals(null, FreezePlan.control(fingerprints, network, mapOf("new" to FreezeOutcome("dead", 0), "cut" to FreezeOutcome("frozen", 200))))
         assertEquals(null, FreezePlan.control(fingerprints, FreezeNetwork(), nothing))
     }
