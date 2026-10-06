@@ -109,46 +109,46 @@ func packWithin(store *Store, now, oldest int64, dev, client string, limit int, 
 
 // Prepare — отчёт к отправке; false — рано или отправлять нечего.
 func Prepare(path string, now int64, client string) (Packed, bool) {
-	filesMu.Lock()
-	defer filesMu.Unlock()
+	var (
+		packed Packed
+		ready  bool
+	)
 
-	store := Load(path)
-	store.Prune(now)
+	withStore(path, now, false, func(store *Store) {
+		store.Prune(now)
 
-	if now-store.LastTry < sendEvery {
-		return Packed{}, false
-	}
+		if now-store.LastTry < sendEvery {
+			return
+		}
 
-	oldest, ok := store.OldestClosed(now)
-	if !ok {
-		return Packed{}, false
-	}
+		oldest, ok := store.OldestClosed(now)
+		if !ok {
+			return
+		}
 
-	packed, err := packWithin(store, now, oldest, deviceID(filepath.Dir(path)), client, reportMaxGz, pack)
-	if err != nil {
-		log.Warnln("[Report] the report was not packed: %s", err.Error())
+		var err error
+		packed, err = packWithin(store, now, oldest, deviceID(filepath.Dir(path)), client, reportMaxGz, pack)
+		if err != nil {
+			log.Warnln("[Report] the report was not packed: %s", err.Error())
 
-		return Packed{}, false
-	}
+			return
+		}
 
-	return packed, true
+		ready = true
+	})
+
+	return packed, ready
 }
 
 // Sent — прослойка ответила каналом кодом status; until — граница отправленного.
 func Sent(path string, now, until int64, status int) {
-	filesMu.Lock()
-	defer filesMu.Unlock()
+	withStore(path, now, true, func(store *Store) {
+		store.LastTry = now
 
-	store := Load(path)
-	store.LastTry = now
-
-	if status == 204 {
-		store.DropSent(now, until)
-	}
-
-	if err := Save(path, store); err != nil {
-		log.Warnln("[Report] the report state was not saved: %s", err.Error())
-	}
+		if status == 204 {
+			store.DropSent(now, until)
+		}
+	})
 }
 
 // Outcome — что значит код ответа прослойки, словами для журнала.

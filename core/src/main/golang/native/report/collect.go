@@ -60,8 +60,6 @@ type traffic map[string][3]uint64
 var (
 	// Чтение замеров и смена места идут по одному.
 	collectMu sync.Mutex
-	// Файлы накопленного читает и пишет кто-то один.
-	filesMu sync.Mutex
 
 	mu            sync.Mutex
 	target        string
@@ -88,7 +86,8 @@ func nowMs() int64 { return time.Now().UnixMilli() }
 func SetTarget(path string) {
 	mu.Lock()
 
-	if path != target {
+	changed := path != target
+	if changed {
 		target = path
 		where = nil
 		pingsUntil = nowMs()
@@ -104,6 +103,11 @@ func SetTarget(path string) {
 	}
 
 	mu.Unlock()
+
+	if changed {
+		// Накопленное прежней подписки — в файл, из памяти вон.
+		forget()
+	}
 
 	if start {
 		go loop()
@@ -443,34 +447,27 @@ func record(path string, place Place, w window) {
 
 	now := time.Now().Unix()
 
-	filesMu.Lock()
-	defer filesMu.Unlock()
-
-	store := Load(path)
-
-	for _, ping := range w.pings {
-		info := w.nodes[ping.name]
-		key := NodeKey(info)
-		store.RememberNode(key, info)
-		store.AddPing(place, ping.at/1000, key, ping.delay)
-	}
-
-	for name, bytes := range w.traffic {
-		info, ok := w.nodes[name]
-		if !ok {
-			continue
+	withStore(path, now, false, func(store *Store) {
+		for _, ping := range w.pings {
+			info := w.nodes[ping.name]
+			key := NodeKey(info)
+			store.RememberNode(key, info)
+			store.AddPing(place, ping.at/1000, key, ping.delay)
 		}
 
-		key := NodeKey(info)
-		store.RememberNode(key, info)
-		store.AddUse(place, now, key, Use{Up: bytes[0], Down: bytes[1], Sec: max(bytes[2], 1)})
-	}
+		for name, bytes := range w.traffic {
+			info, ok := w.nodes[name]
+			if !ok {
+				continue
+			}
 
-	store.Prune(now)
+			key := NodeKey(info)
+			store.RememberNode(key, info)
+			store.AddUse(place, now, key, Use{Up: bytes[0], Down: bytes[1], Sec: max(bytes[2], 1)})
+		}
 
-	if err := Save(path, store); err != nil {
-		log.Warnln("[Report] the measurements were not saved: %s", err.Error())
-	}
+		store.Prune(now)
+	})
 }
 
 func locate(net, kind string, stamp uint64) *spot {
@@ -577,36 +574,23 @@ func PlaceFor(net, kind string) Place {
 func RecordFreeze(path string, place Place, known map[string]NodeInfo, verdicts map[string]Freeze) {
 	now := time.Now().Unix()
 
-	filesMu.Lock()
-	defer filesMu.Unlock()
+	withStore(path, now, true, func(store *Store) {
+		for name, verdict := range verdicts {
+			info, ok := known[name]
+			if !ok {
+				continue
+			}
 
-	store := Load(path)
-	added := false
+			at := verdict.At
+			if at <= 0 {
+				at = now
+			}
 
-	for name, verdict := range verdicts {
-		info, ok := known[name]
-		if !ok {
-			continue
+			key := NodeKey(info)
+			store.RememberNode(key, info)
+			store.AddFreeze(place, at, key, verdict.Verdict, verdict.Status)
 		}
 
-		at := verdict.At
-		if at <= 0 {
-			at = now
-		}
-
-		key := NodeKey(info)
-		store.RememberNode(key, info)
-		store.AddFreeze(place, at, key, verdict.Verdict, verdict.Status)
-		added = true
-	}
-
-	if !added {
-		return
-	}
-
-	store.Prune(now)
-
-	if err := Save(path, store); err != nil {
-		log.Warnln("[Report] the 16–20 results were not saved: %s", err.Error())
-	}
+		store.Prune(now)
+	})
 }
