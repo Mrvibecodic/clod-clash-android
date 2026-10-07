@@ -147,7 +147,11 @@ fun ServersTab(
         if (state.offline) {
             Text(
                 text = stringResource(
-                    if (state.readOnly) R.string.clod_servers_direct else R.string.clod_servers_offline,
+                    when {
+                        state.readOnly -> R.string.clod_servers_direct
+                        state.loading -> R.string.clod_servers_loading
+                        else -> R.string.clod_servers_offline
+                    },
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

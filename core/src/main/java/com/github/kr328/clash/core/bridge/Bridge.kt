@@ -35,7 +35,7 @@ object Bridge {
     external fun nativeDownloadChecks(request: String): String?
     external fun nativeClientReport(request: String)
     external fun nativeSetDeviceInfo(hwid: String, os: String, osVersion: String, model: String)
-    external fun nativePatchSelector(selector: String, name: String): Int
+    external fun nativePatchSelector(profile: String, selector: String, name: String): Int
     external fun nativeFetchAndValid(
         completable: FetchCallback,
         path: String,

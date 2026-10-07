@@ -19,6 +19,7 @@ import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.modeChoiceChanged
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import com.github.kr328.clash.service.util.sessionOverrideFor
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ReceiveChannel
 import java.util.UUID
@@ -27,7 +28,6 @@ class ClashManager(private val context: Context) : IClashManager,
     CoroutineScope by CoroutineScope(Dispatchers.IO) {
     private val store = ServiceStore(context)
     private val selections = Selections.queue
-    private val selectionWriter = CoroutineScope(SupervisorJob() + selections)
     private var logReceiver: ReceiveChannel<LogMessage>? = null
     private var markReceiver: Job? = null
 
@@ -51,52 +51,34 @@ class ClashManager(private val context: Context) : IClashManager,
         return Clash.queryOverride(slot)
     }
 
-    // Выбор принадлежит подписке, загруженной в ядро: пока грузится новая
-    // активная, ядро и список на экране ещё прежние. Метки нет (ядро ещё не
-    // загрузилось или останавливается) — выбор, как и раньше, у активной.
-    override fun patchSelector(group: String, name: String): Boolean {
-        val loaded = StatusProvider.currentProfileUuid?.let(UUID::fromString)
-        val result = Clash.patchSelector(group, name)
+    // Выбор принадлежит подписке, на чьём списке его сделали. Держит её ядро —
+    // выбор уходит в ядро и записывается; нет (грузится другая, туннеля нет) —
+    // только записывается и применится при её загрузке. Держит ли, проверяет само
+    // ядро под замком смены конфига; запись идёт под замком выборов, что и
+    // возврат выбора после загрузки, — выбор не теряется и не попадает в чужую
+    // подписку.
+    override suspend fun select(profile: UUID, group: String, name: String): Boolean = withContext(selections) {
+        Selections.lock.withLock {
+            val result = Clash.patchSelector(profile.toString(), group, name)
 
-        persistSelection(group, name) {
-            (loaded ?: store.activeProfile)?.let { current ->
+            try {
                 when (result) {
                     // Пустое имя — закрепление снято, группа выбирает сама
-                    Clash.PatchResult.Done ->
+                    Clash.PatchResult.Done, Clash.PatchResult.NotLoaded ->
                         if (name.isEmpty()) {
-                            SelectionDao().removeSelected(current, group)
+                            SelectionDao().removeSelected(profile, group)
                         } else {
-                            SelectionDao().setSelected(Selection(current, group, name))
+                            SelectionDao().setSelected(Selection(profile, group, name))
                         }
                     Clash.PatchResult.NoSelector ->
-                        SelectionDao().removeSelected(current, group)
+                        SelectionDao().removeSelected(profile, group)
                     Clash.PatchResult.Failed -> Unit
                 }
-            }
-        }
-
-        return result == Clash.PatchResult.Done
-    }
-
-    override fun rememberSelection(group: String, name: String) {
-        val current = store.activeProfile ?: return
-
-        persistSelection(group, name) {
-            if (name.isEmpty()) {
-                SelectionDao().removeSelected(current, group)
-            } else {
-                SelectionDao().setSelected(Selection(current, group, name))
-            }
-        }
-    }
-
-    private fun persistSelection(group: String, name: String, block: () -> Unit) {
-        selectionWriter.launch {
-            try {
-                block()
             } catch (e: Exception) {
                 Log.w("Remember selection $name for $group: $e", e)
             }
+
+            result == Clash.PatchResult.Done || result == Clash.PatchResult.NotLoaded
         }
     }
 

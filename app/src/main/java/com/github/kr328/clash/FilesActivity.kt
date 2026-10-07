@@ -38,7 +38,11 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         this.stack = stack
 
         design.configurationEditable = profile.type == Profile.Type.File
-        design.refresh(client, stack, root)
+
+        // Экран, уже видимый к этому чтению, первое ActivityStart не перечитывает;
+        // неудачное чтение там повторяется.
+        val visible = activityStarted
+        var fresh = design.refresh(client, stack, root) && visible
 
         setContentDesign(design)
 
@@ -48,8 +52,10 @@ class FilesActivity : BaseActivity<FilesDesign>() {
             select<Unit> {
                 events.onReceive {
                     when (it) {
-                        Event.ActivityStart, Event.ActivityStop -> {
-                            design.refresh(client, stack, root)
+                        Event.ActivityStart -> {
+                            if (!fresh) design.refresh(client, stack, root)
+
+                            fresh = false
                         }
                         else -> Unit
                     }
@@ -141,15 +147,18 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         design?.requests?.trySend(FilesDesign.Request.PopStack)
     }
 
-    private suspend fun FilesDesign.refresh(client: FilesClient, stack: Stack<String>, root: String) {
+    private suspend fun FilesDesign.refresh(client: FilesClient, stack: Stack<String>, root: String): Boolean =
         try {
             fetch(client, stack, root)
+
+            true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             showError(e.message ?: e.toString())
+
+            false
         }
-    }
 
     private suspend fun FilesDesign.fetch(client: FilesClient, stack: Stack<String>, root: String) {
         val documentId = stack.lastOrNull() ?: root

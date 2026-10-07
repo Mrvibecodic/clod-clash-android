@@ -181,6 +181,8 @@ data class ServersState(
     val testing: Boolean = false,
     val measuring: Int = 0,
     val offline: Boolean = false,
+    // Список из файла подписки, пока туннель её загружает
+    val loading: Boolean = false,
     val readOnly: Boolean = false,
     val favorites: Set<String> = emptySet(),
     // clod:freeze — имя узла → frozen | dead в текущей сети
@@ -616,10 +618,11 @@ private fun HomeTab(
             homeRoute(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly)
         }
 
+        // Пока туннель загружает другую подписку, её узел ещё не везёт трафик
         HomeRouteRow(
             route = route,
             label = stringResource(
-                if (connected) {
+                if (connected && !state.servers.loading) {
                     R.string.clod_home_connected_to
                 } else {
                     R.string.clod_home_selected_server

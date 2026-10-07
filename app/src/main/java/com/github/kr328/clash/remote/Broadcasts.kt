@@ -19,7 +19,7 @@ class Broadcasts(private val context: Application) {
         fun onStarting(stage: String?)
         fun onStarted()
         fun onStopped(cause: String?)
-        fun onProfileChanged()
+        fun onProfileChanged(uuid: UUID?)
         fun onProfileUpdateStarted(uuid: UUID?)
         fun onProfileUpdateCompleted(uuid: UUID?, warning: String?)
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
@@ -99,7 +99,7 @@ class Broadcasts(private val context: Application) {
                 }
                 Intents.ACTION_PROFILE_CHANGED ->
                     receivers.forEach {
-                        it.onProfileChanged()
+                        it.onProfileChanged(intent.parseUUID())
                     }
                 Intents.ACTION_PROFILE_UPDATE_STARTED ->
                     receivers.forEach {

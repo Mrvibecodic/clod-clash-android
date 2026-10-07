@@ -68,11 +68,8 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun queryProviders(): ProviderList =
         guardSync("queryProviders") { delegate.queryProviders() }
 
-    override fun patchSelector(group: String, name: String): Boolean =
-        guardSync("patchSelector") { delegate.patchSelector(group, name) }
-
-    override fun rememberSelection(group: String, name: String) =
-        guardSync("rememberSelection") { delegate.rememberSelection(group, name) }
+    override suspend fun select(profile: UUID, group: String, name: String): Boolean =
+        guard { delegate.select(profile, group, name) }
 
     override fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride =
         guardSync("queryOverride") { delegate.queryOverride(slot) }

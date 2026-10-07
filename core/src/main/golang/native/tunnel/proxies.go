@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"strings"
 
+	"cfa/native/config"
 	"cfa/native/config/groups"
 
 	"github.com/dlclark/regexp2"
@@ -37,16 +38,29 @@ type ProxyGroupNames struct {
 	Names  []string          `json:"names"`
 	Icons  map[string]string `json:"icons"`
 	Main   string            `json:"main,omitempty"`
+	// Profile — подписка, чьи это группы: берётся у ядра вместе с ними, а не
+	// отдельным запросом, и экран не подпишет группы чужой подпиской
+	Profile string `json:"profile,omitempty"`
 }
 
 func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
+	seq := config.ApplySeq()
+
 	mode := tunnel.Mode()
 
 	result := &ProxyGroupNames{
-		Direct: mode == tunnel.Direct,
-		Names:  []string{},
-		Icons:  map[string]string{},
+		Direct:  mode == tunnel.Direct,
+		Names:   []string{},
+		Icons:   map[string]string{},
+		Profile: config.LoadedProfile(),
 	}
+
+	// Конфиг сменился, пока собирался список, — чьи это группы, неизвестно
+	defer func() {
+		if seq%2 == 1 || config.ApplySeq() != seq {
+			result.Profile = ""
+		}
+	}()
 
 	if mode == tunnel.Direct {
 		return result
@@ -212,9 +226,22 @@ const (
 	PatchFailed     = 0
 	PatchDone       = 1
 	PatchNoSelector = 2
+	// Ядро держит конфиг другой подписки (или никакой): выбор не применён
+	PatchNotLoaded = 3
 )
 
-func PatchSelector(selector, name string) int {
+// PatchSelector применяет выбор, только если ядро держит конфиг подписки profile
+func PatchSelector(profile, selector, name string) int {
+	result := PatchNotLoaded
+
+	config.WithProfile(profile, func() {
+		result = patchSelector(selector, name)
+	})
+
+	return result
+}
+
+func patchSelector(selector, name string) int {
 	p := tunnel.Proxies()[selector]
 
 	if p == nil {

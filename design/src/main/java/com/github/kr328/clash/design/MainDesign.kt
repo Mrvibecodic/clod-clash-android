@@ -59,6 +59,7 @@ class MainDesign(
         data class UpdateRoutingDataProvider(val key: String) : Request
 
         data object ReloadProxies : Request
+        data object ReturnHome : Request
         data class ReloadGroup(val group: String) : Request
         data class SelectProxy(val group: String, val name: String) : Request
         data class ToggleFavorite(val name: String) : Request
@@ -187,7 +188,7 @@ class MainDesign(
                         request(Request.SelectProxy(group.name, action.name))
 
                         if (state.servers.offline) {
-                            toast(R.string.clod_select_offline)
+                            toast(if (state.servers.loading) R.string.clod_select_loading else R.string.clod_select_offline)
                         }
                     }
                 }
@@ -198,8 +199,14 @@ class MainDesign(
                     state = state.copy(selectedTab = MainTab.Servers, subScreen = null)
                     request(Request.ReloadProxies)
                 }
-                MainTab.Home, MainTab.More, MainTab.Subscriptions ->
+                MainTab.Home, MainTab.More, MainTab.Subscriptions -> {
+                    val returned = action.tab == MainTab.Home && state.selectedTab != MainTab.Home
+
                     state = state.copy(selectedTab = action.tab, subScreen = null)
+
+                    // Путь на Главной мог смениться, пока её не было видно
+                    if (returned) request(Request.ReturnHome)
+                }
             }
         }
     }
@@ -316,6 +323,7 @@ class MainDesign(
     suspend fun setProxyGroupNames(
         names: List<String>,
         offline: Boolean = false,
+        loading: Boolean = false,
         readOnly: Boolean = false,
         main: String? = null,
     ) {
@@ -336,6 +344,7 @@ class MainDesign(
                     selected = groupIndexOf(names, selectedName, state.servers.selected),
                     main = main,
                     offline = offline,
+                    loading = loading,
                     readOnly = readOnly,
                 ),
             )

@@ -11,6 +11,8 @@ data class ProxyGroupNames(
     val names: List<String> = emptyList(),
     val icons: Map<String, String> = emptyMap(),
     val main: String? = null,
+    // UUID подписки, чьи это группы, — ядро отдаёт его вместе с ними
+    val profile: String? = null,
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         Parcelizer.encodeToParcel(serializer(), parcel, this)

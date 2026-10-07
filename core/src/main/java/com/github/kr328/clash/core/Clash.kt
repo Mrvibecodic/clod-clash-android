@@ -38,7 +38,10 @@ object Clash {
     // Порядок — числа исхода из ядра. Failed — нулевое значение: его же мост
     // отдаёт, когда вызов в ядре упал; запомненный выбор при нём не трогают.
     enum class PatchResult {
-        Failed, Done, NoSelector
+        Failed, Done, NoSelector,
+
+        // Ядро держит конфиг другой подписки (или никакой): выбор не применён
+        NotLoaded,
     }
 
     internal val CoreJson = Json {
@@ -201,8 +204,9 @@ object Clash {
         Bridge.nativeClientReport(request)
     }
 
-    fun patchSelector(selector: String, name: String): PatchResult {
-        return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(selector, name)) {
+    // Выбор применяется, только если ядро держит конфиг подписки profile (UUID)
+    fun patchSelector(profile: String, selector: String, name: String): PatchResult {
+        return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(profile, selector, name)) {
             PatchResult.Failed
         }
     }

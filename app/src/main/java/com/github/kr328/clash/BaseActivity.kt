@@ -210,8 +210,8 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         return true
     }
 
-    override fun onProfileChanged() {
-        events.trySend(Event.ProfileChanged)
+    override fun onProfileChanged(uuid: UUID?) {
+        events.trySend(Event.ProfileChanged(uuid))
     }
 
     override fun onProfileUpdateStarted(uuid: UUID?) {
@@ -250,11 +250,12 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     }
 
     override fun onFreezeMarksChanged(uuid: UUID?) {
-        events.trySend(Event.FreezeMarksChanged)
+        events.trySend(Event.FreezeMarksChanged(uuid))
     }
 
     override fun onProfileLoadFailed(uuid: UUID?, reason: String?) {
-        events.trySend(Event.ProfileChanged)
+        // Подписка не названа: после сбоя загрузки экран перечитывается целиком.
+        events.trySend(Event.ProfileChanged(null))
 
         if (reason != null && activityStarted) {
             launch {
@@ -319,19 +320,19 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         this.dayNight = dayNight
     }
 
-    enum class Event {
-        ServiceRecreated,
-        ActivityStart,
-        ActivityStop,
-        ClashStop,
-        ClashStarting,
-        ClashStart,
-        ProfileLoaded,
-        ProfileChanged,
-        ProfileUpdateStarted,
-        ProfileUpdateCompleted,
-        ProfileUpdateFailed,
-        FreezeMarksChanged,
+    sealed interface Event {
+        data object ServiceRecreated : Event
+        data object ActivityStart : Event
+        data object ActivityStop : Event
+        data object ClashStop : Event
+        data object ClashStarting : Event
+        data object ClashStart : Event
+        data object ProfileLoaded : Event
+        data class ProfileChanged(val uuid: UUID?) : Event
+        data object ProfileUpdateStarted : Event
+        data object ProfileUpdateCompleted : Event
+        data object ProfileUpdateFailed : Event
+        data class FreezeMarksChanged(val uuid: UUID?) : Event
     }
 
     private fun syncAppLocale() {

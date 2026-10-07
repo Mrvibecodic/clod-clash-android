@@ -7,12 +7,23 @@ import android.net.Uri
 import android.os.Bundle
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.service.store.ServiceStore
 import java.io.IOException
 
 class StatusProvider : ContentProvider() {
     override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         return when (method) {
             METHOD_CURRENT_PROFILE -> {
+                // Отметка старта сессии — для таймера главной; без неё ответ о
+                // состоянии всё равно нужен (плитка, виджет, сторож)
+                val session = runCatching {
+                    ServiceStore(context!!).run { clashStartedAt to clashStartedElapsed }
+                }.getOrElse {
+                    Log.w("Status: session start unreadable: $it", it)
+
+                    0L to 0L
+                }
+
                 return Bundle().apply {
                     putBoolean(KEY_RUNNING, serviceReady)
                     putBoolean(KEY_STARTING, serviceRunning && !serviceReady)
@@ -21,6 +32,8 @@ class StatusProvider : ContentProvider() {
                     putString(KEY_UUID, currentProfileUuid)
                     putBoolean(KEY_RESTARTED, serviceReady && restartedBySystem)
                     putBoolean(KEY_PROXY_REFUSED, serviceReady && systemProxyRefused)
+                    putLong(KEY_STARTED_AT, session.first)
+                    putLong(KEY_STARTED_ELAPSED, session.second)
                 }
             }
             METHOD_UPDATING_PROFILES -> {
@@ -76,6 +89,8 @@ class StatusProvider : ContentProvider() {
         const val KEY_UUID = "uuid"
         const val KEY_RESTARTED = "restarted"
         const val KEY_PROXY_REFUSED = "proxyRefused"
+        const val KEY_STARTED_AT = "startedAt"
+        const val KEY_STARTED_ELAPSED = "startedElapsed"
         const val METHOD_UPDATING_PROFILES = "updatingProfiles"
         const val KEY_UPDATING = "updating"
 

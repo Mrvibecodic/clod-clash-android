@@ -390,6 +390,9 @@
     </plurals>
     <string name="clod_servers_offline">Not connected: delays are measured directly, and the server you pick is applied once you connect.</string>
     <string name="clod_select_offline">Saved. It will be applied when you connect.</string>
+    <string name="clod_servers_loading">The subscription is loading: the list is taken from it, and the server you pick is applied once it has loaded.</string>
+    <string name="clod_select_loading">Saved. It will be applied once the subscription has loaded.</string>
+    <string name="clod_test_loading">The subscription is loading: delays will be tested once it has loaded.</string>
     <string name="clod_select_not_selectable">The core picks the server in this group automatically.</string>
     <string name="clod_group_all">All</string>
     <string name="clod_group_none">No group</string>

@@ -127,14 +127,24 @@ class MainActivity : BaseActivity<MainDesign>() {
         // чем этот экран что-либо прочитает или применит.
         selectionFlush?.join()
 
-        try {
-            design.fetch()
+        // Экран, уже видимый к первому чтению, первое ActivityStart заново не читает:
+        // берёт его итог. Чтение с ошибкой — исключением, несчитанными группами или
+        // режимом — там повторяется; застав старт службы — тоже: ActivityStart
+        // снимает ожидание старта, и перечитывание взводит его заново.
+        val visible = activityStarted
+
+        var firstFetch: Boolean? = try {
+            design.fetch().takeIf {
+                visible && panelRunning != null && modeShownFor == favoritesProfile && startRequestedAt == null
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w("Main first fetch: $e", e)
 
             design.showExceptionToast(e)
+
+            null
         }
 
         if (restored == null && !design.hasProfiles) {
@@ -228,10 +238,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                 reportFailures("Main tick") {
                     if (design.selectedTab == MainTab.Home) {
-                        design.fetchTraffic()
-                        design.fetchSession()
-
-                        // url-test и fallback ядро переключает само, без событий
+                        // url-test и fallback ядро переключает само, без событий;
+                        // возврат на Главную перечитывает путь сразу (ReturnHome).
+                        // До чтения трафика, чтобы его сбой не съел перечитывание
                         val now = SystemClock.elapsedRealtime()
 
                         if (now - homeRouteReadAt >= HOME_ROUTE_REFRESH_MS) {
@@ -239,6 +248,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                             work.trySend { design.reloadProxyGroup(design.selectedGroup) }
                         }
+
+                        design.fetchTraffic()
+                        design.fetchSession()
                     }
 
                     ProfileUpdates.prune()
@@ -254,15 +266,21 @@ class MainActivity : BaseActivity<MainDesign>() {
                 events.onReceive {
                     when (it) {
                         Event.ActivityStart -> {
-                            stopRequestedAt = null
+                            // Запрошенная остановка не сбрасывается: служба, ещё не
+                            // остановившаяся, не показывается «Подключено»; ожидание
+                            // остановки само сверится с ней по таймауту
                             startRequestedAt = null
 
                             work.trySend {
+                                val first = firstFetch.also { firstFetch = null }
+
                                 reconcileUpdatingProfiles()
 
-                                fetchWanted = false
+                                val started = first ?: run {
+                                    fetchWanted = false
 
-                                val started = design.fetch()
+                                    design.fetch()
+                                }
 
                                 design.showAddedProfile()
 
@@ -306,6 +324,10 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
 
                             design.setConnecting(startupStage)
+
+                            // Старт, узнанный по рассылке, тоже сверяется, если
+                            // служба замолчит (гибель посреди старта)
+                            watchStart()
                         }
                         Event.ClashStart -> {
                             stopRequestedAt = null
@@ -330,10 +352,43 @@ class MainActivity : BaseActivity<MainDesign>() {
                         Event.ProfileLoaded -> {
                             healthCheckedGroups = emptyList()
 
-                            requestFetch()
+                            // При запуске подписка загружается до готовности: экран
+                            // перечитает ClashStart (или ClashStop), а чтение сейчас
+                            // застало бы ядро ещё не запущенным.
+                            if (!clashActive || clashRunning) requestFetch()
                         }
-                        Event.ProfileChanged -> requestFetch()
-                        Event.FreezeMarksChanged -> work.trySend { design.fetchFreezeMarks() }
+                        is Event.ProfileChanged -> {
+                            val uuid = it.uuid
+
+                            // Только список подписок, когда группы и режим на экране от
+                            // неё не меняются: у запущенного ядра загрузку объявит
+                            // ProfileLoaded (или остановка), а чужая подписка показанной
+                            // не касается. Подписка не названа (сбой загрузки) — целиком.
+                            if (uuid == null) requestFetch() else work.trySend {
+                                if (clashRunning || uuid != favoritesProfile) {
+                                    val shown = uuid == favoritesProfile
+
+                                    design.fetchProfiles()
+
+                                    // Замок режима и режим из панели приходят с самой
+                                    // подпиской — показываются сразу, не дожидаясь загрузки
+                                    // (сменилась активная — режим уже прочитало полное чтение)
+                                    if (clashRunning && shown && uuid == favoritesProfile) design.fetchMode(uuid)
+                                } else {
+                                    requestFetch()
+                                }
+                            }
+                        }
+                        is Event.FreezeMarksChanged -> {
+                            val uuid = it.uuid
+
+                            // На экран — пометки только показанной подписки
+                            work.trySend {
+                                if (uuid == null || uuid == favoritesProfile) {
+                                    design.fetchFreezeMarks(favoritesProfile)
+                                }
+                            }
+                        }
                         else -> Unit
                     }
                 }
@@ -351,7 +406,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             val started = when (serversReload(panelRunning == clashRunning, liveGroups)) {
                                 ServersReload.Panel -> design.reloadProxyGroups()
                                 ServersReload.SelectedGroup -> {
-                                    design.reloadProxyGroup(design.selectedGroup)
+                                    design.reloadProxyGroup(design.selectedGroup, route = false)
 
                                     design.reportGlobalRoutingBlocked(proxyGroupNames)
 
@@ -373,18 +428,30 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 launch { design.runHealthCheck(manual = false) }
                             }
                         }
+                        MainDesign.Request.ReturnHome -> work.trySend {
+                            if (clashRunning) {
+                                homeRouteReadAt = SystemClock.elapsedRealtime()
+
+                                design.reloadProxyGroup(design.selectedGroup)
+                            }
+                        }
                         is MainDesign.Request.ReloadGroup -> work.trySend {
                             proxyGroupNames.indexOf(request.group).takeIf { it >= 0 }
-                                ?.let { design.reloadProxyGroup(it) }
+                                ?.let { design.reloadProxyGroup(it, route = false) }
                         }
                         is MainDesign.Request.SelectProxy -> {
                             val group = request.group
 
-                            if (group in proxyGroupNames && !serversReadOnly) {
+                            // Выбор — подписке, чей список на экране в момент нажатия
+                            val owner = groupsShownFor
+
+                            if (group in proxyGroupNames && !serversReadOnly && owner != null) {
                                 design.markProxySelected(group, request.name)
 
-                                if (pendingSelections.put(group, request.name) == null) {
-                                    work.trySend { design.applySelection(group) }
+                                val slot = Slot(owner, group)
+
+                                if (pendingSelections.put(slot, request.name) == null) {
+                                    work.trySend { design.applySelection(slot) }
                                 }
                             }
                         }
@@ -431,7 +498,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     ToastDuration.Short,
                                 )
 
-                                design.fetch()
+                                // Выбор режима меняет показ режима и у запущенного ядра
+                                // список групп; подписки и пометки он не трогает.
+                                design.fetchMode(profile)
+
+                                if (clashRunning) design.reloadProxyGroups()
                             }
                         }
                         is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
@@ -577,7 +648,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         is MainDesign.Request.SetSubscriptionGroup -> work.trySend {
                             patchSubscriptionGroup(request.profile.uuid, request.group)
 
-                            design.fetch()
+                            design.fetchProfiles()
                         }
                         MainDesign.Request.OpenAccessControl ->
                             startActivity(AccessControlActivity::class.intent)
@@ -630,45 +701,45 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun MainDesign.fetch(): Boolean {
+    private suspend fun MainDesign.fetch(known: List<Profile>? = null): Boolean {
         panelRunning = null
 
         val epoch = Remote.broadcasts.epoch
+        val running = clashRunning
 
-        val status = if (clashRunning) null else withContext(Dispatchers.IO) {
+        val notes = withContext(Dispatchers.IO) {
             StatusClient(this@MainActivity).status()
         }
+
+        val status = if (running) null else notes
+
+        // Ответ свежее рассылок, только если их не было во время чтения
+        val stage = if (status != null && Remote.broadcasts.epoch == epoch) status.stage else startupStage
 
         if (status != null) {
             Remote.broadcasts.apply(status, epoch)
         }
 
-        if (status?.starting == true) {
-            setConnecting(status.stage)
+        // Состояние — по рассылкам, а не по своему ответу: старт, о котором
+        // рассылка пришла во время чтения, не сменяется на «Отключено», а
+        // запрошенная остановка работающей службы — на «Подключено»
+        if (clashActive && !clashRunning) {
+            setConnecting(stage)
 
             watchStart()
-        } else {
+        } else if (stopRequestedAt == null || !clashRunning) {
             setClashRunning(clashRunning)
-        }
-
-        val notes = status ?: withContext(Dispatchers.IO) {
-            StatusClient(this@MainActivity).status()
         }
 
         setSessionNotes(notes.restartedBySystem, notes.systemProxyRefused)
 
-        val session = if (clashRunning) {
-            ServiceSettings.access { clashStartedAt to clashStartedElapsed }
-        } else {
-            0L to 0L
-        }
-
-        sessionStartedAt = session.first
-        sessionStartedElapsed = session.second
+        // Отметку старта сессии служба отдаёт тем же ответом о состоянии
+        sessionStartedAt = if (clashRunning) notes.startedAt else 0L
+        sessionStartedElapsed = if (clashRunning) notes.startedElapsed else 0L
 
         fetchSession()
 
-        val profiles = withProfile { queryAll() }
+        val profiles = known ?: withProfile { queryAll() }
         val activeUuid = profiles.firstOrNull { it.active }?.uuid
 
         // Режим спрашивается о той подписке, что будет показана, и до первой
@@ -687,6 +758,26 @@ class MainActivity : BaseActivity<MainDesign>() {
             null
         }
 
+        showProfiles(profiles)
+
+        if (mode != null) {
+            setMode(mode)
+
+            modeShownFor = activeUuid
+        } else if (modeShownFor != activeUuid) {
+            setMode(ProfileMode())
+
+            modeShownFor = null
+        }
+
+        setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
+        fetchFreezeMarks(favoritesProfile)
+        setDismissedPromo(favoritesProfile, favoritesProfile?.let { uiStore.dismissedPromo(it) }.orEmpty())
+
+        return reloadProxyGroups()
+    }
+
+    private suspend fun MainDesign.showProfiles(profiles: List<Profile>) {
         val groups = querySubscriptionGroups()
         val items = profiles.map {
             val panel = queryPanelInfo(it.uuid)
@@ -700,22 +791,41 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setActiveProfile(active)
 
-        if (mode != null) {
-            setMode(mode)
+        shownActive = active
+    }
 
-            modeShownFor = activeUuid
-        } else if (modeShownFor != activeUuid) {
-            setMode(ProfileMode())
+    // Режим показанной подписки. Сбой запроса оставляет прежний показ — как в
+    // полном чтении экрана
+    private suspend fun MainDesign.fetchMode(uuid: UUID) {
+        val mode = try {
+            withClash { queryProfileMode(uuid) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ServiceUnavailableException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Query profile mode: $e", e)
 
-            modeShownFor = null
+            return
         }
 
-        favoritesProfile = active?.profile?.uuid
-        setFavorites(favoritesProfile?.let { uiStore.favorites(it) }.orEmpty())
-        fetchFreezeMarks(active?.profile?.uuid)
-        setDismissedPromo(active?.profile?.uuid, active?.profile?.uuid?.let { uiStore.dismissedPromo(it) }.orEmpty())
+        if (uuid != favoritesProfile) return
 
-        return reloadProxyGroups()
+        setMode(mode)
+
+        modeShownFor = uuid
+    }
+
+    // Пока активна подписка, показанная на экране, её группы, режим и пометки от
+    // перечитывания списка не меняются: читается только он. Сменилась — экран целиком.
+    private suspend fun MainDesign.fetchProfiles() {
+        val profiles = withProfile { queryAll() }
+
+        if (profiles.firstOrNull { it.active }?.uuid == favoritesProfile) {
+            showProfiles(profiles)
+        } else {
+            fetch(profiles)
+        }
     }
 
     private var proxyGroupNames: List<String> = emptyList()
@@ -766,14 +876,23 @@ class MainActivity : BaseActivity<MainDesign>() {
     // Последний выбранный в группе узел, ещё не применённый: из серии нажатий,
     // пришедших, пока ядро занято, применяется последнее, а до тех пор любая
     // перерисовка группы показывает его, а не прежний.
-    private val pendingSelections: MutableMap<String, String> = mutableMapOf()
+    // Выбор принадлежит подписке, на чьём списке его сделали: одноимённые
+    // группы разных подписок не вытесняют выбор друг друга.
+    private val pendingSelections: MutableMap<Slot, String> = mutableMapOf()
+
+    // Группа и подписка, на чьём списке её выбрали
+    private data class Slot(val owner: UUID, val group: String)
+
+    // Ещё не применённый выбор группы нынешнего списка
+    private fun pendingOf(group: String): String? =
+        groupsShownFor?.let { pendingSelections[Slot(it, group)] }
 
     private var worker: Job? = null
 
     // Выбор, который прямо сейчас уходит в ядро: отмена экрана может оборвать его до
     // отправки. Досылка повторяет его, только если он не дошёл: повторный выбор в ядре
     // заново рвёт соединения группы.
-    private class Sending(val group: String, val name: String) {
+    private class Sending(val slot: Slot, val name: String) {
         @Volatile
         var delivered = false
     }
@@ -803,9 +922,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         sendingSelection = null
         pendingSelections.clear()
 
-        val profile = favoritesProfile
-
-        if ((left.isEmpty() && sending == null) || serversReadOnly || profile == null) return
+        if ((left.isEmpty() && sending == null) || serversReadOnly) return
 
         val previous = worker
         val prior = selectionFlush
@@ -818,28 +935,20 @@ class MainActivity : BaseActivity<MainDesign>() {
                 previous?.join()
 
                 // Прежняя очередь остановлена: теперь известно, дошёл ли выбор, что был в пути.
-                val all = LinkedHashMap<String, String>()
+                val all = LinkedHashMap<Slot, String>()
 
-                sending?.takeUnless { it.delivered }?.let { all[it.group] = it.name }
+                sending?.takeUnless { it.delivered }?.let { all[it.slot] = it.name }
                 all.putAll(left)
 
                 withTimeoutOrNull(SELECTION_HANDOFF_MS) {
-                    // Выбор принадлежит подписке, в которой его сделали; ядро решает
-                    // по состоянию на момент отправки, а не на момент ухода с экрана.
-                    if (withProfile(retry = false) { queryActive() }?.uuid != profile) {
-                        return@withTimeoutOrNull
-                    }
+                    // Выбор принадлежит подписке, в которой его сделали; в ядро ли он
+                    // уйдёт, решает ядро по тому, что держит при отправке.
+                    for ((slot, name) in all) {
+                        val group = slot.group
 
-                    val running = withContext(Dispatchers.Main) { Remote.broadcasts.clashRunning }
-
-                    for ((group, name) in all) {
                         try {
                             withClash(retry = false) {
-                                if (running) {
-                                    patchSelector(group, name)
-                                } else {
-                                    rememberSelection(group, name)
-                                }
+                                select(slot.owner, group, name)
                             }
                         } catch (e: CancellationException) {
                             throw e
@@ -856,7 +965,12 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private var favoritesProfile: UUID? = null
+    // Активная подписка в том виде, в каком показана: от неё зависят избранное,
+    // режим, пометки и панель из подписки.
+    private var shownActive: SubscriptionItem? = null
+
+    private val favoritesProfile: UUID?
+        get() = shownActive?.profile?.uuid
 
     private var modeShownFor: UUID? = null
 
@@ -864,17 +978,34 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var serversReadOnly: Boolean = false
 
+    // Список — из файла подписки, которую туннель ещё загружает
+    private var serversLoading: Boolean = false
+
     private var globalSelection: String? = null
 
     private var globalBlockedReported: Boolean = false
 
     private suspend fun MainDesign.reloadProxyGroups(): Boolean {
         val running = clashRunning
-        val loaded = if (running) loadedProfile() else null
-        val snapshot = if (running) queryLiveGroupNames(loaded) ?: return false else ProxyGroupNames()
+        val snapshot = if (running) queryLiveGroupNames() ?: return false else ProxyGroupNames()
+        val loaded = snapshot.profile?.let { runCatching { UUID.fromString(it) }.getOrNull() }
         val names = snapshot.names
 
         setAllGroupsOnHome(uiStore.showAllGroupsOnHome)
+
+        // Ядро держит другую подписку (активную сменили, загрузка идёт) или меняет
+        // конфиг прямо сейчас (подписи нет): живые группы с избранным, пометками
+        // и скрытием показанной смешали бы подписки. До загрузки — группы
+        // показанной из её файла, как без туннеля; загрузка перечитает экран
+        if (running && loaded != favoritesProfile) {
+            globalSelection = null
+
+            loadOfflineProxyGroups(readOnly = false, loading = true)
+
+            panelRunning = running
+
+            return false
+        }
 
         if (names.isEmpty()) {
             globalSelection = null
@@ -889,6 +1020,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         proxyGroupNames = names
         offlineGroups = emptyList()
         serversReadOnly = false
+        serversLoading = false
         mainGroup = mainGroupOf(names, snapshot.main)
         groupsShownFor = loaded
 
@@ -915,6 +1047,14 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.runHealthCheck(manual: Boolean, force: Boolean = manual) {
         if (proxyGroupNames.isEmpty() || serversReadOnly) return
+
+        // Пока туннель загружает подписку, замер её узлов напрямую устарел бы
+        // сразу после загрузки: живой замер пойдёт сам, когда придут её группы
+        if (serversLoading) {
+            if (manual) showToast(DesignR.string.clod_test_loading, ToastDuration.Long)
+
+            return
+        }
 
         val route = healthCheckRoute(offlinePanel = offlineGroups.isNotEmpty(), manual = manual)
 
@@ -953,17 +1093,20 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             if (first != null) {
                 withClash { healthCheck(first) }
-
-                loadProxyGroup(selectedGroup)
-
-                // Видимая группа готова; остальные дозамеряются в фоне, пока
-                // healthChecking всё ещё не пускает второй круг
-                setProxyTesting(false)
             }
 
             val others = proxyGroupNames.filter { it != first }
 
+            // Без других групп видимую перечитывает итог ниже
             if (others.isNotEmpty()) {
+                if (first != null) {
+                    loadProxyGroup(selectedGroup)
+
+                    // Видимая группа готова; остальные дозамеряются в фоне, пока
+                    // healthChecking всё ещё не пускает второй круг
+                    setProxyTesting(false)
+                }
+
                 withClash { healthCheckGroups(others, listOfNotNull(first), force) }
             }
 
@@ -1011,10 +1154,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         setFreezeMarks(uuid?.let { withClash { queryFreezeMarks(it) } }.orEmpty())
     }
 
-    private suspend fun MainDesign.fetchFreezeMarks() {
-        fetchFreezeMarks(withProfile { queryActive() }?.uuid)
-    }
-
     private suspend fun MainDesign.startOfflineHealthCheck() {
         if (OfflineDelays.running) return
 
@@ -1051,8 +1190,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     // Живой список групп принадлежит подписке, загруженной в ядро, а не выбранной:
-    // она читается до запроса, и гонка двух чтений может дать лишнюю очистку, но
-    // не чужой список.
+    // ядро отдаёт её вместе со списком. Подписка в ядре по ответу службы нужна только
+    // при сбое запроса — понять, чей список сейчас на экране.
     private suspend fun loadedProfile(): UUID? = withContext(Dispatchers.IO) {
         StatusClient(this@MainActivity).status().uuid
     }?.let { runCatching { UUID.fromString(it) }.getOrNull() }
@@ -1061,7 +1200,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     // остаётся как был; офлайн-список (выбор в нём к ядру не применяется) и список
     // другой подписки убираются, причина — в уведомлении. panelRunning не
     // выставляется, и следующая перезагрузка панели повторит запрос.
-    private suspend fun MainDesign.queryLiveGroupNames(loaded: UUID?): ProxyGroupNames? = try {
+    private suspend fun MainDesign.queryLiveGroupNames(): ProxyGroupNames? = try {
         withClash { queryProxyGroupNames(true) }
     } catch (e: CancellationException) {
         throw e
@@ -1070,7 +1209,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     } catch (e: Exception) {
         Log.w("Query proxy group names: $e", e)
 
-        if (offlineGroups.isNotEmpty() || groupsShownFor != loaded) {
+        if (offlineGroups.isNotEmpty() || groupsShownFor != loadedProfile()) {
             offlineGroups = emptyList()
             proxyGroupNames = emptyList()
             mainGroup = null
@@ -1083,22 +1222,24 @@ class MainActivity : BaseActivity<MainDesign>() {
         null
     }
 
-    private suspend fun MainDesign.loadOfflineProxyGroups(readOnly: Boolean) {
+    private suspend fun MainDesign.loadOfflineProxyGroups(readOnly: Boolean, loading: Boolean = false) {
         serversReadOnly = readOnly
+        serversLoading = loading
 
-        val active = withProfile { queryActive() }
-        val panel = active?.let { queryPanelInfo(it.uuid) }
+        // Панель той подписки, что показана активной, — без повторного чтения
+        val active = favoritesProfile
+        val panel = shownActive?.panel
         offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }
         offlineHides = { panel?.hides(it) == true }
         proxyGroupNames = offlineGroups.map { it.name }
         mainGroup = mainGroupOf(proxyGroupNames, panel?.main)
         healthCheckedGroups = emptyList()
-        groupsShownFor = active?.uuid
+        groupsShownFor = active
 
         setGroupIcons(emptyMap())
 
-        if (active?.uuid != offlineProfile) {
-            offlineProfile = active?.uuid
+        if (active != offlineProfile) {
+            offlineProfile = active
             offlineDelays = emptyMap()
             offlineSelections.clear()
         }
@@ -1115,7 +1256,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             }
         }
 
-        setProxyGroupNames(proxyGroupNames, offline = true, readOnly = readOnly, main = mainGroup)
+        setProxyGroupNames(proxyGroupNames, offline = true, loading = loading, readOnly = readOnly, main = mainGroup)
 
         fillOfflineProxyGroup(selectedGroup)
     }
@@ -1130,7 +1271,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         val group = offlineGroups.getOrNull(index) ?: return null
 
         val readOnly = serversReadOnly
-        val saved = pendingSelections[group.name] ?: offlineSelections[group.name]
+        val saved = pendingOf(group.name) ?: offlineSelections[group.name]
         val shown = offlineGroup(group, saved?.takeIf { it.isNotEmpty() }, offlineHides)
 
         setProxyGroup(
@@ -1179,7 +1320,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
-    private suspend fun MainDesign.reloadProxyGroup(index: Int): List<Int> {
+    // route — заодно перечитать путь Главной по выбранным узлам. Без него — показ
+    // одной группы; путь Главной освежают её тик и возврат на неё.
+    private suspend fun MainDesign.reloadProxyGroup(index: Int, route: Boolean = true): List<Int> {
         if (offlineGroups.isNotEmpty()) {
             fillOfflineProxyGroup(index)
 
@@ -1188,7 +1331,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val group = loadProxyGroup(index)
 
-        loadRouteGroups(proxyGroupNames, homeGroups(), index, group?.now) { loadProxyGroup(it)?.now }
+        if (route) {
+            loadRouteGroups(proxyGroupNames, homeGroups(), index, group?.now) { loadProxyGroup(it)?.now }
+        }
 
         return group?.proxies.orEmpty().filter { !it.isGroup }.map { it.delay }
     }
@@ -1203,7 +1348,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Пока шёл запрос, список групп мог смениться — тогда слот уже чужой
         if (proxyGroupNames.getOrNull(index) == name) {
-            val pending = pendingSelections[name]
+            val pending = pendingOf(name)
 
             setProxyGroup(
                 index,
@@ -1496,34 +1641,34 @@ class MainActivity : BaseActivity<MainDesign>() {
     // запоминается для незапущенного), затем группа перерисовывается из источника:
     // при отказе отметка откатывается. Если в очереди более поздний выбор той же
     // группы, перерисует он.
-    private suspend fun MainDesign.applySelection(group: String) {
-        val name = pendingSelections.remove(group) ?: return
+    private suspend fun MainDesign.applySelection(slot: Slot) {
+        val name = pendingSelections.remove(slot) ?: return
+        val group = slot.group
 
         var failure: Exception? = null
 
-        val sending = Sending(group, name)
+        val sending = Sending(slot, name)
 
         sendingSelection = sending
 
+        // Выбор — подписке, на чьём списке его сделали; в ядро ли он уйдёт или
+        // будет ждать её загрузки, решает ядро по тому, что держит
         val applied = try {
             when {
                 serversReadOnly -> true
-                offlineGroups.isNotEmpty() -> {
-                    withClash {
-                        rememberSelection(group, name)
+                else -> {
+                    val done = withClash { select(slot.owner, group, name).also { sending.delivered = true } }
 
-                        sending.delivered = true
+                    if (done && offlineGroups.isNotEmpty() && slot.owner == groupsShownFor) {
+                        if (name.isEmpty()) {
+                            offlineSelections.remove(group)
+                        } else {
+                            offlineSelections[group] = name
+                        }
                     }
 
-                    if (name.isEmpty()) {
-                        offlineSelections.remove(group)
-                    } else {
-                        offlineSelections[group] = name
-                    }
-
-                    true
+                    done
                 }
-                else -> withClash { patchSelector(group, name).also { sending.delivered = true } }
             }
         } catch (e: CancellationException) {
             throw e
@@ -1535,7 +1680,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         sendingSelection = null
 
-        if (group !in pendingSelections) {
+        if (slot !in pendingSelections) {
             proxyGroupNames.indexOf(group).takeIf { it >= 0 }?.let { reloadProxyGroup(it) }
 
             if (!applied && failure == null) {

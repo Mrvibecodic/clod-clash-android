@@ -233,7 +233,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 lockUntil = lockDeadline(active.uuid, session)
 
                 // Ядро уже на новой подписке: метка публикуется сразу, а не после
-                // возврата выбора узлов, — по ней пишется выбор, сделанный человеком.
+                // возврата выбора узлов, — по ней служба переключает режим на лету.
                 StatusProvider.currentProfile =
                     service.displayProfileName(active.uuid, active.name, active.nameManual)
 
@@ -242,13 +242,16 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 if (first) stage(Intents.STAGE_SELECTING)
 
                 withContext(Selections.queue) {
-                    val remove = SelectionDao().querySelections(active.uuid)
-                        .filter {
-                            Clash.patchSelector(it.proxy, it.selected) == Clash.PatchResult.NoSelector
-                        }
-                        .map { it.proxy }
+                    Selections.lock.withLock {
+                        val remove = SelectionDao().querySelections(active.uuid)
+                            .filter {
+                                Clash.patchSelector(active.uuid.toString(), it.proxy, it.selected) ==
+                                    Clash.PatchResult.NoSelector
+                            }
+                            .map { it.proxy }
 
-                    SelectionDao().removeSelections(active.uuid, remove)
+                        SelectionDao().removeSelections(active.uuid, remove)
+                    }
                 }
 
                 service.sendProfileLoaded(current)

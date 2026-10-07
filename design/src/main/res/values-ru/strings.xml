@@ -361,6 +361,9 @@
     </plurals>
     <string name="clod_servers_offline">Без подключения: задержки меряются напрямую, а выбранный сервер применится, когда подключитесь.</string>
     <string name="clod_select_offline">Запомнили. Применится при подключении.</string>
+    <string name="clod_servers_loading">Подписка загружается: список взят из неё, а выбранный сервер применится, когда она загрузится.</string>
+    <string name="clod_select_loading">Запомнили. Применится, когда подписка загрузится.</string>
+    <string name="clod_test_loading">Подписка загружается: задержки проверятся, когда она загрузится.</string>
     <string name="clod_select_not_selectable">В этой группе ядро само выбирает сервер.</string>
     <string name="clod_group_all">Все</string>
     <string name="clod_group_none">Без группы</string>

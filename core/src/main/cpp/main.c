@@ -297,13 +297,15 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeNotifyNetworkReady(JNIEnv *
 
 JNIEXPORT jint JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
-                                                                   jstring selector, jstring name) {
+                                                                   jstring profile, jstring selector,
+                                                                   jstring name) {
     TRACE_METHOD();
 
+    scoped_string _profile = get_string(profile);
     scoped_string _selector = get_string(selector);
     scoped_string _name = get_string(name);
 
-    return (jint) patchSelector(_selector, _name);
+    return (jint) patchSelector(_profile, _selector, _name);
 }
 
 JNIEXPORT void JNICALL

@@ -24,6 +24,8 @@ class StatusClient(private val context: Context) {
         val uuid: String? = null,
         val restartedBySystem: Boolean = false,
         val systemProxyRefused: Boolean = false,
+        val startedAt: Long = 0L,
+        val startedElapsed: Long = 0L,
     )
 
     fun status(): Status {
@@ -43,6 +45,8 @@ class StatusClient(private val context: Context) {
                 uuid = result.getString(StatusProvider.KEY_UUID),
                 restartedBySystem = result.getBoolean(StatusProvider.KEY_RESTARTED),
                 systemProxyRefused = result.getBoolean(StatusProvider.KEY_PROXY_REFUSED),
+                startedAt = result.getLong(StatusProvider.KEY_STARTED_AT),
+                startedElapsed = result.getLong(StatusProvider.KEY_STARTED_ELAPSED),
             )
         } catch (e: Exception) {
             Log.w("Query clash status: $e", e)

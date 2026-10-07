@@ -12,9 +12,7 @@ interface IClashManager {
     fun queryProxyGroup(name: String): ProxyGroup
     fun queryProviders(): ProviderList
 
-    fun patchSelector(group: String, name: String): Boolean
-
-    fun rememberSelection(group: String, name: String)
+    suspend fun select(profile: UUID, group: String, name: String): Boolean
 
     suspend fun querySelections(): Map<String, String>
 

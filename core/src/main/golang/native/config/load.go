@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -59,14 +60,52 @@ var (
 	parseMutex        sync.Mutex
 	loadGeneration    atomic.Uint64
 	pendingGeneration atomic.Uint64
-	loaded            atomic.Bool
-	globalDeclared    atomic.Bool
+	// loaded — папка подписки, чей конфиг держит ядро; nil — свой конфиг не
+	// загружен. Имя папки — UUID подписки: список групп отдаётся с ним
+	loaded         atomic.Pointer[string]
+	applySeq       atomic.Uint64
+	globalDeclared atomic.Bool
 )
 
 var ErrLoadCancelled = errors.New("load cancelled by reset")
 
 func IsLoaded() bool {
-	return loaded.Load()
+	return loaded.Load() != nil
+}
+
+// ApplySeq — номер смены конфига; нечётный, пока конфиг применяется
+func ApplySeq() uint64 {
+	return applySeq.Load()
+}
+
+// WithProfile выполняет fn, только если ядро держит конфиг подписки profile, —
+// под замком смены конфига: на время проверки и fn конфиг не сменится. Чужую
+// подписку отсекает до замка: загрузка другой (с закачкой провайдеров) не
+// задерживает ответ; загрузку той же дожидается и решает по её итогу
+func WithProfile(profile string, fn func()) bool {
+	if LoadedProfile() != profile {
+		return false
+	}
+
+	parseMutex.Lock()
+	defer unlockParse()
+
+	if LoadedProfile() != profile {
+		return false
+	}
+
+	fn()
+
+	return true
+}
+
+// LoadedProfile — UUID подписки, чей конфиг держит ядро; пусто — ничей
+func LoadedProfile() string {
+	if dir := loaded.Load(); dir != nil {
+		return filepath.Base(*dir)
+	}
+
+	return ""
 }
 
 // UseProfileDelayMode — замер без туннеля считает задержку так же, как туннель
@@ -76,7 +115,7 @@ func UseProfileDelayMode(rawCfg *config.RawConfig) {
 	parseMutex.Lock()
 	defer unlockParse()
 
-	if !loaded.Load() {
+	if !IsLoaded() {
 		adapter.UnifiedDelay.Store(rawCfg.UnifiedDelay)
 	}
 }
@@ -87,7 +126,7 @@ func applyDefaultLocked() {
 		panic(err.Error())
 	}
 
-	loaded.Store(false)
+	loaded.Store(nil)
 
 	applyLocked(cfg, func() {})
 }
@@ -98,11 +137,16 @@ func applyDefaultLocked() {
 // нет: признак загрузки снимается, чтобы ни служба, ни switchMode не считали его
 // живым.
 func applyLocked(cfg *config.Config, finish func()) {
+	// Нечётный номер — конфиг меняется: группы и подписка в ядре в этот момент
+	// могут быть от разных загрузок
+	applySeq.Add(1)
+	defer applySeq.Add(1)
+
 	applied := false
 
 	defer func() {
 		if !applied {
-			loaded.Store(false)
+			loaded.Store(nil)
 		}
 	}()
 
@@ -165,7 +209,7 @@ func Load(path string) error {
 
 	// Докачка до паузы бережёт живой трафик; пока ядро ничего не держит,
 	// она лишь отодвигает подъём туннеля — провайдеры тогда берёт сам hub.
-	if loaded.Load() {
+	if IsLoaded() {
 		prefetchProviders(rawCfg)
 	}
 
@@ -206,7 +250,7 @@ func Load(path string) error {
 			pinGlobalDefault()
 		}
 
-		loaded.Store(true)
+		loaded.Store(&path)
 
 		report.SetNodes(report.NodesOf(rawCfg.Proxy), report.ProvidersOf(rawCfg.ProxyProvider))
 
@@ -217,7 +261,7 @@ func Load(path string) error {
 }
 
 func SwitchMode(profileDir, session string) bool {
-	if !loaded.Load() {
+	if !IsLoaded() {
 		return false
 	}
 
