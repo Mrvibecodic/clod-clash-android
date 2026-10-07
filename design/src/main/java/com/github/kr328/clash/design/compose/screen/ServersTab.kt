@@ -52,6 +52,7 @@ import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.GroupIcon
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.rememberGroupIcon
+import com.github.kr328.clash.design.model.proxySubtitle
 
 @Composable
 fun ServersTab(
@@ -62,6 +63,7 @@ fun ServersTab(
     val noServers = active?.let { noServersReason(it.profile, it.panel, it.panelNow()) }
 
     val descriptions = active?.panel?.descriptions.orEmpty()
+    val protocols = active?.panel?.protocols.orEmpty()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -196,8 +198,7 @@ fun ServersTab(
                 items(items = proxies) { proxy ->
                     ProxyRow(
                         title = proxy.title,
-                        subtitle = descriptions[proxy.name]?.takeIf { it.isNotBlank() }
-                            ?: proxy.subtitle,
+                        subtitle = proxySubtitle(proxy, descriptions[proxy.name], protocols[proxy.name]),
                         delay = proxy.delay,
                         marksOnly = active?.panel?.disablePing == true,
                         pingBounds = active?.panel.pingBounds(),
