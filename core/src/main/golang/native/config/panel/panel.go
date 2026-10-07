@@ -62,6 +62,10 @@ type Info struct {
 
 	Descriptions map[string]string `json:"descriptions,omitempty"`
 
+	// Protocols — подпись протокола с транспортом у узлов из proxies подписки
+	// (Protocols) — для списка без туннеля.
+	Protocols map[string]string `json:"protocols,omitempty"`
+
 	ShowZeroHosts bool `json:"showZeroHosts,omitempty"`
 
 	DisablePing bool `json:"disablePing,omitempty"`

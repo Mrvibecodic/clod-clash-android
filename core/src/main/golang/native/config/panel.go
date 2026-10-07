@@ -105,6 +105,8 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig, template tunnel.TunnelM
 
 	info.Descriptions = descriptions
 
+	info.Protocols = panel.Protocols(cfg.Proxy)
+
 	groups := make([]PanelGroup, 0, len(cfg.ProxyGroup))
 	for _, raw := range cfg.ProxyGroup {
 		name, _ := raw["name"].(string)

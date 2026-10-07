@@ -6,9 +6,11 @@ import (
 
 	"cfa/native/config"
 	"cfa/native/config/groups"
+	"cfa/native/config/panel"
 
 	"github.com/dlclark/regexp2"
 
+	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
@@ -301,6 +303,20 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 		name := p.Name()
 		title := name
 		subtitle := p.Type().String()
+
+		// Сервер — подпись с транспортом, как у панели; у групп и протоколов
+		// без подписи — тип ядра.
+		if server, ok := p.(interface{ Node() *adapter.Node }); ok {
+			if node := server.Node(); node != nil {
+				label := panel.Label(panel.KindOf(p.Type()), panel.Transport{
+					Network: node.Network, TLS: node.TLS, RealityKey: node.RealityKey,
+					TLSMirrorKey: node.TLSMirrorKey, HTTPUpgrade: node.HTTPUpgrade,
+				})
+				if label != "" {
+					subtitle = label
+				}
+			}
+		}
 
 		if uiSubtitlePattern != nil {
 			if _, ok := p.Adapter().(outboundgroup.ProxyGroup); !ok {
