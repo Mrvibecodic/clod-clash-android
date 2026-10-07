@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import android.Manifest.permission.INTERNET
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
@@ -203,6 +204,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
 
             val pm = packageManager
             val packages = pm.getInstalledPackages(PackageManager.GET_PERMISSIONS)
+            val launchable = if (systemApp) emptySet() else launchablePackages(pm)
 
             packages.asSequence()
                 .filter {
@@ -215,7 +217,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                     it.requestedPermissions?.contains(INTERNET) == true || it.applicationInfo!!.uid < android.os.Process.FIRST_APPLICATION_UID
                 }
                 .filter {
-                    systemApp || !it.isSystemApp
+                    systemApp || !it.isSystemApp || it.packageName in launchable || it.packageName == GMS_PACKAGE
                 }
                 .map {
                     it.toAppInfo(pm)
@@ -230,7 +232,19 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         get() {
             return applicationInfo?.flags?.and(ApplicationInfo.FLAG_SYSTEM) != 0
         }
+
+    // Пакеты со значком в лаунчере телефона или ТВ: заводские приложения пользователя
+    // (YouTube, YouTube Music, Google, Chrome, Play Маркет…) показываются и без фильтра
+    // «Системные приложения», служебные части системы — нет. Сервисы Google Play значка
+    // не имеют и добавлены отдельно; Google Services Framework идёт с ними под одним UID.
+    private fun launchablePackages(pm: PackageManager): Set<String> {
+        return listOf(Intent.CATEGORY_LAUNCHER, Intent.CATEGORY_LEANBACK_LAUNCHER)
+            .flatMap { pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(it), 0) }
+            .mapTo(HashSet()) { it.activityInfo.packageName }
+    }
 }
+
+private const val GMS_PACKAGE = "com.google.android.gms"
 
 private data class RetainedApps(
     val sort: AppInfoSort,
