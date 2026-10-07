@@ -12,9 +12,11 @@ import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.freeze.FreezeChecks
+import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
+import com.github.kr328.clash.service.util.systemResolvers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
@@ -216,11 +218,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         val transport = when {
             capabilities == null -> "unknown"
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "vpn"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> "bluetooth"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
-            else -> "other"
+            else -> NetworkKey.transportOf(capabilities)
         }
 
         return "$network/$transport"
@@ -391,17 +389,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         }
 
         try {
-            val network = connectivity.activeNetwork ?: return
-            val capabilities = connectivity.getNetworkCapabilities(network) ?: return
+            val (network, dnsList) = connectivity.systemResolvers() ?: return
 
-            if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) {
-                return
-            }
-
-            val dnsList = connectivity.getLinkProperties(network)?.dnsServers.orEmpty()
-                .map { x -> x.asSocketAddressText(53) }
-
-            if (dnsList.isEmpty() || curDnsList.isNotEmpty()) {
+            if (curDnsList.isNotEmpty()) {
                 return
             }
 
@@ -450,8 +440,13 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             ServiceLog.mark("network: callback registration failed after $attempt attempts, running without network watcher")
         }
 
-        val screenOn = receiveBroadcast(false, Channel.CONFLATED) {
+        // Экран ядро не усыпляет (см. SuspendModule): здесь он нужен отложенной
+        // пробе и журналу
+        // Без склейки: включение, за которым сразу выключение, не теряет
+        // отложенную пробу
+        val screen = receiveBroadcast(false, Channel.UNLIMITED) {
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
         }
 
         try {
@@ -483,15 +478,21 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                                 }
                             }
                         }
-                        screenOn.onReceive {
-                            if (probePending) {
-                                probePending = false
+                        screen.onReceive {
+                            if (it.action == Intent.ACTION_SCREEN_OFF) {
+                                Log.i("Screen off: core keeps running")
+                            } else {
+                                Log.i("Screen on: core keeps running")
 
-                                Log.i("NetworkObserve deferred probe after screen on")
+                                if (probePending) {
+                                    probePending = false
 
-                                probeNodes()
+                                    Log.i("NetworkObserve deferred probe after screen on")
 
-                                scheduleRecover(scope, force = false)
+                                    probeNodes()
+
+                                    scheduleRecover(scope, force = false)
+                                }
                             }
                         }
                         probeTicker.onReceive {

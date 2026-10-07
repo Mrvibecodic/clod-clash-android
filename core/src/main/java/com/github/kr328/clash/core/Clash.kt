@@ -54,12 +54,6 @@ object Clash {
         Bridge.nativeForceGc()
     }
 
-    // Intentionally a no-op in the core (tunnel/suspend.go): the tunnel keeps
-    // running while the screen is off; the bridge entry is kept as is.
-    fun suspendCore(suspended: Boolean) {
-        Bridge.nativeSuspend(suspended)
-    }
-
     fun queryTrafficNow(): Traffic {
         return Bridge.nativeQueryTrafficNow()
     }

@@ -10,9 +10,7 @@ import com.github.kr328.clash.core.bridge.ClashException
 import com.github.kr328.clash.core.util.parseInetSocketAddress
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.ServiceLog
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.awaitCancellation
 import java.net.InetSocketAddress
 import java.security.SecureRandom
 
@@ -26,7 +24,6 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
     )
 
     private val connectivity = service.getSystemService<ConnectivityManager>()!!
-    private val close = Channel<Unit>(Channel.CONFLATED)
     private var http: InetSocketAddress? = null
 
     private fun queryUid(
@@ -41,14 +38,9 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
             .getOrElse { -1 }
     }
 
+    // Туннель останавливает finally рантайма TunService — один раз, до конца сессии
     override suspend fun run() {
-        try {
-            return close.receive()
-        } finally {
-            withContext(NonCancellable) {
-                requestStop()
-            }
-        }
+        awaitCancellation()
     }
 
     // Вход живёт всю сессию: пересборка туннеля отдаёт системе тот же адрес, иначе
@@ -82,10 +74,6 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
 
             throw ClashException(service.getString(R.string.clod_tun_start_failed))
         }
-    }
-
-    suspend fun close() {
-        close.send(Unit)
     }
 
     companion object {

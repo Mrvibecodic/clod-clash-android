@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.util
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
@@ -14,12 +15,29 @@ internal fun <T> pickSystemResolvers(
     candidates: List<T>,
     notVpn: (T) -> Boolean,
     resolvers: (T) -> List<String>,
-): List<String> =
+): Pair<T, List<String>>? =
     candidates.asSequence()
         .filter(notVpn)
-        .map(resolvers)
-        .firstOrNull { it.isNotEmpty() }
-        .orEmpty()
+        .map { it to resolvers(it) }
+        .firstOrNull { it.second.isNotEmpty() }
+
+// Резолверы системы и сеть, у которой они взяты: первая сеть не-VPN с DNS,
+// активная — первой. Активной может быть сеть чужого VPN — тогда резолверы
+// берутся у остальных сетей
+fun ConnectivityManager.systemResolvers(): Pair<Network, List<String>>? {
+    @Suppress("DEPRECATION")
+    val candidates = (listOfNotNull(activeNetwork) + allNetworks).distinct()
+
+    return pickSystemResolvers(
+        candidates = candidates,
+        notVpn = { network ->
+            getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
+        },
+        resolvers = { network ->
+            getLinkProperties(network)?.dnsServers.orEmpty().map { it.asSocketAddressText(53) }
+        },
+    )
+}
 
 suspend fun Context.seedSystemDns() {
     withContext(Dispatchers.IO) {
@@ -36,29 +54,11 @@ suspend fun Context.seedSystemDns() {
                 return@withContext
             }
 
-            @Suppress("DEPRECATION")
-            val all = connectivity.allNetworks
+            val dnsList = connectivity.systemResolvers()?.second
 
-            val candidates = buildList {
-                connectivity.activeNetwork?.let { add(it) }
-
-                addAll(all)
-            }.distinct()
-
-            val dnsList = pickSystemResolvers(
-                candidates = candidates,
-                notVpn = { network ->
-                    connectivity.getNetworkCapabilities(network)
-                        ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
-                },
-                resolvers = { network ->
-                    connectivity.getLinkProperties(network)?.dnsServers.orEmpty()
-                        .map { it.asSocketAddressText(53) }
-                },
-            )
-
-            if (dnsList.isEmpty()) {
-                Log.w("Seed system dns: no resolvers on ${candidates.size} non-VPN network(s)")
+            if (dnsList == null) {
+                @Suppress("DEPRECATION")
+                Log.w("Seed system dns: no resolvers on ${connectivity.allNetworks.size} network(s)")
 
                 return@withContext
             }

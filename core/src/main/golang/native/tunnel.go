@@ -203,10 +203,3 @@ func updateProvider(completable unsafe.Pointer, pType C.c_string, name C.c_strin
 		C.release_object(completable)
 	})
 }
-
-//export suspend
-func suspend(suspended C.int) {
-	defer guard("suspend", func() {})()
-
-	tunnel.Suspend(suspended != 0)
-}

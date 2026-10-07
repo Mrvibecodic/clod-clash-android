@@ -66,6 +66,17 @@ object NetworkKey {
         else -> "other"
     }
 
+    // Транспорт сети: входит в ключ и в вид сети для отчёта — значения не менять
+    fun transportOf(capabilities: NetworkCapabilities): String = when {
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> "bluetooth"
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_USB) -> "usb"
+        else -> "other"
+    }
+
     fun seen(context: Context, network: Network?): Seen? {
         val connectivity = context.getSystemService<ConnectivityManager>() ?: return null
         val chosen = network ?: connectivity.activeNetwork ?: return null
@@ -78,15 +89,7 @@ object NetworkKey {
             return null
         }
 
-        val transport = when {
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> "bluetooth"
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_USB) -> "usb"
-            else -> "other"
-        }
+        val transport = transportOf(capabilities)
 
         if (transport == "cellular") {
             val operator = context.getSystemService<TelephonyManager>()?.networkOperator.orEmpty()

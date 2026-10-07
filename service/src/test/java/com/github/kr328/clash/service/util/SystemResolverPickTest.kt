@@ -7,7 +7,7 @@ class SystemResolverPickTest {
     private data class Net(val notVpn: Boolean, val resolvers: List<String>)
 
     private fun pick(vararg nets: Net): List<String> =
-        pickSystemResolvers(nets.toList(), { it.notVpn }, { it.resolvers })
+        pickSystemResolvers(nets.toList(), { it.notVpn }, { it.resolvers })?.second.orEmpty()
 
     @Test
     fun `пустой набор сетей даёт пустой список`() {

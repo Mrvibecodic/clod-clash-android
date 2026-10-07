@@ -48,7 +48,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
     companion object {
         const val CHANNEL_ID = "clash_status_channel"
 
-        fun stopIntent(service: Service, requestCode: Int = R.id.nf_clash_status): PendingIntent {
+        private fun stopIntent(service: Service, requestCode: Int): PendingIntent {
             return PendingIntent.getBroadcast(
                 service,
                 requestCode,

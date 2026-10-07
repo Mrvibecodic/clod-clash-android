@@ -120,11 +120,15 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                         false
                     }
+                    // Сторож шлёт сеть на каждое изменение свойств — подложка
+                    // задаётся, только когда сменилась сама сеть
                     network.onEvent { n ->
-                        underlying = n
+                        if (n != underlying) {
+                            underlying = n
 
-                        if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
-                            setUnderlyingNetworks(n?.let { arrayOf(it) })
+                            if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
+                                setUnderlyingNetworks(n?.let { arrayOf(it) })
+                            }
                         }
 
                         false
@@ -140,8 +144,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 session.beginStop()
 
                 val startedAt = SystemClock.elapsedRealtime()
-
-                tun.close()
 
                 TunModule.requestStop()
 

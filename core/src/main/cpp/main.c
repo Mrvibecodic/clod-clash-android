@@ -35,14 +35,6 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeForceGc(JNIEnv *env, jobjec
     forceGc();
 }
 
-JNIEXPORT void JNICALL
-Java_com_github_kr328_clash_core_bridge_Bridge_nativeSuspend(JNIEnv *env, jobject thiz,
-                                                             jboolean suspended) {
-    TRACE_METHOD();
-
-    suspend((int) suspended);
-}
-
 JNIEXPORT jlong JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryTrafficNow(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
