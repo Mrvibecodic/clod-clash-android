@@ -1,7 +1,6 @@
 package com.github.kr328.clash.service.report
 
 import android.content.Context
-import android.net.Network
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
@@ -12,9 +11,7 @@ import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.util.importedDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
@@ -39,55 +36,59 @@ object ClientReports {
     private suspend fun collected(uuid: UUID): Boolean =
         ImportedDao().queryByUUID(uuid)?.secure == true
 
-    private fun call(op: String, fill: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) {
-        try {
+    private fun call(op: String, fill: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): Boolean {
+        return try {
             Clash.clientReport(buildJsonObject {
                 put("op", op)
                 fill()
             }.toString())
+
+            true
         } catch (e: Exception) {
             Log.w("Client report $op: $e", e)
+
+            false
         }
     }
 
-    // Загрузка ещё узнаёт, защищённая ли подписка: остановка сессии её
-    // отменяет, иначе ответ базы, пришедший после остановки, включил бы сбор
-    // без туннеля.
-    private var loading: Job? = null
-
     // Подписка загружена в ядро: собирать, если у неё защищённый канал
     @Synchronized
-    fun profileLoaded(uuid: UUID) {
-        loading?.cancel()
+    fun profileLoaded(uuid: UUID, secure: Boolean) {
+        val store = if (secure) storeFile(context, uuid).absolutePath else ""
 
-        loading = scope.launch {
-            val store = if (collected(uuid)) storeFile(context, uuid).absolutePath else ""
-
-            ensureActive()
-
-            call("target") { put("store", store) }
-        }
+        call("target") { put("store", store) }
     }
 
     @Synchronized
     fun sessionStopped() {
-        loading?.cancel()
-        loading = null
-
         call("target") { put("store", "") }
     }
 
+    // Сеть и вид, последними отданные ядру: повтор оно пропускает само, здесь
+    // он не зовётся вовсе. Замок свой: сеть называет поток системных
+    // колбэков, и ждать смены цели отчёта (запись накопленного) ему незачем
+    private var named: Pair<String, String>? = null
+    private val namedLock = Any()
+
     // Сторож туннеля назвал сеть (при старте, смене, позднем приходе свойств);
     // null — сети нет. Зовётся в момент события: замеры до него — старой сети
-    fun network(network: Network?) {
-        val seen = network?.let { NetworkKey.seen(context, it) }
-        val key = NetworkKey.keyOf(seen).orEmpty()
-        val at = System.currentTimeMillis()
+    fun network(seen: NetworkKey.Seen?) {
+        synchronized(namedLock) {
+            val key = NetworkKey.keyOf(seen).orEmpty()
+            val kind = if (key.isEmpty()) "" else NetworkKey.kindOf(seen)
 
-        call("network") {
-            put("net", key)
-            put("kind", if (key.isEmpty()) "" else NetworkKey.kindOf(seen))
-            put("at", at)
+            if (named == key to kind) return
+
+            val at = System.currentTimeMillis()
+
+            // Несостоявшийся вызов не запоминается: следующее событие повторит
+            val sent = call("network") {
+                put("net", key)
+                put("kind", kind)
+                put("at", at)
+            }
+
+            if (sent) named = key to kind
         }
     }
 

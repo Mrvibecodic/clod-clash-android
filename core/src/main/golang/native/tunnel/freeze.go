@@ -116,8 +116,9 @@ type DownloadOutcome struct {
 }
 
 // DownloadChecks — имя узла → итог проверки загрузкой для перечисленных узлов.
-// Узел, не найденный у ядра, в ответ не попадает; отменённая проверка (смена
-// сети, остановка службы) отвечает unknown.
+// Узел, не найденный у ядра, в ответ не попадает; оборванная проверка (загрузка
+// или сброс ядра, смена сети, конец бюджета) — тоже: об узле она ничего не
+// говорит. Проверки ждут удержания проб после смены сети и пробуждения.
 func DownloadChecks(req DownloadRequest) map[string]DownloadOutcome {
 	result := map[string]DownloadOutcome{}
 
@@ -176,7 +177,27 @@ func DownloadChecks(req DownloadRequest) map[string]DownloadOutcome {
 				return
 			}
 
+			// Провал на смене сети или после сна ядро записало бы как «неясно»
+			if waitNetworkSettled(ctx) != nil {
+				return
+			}
+
+			began := time.Now()
+
 			outcome := px.(downloadChecker).DownloadCheck(ctx, req.URL, req.Size, timeout, stall, source.pingURL(px))
+
+			// Проверку оборвали загрузка или сброс ядра, смена сети или конец
+			// бюджета захода — об узле она ничего не говорит: в итог не идёт,
+			// иначе «неясно» записалось бы как попытка и узел ждал бы перепроверки
+			if ctx.Err() != nil {
+				return
+			}
+
+			// «Неясно», когда посреди проверки началось удержание (сон, смена
+			// сети), — тоже оборванная проверка
+			if outcome.Verdict == adapter.DownloadUnknown && (C.ProbeHolding(began) || C.ProbeHolding(time.Now())) {
+				return
+			}
 
 			mu.Lock()
 			defer mu.Unlock()

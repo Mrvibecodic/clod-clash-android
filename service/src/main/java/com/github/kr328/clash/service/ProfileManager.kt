@@ -7,6 +7,7 @@ import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
+import com.github.kr328.clash.service.freeze.FreezeChecks
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.remote.IProfileManager
@@ -139,6 +140,10 @@ class ProfileManager(private val context: Context) : IProfileManager,
 
     override suspend fun commit(uuid: UUID, callback: IFetchObserver?) {
         ProfileProcessor.apply(context, uuid, callback)
+
+        // Сохранение (у подписки по ссылке — с новой загрузкой) без туннеля
+        // сверяет пометки 16–20: панель могла включить или выключить проверку
+        FreezeChecks.profileUpdated(uuid)
 
         scheduleUpdate(uuid, false)
     }

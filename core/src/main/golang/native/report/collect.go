@@ -111,11 +111,27 @@ func SetTarget(path string) {
 
 	if start {
 		go loop()
-		go trafficLoop()
+	} else if changed && path == "" {
+		// Сбор выключен: цикл и чтение соединений кончаются сразу, а не после
+		// ожидания цикла (до пяти минут), и новый SetTarget запускает их заново
+		poke()
 	}
 }
 
+func poke() {
+	select {
+	case wake <- struct{}{}:
+	default:
+	}
+}
+
+// loop — цикл сбора; чтение соединений идёт рядом и кончается вместе с ним.
 func loop() {
+	stop := make(chan struct{})
+	defer close(stop)
+
+	go trafficLoop(stop)
+
 	for {
 		mu.Lock()
 		wait := next
@@ -138,15 +154,11 @@ func loop() {
 	}
 }
 
-func trafficLoop() {
+func trafficLoop(stop <-chan struct{}) {
 	for {
-		time.Sleep(trafficTick)
-
-		mu.Lock()
-		on := target != "" && running
-		mu.Unlock()
-
-		if !on {
+		select {
+		case <-time.After(trafficTick):
+		case <-stop:
 			return
 		}
 
@@ -160,6 +172,7 @@ func trafficTickOnce() {
 	mu.Lock()
 	was := seen
 	primed := readAt > 0
+	reading := target
 	mu.Unlock()
 
 	alive := map[string][2]int64{}
@@ -192,6 +205,12 @@ func trafficTickOnce() {
 
 	mu.Lock()
 	defer mu.Unlock()
+
+	// Пока шло чтение, сбор переключился на другую подписку (или
+	// остановился): прирост принадлежит прежней, чужую копилку он не трогает
+	if target != reading {
+		return
+	}
 
 	secs := uint64(1)
 	if readAt > 0 {
@@ -238,10 +257,7 @@ func NetworkChanged(net, kind string, at int64) {
 	go func() {
 		flushBeforeChange(at, before)
 
-		select {
-		case wake <- struct{}{}:
-		default:
-		}
+		poke()
 	}()
 }
 

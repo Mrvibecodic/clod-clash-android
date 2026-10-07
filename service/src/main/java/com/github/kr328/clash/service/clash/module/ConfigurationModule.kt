@@ -182,8 +182,12 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                     enqueueEvent(Event.Loaded(current))
 
-                    FreezeChecks.profileLoaded(current)
-                    ClientReports.profileLoaded(current)
+                    // Ядро не перезагружалось. Обновление или сохранение тем же
+                    // конфигом сверяет пометки 16–20 (тик замка — нет); цель отчёта
+                    // сверяется: канал могли включить при том же конфиге.
+                    if (!lockTick) FreezeChecks.profileKept(current)
+
+                    ClientReports.profileLoaded(current, active.secure)
 
                     continue
                 }
@@ -252,7 +256,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 enqueueEvent(Event.Loaded(current))
 
                 FreezeChecks.profileLoaded(current)
-                ClientReports.profileLoaded(current)
+                ClientReports.profileLoaded(current, active.secure)
 
                 ready = true
 
@@ -296,6 +300,10 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                     else
                         service.getString(R.string.clod_profile_load_failed, failedName, message, retainedName)
                 )
+
+                // Ядро держит прежний конфиг той же подписки, а её panel.json уже
+                // новый: панель могла включить или выключить проверку 16–20
+                if (current == retained && !lockTick) FreezeChecks.profileKept(current)
             }
         }
     }

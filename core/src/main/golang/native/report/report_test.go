@@ -7,6 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -362,5 +364,58 @@ func TestProviderNodesComeFromPayloadAndFile(t *testing.T) {
 	got = AllNodes(own, providers)
 	if _, stale := got["Чужой"]; stale || got["Новый"].Port != 1 {
 		t.Fatalf("после смены файла: %+v", got)
+	}
+}
+
+// inside — сколько горутин пакета сейчас в функции fn.
+func inside(fn string) int {
+	buf := make([]byte, 1<<20)
+	buf = buf[:runtime.Stack(buf, true)]
+
+	n := 0
+	for _, g := range strings.Split(string(buf), "\n\n") {
+		if strings.Contains(g, "report."+fn+"(") {
+			n++
+		}
+	}
+
+	return n
+}
+
+func TestCollectionStopsAtOnceAndRestartsWithItsTrafficReading(t *testing.T) {
+	dir := t.TempDir()
+	// Цикл сбора и чтение соединений — по count штук, ждём не дольше двух секунд.
+	settled := func(count int) bool {
+		for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			if inside("loop") == count && inside("trafficLoop") == count {
+				return true
+			}
+		}
+
+		return false
+	}
+	t.Cleanup(func() {
+		SetTarget("")
+		settled(0)
+	})
+
+	SetTarget(filepath.Join(dir, "a"))
+	// Остановка и тут же запуск: сбор продолжается, один цикл и одно чтение.
+	SetTarget("")
+	SetTarget(filepath.Join(dir, "b"))
+	if !settled(1) {
+		t.Fatalf("после перезапуска: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
+	}
+
+	// Остановка кончает и цикл, и чтение сразу, а не после их ожидания.
+	SetTarget("")
+	if !settled(0) {
+		t.Fatalf("после остановки идут: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
+	}
+
+	// Новый запуск после остановки читает и соединения.
+	SetTarget(filepath.Join(dir, "c"))
+	if !settled(1) {
+		t.Fatalf("после нового запуска: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
 	}
 }

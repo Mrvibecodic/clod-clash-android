@@ -156,8 +156,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             networks.trySend(preferredNetwork())
 
             if (network == currentNetwork) {
-                FreezeChecks.networkSeen(network)
-                ClientReports.network(network)
+                val seen = NetworkKey.seen(service, network)
+
+                FreezeChecks.networkSeen(network, seen)
+                ClientReports.network(seen)
             }
         }
 
@@ -268,7 +270,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         currentNetwork = network
         currentValidatedSeen = false
 
-        ClientReports.network(network)
+        val seen = NetworkKey.seen(service, network)
+
+        ClientReports.network(seen)
 
         networks.trySend(network)
 
@@ -277,7 +281,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             markNetworkEvent(reason, network, "reacted=false (initial)")
 
-            FreezeChecks.networkSeen(network)
+            FreezeChecks.networkSeen(network, seen)
 
             return
         }
