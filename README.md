@@ -7,7 +7,8 @@
 <p align="center">
   <a href="https://mrvibecodic.github.io/clod-clash-android/ru/docs">Документация</a> ·
   <a href="https://mrvibecodic.github.io/clod-clash-android/ru/download">Скачать APK</a> ·
-  <a href="https://mrvibecodic.github.io/clod-clash-android/en/docs">English docs</a>
+  <a href="https://mrvibecodic.github.io/clod-clash-android/en/docs">English docs</a> ·
+  <a href="./PRIVACY_POLICY.ru.md">Конфиденциальность</a>
 </p>
 
 <p align="center">

@@ -1,5 +1,9 @@
 ## Privacy Policy
 
+Languages: **English** · [Русский](./PRIVACY_POLICY.ru.md)
+
+Effective: 7 October 2026. Applies to Clod Clash for Android.
+
 Clod Clash is an open source VPN client. It is provided free of charge and as is.
 
 The app has no accounts of its own, shows no advertising, and contains no analytics or
@@ -43,14 +47,16 @@ crash-reporting code. Everything described below covers the requests this app ma
     that uses the secure channel, after a successful scheduled refresh (not a manual one) and
     at most once every 6 hours, the app sends the provider's subscription server what it has
     already measured: latency results and the "16–20" check results per server of that
-    subscription, traffic volume per server, the kind of network (Wi-Fi, mobile, wired) and
-    the external IP address the measurements were made from. A network is identified by a
-    hash of its properties (gateway, subnet, DNS, operator code); the Wi-Fi name, location,
-    visited addresses and the list of apps are not included. The report carries the device
-    identifier described above, or a random per-install mark when the "device identifier"
-    setting is off. It is sent to the same address as the subscription, encrypted, and only
+    subscription, traffic volume per server, the server list entries involved (name, type,
+    address and port from your subscription), the kind of network (Wi-Fi, mobile, wired) and
+    the external IP address the measurements were made from, hour by hour. A network is
+    identified by a hash of its properties (gateway, subnet, DNS, operator code); the Wi-Fi
+    name, location, visited addresses and the list of apps are not included. The report carries a random
+    per-install mark, the app version and the platform; like every secure-channel request, it
+    also carries the device values described above, encrypted, while the "device identifier"
+    setting is on. It is sent to the same address as the subscription, encrypted, and only
     if the provider has turned on receiving reports; the app keeps unsent measurements for
-    at most 7 days.
+    at most 7 days. Turning off the secure channel for a subscription stops its reports.
 *   **To Yandex, to learn the external IP address.** For the report above, the app asks
     `ipv4-internet.yandex.net` and `ipv6-internet.yandex.net` (operated by Yandex) for the
     address your connection appears from — when the network changes and at most once an hour
@@ -64,6 +70,11 @@ crash-reporting code. Everything described below covers the requests this app ma
     provider; when none is set, the app uses `https://www.gstatic.com/generate_204`,
     operated by Google. The request carries no identifier and no device headers, but the
     operator of the test address sees a connection from each server's IP.
+*   **The "16–20" check.** Only if your provider turns it on with the `clod-16-20-check`
+    subscription header, the app downloads 64 KB from `speed.cloudflare.com` (operated by
+    Cloudflare) through each server to find servers whose traffic is being cut — when a
+    subscription is loaded, when the network changes, and at most once an hour while the
+    tunnel is on. No identifier or device headers are attached.
 *   **DNS.** Name resolution goes wherever your configuration says. If the configuration
     leaves DNS disabled — either because it has no DNS section at all, or because the
     section is present but sets `enable: false` — the app replaces that whole section with
@@ -76,8 +87,9 @@ crash-reporting code. Everything described below covers the requests this app ma
     the configuration itself asks for the system resolver. If the configuration enables DNS
     on its own, the app leaves the section as written.
 *   **To the update and routing-data endpoints.** Checking for an app update, downloading an
-    update package, fetching routing databases (GeoIP, GeoSite, ASN) and loading a provider
-    logo send only a standard `User-Agent` of the form `ClodClash/<version> (Android)`. No
+    update package (GitHub, `Mrvibecodic/clod-clash-android`), fetching routing databases
+    (GeoIP, GeoSite, ASN — by default from GitHub, `MetaCubeX/meta-rules-dat`) and loading a
+    provider logo send only a standard `User-Agent` of the form `ClodClash/<version> (Android)`. No
     device headers and no identifier are attached to these requests.
 *   **Through the tunnel itself.** While the VPN is on, application traffic goes to the proxy
     servers listed in your subscription. The app does not inspect, store or forward that
@@ -111,6 +123,41 @@ to install an app update it has downloaded; and the battery optimisation permiss
 scheduled subscription refreshes.
 The app requests no camera, location, contacts or microphone access.
 
+**Who is responsible for the data**
+
+The authors of Clod Clash do not receive, store or process the personal data of users and are
+therefore not the controller (operator) of it. The data that leaves your device goes to:
+
+*   your subscription provider — it is the controller for the subscription requests, device
+    values and quality reports it receives, and its own privacy policy governs how long it
+    keeps them, what it uses them for and how you can exercise your rights;
+*   the third parties named above (Google, Cloudflare, Quad9, Yandex, GitHub, your network
+    operator's resolver, the operators of addresses in your configuration), each under its own
+    policy.
+
+An IP address and a device identifier linked to a subscription can be personal data under the
+GDPR, Russian Federal Law No. 152-FZ "On Personal Data" and similar laws. A provider that turns
+on receiving reports or the "16–20" check should describe this in its own policy (purpose,
+legal basis, retention, recipients) and inform its users.
+
+**Your choices and rights**
+
+*   Turn off "Identify this device" (the device identifier setting): no device values are
+    sent (a provider with a device limit may then refuse to give the subscription).
+*   Turn off the secure channel in the subscription properties: that subscription stops sending
+    reports.
+*   Uninstall the app, or clear its data in the system settings, to remove everything stored on
+    the device.
+*   To access, correct or delete data a provider holds about you, or to object to its
+    processing, contact that provider. You may also complain to the data protection authority
+    of your country.
+
+**International transfers**
+
+The services the app contacts may be located outside your country — for example Google,
+Cloudflare and GitHub in the United States and Yandex in Russia; your provider's servers are
+wherever the provider places them.
+
 **Children's privacy**
 
 The app is not directed at children under 13 and collects no personal information from
@@ -135,7 +182,7 @@ or storage is completely secure, so absolute security cannot be guaranteed.
 **Changes to this policy**
 
 This page is updated when the behaviour of the app changes. The version in the repository
-always describes the current release.
+always describes the current release; the date at the top shows when it last changed.
 
 **Contact**
 
