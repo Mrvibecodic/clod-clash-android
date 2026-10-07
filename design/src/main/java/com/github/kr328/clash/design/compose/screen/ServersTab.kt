@@ -64,6 +64,7 @@ fun ServersTab(
 
     val descriptions = active?.panel?.descriptions.orEmpty()
     val protocols = active?.panel?.protocols.orEmpty()
+    val mobileOnly = active?.panel?.mobileOnly.orEmpty().toSet()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -162,6 +163,15 @@ fun ServersTab(
         }
 
         val group = state.groups.getOrNull(state.selected)
+        if (group?.allHidden == true) {
+            Text(
+                text = stringResource(R.string.clod_servers_mobile_only),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            )
+            return@Column
+        }
         if (group == null || group.proxies.isEmpty()) {
             EmptyServers()
             return@Column
@@ -212,6 +222,7 @@ fun ServersTab(
                         onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
                         freeze = state.freeze[proxy.name],
                         onFreezeClick = { state.freeze[proxy.name]?.let { onAction(MainAction.ShowFreeze(it)) } },
+                        mobileOnly = proxy.name in mobileOnly,
                     )
                 }
             }

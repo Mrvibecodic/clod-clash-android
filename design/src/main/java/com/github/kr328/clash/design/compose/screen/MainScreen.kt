@@ -169,6 +169,8 @@ data class ProxyGroupState(
     // Узел, закреплённый вручную; "" — url-test/fallback выбирает сама,
     // null — группа сама не выбирает (select)
     val pinned: String? = null,
+    // Все серверы группы только для мобильной сети, а сеть не мобильная
+    val allHidden: Boolean = false,
 )
 
 @Immutable

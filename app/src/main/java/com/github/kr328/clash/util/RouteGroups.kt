@@ -27,7 +27,39 @@ internal suspend fun loadRouteGroups(
 internal fun offlineNow(type: String, saved: String?, proxies: List<String>): String =
     saved ?: if (type == "select") proxies.firstOrNull().orEmpty() else ""
 
-internal data class OfflineGroup(val now: String, val proxies: List<String>)
+// allHidden — в группе были серверы, и все они только для мобильной сети
+internal data class OfflineGroup(val now: String, val proxies: List<String>, val allHidden: Boolean = false)
 
-internal fun offlineGroup(group: PanelGroup, saved: String?, hides: (String) -> Boolean): OfflineGroup =
-    OfflineGroup(offlineNow(group.type, saved, group.proxies), group.proxies.filterNot(hides).distinct())
+private val BUILTIN = setOf("DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE")
+
+// Все серверы группы только для мобильной сети вне неё: у ядра она отказывает
+private fun PanelGroup.allGone(gone: (String) -> Boolean): Boolean = proxies.isNotEmpty() && proxies.all(gone)
+
+// hides — не показывать (заглушки панели: ядро их выбирает); gone — серверов
+// нет и у ядра (только для мобильной сети вне неё); groups — группы подписки.
+// Скрытый выбор select-группы — сохранённый или, без него, первый член —
+// как у ядра, заменяется первым видимым сервером, затем группой, где видно
+// хоть что-то, и никогда DIRECT; иначе группа отказывает.
+internal fun offlineGroup(
+    group: PanelGroup,
+    saved: String?,
+    gone: (String) -> Boolean = { false },
+    groups: List<PanelGroup> = emptyList(),
+    hides: (String) -> Boolean,
+): OfflineGroup {
+    val left = group.proxies.filterNot(gone)
+    val groupOf = { name: String -> groups.firstOrNull { it.name == name } }
+    val target = saved ?: group.proxies.firstOrNull()
+    val hidden = target != null && (gone(target) || groupOf(target)?.allGone(gone) == true)
+
+    val now = when {
+        // Автоматическая группа со скрытым закреплением выберет сама
+        group.type != "select" -> if (hidden) "" else offlineNow(group.type, saved, left)
+        hidden -> left.firstOrNull { it !in BUILTIN && groupOf(it) == null }
+            ?: left.firstOrNull { groupOf(it)?.allGone(gone) == false }
+            ?: ""
+        else -> offlineNow(group.type, saved, left)
+    }
+
+    return OfflineGroup(now, left.filterNot(hides).distinct(), group.allGone(gone))
+}

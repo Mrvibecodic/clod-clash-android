@@ -12,7 +12,8 @@ interface IClashManager {
     fun queryProxyGroup(name: String): ProxyGroup
     fun queryProviders(): ProviderList
 
-    suspend fun select(profile: UUID, group: String, name: String): Boolean
+    // Done и NotLoaded — выбор принят (в ядро или до загрузки подписки)
+    suspend fun select(profile: UUID, group: String, name: String): Clash.PatchResult
 
     suspend fun querySelections(): Map<String, String>
 

@@ -57,7 +57,7 @@ class ClashManager(private val context: Context) : IClashManager,
     // ядро под замком смены конфига; запись идёт под замком выборов, что и
     // возврат выбора после загрузки, — выбор не теряется и не попадает в чужую
     // подписку.
-    override suspend fun select(profile: UUID, group: String, name: String): Boolean = withContext(selections) {
+    override suspend fun select(profile: UUID, group: String, name: String): Clash.PatchResult = withContext(selections) {
         Selections.lock.withLock {
             val result = Clash.patchSelector(profile.toString(), group, name)
 
@@ -79,7 +79,7 @@ class ClashManager(private val context: Context) : IClashManager,
                 Log.w("Remember selection $name for $group: $e", e)
             }
 
-            result == Clash.PatchResult.Done || result == Clash.PatchResult.NotLoaded
+            result
         }
     }
 

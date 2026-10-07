@@ -192,6 +192,8 @@ fun ProxyRow(
     // clod:freeze — frozen | dead; пометка рядом с пингом, пинг как был
     freeze: String? = null,
     onFreezeClick: () -> Unit = {},
+    // Сервер только для мобильной сети (clod-mobile-only); виден он только в ней
+    mobileOnly: Boolean = false,
 ) {
     val (flag, name) = remember(title) { splitFlag(title) }
 
@@ -265,6 +267,10 @@ fun ProxyRow(
         } else {
             MaterialTheme.colorScheme.surfaceContainerLow
         }
+        if (mobileOnly) {
+            MobilePill(on = on)
+            Spacer(Modifier.width(6.dp))
+        }
         if (freeze != null) {
             FreezePill(mark = freeze, on = on, onClick = onFreezeClick)
             Spacer(Modifier.width(6.dp))
@@ -303,5 +309,33 @@ fun ProxyRow(
                 modifier = Modifier.size(18.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun MobilePill(on: Color) {
+    val color = MaterialTheme.colorScheme.primary
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .background(color.statusContainer(on))
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_signal_bars),
+            contentDescription = null,
+            tint = color.statusText(),
+            modifier = Modifier.size(12.dp),
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = stringResource(R.string.clod_proxy_mobile_only),
+            color = color.statusText(),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }

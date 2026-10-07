@@ -18,12 +18,19 @@ import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.Uri
+import androidx.core.content.getSystemService
+import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.ProxyGroup
 import com.github.kr328.clash.core.model.ProxyGroupNames
+import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeLocalProxyPort
@@ -229,6 +236,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             }
         }
 
+        launch {
+            for (change in offlineNetworkChanges) {
+                if (!clashRunning) work.trySend { design.reloadProxyGroups() }
+            }
+        }
+
         // Трафик и таймер сессии порядка не требуют и не ждут исполнителя.
         launch {
             while (isActive) {
@@ -378,6 +391,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     requestFetch()
                                 }
                             }
+                        }
+                        // Туннель вне мобильной сети прячет серверы только для неё
+                        // (или показывает их снова): группы ядра стали другими
+                        Event.HiddenServersChanged -> {
+                            if (clashRunning) work.trySend { design.reloadProxyGroups() }
                         }
                         is Event.FreezeMarksChanged -> {
                             val uuid = it.uuid
@@ -834,6 +852,88 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var offlineHides: (String) -> Boolean = { false }
 
+    // Без туннеля: серверы только для мобильной сети вне неё (их нет и у ядра)
+    private var offlineGone: (String) -> Boolean = { false }
+
+    @Volatile
+    private var offlineCellular = false
+
+    private val offlineNetworkChanges = Channel<Unit>(Channel.CONFLATED)
+
+    // Сеть меняется, пока экран открыт: список без туннеля перечитывается сразу.
+    // Мобильная ли сеть — по рабочим сетям из самого наблюдения, без опроса системы
+    private val offlineNetworks = object : ConnectivityManager.NetworkCallback() {
+        private val working = ConcurrentHashMap<Network, String>()
+
+        override fun onAvailable(network: Network) {
+            getSystemService<ConnectivityManager>()?.getNetworkCapabilities(network)?.let { seen(network, it) }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = seen(network, capabilities)
+
+        override fun onLost(network: Network) {
+            working.remove(network)
+
+            changed()
+        }
+
+        fun clear() = working.clear()
+
+        private fun seen(network: Network, capabilities: NetworkCapabilities) {
+            if (NetworkKey.working(capabilities)) {
+                working[network] = NetworkKey.transportOf(capabilities)
+            } else {
+                working.remove(network)
+            }
+
+            changed()
+        }
+
+        private fun changed() {
+            if (NetworkKey.cellularOnly(working.values) != offlineCellular) offlineNetworkChanges.trySend(Unit)
+        }
+    }
+
+    // Наблюдать сеть нужно, только когда список без туннеля и у показанной
+    // подписки есть серверы только для мобильной сети, и пока экран виден
+    private var offlineWatchWanted = false
+
+    private var offlineWatching = false
+
+    private var screenStarted = false
+
+    private fun watchOfflineNetworks(wanted: Boolean) {
+        offlineWatchWanted = wanted
+
+        syncOfflineWatch()
+    }
+
+    private fun syncOfflineWatch() {
+        val want = offlineWatchWanted && screenStarted
+
+        if (want == offlineWatching) return
+
+        val connectivity = getSystemService<ConnectivityManager>() ?: return
+
+        if (want) {
+            runCatching {
+                connectivity.registerNetworkCallback(
+                    NetworkRequest.Builder()
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build(),
+                    offlineNetworks,
+                )
+            }.onSuccess { offlineWatching = true }.onFailure { Log.w("Watch networks: $it", it) }
+        } else {
+            runCatching { connectivity.unregisterNetworkCallback(offlineNetworks) }
+
+            offlineNetworks.clear()
+
+            offlineWatching = false
+        }
+    }
+
     private var mainGroup: String? = null
 
     private var panelRunning: Boolean? = null
@@ -899,11 +999,23 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var sendingSelection: Sending? = null
 
+    override fun onStart() {
+        super.onStart()
+
+        screenStarted = true
+
+        syncOfflineWatch()
+    }
+
     // Экран закрывается или пересоздаётся (поворот, тема), а отмеченный на нём узел ещё
     // не ушёл в ядро: досылаем в фоне, после обращения, которое уже в пути. В onStop —
     // до того, как приложение, уходя с экрана, отпустит службу, и чтобы новый экран,
     // открытый сразу после закрытия, уже ждал досылку; onDestroy подбирает остаток.
     override fun onStop() {
+        screenStarted = false
+
+        syncOfflineWatch()
+
         if (isFinishing || isChangingConfigurations) handOffSelections()
 
         super.onStop()
@@ -1019,6 +1131,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         proxyGroupNames = names
         offlineGroups = emptyList()
+        watchOfflineNetworks(false)
         serversReadOnly = false
         serversLoading = false
         mainGroup = mainGroupOf(names, snapshot.main)
@@ -1159,7 +1272,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val active = withProfile { queryActive() } ?: return
 
-        val total = offlineGroups.flatMap { it.proxies }.filterNot(offlineHides).distinct().size
+        val total = offlineGroups.flatMap { it.proxies }.filterNot { offlineHides(it) || offlineGone(it) }.distinct().size
 
         OfflineDelays.start(active.uuid, total)
     }
@@ -1211,6 +1324,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         if (offlineGroups.isNotEmpty() || groupsShownFor != loadedProfile()) {
             offlineGroups = emptyList()
+            watchOfflineNetworks(false)
             proxyGroupNames = emptyList()
             mainGroup = null
 
@@ -1231,6 +1345,13 @@ class MainActivity : BaseActivity<MainDesign>() {
         val panel = shownActive?.panel
         offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }
         offlineHides = { panel?.hides(it) == true }
+        // Без туннеля сеть спрашивается у системы: вне сети SIM серверов
+        // «только для мобильной сети» нет и в списке. Нет таких — не спрашивается
+        val mobileOnly = panel?.mobileOnly?.isNotEmpty() == true
+        val cellular = mobileOnly && NetworkKey.cellularNow(this@MainActivity)
+        offlineCellular = cellular
+        offlineGone = { panel?.hidesOffMobile(it, cellular) == true }
+        watchOfflineNetworks(mobileOnly)
         proxyGroupNames = offlineGroups.map { it.name }
         mainGroup = mainGroupOf(proxyGroupNames, panel?.main)
         healthCheckedGroups = emptyList()
@@ -1272,7 +1393,13 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val readOnly = serversReadOnly
         val saved = pendingOf(group.name) ?: offlineSelections[group.name]
-        val shown = offlineGroup(group, saved?.takeIf { it.isNotEmpty() }, offlineHides)
+        val shown = offlineGroup(
+            group,
+            saved?.takeIf { it.isNotEmpty() },
+            gone = offlineGone,
+            hides = offlineHides,
+            groups = offlineGroups,
+        )
 
         setProxyGroup(
             index = index,
@@ -1289,6 +1416,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     isGroup = false,
                 )
             },
+            allHidden = shown.allHidden,
         )
 
         return shown.now
@@ -1356,6 +1484,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                 group.type in SELECTABLE_GROUPS,
                 group.proxies,
                 pinned = if (!serversReadOnly && group.type in PINNABLE_GROUPS) pending ?: group.pinned else null,
+                allHidden = group.allHidden,
             )
         }
 
@@ -1653,11 +1782,18 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         // Выбор — подписке, на чьём списке его сделали; в ядро ли он уйдёт или
         // будет ждать её загрузки, решает ядро по тому, что держит
+        var hidden = false
+
         val applied = try {
             when {
                 serversReadOnly -> true
                 else -> {
-                    val done = withClash { select(slot.owner, group, name).also { sending.delivered = true } }
+                    val result = withClash { select(slot.owner, group, name).also { sending.delivered = true } }
+                    val done = result == Clash.PatchResult.Done || result == Clash.PatchResult.NotLoaded
+
+                    // Сервер только для мобильной сети, а сеть уже не мобильная: список
+                    // на экране старше ядра
+                    hidden = result == Clash.PatchResult.Hidden
 
                     if (done && offlineGroups.isNotEmpty() && slot.owner == groupsShownFor) {
                         if (name.isEmpty()) {
@@ -1681,10 +1817,16 @@ class MainActivity : BaseActivity<MainDesign>() {
         sendingSelection = null
 
         if (slot !in pendingSelections) {
-            proxyGroupNames.indexOf(group).takeIf { it >= 0 }?.let { reloadProxyGroup(it) }
+            if (hidden) {
+                showToast(DesignR.string.clod_select_mobile_only, ToastDuration.Long)
 
-            if (!applied && failure == null) {
-                showToast(DesignR.string.clod_select_failed, ToastDuration.Long)
+                reloadProxyGroups()
+            } else {
+                proxyGroupNames.indexOf(group).takeIf { it >= 0 }?.let { reloadProxyGroup(it) }
+
+                if (!applied && failure == null) {
+                    showToast(DesignR.string.clod_select_failed, ToastDuration.Long)
+                }
             }
         }
 

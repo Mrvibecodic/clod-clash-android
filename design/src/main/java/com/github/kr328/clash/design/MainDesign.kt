@@ -371,6 +371,7 @@ class MainDesign(
         selectable: Boolean,
         proxies: List<Proxy>,
         pinned: String? = null,
+        allHidden: Boolean = false,
     ) {
         withContext(Dispatchers.Main) {
             val groups = state.servers.groups
@@ -383,6 +384,7 @@ class MainDesign(
                             selectable = selectable,
                             pinned = pinned,
                             proxies = proxies.filterNot { state.active?.panel?.hides(it.name) == true },
+                            allHidden = allHidden,
                         )
                     },
                 ),

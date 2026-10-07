@@ -68,7 +68,7 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun queryProviders(): ProviderList =
         guardSync("queryProviders") { delegate.queryProviders() }
 
-    override suspend fun select(profile: UUID, group: String, name: String): Boolean =
+    override suspend fun select(profile: UUID, group: String, name: String): Clash.PatchResult =
         guard { delegate.select(profile, group, name) }
 
     override fun queryOverride(slot: Clash.OverrideSlot): ConfigurationOverride =
