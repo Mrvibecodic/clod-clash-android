@@ -63,6 +63,11 @@ fun Context.sendFreezeMarksChanged(uuid: UUID) {
     sendBroadcastSelf(intent)
 }
 
+// Серверы только для мобильной сети скрыты или показаны: группы ядра другие
+fun Context.sendHiddenServersChanged() {
+    sendBroadcastSelf(Intent(Intents.ACTION_HIDDEN_SERVERS_CHANGED))
+}
+
 fun Context.sendOverrideChanged() {
     val intent = Intent(Intents.ACTION_OVERRIDE_CHANGED)
 

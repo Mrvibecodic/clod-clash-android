@@ -27,6 +27,7 @@ import com.github.kr328.clash.service.util.loadFailureKeepsRetained
 import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendProfileLoadFailed
 import com.github.kr328.clash.service.freeze.FreezeChecks
+import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.util.sendProfileLoaded
 import com.github.kr328.clash.service.util.sessionOverrideFor
@@ -96,6 +97,11 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
         var loadedInputs: String? = null
         var ready = false
         var lockUntil = 0L
+
+        // Мобильная ли сеть — ядру до первой загрузки, здесь же, а не сторожем
+        // сети, что стартует рядом: подписка сразу грузится без серверов только
+        // для мобильной сети вне неё. Дальше сеть называет сторож
+        Clash.setCellular(NetworkKey.cellularNow(service))
 
         reload.trySend(Unit)
 

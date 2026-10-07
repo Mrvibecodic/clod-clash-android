@@ -40,6 +40,9 @@ data class PanelInfo(
     // без туннеля: «VLESS RAW (TCP) · Reality»
     val protocols: Map<String, String> = emptyMap(),
 
+    // Серверы только для мобильной сети (clod-mobile-only): вне сети SIM их нет
+    val mobileOnly: List<String> = emptyList(),
+
     val disablePing: Boolean = false,
 
     // clod:freeze — панель включила проверку 16–20 заголовком clod-16-20-check: true
@@ -61,6 +64,9 @@ data class PanelInfo(
     }
 
     fun hides(name: String): Boolean = name in sentinels
+
+    // Сервер только для мобильной сети, а сеть не мобильная: его не видно
+    fun hidesOffMobile(name: String, cellular: Boolean): Boolean = !cellular && name in mobileOnly
 
     val isEmpty: Boolean
         get() = title.isBlank() && announce.isBlank() && promo.isBlank() &&

@@ -16,6 +16,7 @@ import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.asSocketAddressText
+import com.github.kr328.clash.service.util.sendHiddenServersChanged
 import com.github.kr328.clash.service.util.systemResolvers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.NonCancellable
@@ -68,6 +69,10 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     @Volatile
     private var networkKnown = false
+
+    // Последняя сеть, названная ядру мобильной или нет (серверы clod-mobile-only)
+    @Volatile
+    private var cellular: Boolean? = null
 
     @Volatile
     private var lastResetAt = 0L
@@ -158,6 +163,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             if (network == currentNetwork) {
                 val seen = NetworkKey.seen(service, network)
 
+                reportCellular(seen)
                 FreezeChecks.networkSeen(network, seen)
                 ClientReports.network(seen)
             }
@@ -272,6 +278,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         val seen = NetworkKey.seen(service, network)
 
+        // До сброса соединений по смене сети: сброс один
+        reportCellular(seen)
+
         ClientReports.network(seen)
 
         networks.trySend(network)
@@ -289,6 +298,20 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         Log.i("NetworkObserve network changed to $network")
 
         networkChanges.trySend(reason)
+    }
+
+    // Ядру — только смена между мобильной и не мобильной; сеть не названа — без
+    // смены. Скрытые серверы сменились — экран перечитывает список групп
+    private fun reportCellular(seen: NetworkKey.Seen?) {
+        val now = NetworkKey.cellular(seen) ?: return
+
+        if (cellular == now) return
+
+        cellular = now
+
+        Log.i("NetworkObserve cellular=$now")
+
+        if (Clash.setCellular(now)) service.sendHiddenServersChanged()
     }
 
     private fun handleNetworkChanged(scope: CoroutineScope, reason: String) {

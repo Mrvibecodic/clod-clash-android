@@ -66,6 +66,32 @@ object NetworkKey {
         else -> "other"
     }
 
+    // Мобильная ли сеть (SIM); null — сеть не названа
+    fun cellular(seen: Seen?): Boolean? = seen?.let { it.transport == "cellular" }
+
+    // Мобильная ли сеть устройства сейчас — по сетям наружу, мимо любых VPN
+    // (своей и чужой): мобильная, только если кроме неё рабочей сети нет — иначе
+    // система идёт через Wi-Fi или кабель. Сетей нет — не мобильная.
+    @Suppress("DEPRECATION")
+    fun cellularNow(context: Context): Boolean {
+        val connectivity = context.getSystemService<ConnectivityManager>() ?: return false
+
+        val working = connectivity.allNetworks.mapNotNull { connectivity.getNetworkCapabilities(it) }.filter(::working)
+
+        return cellularOnly(working.map(::transportOf))
+    }
+
+    // Рабочая сеть наружу: не VPN, с интернетом, проверенная системой
+    fun working(capabilities: NetworkCapabilities): Boolean =
+        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+
+    // Мобильная, когда из рабочих сетей есть только мобильные
+    fun cellularOnly(transports: Collection<String>): Boolean =
+        transports.isNotEmpty() && transports.all { it == "cellular" }
+
     // Транспорт сети: входит в ключ и в вид сети для отчёта — значения не менять
     fun transportOf(capabilities: NetworkCapabilities): String = when {
         capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"

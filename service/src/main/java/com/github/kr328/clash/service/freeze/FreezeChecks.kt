@@ -291,7 +291,8 @@ object FreezeChecks {
         }
 
         // Включает проверку только панель — заголовком clod-16-20-check: true
-        if (context.readPanelInfo(uuid)?.freezeCheck != true) {
+        val panel = context.readPanelInfo(uuid)
+        if (panel?.freezeCheck != true) {
             publish(uuid, emptyMap())
 
             return
@@ -344,7 +345,11 @@ object FreezeChecks {
 
         val quietKey = "$uuid/$key"
         val hushed = quiet[quietKey]?.let { now - it < FreezePlan.RETRY_AFTER } == true
-        val due = if (hushed || starting) emptyList() else FreezePlan.due(fingerprints, net, now)
+        // Серверы только для мобильной сети вне сети SIM скрыты — не проверяются;
+        // их прежние пометки остаются
+        val cellular = NetworkKey.cellular(seen) == true
+        val checkable = fingerprints.filterKeys { panel?.hidesOffMobile(it, cellular) != true }
+        val due = if (hushed || starting) emptyList() else FreezePlan.due(checkable, net, now)
         var stored = false
 
         if (due.isNotEmpty()) {
@@ -357,7 +362,7 @@ object FreezeChecks {
 
             // Не прошло ничего — контрольный узел тем же заходом: прошёл он, значит
             // сеть есть и мёртвые помечаются сразу, а не через 6 часов
-            val control = if (interrupted) null else FreezePlan.control(fingerprints, net, outcomes)
+            val control = if (interrupted) null else FreezePlan.control(checkable, net, outcomes)
             if (control != null) {
                 ServiceLog.mark("freeze: $why, nothing passed, checking $control that worked here to tell the network from the nodes")
 

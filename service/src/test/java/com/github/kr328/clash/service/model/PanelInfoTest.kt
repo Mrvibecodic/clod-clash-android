@@ -45,6 +45,17 @@ class PanelInfoTest {
     }
 
     @Test
+    fun `серверы только для мобильной сети скрыты вне сети SIM`() {
+        val info = decode("""{"mobileOnly":["🇷🇺 Москва LTE","МТС Питер"]}""")
+
+        assertTrue(info.hidesOffMobile("МТС Питер", cellular = false))
+        assertFalse(info.hidesOffMobile("МТС Питер", cellular = true))
+        assertFalse(info.hidesOffMobile("мтс питер", cellular = false))
+        assertFalse(info.hidesOffMobile("Wi-Fi узел", cellular = false))
+        assertFalse(decode("{}").hidesOffMobile("МТС Питер", cellular = false))
+    }
+
+    @Test
     fun `молчание панели о напоминаниях — это null, а не пустота`() {
         val info = decode("{}")
 

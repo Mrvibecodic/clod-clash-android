@@ -68,4 +68,19 @@ class NetworkKeyTest {
         assertEquals("other", NetworkKey.kindOf(NetworkKey.Seen(transport = "bluetooth")))
         assertEquals("other", NetworkKey.kindOf(null))
     }
+
+    @Test
+    fun `мобильная — только когда кроме сети SIM рабочих сетей нет`() {
+        assertEquals(true, NetworkKey.cellularOnly(listOf("cellular")))
+        assertEquals(true, NetworkKey.cellularOnly(listOf("cellular", "cellular")))
+        // Wi-Fi (и раздача с другого телефона), кабель, USB — не мобильная
+        assertEquals(false, NetworkKey.cellularOnly(listOf("wifi", "cellular")))
+        assertEquals(false, NetworkKey.cellularOnly(listOf("ethernet")))
+        assertEquals(false, NetworkKey.cellularOnly(listOf("usb")))
+        assertEquals(false, NetworkKey.cellularOnly(emptyList()))
+
+        assertEquals(true, NetworkKey.cellular(NetworkKey.Seen(transport = "cellular")))
+        assertEquals(false, NetworkKey.cellular(NetworkKey.Seen(transport = "wifi")))
+        assertEquals(null, NetworkKey.cellular(null))
+    }
 }

@@ -2,6 +2,7 @@ package com.github.kr328.clash.util
 
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.service.freeze.NetworkKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +45,8 @@ object OfflineDelays {
             var failure: Exception? = null
 
             try {
-                val raw = withClash { testProfileDelays(profile) }
+                // Не в мобильной сети серверы только для неё не видны и не проверяются
+                val raw = withClash { testProfileDelays(profile, NetworkKey.cellularNow(Global.application)) }
 
                 delays = try {
                     Json.Default.decodeFromString(serializer, raw)

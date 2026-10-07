@@ -91,8 +91,8 @@ class ClashManager(private val context: Context) : IClashManager,
 
     override fun queryFreezeMarks(uuid: UUID): Map<String, String> = FreezeChecks.marks(uuid)
 
-    override suspend fun testProfileDelays(uuid: UUID): String = withContext(Dispatchers.IO) {
-        Clash.testProfileDelays(context.importedDir.resolve(uuid.toString()))
+    override suspend fun testProfileDelays(uuid: UUID, cellular: Boolean): String = withContext(Dispatchers.IO) {
+        Clash.testProfileDelays(context.importedDir.resolve(uuid.toString()), cellular)
     }
 
     override fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride) {
