@@ -18,8 +18,16 @@ const reportRound = 20 * time.Second
 // SendReport — после удачного планового обновления подписки: если подошло
 // время, отчёт уходит POST'ом по защищённому каналу, адресом подписки, а не
 // ответил он — запасным адресом провайдера. Ключ прослойки и поправка часов
-// берутся из папки подписки и не меняются.
+// берутся из папки подписки и не меняются; без закреплённого ключа отчёт
+// ждёт следующего обновления.
 func SendReport(store, url, profileDir string) {
+	pin := readChanPin(profileDir)
+	if pin == nil {
+		log.Infoln("[Report] no relay key pinned yet, next try with the next scheduled update")
+
+		return
+	}
+
 	now := time.Now().Unix()
 
 	packed, ok := report.Prepare(store, now, app.VersionName())
@@ -27,10 +35,12 @@ func SendReport(store, url, profileDir string) {
 		return
 	}
 
-	status, err := postReport(url, profileDir, packed.Gz)
+	offset := readChanSkew(profileDir)
+
+	status, err := reportAttempt(url, pin, offset, packed.Gz)
 	if err != nil {
 		if spare := readPanelInfo(profileDir).SpareAddress(url); spare != "" {
-			status, err = postReport(spare, profileDir, packed.Gz)
+			status, err = reportAttempt(spare, pin, offset, packed.Gz)
 		}
 	}
 
@@ -43,18 +53,6 @@ func SendReport(store, url, profileDir string) {
 	report.Sent(store, now, packed.Until, status)
 
 	log.Infoln("[Report] %d hour(s) of measurements sent: %s (%d)", packed.Hours, report.Outcome(status), status)
-}
-
-func postReport(url, profileDir string, gz []byte) (int, error) {
-	pin := readChanPin(profileDir)
-	offset := readChanSkew(profileDir)
-
-	status, err := reportAttempt(url, pin, offset, gz)
-	if err != nil && pin != nil && keyMayBeRefused(err) {
-		status, err = reportAttempt(url, nil, offset, gz)
-	}
-
-	return status, err
 }
 
 // Одна попытка: через туннель, а если он не донёс — напрямую. Каждый запрос
@@ -89,9 +87,7 @@ func reportSend(url string, pin []byte, offset int64, gz []byte, direct bool) (i
 		return 0, true, err
 	}
 
-	for _, pair := range chanBrowserHeaders {
-		request.Header.Set(pair[0], pair[1])
-	}
+	request.Header = chanHeaders()
 	request.Header.Set("content-type", "text/plain")
 
 	response, err := chanClient(direct).Do(request)
@@ -100,7 +96,7 @@ func reportSend(url string, pin []byte, offset int64, gz []byte, direct bool) (i
 	}
 	defer response.Body.Close()
 
-	answer, err := openAnswer(response, session, 1<<20, offset)
+	answer, err := session.Receive(response.StatusCode, response.Body, time.Now().Unix()+offset)
 	if err != nil {
 		return 0, true, err
 	}

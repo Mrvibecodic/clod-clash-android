@@ -1,6 +1,7 @@
 package chanx
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -9,8 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
@@ -35,12 +38,27 @@ const (
 var b64 = base64.RawURLEncoding
 
 var (
+	// ErrBadAnswer — по адресу ответили не каналом (404, 410 или 2xx, который
+	// не открылся): так прослойка отвечает на любой запрос, который не узнала,
+	// — канала нет или закреплённый ключ ей неизвестен.
 	ErrBadAnswer = errors.New("clod-chan-bad-answer")
+	// ErrDoubt — иной код не из 2xx и не 5xx: его поставил посредник по
+	// дороге (WAF, CDN, лимит) или сервер, отвечающий так на неизвестный
+	// путь, — канал мог и быть.
+	ErrDoubt = errors.New("clod-chan-doubt")
+	// ErrMalformed — ответ расшифровался, значит, канал есть, но разобрать
+	// его не вышло.
+	ErrMalformed = errors.New("clod-chan-malformed")
+	ErrTooLarge  = fmt.Errorf("response larger than %d bytes", maxAnswer)
 	ErrStale     = errors.New("clod-chan-stale")
 	ErrMismatch  = errors.New("clod-chan-mismatch")
 	// ErrBadURL — адрес подписки не подходит для канала (нет пути с меткой,
 	// не http): канала по такому адресу нет, подписка идёт обычным путём.
 	ErrBadURL = errors.New("clod-chan-bad-url")
+	// ErrNoPin — отчёт без закреплённого ключа прослойки не уходит.
+	ErrNoPin = errors.New("clod-chan-no-pin")
+	// ErrNoRound — на обмен не осталось времени; Exchange оставляет прежний исход.
+	ErrNoRound = errors.New("clod-chan-no-round")
 
 	errReportTooBig = errors.New("clod-chan-report-too-big")
 )
@@ -111,7 +129,13 @@ func Build(base string, pinnedSP []byte, f Fields, now int64) (string, *Session,
 
 // BuildReport — адрес POST с отчётом: тот же конверт, что у запроса
 // подписки, с операцией «rep»; тело запечатывает SealReport той же сессии.
+// Только с закреплённым ключом прослойки: без него отчёт защищён одним
+// адресом подписки.
 func BuildReport(base string, pinnedSP []byte, f Fields, now int64) (string, *Session, error) {
+	if len(pinnedSP) != 32 {
+		return "", nil, ErrNoPin
+	}
+
 	return build(base, pinnedSP, f, opReport, now)
 }
 
@@ -207,11 +231,31 @@ func (s *Session) SealReport(gz []byte) (string, error) {
 	return b64.EncodeToString(sealed), nil
 }
 
-func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
-	if len(wire) > maxAnswer {
-		return nil, ErrBadAnswer
+// Receive — ответ прослойки целиком. Канал отвечает всегда 200, остальное
+// поставил кто-то другой: 5xx — сбой по дороге, молчание; 404 и 410 — ответ
+// на любой неузнанный адрес, канала нет; иной код — посредник по дороге.
+func (s *Session) Receive(status int, body io.Reader, now int64) (*Answer, error) {
+	switch {
+	case status >= 500:
+		return nil, fmt.Errorf("server answered with status %d", status)
+	case status == 404 || status == 410:
+		return nil, fmt.Errorf("%w: relay answered with status %d", ErrBadAnswer, status)
+	case status < 200 || status >= 300:
+		return nil, fmt.Errorf("%w: relay answered with status %d", ErrDoubt, status)
 	}
 
+	wire, err := io.ReadAll(io.LimitReader(body, maxAnswer+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(wire) > maxAnswer {
+		return nil, ErrTooLarge
+	}
+
+	return s.Open(wire, now)
+}
+
+func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	body, err := b64.DecodeString(strings.TrimSpace(string(wire)))
 	if err != nil || len(body) < 32+16 {
 		return nil, ErrBadAnswer
@@ -245,11 +289,11 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 		BodyB64 string              `json:"body_b64"`
 	}
 	if err := json.Unmarshal(plain, &answer); err != nil {
-		return nil, ErrBadAnswer
+		return nil, ErrMalformed
 	}
 
 	if answer.V != Version {
-		return nil, ErrBadAnswer
+		return nil, ErrMalformed
 	}
 	if !hmac.Equal([]byte(answer.N), []byte(s.nonce)) {
 		return nil, ErrMismatch
@@ -260,16 +304,27 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 
 	sp, err := b64.DecodeString(answer.SP)
 	if err != nil || len(sp) != 32 {
-		return nil, ErrBadAnswer
+		return nil, ErrMalformed
 	}
 
 	config := answer.Body
 	if answer.BodyB64 != "" {
 		raw, err := b64.DecodeString(answer.BodyB64)
 		if err != nil {
-			return nil, ErrBadAnswer
+			return nil, ErrMalformed
 		}
 		config = string(raw)
+	}
+
+	// Значение заголовка не в UTF-8 прослойка шлёт в base64 с этой приставкой.
+	for _, values := range answer.Meta {
+		for i, value := range values {
+			if rest, ok := strings.CutPrefix(value, "=?b64?"); ok {
+				if raw, err := b64.DecodeString(rest); err == nil {
+					values[i] = string(raw)
+				}
+			}
+		}
 	}
 
 	status := answer.St
@@ -351,4 +406,69 @@ func Correction(served, now, current int64) (int64, bool) {
 	}
 
 	return raw, true
+}
+
+// Spoke — исход сказал сам ответ (канала нет, посредник отказал, канал ответил
+// не так, часы), а не молчание сети.
+func Spoke(err error) bool {
+	for _, known := range []error{ErrBadAnswer, ErrDoubt, ErrMalformed, ErrTooLarge, ErrStale, ErrMismatch, ErrBadURL} {
+		if errors.Is(err, known) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Round — один обмен с прослойкой: ответ, время сервера из внешних заголовков
+// (0 — его нет) и ошибка; ErrNoRound — на обмен не осталось времени.
+type Round func(pin []byte, offset int64) (*Answer, int64, error)
+
+// Exchange — обмены одного обновления подписки. Не вышло — ещё раз по часам
+// прослойки, если часы устройства с ними разошлись. Без закрепления ключа
+// повторяется только ответ «запрос не узнан» — любой внешний код не из 2xx и
+// не 5xx (ErrBadAnswer, ErrDoubt) или страница вместо канала: так прослойка,
+// потерявшая ключ, отдаёт запрос обычному конвейеру, и сервер за ней отвечает
+// на неизвестный путь своим кодом. Молчание, сбой 5xx и ответ, который
+// расшифровался, ключ не опровергают — снимать закрепление по ним нельзя.
+// Возвращает ответ и поправку часов, с которой он получен.
+func Exchange(pin []byte, offset int64, round Round, warn func(string, ...any)) (*Answer, int64, error) {
+	answer, served, err := round(pin, offset)
+	if err == nil || errors.Is(err, ErrNoRound) {
+		return answer, offset, err
+	}
+
+	retry := func(pin []byte, what string) {
+		next, _, nextErr := round(pin, offset)
+		if errors.Is(nextErr, ErrNoRound) {
+			warn("Secure channel: no time left for a round %s", what)
+
+			return
+		}
+
+		answer, err = next, nextErr
+	}
+
+	if next, changed := Correction(served, time.Now().Unix(), offset); changed {
+		if next == 0 {
+			warn("Secure channel: the stored clock correction of %d s is stale, retrying with the device clock", offset)
+		} else {
+			warn("Secure channel: device clock is %d s off the relay, retrying with the relay time", next)
+		}
+
+		offset = next
+		retry(pin, "with the relay time")
+	}
+
+	if err != nil && pin != nil && (errors.Is(err, ErrBadAnswer) || errors.Is(err, ErrDoubt)) {
+		warn("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
+
+		retry(nil, "without the pin")
+
+		if err == nil && !bytes.Equal(answer.SP, pin) {
+			warn("Secure channel: the relay key changed from %s to %s", Spid(pin), Spid(answer.SP))
+		}
+	}
+
+	return answer, offset, err
 }

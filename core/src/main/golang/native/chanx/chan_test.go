@@ -5,8 +5,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
@@ -44,6 +48,7 @@ type vectors struct {
 		Body     string `json:"body"`
 	} `json:"report"`
 	Response struct {
+		SrvSecret  string `json:"srv_secret"`
 		Body       string `json:"body"`
 		BodyBinary string `json:"body_binary"`
 		Expect     struct {
@@ -401,5 +406,280 @@ func TestSubscriptionRequestCarriesNoOperation(t *testing.T) {
 	}
 	if string(plain) != `{"v":1,"t":1,"n":"x","hwid":"a"}` {
 		t.Fatalf("у запроса подписки лишнее поле: %s", plain)
+	}
+}
+
+func session(t *testing.T, v vectors) *Session {
+	t.Helper()
+
+	return &Session{
+		psk:    Psk(v.Token),
+		kid:    v.Kid,
+		dh:     unhex(t, v.Dh),
+		ephPub: unhex(t, v.EphPublic),
+		priv:   unhex(t, v.EphSecret),
+		nonce:  v.Response.Expect.Nonce,
+	}
+}
+
+// seal — ответ прослойки на эту сессию, как его собирает chan_seal: свой
+// ключ ответа из srv_secret векторов, полезная нагрузка — любая.
+func seal(t *testing.T, v vectors, sess *Session, payload map[string]any) []byte {
+	t.Helper()
+
+	secret := unhex(t, v.Response.SrvSecret)
+	public, err := curve25519.X25519(secret, curve25519.Basepoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shared, err := curve25519.X25519(secret, sess.ephPub)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	plain, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	aead, err := chacha20poly1305.New(hkdf32(concat(sess.psk, shared, sess.dh), sess.kid, "res"+string(sess.ephPub)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cipher := aead.Seal(nil, make([]byte, 12), plain, []byte("c1r"+sess.kid+string(sess.ephPub)+string(public)))
+
+	return []byte(b64.EncodeToString(concat(public, cipher)))
+}
+
+func payload(t *testing.T, v vectors, now int64) map[string]any {
+	return map[string]any{
+		"v":    Version,
+		"t":    now,
+		"n":    v.Response.Expect.Nonce,
+		"st":   200,
+		"sp":   b64.EncodeToString(unhex(t, v.SpPublic)),
+		"meta": map[string][]string{},
+		"body": "proxies: []\n",
+	}
+}
+
+func TestSealHelperMatchesTheChannel(t *testing.T) {
+	v := load(t)
+	sess := session(t, v)
+	const now = 1786500000
+
+	answer, err := sess.Open(seal(t, v, sess, payload(t, v, now)), now)
+	if err != nil || answer.Body != "proxies: []\n" {
+		t.Fatalf("собранный тестом ответ не открылся: %v", err)
+	}
+}
+
+// Ответ расшифровался — канал у провайдера есть: это ошибка ответа, а не
+// «канала нет», иначе подписка ушла бы на обычный путь.
+func TestDecryptedButMalformedIsNotAbsent(t *testing.T) {
+	v := load(t)
+	sess := session(t, v)
+	const now = 1786500000
+
+	for name, change := range map[string]func(map[string]any){
+		"unknown version": func(p map[string]any) { p["v"] = 2 },
+		"no relay key":    func(p map[string]any) { p["sp"] = "" },
+		"bad body_b64":    func(p map[string]any) { p["body_b64"] = "!!" },
+	} {
+		p := payload(t, v, now)
+		change(p)
+
+		_, err := sess.Open(seal(t, v, sess, p), now)
+		if !errors.Is(err, ErrMalformed) || errors.Is(err, ErrBadAnswer) {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !Spoke(err) {
+			t.Fatalf("%s: разобранный отказ не молчание", name)
+		}
+	}
+}
+
+func TestMetaInBase64IsDecoded(t *testing.T) {
+	v := load(t)
+	sess := session(t, v)
+	const now = 1786500000
+
+	p := payload(t, v, now)
+	p["meta"] = map[string][]string{
+		"profile-title": {"=?b64?" + b64.EncodeToString([]byte("Name \xff"))},
+		"announce":      {"plain"},
+	}
+
+	answer, err := sess.Open(seal(t, v, sess, p), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := answer.Meta["profile-title"]; len(got) != 1 || got[0] != "Name \xff" {
+		t.Fatalf("profile-title: %q", got)
+	}
+	if got := answer.Meta["announce"]; len(got) != 1 || got[0] != "plain" {
+		t.Fatalf("announce: %q", got)
+	}
+}
+
+type endless struct{}
+
+func (endless) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 'A'
+	}
+
+	return len(p), nil
+}
+
+func TestReceiveClassifiesTheOuterAnswer(t *testing.T) {
+	v := load(t)
+	sess := session(t, v)
+
+	for _, row := range []struct {
+		status int
+		body   io.Reader
+		absent bool
+		doubt  bool
+		spoke  bool
+	}{
+		{404, strings.NewReader("<html>"), true, false, true},
+		{410, strings.NewReader(""), true, false, true},
+		{200, strings.NewReader("<html>not a channel</html>"), true, false, true},
+		{200, strings.NewReader(""), true, false, true},
+		{403, strings.NewReader("<html>waf</html>"), false, true, true},
+		{429, strings.NewReader(""), false, true, true},
+		{302, strings.NewReader(""), false, true, true},
+		{502, strings.NewReader("bad gateway"), false, false, false},
+	} {
+		_, err := sess.Receive(row.status, row.body, 1786500000)
+		if errors.Is(err, ErrBadAnswer) != row.absent || errors.Is(err, ErrDoubt) != row.doubt || Spoke(err) != row.spoke {
+			t.Fatalf("%d: %v", row.status, err)
+		}
+	}
+
+	if _, err := sess.Receive(200, io.LimitReader(endless{}, maxAnswer+1), 1786500000); !errors.Is(err, ErrTooLarge) || !Spoke(err) {
+		t.Fatalf("длинный ответ не обрезается молча: %v", err)
+	}
+	if _, err := sess.Receive(200, io.LimitReader(endless{}, maxAnswer), 1786500000); errors.Is(err, ErrTooLarge) {
+		t.Fatalf("ответ ровно в предел — не слишком большой: %v", err)
+	}
+	if !strings.HasPrefix(ErrTooLarge.Error(), "response larger than") {
+		t.Fatalf("метка слишком большого ответа: %v", ErrTooLarge)
+	}
+}
+
+func TestReportNeedsAPinnedKey(t *testing.T) {
+	v := load(t)
+
+	if _, _, err := BuildReport("https://sub.dom/"+v.Token, nil, Fields{}, 1786500000); !errors.Is(err, ErrNoPin) {
+		t.Fatalf("отчёт без закреплённого ключа: %v", err)
+	}
+	if _, _, err := BuildReport("https://sub.dom/"+v.Token, unhex(t, v.SpPublic), Fields{}, 1786500000); err != nil {
+		t.Fatal(err)
+	}
+}
+
+type call struct {
+	pin    []byte
+	offset int64
+}
+
+// rounds — поддельная прослойка: i-й обмен отдаёт i-й исход и запоминает,
+// с каким ключом и поправкой его просили.
+func rounds(outcomes ...func(pin []byte) (*Answer, int64, error)) (Round, *[]call) {
+	var calls []call
+
+	return func(pin []byte, offset int64) (*Answer, int64, error) {
+		calls = append(calls, call{pin, offset})
+		if len(calls) > len(outcomes) {
+			return nil, 0, ErrNoRound
+		}
+
+		return outcomes[len(calls)-1](pin)
+	}, &calls
+}
+
+func fails(err error, served int64) func([]byte) (*Answer, int64, error) {
+	return func([]byte) (*Answer, int64, error) { return nil, served, err }
+}
+
+func answers(sp []byte) func([]byte) (*Answer, int64, error) {
+	return func([]byte) (*Answer, int64, error) { return &Answer{SP: sp, Status: 200}, 0, nil }
+}
+
+func key(b byte) []byte {
+	out := make([]byte, 32)
+	out[0] = b
+
+	return out
+}
+
+func TestExchangeDropsThePinOnlyWhenTheRequestIsNotRecognised(t *testing.T) {
+	pinned, fresh := key(1), key(2)
+
+	var warned []string
+	warn := func(format string, args ...any) { warned = append(warned, fmt.Sprintf(format, args...)) }
+
+	// Прослойка, потерявшая ключ, отдаёт запрос обычному конвейеру: 404, 410,
+	// другой код не из 2xx и не 5xx или страница подписки с кодом 200 —
+	// повтор без закрепления.
+	for name, refusal := range map[string]error{
+		"404":  fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer),
+		"410":  fmt.Errorf("%w: relay answered with status 410", ErrBadAnswer),
+		"400":  fmt.Errorf("%w: relay answered with status 400", ErrDoubt),
+		"403":  fmt.Errorf("%w: relay answered with status 403", ErrDoubt),
+		"page": ErrBadAnswer,
+	} {
+		warned = nil
+		round, calls := rounds(fails(refusal, 0), answers(fresh))
+		answer, _, err := Exchange(pinned, 0, round, warn)
+		if err != nil || len(*calls) != 2 || (*calls)[1].pin != nil || string(answer.SP) != string(fresh) {
+			t.Fatalf("%s: прослойка, не узнавшая ключ, — повтор без закрепления: %v %+v", name, err, *calls)
+		}
+		if !strings.Contains(strings.Join(warned, "\n"), "changed from "+Spid(pinned)+" to "+Spid(fresh)) {
+			t.Fatalf("%s: смена ключа не в журнале: %q", name, warned)
+		}
+	}
+
+	for name, refusal := range map[string]error{
+		"garbled":   ErrMalformed,
+		"too large": ErrTooLarge,
+		"network":   errors.New("connection reset by peer"),
+		"5xx":       errors.New("server answered with status 502"),
+		"clock":     ErrStale,
+		"foreign":   ErrMismatch,
+	} {
+		round, calls := rounds(fails(refusal, 0), answers(fresh))
+		if _, _, err := Exchange(pinned, 0, round, warn); !errors.Is(err, refusal) || len(*calls) != 1 {
+			t.Fatalf("%s: закрепление снято: %v %+v", name, err, *calls)
+		}
+	}
+
+	// Без закрепления повторять без него нечего.
+	round, calls := rounds(fails(ErrBadAnswer, 0))
+	if _, _, err := Exchange(nil, 0, round, warn); !errors.Is(err, ErrBadAnswer) || len(*calls) != 1 {
+		t.Fatalf("без закрепления: %v %+v", err, *calls)
+	}
+}
+
+func TestExchangeCorrectsTheClockBeforeDoubtingTheKey(t *testing.T) {
+	pinned := key(1)
+	notFound := fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer)
+	served := time.Now().Unix() + 3600
+
+	round, calls := rounds(fails(notFound, served), answers(pinned))
+	answer, offset, err := Exchange(pinned, 0, round, func(string, ...any) {})
+	if err != nil || answer == nil || len(*calls) != 2 || (*calls)[1].pin == nil {
+		t.Fatalf("сбитые часы — повтор по часам прослойки с тем же ключом: %v %+v", err, *calls)
+	}
+	if offset < 3590 || offset > 3610 || (*calls)[1].offset != offset {
+		t.Fatalf("поправка часов = %d", offset)
+	}
+
+	// Не хватило времени на повтор — остаётся исход первого обмена.
+	round, calls = rounds(fails(notFound, served))
+	if _, _, err := Exchange(pinned, 0, round, func(string, ...any) {}); !errors.Is(err, ErrBadAnswer) || len(*calls) != 3 {
+		t.Fatalf("без времени на повтор: %v %+v", err, *calls)
 	}
 }

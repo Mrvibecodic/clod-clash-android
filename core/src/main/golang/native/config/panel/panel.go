@@ -46,6 +46,10 @@ type Info struct {
 	SpareDomain string `json:"spareDomain,omitempty"`
 	MoveURL     string `json:"moveUrl,omitempty"`
 
+	// ChanKey — отпечаток ключа прослойки последней загрузки по защищённому
+	// каналу; у загруженной обычным путём пусто.
+	ChanKey string `json:"chanKey,omitempty"`
+
 	LockMode      *bool `json:"lockMode,omitempty"`
 	LockPermanent bool  `json:"lockPermanent,omitempty"`
 
@@ -156,6 +160,8 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 		info.ClockSkew = served - now
 		info.ClockSkewAt = now
 	}
+
+	info.ChanKey = headerValue(header, "clod-chan-key")
 
 	info.SpareDomain = spareDomain(headerValue(header, "clod-new-sub"))
 

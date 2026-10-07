@@ -52,6 +52,17 @@ var chanBrowserHeaders = [][2]string{
 	{"accept-language", "en-US,en;q=0.9"},
 }
 
+// chanHeaders — внешние заголовки запросов канала: одинаковый у всех набор
+// браузера, ничего своего.
+func chanHeaders() http.Header {
+	header := http.Header{}
+	for _, pair := range chanBrowserHeaders {
+		header.Set(pair[0], pair[1])
+	}
+
+	return header
+}
+
 func chanClient(direct bool) *http.Client {
 	transport := &http.Transport{
 		DisableKeepAlives:   true,
@@ -190,46 +201,16 @@ func storeChanSkew(dir string, offset int64) {
 }
 
 func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
-	pin := readChanPin(dir)
-
-	offset := readChanSkew(dir)
-
-	ctx, ok := rounds.start()
-	if !ok {
-		return nil, fetchHeader{}, chanSilence(errFetchBudget)
-	}
-
-	answer, served, err := chanRound(ctx, url, pin, offset, direct)
-
-	if err != nil {
-		if next, changed := chanx.Correction(served, time.Now().Unix(), offset); changed {
-			if next == 0 {
-				log.Warnln("Secure channel: the stored clock correction of %d s is stale, retrying with the device clock", offset)
-			} else {
-				log.Warnln("Secure channel: device clock is %d s off the relay, retrying with the relay time", next)
-			}
-
-			offset = next
-
-			if ctx, ok = rounds.start(); ok {
-				answer, _, err = chanRound(ctx, url, pin, offset, direct)
-			} else {
-				log.Warnln("Secure channel: no time left for a round with the relay time")
-			}
+	answer, offset, err := chanx.Exchange(readChanPin(dir), readChanSkew(dir), func(pin []byte, offset int64) (*chanx.Answer, int64, error) {
+		ctx, ok := rounds.start()
+		if !ok {
+			return nil, 0, chanx.ErrNoRound
 		}
-	}
 
-	if err != nil && pin != nil && keyMayBeRefused(err) {
-		log.Warnln("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
-
-		if ctx, ok = rounds.start(); ok {
-			answer, _, err = chanRound(ctx, url, nil, offset, direct)
-			if err == nil {
-				_ = os.Remove(chanPinFile(dir))
-			}
-		} else {
-			log.Warnln("Secure channel: no time left for a round without the pin")
-		}
+		return chanRound(ctx, url, pin, offset, direct)
+	}, log.Warnln)
+	if errors.Is(err, chanx.ErrNoRound) {
+		err = errFetchBudget
 	}
 	if err != nil {
 		return nil, fetchHeader{}, chanSilence(err)
@@ -246,6 +227,10 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 		}
 	}
 
+	// Отпечаток ключа прослойки — для свойств подписки: по нему сверяют, что
+	// отвечала та самая прослойка.
+	meta.Set("clod-chan-key", chanx.Spid(answer.SP))
+
 	if answer.Status < 200 || answer.Status >= 300 {
 		return nil, fetchHeader{}, fmt.Errorf("server answered with status %d", answer.Status)
 	}
@@ -261,31 +246,15 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 	return io.NopCloser(strings.NewReader(answer.Body)), header, nil
 }
 
-// keyMayBeRefused — повторять без закрепления ключа прослойки есть смысл,
-// только если прослойка ответила, но закреплённый ключ не приняла: отказом
-// снаружи (ключ ей неизвестен — запрос ушёл в обычный конвейер) или
-// шифротекстом, который не открылся. Сетевой сбой — не повод: без закрепления
-// тело защищено одним адресом подписки, и повтор на любую ошибку позволил бы
-// снять закрепление, просто оборвав первый запрос. Ответ, который открылся
-// (часы, чужая метка), значит, что ключ в порядке.
-func keyMayBeRefused(err error) bool {
-	return errors.Is(err, chanx.ErrBadAnswer)
-}
-
 // ErrChanSilent помечает раунд, на который канал не ответил: сеть, таймаут,
 // сбой 5xx по дороге. Добавление подписки в этом случае пробует канал заново,
 // а не уходит на обычный путь, — молчание ещё не значит, что канала нет.
 var ErrChanSilent = errors.New("clod-chan-silent")
 
-// chanSilence оставляет как есть то, что канал сказал сам (нет канала, чужой
-// ответ, часы, отказ редиректа) и адрес, с которым канала не бывает, и
-// помечает молчанием всё остальное.
+// chanSilence оставляет как есть то, что сказал сам ответ (chanx.Spoke) и
+// отказ редиректа, и помечает молчанием всё остальное.
 func chanSilence(err error) error {
-	if errors.Is(err, chanx.ErrBadAnswer) ||
-		errors.Is(err, chanx.ErrBadURL) ||
-		errors.Is(err, chanx.ErrStale) ||
-		errors.Is(err, chanx.ErrMismatch) ||
-		refusedByChanRedirect(err) {
+	if chanx.Spoke(err) || refusedByChanRedirect(err) {
 		return err
 	}
 
@@ -333,9 +302,7 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 		return nil, 0, true, err
 	}
 
-	for _, pair := range chanBrowserHeaders {
-		request.Header.Set(pair[0], pair[1])
-	}
+	request.Header = chanHeaders()
 
 	response, err := chanClient(direct).Do(request)
 	if err != nil {
@@ -346,7 +313,7 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 
 	served := panel.ServerTime(response.Header)
 
-	answer, err := openAnswer(response, session, 32<<20, clockOffset)
+	answer, err := session.Receive(response.StatusCode, response.Body, time.Now().Unix()+clockOffset)
 
 	return answer, served, true, err
 }
@@ -362,23 +329,4 @@ func chanFields() chanx.Fields {
 		UA:     userAgent(),
 		Accept: "*/*",
 	}
-}
-
-// openAnswer — ответ прослойки. Канал отвечает всегда 200. 4xx — сервер на
-// месте, а канала у него нет (старая прослойка или голая панель); 5xx — сбой
-// по дороге, он считается молчанием.
-func openAnswer(response *http.Response, session *chanx.Session, limit int64, clockOffset int64) (*chanx.Answer, error) {
-	if response.StatusCode >= 500 {
-		return nil, fmt.Errorf("server answered with status %d", response.StatusCode)
-	}
-	if response.StatusCode >= 400 {
-		return nil, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
-	}
-
-	wire, err := io.ReadAll(io.LimitReader(response.Body, limit))
-	if err != nil {
-		return nil, err
-	}
-
-	return session.Open(wire, time.Now().Unix()+clockOffset)
 }

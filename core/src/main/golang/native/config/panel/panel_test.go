@@ -1190,3 +1190,18 @@ func TestTemplateModeSurvivesPanelFile(t *testing.T) {
 		t.Fatalf("пустой режим шаблона пишется как режим по правилам, получено %q", got)
 	}
 }
+
+func TestApplyHeadersChanKey(t *testing.T) {
+	var info Info
+
+	ApplyHeaders(&info, http.Header{"Clod-Chan-Key": {"AbCd12"}}, "https://panel.example.com/sub")
+	if info.ChanKey != "AbCd12" {
+		t.Fatalf("отпечаток ключа = %q", info.ChanKey)
+	}
+
+	// Загрузка обычным путём ключа не несёт — прежний отпечаток не остаётся.
+	ApplyHeaders(&info, http.Header{"Announce": {"x"}}, "https://panel.example.com/sub")
+	if info.ChanKey != "" {
+		t.Fatalf("отпечаток остался: %q", info.ChanKey)
+	}
+}
