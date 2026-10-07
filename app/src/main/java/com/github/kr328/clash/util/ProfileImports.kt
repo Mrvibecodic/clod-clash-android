@@ -122,9 +122,9 @@ object ProfileImports {
     fun runningAddToken(): Long =
         (state_.value as? State.Running)?.token?.takeIf { committing == null } ?: 0
 
-    // Новая подписка всегда сначала пробует защищённый канал: молчит — ещё
-    // раз (всего три попытки), у провайдера его нет — обычный путь, ответил
-    // отказом — показать отказ.
+    // Новая подписка всегда сначала пробует защищённый канал: молчит или отказал
+    // посредник по дороге — ещё раз (всего три попытки), у провайдера его нет
+    // (или посредник так и не пропустил) — обычный путь, ответил отказом — показать отказ.
     @Synchronized
     fun start(source: String): Long {
         if (job?.isActive == true) return 0
@@ -371,6 +371,8 @@ object ProfileImports {
         fallback: Boolean,
         attempt: suspend (secure: Boolean, observer: (FetchStatus) -> Unit) -> T,
     ): Pair<T, Boolean> {
+        var doubted = false
+
         for (n in 1..CHANNEL_ATTEMPTS) {
             val stage = if (n == 1) ChannelStage.Checking else ChannelStage.Retry(n, CHANNEL_ATTEMPTS)
 
@@ -381,7 +383,9 @@ object ProfileImports {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                when (UpdateFailures.channel(e.message.orEmpty())) {
+                val channel = UpdateFailures.channel(e.message.orEmpty())
+
+                when (val verdict = UpdateFailures.channelVerdict(channel, n, CHANNEL_ATTEMPTS, doubted)) {
                     UpdateFailures.Channel.Answered -> throw e
                     UpdateFailures.Channel.Absent -> {
                         Log.i("Secure channel: the provider has none (${Redact.text(e.message.orEmpty())})")
@@ -390,10 +394,12 @@ object ProfileImports {
 
                         break
                     }
-                    UpdateFailures.Channel.Silent -> {
+                    else -> {
                         Log.w("Secure channel: no answer, attempt $n of $CHANNEL_ATTEMPTS (${Redact.text(e.message.orEmpty())})")
 
-                        if (n == CHANNEL_ATTEMPTS) throw ChannelSilent(e)
+                        if (verdict == UpdateFailures.Channel.Silent) throw ChannelSilent(e)
+
+                        doubted = doubted || channel == UpdateFailures.Channel.Doubtful
 
                         delay(CHANNEL_PAUSE_MS)
                     }

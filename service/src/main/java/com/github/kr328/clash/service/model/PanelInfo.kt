@@ -27,6 +27,9 @@ data class PanelInfo(
 
     val moveUrl: String = "",
 
+    // Отпечаток ключа прослойки последней загрузки по защищённому каналу.
+    val chanKey: String = "",
+
     val noServers: Boolean = false,
 
     val sentinels: List<String> = emptyList(),

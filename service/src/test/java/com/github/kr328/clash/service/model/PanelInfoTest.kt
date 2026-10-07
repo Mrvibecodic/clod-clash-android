@@ -30,6 +30,12 @@ class PanelInfoTest {
     }
 
     @Test
+    fun `отпечаток ключа канала читается тем именем, что пишет ядро, а у старого файла его нет`() {
+        assertEquals("AbCd12", decode("""{"chanKey":"AbCd12"}""").chanKey)
+        assertEquals("", decode("{}").chanKey)
+    }
+
+    @Test
     fun `молчание панели о напоминаниях — это null, а не пустота`() {
         val info = decode("{}")
 

@@ -31,6 +31,8 @@ object UpdateFailures {
     enum class Channel {
         // Сервер на месте, а канала у него нет: можно загружать обычным путём.
         Absent,
+        // Отказал посредник по дороге (не 404 и не 5xx): канал мог и быть, пробовать снова.
+        Doubtful,
         // Канал не ответил (сеть, таймаут, 5xx по дороге): пробовать его снова.
         Silent,
         // Канал ответил — отказом панели, сбитыми часами, чужим ответом: это и показать.
@@ -40,7 +42,18 @@ object UpdateFailures {
     fun channel(raw: String): Channel = when {
         raw.contains(CHAN_SILENT) -> Channel.Silent
         raw.contains(CHAN_BAD_ANSWER) || raw.contains(CHAN_BAD_URL) -> Channel.Absent
+        raw.contains(CHAN_DOUBT) -> Channel.Doubtful
         else -> Channel.Answered
+    }
+
+    // Итог неудачной попытки канала из attempts; null — пробовать ещё раз.
+    // doubted — посредник отказывал на одной из прежних попыток: тогда к концу
+    // попыток канала нет (обычный путь), а одно молчание — ошибка.
+    fun channelVerdict(channel: Channel, attempt: Int, attempts: Int, doubted: Boolean): Channel? = when {
+        channel == Channel.Absent || channel == Channel.Answered -> channel
+        attempt < attempts -> null
+        doubted || channel == Channel.Doubtful -> Channel.Absent
+        else -> Channel.Silent
     }
 
     data class Reason(val cause: Cause, val status: Int = 0)
@@ -56,7 +69,9 @@ object UpdateFailures {
 
         if (text.contains(CHAN_MISMATCH)) return Reason(Cause.Mismatch)
 
-        if (text.contains(CHAN_BAD_ANSWER)) return Reason(Cause.BadAnswer)
+        if (text.contains(CHAN_BAD_ANSWER) || text.contains(CHAN_DOUBT) || text.contains(CHAN_MALFORMED)) {
+            return Reason(Cause.BadAnswer)
+        }
 
         if (text.contains(NOT_DELIVERED)) return Reason(Cause.NotDelivered)
 
@@ -113,6 +128,12 @@ object UpdateFailures {
     private const val CHAN_MISMATCH = "clod-chan-mismatch"
 
     private const val CHAN_BAD_ANSWER = "clod-chan-bad-answer"
+
+    // Ядро (chanx): код ответа поставил посредник по дороге, а не прослойка.
+    private const val CHAN_DOUBT = "clod-chan-doubt"
+
+    // Ядро (chanx): ответ канала расшифровался, но не разобрался.
+    private const val CHAN_MALFORMED = "clod-chan-malformed"
 
     // Ядро (chanx): адрес без пути с меткой — канала по нему не бывает.
     private const val CHAN_BAD_URL = "clod-chan-bad-url"

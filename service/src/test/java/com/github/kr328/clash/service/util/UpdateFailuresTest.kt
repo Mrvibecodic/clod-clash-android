@@ -72,6 +72,55 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `a middlebox refusal is doubtful and a garbled answer is answered`() {
+        assertEquals(
+            UpdateFailures.Channel.Doubtful,
+            UpdateFailures.channel("clod-chan-doubt: relay answered with status 403"),
+        )
+        assertEquals(UpdateFailures.Channel.Answered, UpdateFailures.channel("clod-chan-malformed"))
+        assertEquals(
+            UpdateFailures.Channel.Answered,
+            UpdateFailures.channel("response larger than 33554432 bytes"),
+        )
+        // Тексты для обновления — прежние: «ответили не тем, что понимает канал».
+        assertEquals(
+            Reason(Cause.BadAnswer),
+            UpdateFailures.classify("clod-chan-doubt: relay answered with status 403"),
+        )
+        assertEquals(Reason(Cause.BadAnswer), UpdateFailures.classify("clod-chan-malformed"))
+    }
+
+    @Test
+    fun `the channel attempts end as absent once a middlebox refused`() {
+        val absent = UpdateFailures.Channel.Absent
+        val doubtful = UpdateFailures.Channel.Doubtful
+        val silent = UpdateFailures.Channel.Silent
+        val answered = UpdateFailures.Channel.Answered
+
+        fun run(vararg outcomes: UpdateFailures.Channel): UpdateFailures.Channel? {
+            var doubted = false
+            outcomes.forEachIndexed { i, outcome ->
+                UpdateFailures.channelVerdict(outcome, i + 1, outcomes.size, doubted)?.let { return it }
+                doubted = doubted || outcome == doubtful
+            }
+            return null
+        }
+
+        // Нет канала (404 или не c1) — сразу, без повторов.
+        assertEquals(absent, UpdateFailures.channelVerdict(absent, 1, 3, false))
+        assertEquals(answered, UpdateFailures.channelVerdict(answered, 1, 3, false))
+        // Отказ посредника и молчание до последней попытки — ещё раз.
+        assertNull(UpdateFailures.channelVerdict(doubtful, 1, 3, false))
+        assertNull(UpdateFailures.channelVerdict(silent, 2, 3, true))
+
+        assertEquals(absent, run(doubtful, doubtful, doubtful))
+        assertEquals(absent, run(doubtful, silent, silent))
+        assertEquals(absent, run(silent, silent, doubtful))
+        assertEquals(silent, run(silent, silent, silent))
+        assertEquals(absent, run(silent, absent))
+    }
+
+    @Test
     fun `an answer without a subscription is explained`() {
         assertEquals(
             Reason(Cause.NotDelivered),
