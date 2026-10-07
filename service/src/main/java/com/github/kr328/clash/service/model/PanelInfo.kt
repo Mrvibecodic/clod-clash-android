@@ -36,6 +36,10 @@ data class PanelInfo(
 
     val descriptions: Map<String, String> = emptyMap(),
 
+    // Подпись протокола с транспортом у узлов из proxies подписки — для списка
+    // без туннеля: «VLESS RAW (TCP) · Reality»
+    val protocols: Map<String, String> = emptyMap(),
+
     val disablePing: Boolean = false,
 
     // clod:freeze — панель включила проверку 16–20 заголовком clod-16-20-check: true

@@ -36,6 +36,15 @@ class PanelInfoTest {
     }
 
     @Test
+    fun `подписи протоколов читаются тем именем, что пишет ядро, а у старого файла их нет`() {
+        assertEquals(
+            mapOf("node" to "VLESS RAW (TCP) · Reality"),
+            decode("""{"protocols":{"node":"VLESS RAW (TCP) · Reality"}}""").protocols,
+        )
+        assertEquals(emptyMap<String, String>(), decode("{}").protocols)
+    }
+
+    @Test
     fun `молчание панели о напоминаниях — это null, а не пустота`() {
         val info = decode("{}")
 
