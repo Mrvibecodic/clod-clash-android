@@ -74,7 +74,7 @@ func nodesOf(path string) (*nodeSource, error) {
 		return runningNodes(), nil
 	}
 
-	proxies, url, release, err := profileNodes(path)
+	proxies, url, _, release, err := profileNodes(path)
 	if err != nil {
 		release()
 

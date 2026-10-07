@@ -138,5 +138,13 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig, template tunnel.TunnelM
 
 	info.Groups = groups
 	info.Main = panel.MainGroup(groups, cfg.Rule)
+
+	names := make([]string, 0, len(groups))
+	for _, raw := range cfg.ProxyGroup {
+		if name, _ := raw["name"].(string); name != "" {
+			names = append(names, name)
+		}
+	}
+	info.MobileOnly = panel.MobileOnlyOf(info.MobileOnly, cfg.Proxy, names)
 	info.Mode = template.String()
 }

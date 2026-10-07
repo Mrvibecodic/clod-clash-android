@@ -78,6 +78,12 @@ func pinGlobalDefault() {
 		return
 	}
 
+	// Выбор пользователя скрыт (сервер только для мобильной сети): группа
+	// пока идёт через видимый, а выбор не трогается
+	if selected, ok := g.(interface{ SelectedHidden() bool }); ok && selected.SelectedHidden() {
+		return
+	}
+
 	proxies := g.Proxies()
 
 	members := make([]groups.GlobalMember, 0, len(proxies))

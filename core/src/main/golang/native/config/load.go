@@ -128,6 +128,8 @@ func applyDefaultLocked() {
 
 	loaded.Store(nil)
 
+	setMobileOnly(nil)
+
 	applyLocked(cfg, func() {})
 }
 
@@ -241,6 +243,10 @@ func Load(path string) error {
 
 	pendingGeneration.CompareAndSwap(generation, 0)
 
+	// До применения: новые группы и первая проверка провайдеров сразу без
+	// скрытых серверов (ядро решает по имени, когда узел спрашивают)
+	setMobileOnly(panel.Read(path).MobileOnly)
+
 	applyLocked(cfg, func() {
 		declared := globalGroupDeclared(rawCfg)
 
@@ -271,6 +277,12 @@ func SwitchMode(profileDir, session string) bool {
 	}
 
 	tunnel.SetMode(mode)
+
+	// Подписка обновилась тем же конфигом (ядро не перезагружалось), а список
+	// серверов только для мобильной сети мог смениться
+	if dir := loaded.Load(); dir != nil && *dir == profileDir {
+		setMobileOnly(panel.Read(profileDir).MobileOnly)
+	}
 
 	if !globalDeclared.Load() {
 		pinGlobalDefault()

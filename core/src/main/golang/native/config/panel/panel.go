@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	P "path"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,6 +46,10 @@ type Info struct {
 
 	SpareDomain string `json:"spareDomain,omitempty"`
 	MoveURL     string `json:"moveUrl,omitempty"`
+
+	// MobileOnly — серверы только для мобильной сети (clod-mobile-only): вне
+	// сети SIM их нет в группах.
+	MobileOnly []string `json:"mobileOnly,omitempty"`
 
 	// ChanKey — отпечаток ключа прослойки последней загрузки по защищённому
 	// каналу; у загруженной обычным путём пусто.
@@ -167,6 +172,8 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 
 	info.ChanKey = headerValue(header, "clod-chan-key")
 
+	info.MobileOnly = mobileOnly(headerValue(header, "clod-mobile-only"))
+
 	info.SpareDomain = spareDomain(headerValue(header, "clod-new-sub"))
 
 	info.MoveURL = ""
@@ -186,6 +193,56 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 }
 
 const pingMaxMillis = 60000
+
+// mobileOnly — точные имена серверов через «|»: пробелы по краям имени
+// снимаются, пустые и повторы пропускаются.
+func mobileOnly(raw string) []string {
+	var names []string
+
+	for _, part := range strings.Split(raw, "|") {
+		if name := strings.TrimSpace(part); name != "" && !slices.Contains(names, name) {
+			names = append(names, name)
+		}
+	}
+
+	return names
+}
+
+// MobileOnlyOf — список clod-mobile-only, каким его видит ядро: только
+// серверы (имена групп и встроенных узлов ничего не скрывают) и вместе с ними
+// узлы из proxies, которые соединяются через скрытые (dialer-proxy). Узлы
+// провайдеров ядро достраивает само.
+func MobileOnlyOf(names []string, proxies []map[string]any, groups []string) []string {
+	if len(names) == 0 {
+		return nil
+	}
+
+	skip := map[string]bool{"DIRECT": true, "REJECT": true, "REJECT-DROP": true, "PASS": true, "COMPATIBLE": true, "GLOBAL": true}
+	for _, group := range groups {
+		skip[group] = true
+	}
+
+	var out []string
+	for _, name := range names {
+		if !skip[name] {
+			out = append(out, name)
+		}
+	}
+
+	for grown := len(out) > 0; grown; {
+		grown = false
+		for _, proxy := range proxies {
+			opt := decodeProxy(proxy)
+			name, dialer := opt.Name, opt.DialerProxy
+			if name != "" && dialer != "" && !skip[name] && slices.Contains(out, dialer) && !slices.Contains(out, name) {
+				out = append(out, name)
+				grown = true
+			}
+		}
+	}
+
+	return out
+}
 
 func pingBounds(raw string) (int, int) {
 	first, second, ok := strings.Cut(raw, "/")

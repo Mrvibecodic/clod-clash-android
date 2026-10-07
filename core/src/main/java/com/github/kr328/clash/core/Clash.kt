@@ -42,6 +42,9 @@ object Clash {
 
         // Ядро держит конфиг другой подписки (или никакой): выбор не применён
         NotLoaded,
+
+        // Узел только для мобильной сети, а сеть не мобильная: его не видно
+        Hidden,
     }
 
     internal val CoreJson = Json {
@@ -181,12 +184,19 @@ object Clash {
         Bridge.nativeNotifyNetworkReady()
     }
 
+    // Сеть устройства мобильная (SIM): серверы «только для мобильной сети» видны.
+    // true — набор скрытых серверов сменился (группы ядра теперь другие)
+    fun setCellular(cellular: Boolean): Boolean {
+        return Bridge.nativeSetCellular(cellular)
+    }
+
     fun setDeviceInfo(hwid: String, os: String, osVersion: String, model: String) {
         Bridge.nativeSetDeviceInfo(hwid, os, osVersion, model)
     }
 
-    fun testProfileDelays(path: File): String {
-        return Bridge.nativeTestProfileDelays(path.absolutePath) ?: "{}"
+    // cellular — сеть мобильная: без неё серверы только для мобильной сети не проверяются
+    fun testProfileDelays(path: File, cellular: Boolean = true): String {
+        return Bridge.nativeTestProfileDelays(path.absolutePath, cellular) ?: "{}"
     }
 
     // clod:freeze — имя узла → отпечаток; null — узлы работающего туннеля
@@ -204,9 +214,12 @@ object Clash {
         Bridge.nativeClientReport(request)
     }
 
-    // Выбор применяется, только если ядро держит конфиг подписки profile (UUID)
-    fun patchSelector(profile: String, selector: String, name: String): PatchResult {
-        return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(profile, selector, name)) {
+    // Выбор применяется, только если ядро держит конфиг подписки profile (UUID).
+    // restore — выбор, сохранённый раньше: скрытый сейчас узел (только для
+    // мобильной сети) ставится как есть и заработает, когда его покажут; выбор
+    // пользователя такой узел не берёт (Hidden)
+    fun patchSelector(profile: String, selector: String, name: String, restore: Boolean = false): PatchResult {
+        return PatchResult.entries.getOrElse(Bridge.nativePatchSelector(profile, selector, name, restore)) {
             PatchResult.Failed
         }
     }

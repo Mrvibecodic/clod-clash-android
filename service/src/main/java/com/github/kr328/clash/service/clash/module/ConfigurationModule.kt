@@ -245,7 +245,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                     Selections.lock.withLock {
                         val remove = SelectionDao().querySelections(active.uuid)
                             .filter {
-                                Clash.patchSelector(active.uuid.toString(), it.proxy, it.selected) ==
+                                Clash.patchSelector(active.uuid.toString(), it.proxy, it.selected, restore = true) ==
                                     Clash.PatchResult.NoSelector
                             }
                             .map { it.proxy }

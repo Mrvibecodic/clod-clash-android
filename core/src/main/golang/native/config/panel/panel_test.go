@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -1203,5 +1204,59 @@ func TestApplyHeadersChanKey(t *testing.T) {
 	ApplyHeaders(&info, http.Header{"Announce": {"x"}}, "https://panel.example.com/sub")
 	if info.ChanKey != "" {
 		t.Fatalf("отпечаток остался: %q", info.ChanKey)
+	}
+}
+
+func TestApplyHeadersMobileOnly(t *testing.T) {
+	for _, row := range []struct {
+		value string
+		want  []string
+	}{
+		{"", nil},
+		{"Node A", []string{"Node A"}},
+		{" Node A | | Node B|Node A|  ", []string{"Node A", "Node B"}},
+		{"node a|Node A", []string{"node a", "Node A"}},
+		// Кириллица и флаги — base64 целиком, как у других clod-*.
+		{"base64:8J+Ht/Cfh7og0JzQvtGB0LrQstCwIExURXzQnNCi0KEg0J/QuNGC0LXRgA==", []string{"🇷🇺 Москва LTE", "МТС Питер"}},
+		{"base64:не base64", nil},
+	} {
+		var info Info
+		header := http.Header{}
+		if row.value != "" {
+			header.Set("clod-mobile-only", row.value)
+		}
+
+		ApplyHeaders(&info, header, "https://panel.example.com/sub")
+		if !slices.Equal(info.MobileOnly, row.want) {
+			t.Fatalf("%q: %q, ждали %q", row.value, info.MobileOnly, row.want)
+		}
+	}
+
+	// Обновление без заголовка снимает прежний список.
+	info := Info{MobileOnly: []string{"Node A"}}
+	ApplyHeaders(&info, http.Header{"Announce": {"x"}}, "https://panel.example.com/sub")
+	if info.MobileOnly != nil {
+		t.Fatalf("список остался: %q", info.MobileOnly)
+	}
+}
+
+func TestMobileOnlyOfIsWhatTheCoreHides(t *testing.T) {
+	proxies := []map[string]any{
+		{"name": "LTE", "type": "vless"},
+		{"name": "via LTE", "type": "vless", "dialer-proxy": "LTE"},
+		// Ключи — как их читает ядро: без учёта регистра и с «_» вместо «-».
+		{"Name": "via via", "type": "vless", "Dialer_Proxy": "via LTE"},
+		{"name": "via group", "type": "vless", "dialer-proxy": "Proxy"},
+		{"name": "Wi-Fi", "type": "vless"},
+	}
+
+	got := MobileOnlyOf([]string{"LTE", "Proxy", "DIRECT", "GLOBAL", "Provider node"}, proxies, []string{"Proxy"})
+	want := []string{"LTE", "Provider node", "via LTE", "via via"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("%q, ждали %q", got, want)
+	}
+
+	if MobileOnlyOf(nil, proxies, nil) != nil {
+		t.Fatal("без заголовка списка нет")
 	}
 }

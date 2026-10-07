@@ -5,15 +5,18 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 
 	"cfa/native/common/safego"
 	"cfa/native/config"
+	"cfa/native/config/panel"
 	"cfa/native/probeoutcome"
 
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/adapter/provider"
+	"github.com/metacubex/mihomo/component/hidden"
 	mihomoConfig "github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
 	P "github.com/metacubex/mihomo/constant/provider"
@@ -23,18 +26,19 @@ import (
 
 // profileNodes — узлы подписки без туннеля: настоящие узлы из профиля и из
 // уже скачанных провайдеров, каждый по одному разу; url — адрес проверки
-// групп. release освобождает всё, что разобрано.
-func profileNodes(path string) (proxies []C.Proxy, url string, release func(), err error) {
+// групп; find — узел или группа профиля по имени, как их ищет dialer-proxy.
+// release освобождает всё, что разобрано.
+func profileNodes(path string) (proxies []C.Proxy, url string, find func(string) C.Proxy, release func(), err error) {
 	rawCfg, err := config.UnmarshalAndPatch(path)
 	if err != nil {
-		return nil, "", func() {}, err
+		return nil, "", nil, func() {}, err
 	}
 
 	config.UseProfileDelayMode(rawCfg)
 
 	cfg, err := config.Parse(rawCfg)
 	if err != nil {
-		return nil, "", func() {}, err
+		return nil, "", nil, func() {}, err
 	}
 
 	fromProviders, closeProviders := providerProxies(path, rawCfg)
@@ -75,23 +79,32 @@ func profileNodes(path string) (proxies []C.Proxy, url string, release func(), e
 		add(p)
 	}
 
-	return proxies, profileTestURL(rawCfg), release, nil
+	find = func(name string) C.Proxy { return cfg.Proxies[name] }
+
+	return proxies, profileTestURL(rawCfg), find, release, nil
 }
 
-func TestProfileDelays(path string) map[string]int {
+// TestProfileDelays — задержки узлов подписки без туннеля; не в мобильной
+// сети (cellular=false) серверы только для неё не проверяются: их не видно —
+// ни их, ни серверов, что соединяются через них, и у провайдеров тоже.
+func TestProfileDelays(path string, cellular bool) map[string]int {
 	result := map[string]int{}
 
 	// Корень проб берётся ДО разбора профиля: иначе отмена, пришедшая на старте
 	// службы, отменяет старый корень, а замер получает свежий и живёт дальше.
 	root := probeContext()
 
-	proxies, url, release, err := profileNodes(path)
+	proxies, url, find, release, err := profileNodes(path)
 	defer release()
 
 	if err != nil {
 		log.Errorln("Test profile `%s`: %s", path, err.Error())
 
 		return result
+	}
+
+	if mobileOnly := panel.Read(path).MobileOnly; !cellular && len(mobileOnly) > 0 {
+		proxies = slices.DeleteFunc(proxies, hidden.HidesBy(mobileOnly, find))
 	}
 
 	if len(proxies) == 0 {

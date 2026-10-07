@@ -9,6 +9,7 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/common/safego"
+	"cfa/native/config"
 	"cfa/native/tunnel"
 )
 
@@ -107,10 +108,10 @@ func healthCheckGroups(completable unsafe.Pointer, request C.c_string) {
 }
 
 //export testProfileDelays
-func testProfileDelays(path C.c_string) (result *C.char) {
+func testProfileDelays(path C.c_string, cellular C.int) (result *C.char) {
 	defer guard("testProfileDelays", func() {})()
 
-	return marshalJson(tunnel.TestProfileDelays(C.GoString(path)))
+	return marshalJson(tunnel.TestProfileDelays(C.GoString(path), cellular != 0))
 }
 
 //export queryNodeFingerprints
@@ -158,6 +159,17 @@ func recoverDeadNodes(force C.int) {
 	})
 }
 
+//export setCellular
+func setCellular(cellular C.int) (changed C.int) {
+	defer guard("setCellular", func() {})()
+
+	if config.SetCellular(cellular != 0) {
+		return 1
+	}
+
+	return 0
+}
+
 //export notifyNetworkReady
 func notifyNetworkReady() {
 	defer guard("notifyNetworkReady", func() {})()
@@ -166,14 +178,14 @@ func notifyNetworkReady() {
 }
 
 //export patchSelector
-func patchSelector(profile, selector, name C.c_string) (result C.int) {
+func patchSelector(profile, selector, name C.c_string, restore C.int) (result C.int) {
 	defer guard("patchSelector", func() {})()
 
 	p := C.GoString(profile)
 	s := C.GoString(selector)
 	n := C.GoString(name)
 
-	return C.int(tunnel.PatchSelector(p, s, n))
+	return C.int(tunnel.PatchSelector(p, s, n, restore != 0))
 }
 
 //export queryProviders

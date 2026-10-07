@@ -339,6 +339,14 @@ func healthCheckGroup(pool *probePool, name string) error {
 		return nil
 	}
 
+	// Все серверы группы скрыты (только для мобильной сети): проверять нечего,
+	// и это не «живых нет»
+	if outboundgroup.AllHidden(proxies) {
+		log.Infoln("Health check `%s`: every server is hidden", name)
+
+		return nil
+	}
+
 	url, statusKey, expectedStatus := groupCheckOptions(g)
 	now := currentMember(g)
 
@@ -461,12 +469,17 @@ func groupTargets(name string) []checkTarget {
 		return nil
 	}
 
+	members := g.Proxies()
+	if outboundgroup.AllHidden(members) {
+		return nil
+	}
+
 	url, statusKey, expectedStatus := groupCheckOptions(g)
 	now := currentMember(g)
 
 	targets := []checkTarget{}
 
-	for _, px := range g.Proxies() {
+	for _, px := range members {
 		if _, isGroup := px.Adapter().(outboundgroup.ProxyGroup); isGroup {
 			continue
 		}

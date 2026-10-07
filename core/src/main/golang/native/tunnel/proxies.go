@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"errors"
 	"net/url"
 	"strings"
 
@@ -33,6 +34,9 @@ type ProxyGroup struct {
 	// Pinned — узел, закреплённый вручную в url-test/fallback; пусто, если
 	// группа выбирает сама
 	Pinned string `json:"pinned"`
+	// AllHidden — все серверы группы только для мобильной сети, а сеть не
+	// мобильная: серверов нет, группа отказывает
+	AllHidden bool `json:"allHidden,omitempty"`
 }
 
 type ProxyGroupNames struct {
@@ -207,7 +211,12 @@ func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup
 		return nil
 	}
 
-	proxies := convertProxies(g.Proxies(), uiSubtitlePattern, GroupTestURL(g))
+	members := g.Proxies()
+	if outboundgroup.AllHidden(members) {
+		return &ProxyGroup{Type: g.Type().String(), Proxies: []*Proxy{}, AllHidden: true}
+	}
+
+	proxies := convertProxies(members, uiSubtitlePattern, GroupTestURL(g))
 
 	group := &ProxyGroup{
 		Type:    g.Type().String(),
@@ -230,20 +239,25 @@ const (
 	PatchNoSelector = 2
 	// Ядро держит конфиг другой подписки (или никакой): выбор не применён
 	PatchNotLoaded = 3
+	// Узел сейчас скрыт (только для мобильной сети вне неё): не выбран
+	PatchHidden = 4
 )
 
-// PatchSelector применяет выбор, только если ядро держит конфиг подписки profile
-func PatchSelector(profile, selector, name string) int {
+// PatchSelector применяет выбор, только если ядро держит конфиг подписки
+// profile. restore — выбор, сохранённый раньше: скрытый сейчас узел ставится
+// как есть (группа пойдёт через него, когда его покажут); выбор пользователя
+// скрытый узел не берёт.
+func PatchSelector(profile, selector, name string, restore bool) int {
 	result := PatchNotLoaded
 
 	config.WithProfile(profile, func() {
-		result = patchSelector(selector, name)
+		result = patchSelector(selector, name, restore)
 	})
 
 	return result
 }
 
-func patchSelector(selector, name string) int {
+func patchSelector(selector, name string, restore bool) int {
 	p := tunnel.Proxies()[selector]
 
 	if p == nil {
@@ -269,7 +283,15 @@ func patchSelector(selector, name string) int {
 	// Пустое имя снимает закрепление url-test/fallback: группа снова выбирает сама
 	if _, pinnable := g.(outboundgroup.Pinnable); pinnable && name == "" {
 		s.ForceSet("")
-	} else if err := s.Set(name); err != nil {
+	} else if err := s.Set(name); errors.Is(err, outboundgroup.ErrHidden) {
+		if !restore {
+			log.Infoln("Patch selector `%s`: %s is hidden", selector, name)
+
+			return PatchHidden
+		}
+
+		s.ForceSet(name)
+	} else if err != nil {
 		log.Warnln("Patch selector `%s`: %s", selector, err.Error())
 
 		return PatchFailed

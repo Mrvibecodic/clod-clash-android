@@ -72,7 +72,8 @@ class ClashManager(private val context: Context) : IClashManager,
                         }
                     Clash.PatchResult.NoSelector ->
                         SelectionDao().removeSelected(profile, group)
-                    Clash.PatchResult.Failed -> Unit
+                    // Скрытый узел (только для мобильной сети) не выбран и не запомнен
+                    Clash.PatchResult.Failed, Clash.PatchResult.Hidden -> Unit
                 }
             } catch (e: Exception) {
                 Log.w("Remember selection $name for $group: $e", e)

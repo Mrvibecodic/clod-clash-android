@@ -196,12 +196,13 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckGroups(JNIEnv *e
 
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeTestProfileDelays(JNIEnv *env, jobject thiz,
-                                                                      jstring path) {
+                                                                      jstring path,
+                                                                      jboolean cellular) {
     TRACE_METHOD();
 
     scoped_string _path = get_string(path);
 
-    scoped_string response = testProfileDelays(_path);
+    scoped_string response = testProfileDelays(_path, (int) cellular);
 
     if (response == NULL)
         return NULL;
@@ -273,6 +274,14 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeNotifyNetworkChanged(JNIEnv
     notifyNetworkChanged((int) close_connections, (int) hold_probes);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeSetCellular(JNIEnv *env, jobject thiz,
+                                                                 jboolean cellular) {
+    TRACE_METHOD();
+
+    return (jboolean) (setCellular((int) cellular) != 0);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeProbeCurrentNodes(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
@@ -298,14 +307,14 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeNotifyNetworkReady(JNIEnv *
 JNIEXPORT jint JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
                                                                    jstring profile, jstring selector,
-                                                                   jstring name) {
+                                                                   jstring name, jboolean restore) {
     TRACE_METHOD();
 
     scoped_string _profile = get_string(profile);
     scoped_string _selector = get_string(selector);
     scoped_string _name = get_string(name);
 
-    return (jint) patchSelector(_profile, _selector, _name);
+    return (jint) patchSelector(_profile, _selector, _name, (int) restore);
 }
 
 JNIEXPORT void JNICALL

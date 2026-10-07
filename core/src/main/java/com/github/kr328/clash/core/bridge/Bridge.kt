@@ -30,12 +30,13 @@ object Bridge {
     external fun nativeProbeCurrentNodes()
     external fun nativeRecoverDeadNodes(force: Boolean)
     external fun nativeNotifyNetworkReady()
-    external fun nativeTestProfileDelays(path: String): String?
+    external fun nativeSetCellular(cellular: Boolean): Boolean
+    external fun nativeTestProfileDelays(path: String, cellular: Boolean): String?
     external fun nativeQueryNodeFingerprints(path: String): String?
     external fun nativeDownloadChecks(request: String): String?
     external fun nativeClientReport(request: String)
     external fun nativeSetDeviceInfo(hwid: String, os: String, osVersion: String, model: String)
-    external fun nativePatchSelector(profile: String, selector: String, name: String): Int
+    external fun nativePatchSelector(profile: String, selector: String, name: String, restore: Boolean): Int
     external fun nativeFetchAndValid(
         completable: FetchCallback,
         path: String,
