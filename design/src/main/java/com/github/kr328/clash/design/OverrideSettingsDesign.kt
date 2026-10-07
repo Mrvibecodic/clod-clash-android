@@ -10,10 +10,7 @@ import com.github.kr328.clash.design.compose.screen.ModeShadow
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsAction
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsScreen
 import com.github.kr328.clash.design.compose.screen.OverrideSettingsState
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import com.github.kr328.clash.design.util.Confirmation
 
 class OverrideSettingsDesign(
     context: Context,
@@ -40,42 +37,16 @@ class OverrideSettingsDesign(
         OverrideSettingsScreen(state = state, onAction = ::onAction)
     }
 
-    private var resetConfirmation: CancellableContinuation<Boolean>? = null
+    private val resetConfirmation = Confirmation { state = state.copy(confirmingReset = it) }
 
-    suspend fun requestResetConfirm(): Boolean {
-        return withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { continuation ->
-                resetConfirmation = continuation
-
-                state = state.copy(confirmingReset = true)
-
-                continuation.invokeOnCancellation {
-                    resetConfirmation = null
-
-                    state = state.copy(confirmingReset = false)
-                }
-            }
-        }
-    }
-
-    private fun resumeReset(confirmed: Boolean) {
-        state = state.copy(confirmingReset = false)
-
-        val continuation = resetConfirmation ?: return
-
-        resetConfirmation = null
-
-        if (continuation.isActive) {
-            continuation.resumeWith(Result.success(confirmed))
-        }
-    }
+    suspend fun requestResetConfirm(): Boolean = resetConfirmation.request()
 
     private fun onAction(action: OverrideSettingsAction) {
         when (action) {
             OverrideSettingsAction.Back -> requests.trySend(Request.Back)
             OverrideSettingsAction.Reset -> requests.trySend(Request.ResetOverride)
-            OverrideSettingsAction.ConfirmReset -> resumeReset(true)
-            OverrideSettingsAction.CancelReset -> resumeReset(false)
+            OverrideSettingsAction.ConfirmReset -> resetConfirmation.resume(true)
+            OverrideSettingsAction.CancelReset -> resetConfirmation.resume(false)
             OverrideSettingsAction.Changed -> state = state.copy(revision = state.revision + 1)
         }
     }

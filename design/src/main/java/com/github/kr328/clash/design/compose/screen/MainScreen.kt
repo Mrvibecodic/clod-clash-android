@@ -1,6 +1,5 @@
 package com.github.kr328.clash.design.compose.screen
 
-import android.content.res.Configuration
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -87,6 +86,7 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -98,6 +98,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.github.kr328.clash.common.compat.isTelevision
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.ProfileMode
@@ -414,13 +415,6 @@ private fun MainContent(
 }
 
 @Composable
-private fun isTelevision(): Boolean {
-    val uiMode = LocalConfiguration.current.uiMode
-
-    return uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
-}
-
-@Composable
 private fun MainNavigationRail(selected: MainTab, onAction: (MainAction) -> Unit) {
     NavigationRail(
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -519,7 +513,8 @@ private fun HomeTab(
     onAction: (MainAction) -> Unit,
 ) {
     val powerFocus = remember { FocusRequester() }
-    val television = isTelevision()
+    val context = LocalContext.current
+    val television = remember(context) { context.isTelevision() }
 
     LaunchedEffect(television) {
         if (television) {
@@ -828,14 +823,7 @@ private fun SubscriptionSummary(item: SubscriptionItem) {
 
     val label = status.label()
     val daysText = expiryLeft(profile.expire, now)
-    val trafficText = when {
-        profile.total > 0 -> used.toBytesString() + " / " + profile.total.toBytesString()
-
-        used > 0 -> used.toBytesString()
-        else -> null
-    }
-
-    val parts = listOfNotNull(label, daysText, trafficText)
+    val parts = listOfNotNull(label, daysText, trafficText(profile, used))
 
     if (parts.size < 2) return
 

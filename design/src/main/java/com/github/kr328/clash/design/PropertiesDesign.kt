@@ -14,11 +14,10 @@ import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.compose.screen.nameField
 import com.github.kr328.clash.design.compose.screen.withNameField
 import com.github.kr328.clash.design.model.ChannelStage
+import com.github.kr328.clash.design.util.Confirmation
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.service.model.Profile
-import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
@@ -87,8 +86,8 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
 
             PropertiesAction.IntervalFromPanel -> state = state.copy(intervalManual = false)
 
-            PropertiesAction.ConfirmExit -> resumeExit(true)
-            PropertiesAction.CancelExit -> resumeExit(false)
+            PropertiesAction.ConfirmExit -> exitConfirmation.resume(true)
+            PropertiesAction.CancelExit -> exitConfirmation.resume(false)
             // Включение проверит сохранение; выключение — только после предупреждения.
             is PropertiesAction.SecureChanged -> state = if (action.on) {
                 state.copy(secure = true)
@@ -129,35 +128,9 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         }
     }
 
-    private var exitConfirmation: CancellableContinuation<Boolean>? = null
+    private val exitConfirmation = Confirmation { state = state.copy(confirmingExit = it) }
 
-    suspend fun requestExitWithoutSaving(): Boolean {
-        return withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { continuation ->
-                exitConfirmation = continuation
-
-                state = state.copy(confirmingExit = true)
-
-                continuation.invokeOnCancellation {
-                    exitConfirmation = null
-
-                    state = state.copy(confirmingExit = false)
-                }
-            }
-        }
-    }
-
-    private fun resumeExit(confirmed: Boolean) {
-        state = state.copy(confirmingExit = false)
-
-        val continuation = exitConfirmation ?: return
-
-        exitConfirmation = null
-
-        if (continuation.isActive) {
-            continuation.resumeWith(Result.success(confirmed))
-        }
-    }
+    suspend fun requestExitWithoutSaving(): Boolean = exitConfirmation.request()
 
     fun request(request: Request) {
         requests.trySend(request)

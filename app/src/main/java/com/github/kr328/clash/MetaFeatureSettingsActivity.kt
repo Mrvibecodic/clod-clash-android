@@ -10,8 +10,6 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.design.compose.component.NoticeKind
-import com.github.kr328.clash.design.model.PendingRestore
-import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.util.clashDir
 import kotlinx.coroutines.Dispatchers
@@ -28,16 +26,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
     private var draft: PendingOverride.Draft? = null
 
     override suspend fun main() {
-        val pending = PendingOverride.take(PendingOverride.SLOT_META)
-        val restore = pendingRestore(
-            flagSet = restored?.getBoolean(PendingOverride.KEY) == true,
-            valuePresent = pending != null,
-        )
-
-        val stored = if (pending == null) readStoredOverride() else null
-
-        val draft = pending
-            ?: (stored as? StoredOverride.Readable)?.let { PendingOverride.Draft(it.value) }
+        val opened = PendingOverride.take(PendingOverride.SLOT_META, restored)
+        val draft = opened.draft
 
         this.draft = draft
 
@@ -46,26 +36,14 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         val design = MetaFeatureSettingsDesign(
             this,
             draft?.value ?: ConfigurationOverride(),
-            unreadable = (stored as? StoredOverride.Unreadable)?.reason,
+            unreadable = opened.unreadable,
         )
 
-        val discard = {
-            defer { PendingOverride.clear(PendingOverride.SLOT_META) }
-
-            finish()
-        }
-
-        if (draft != null) {
-            defer {
-                if (!draft.saveReporting(design, discard)) throw FinishCancelled()
-
-                PendingOverride.clear(PendingOverride.SLOT_META)
-            }
-        }
+        if (draft != null) saveOverrideOnFinish(PendingOverride.SLOT_META, draft, design)
 
         setContentDesign(design)
 
-        if (restore == PendingRestore.UseStoredAndWarn) {
+        if (opened.lost) {
             design.showToast(R.string.clod_override_pending_lost, ToastDuration.Long)
         }
 
@@ -82,7 +60,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     when (it) {
                         MetaFeatureSettingsDesign.Request.Back -> finish()
                         MetaFeatureSettingsDesign.Request.OpenOverride -> {
-                            if (draft == null || draft.saveReporting(design, discard)) {
+                            if (draft == null || draft.saveReporting(design) { discardOverride(PendingOverride.SLOT_META) }) {
                                 reload = true
 
                                 startActivity(OverrideSettingsActivity::class.intent)
@@ -124,9 +102,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         outState.putBoolean("reload", reload && !rereading)
 
         if (!reload) {
-            PendingOverride.put(PendingOverride.SLOT_META, draft)
-
-            outState.putBoolean(PendingOverride.KEY, draft?.dirty() == true)
+            PendingOverride.put(PendingOverride.SLOT_META, draft, outState)
         }
     }
 

@@ -6,8 +6,6 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.design.OverrideSettingsDesign
 import com.github.kr328.clash.design.compose.screen.ModeShadow
-import com.github.kr328.clash.design.model.PendingRestore
-import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.util.ServiceUnavailableException
@@ -22,16 +20,8 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
     private var draft: PendingOverride.Draft? = null
 
     override suspend fun main() {
-        val pending = PendingOverride.take(PendingOverride.SLOT_OVERRIDE)
-        val restore = pendingRestore(
-            flagSet = restored?.getBoolean(PendingOverride.KEY) == true,
-            valuePresent = pending != null,
-        )
-
-        val stored = if (pending == null) readStoredOverride() else null
-
-        val draft = pending
-            ?: (stored as? StoredOverride.Readable)?.let { PendingOverride.Draft(it.value) }
+        val opened = PendingOverride.take(PendingOverride.SLOT_OVERRIDE, restored)
+        val draft = opened.draft
 
         this.draft = draft
 
@@ -69,26 +59,14 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
             draft?.value ?: ConfigurationOverride(),
             modeLocked = modeLocked,
             modeShadow = modeShadow,
-            unreadable = (stored as? StoredOverride.Unreadable)?.reason,
+            unreadable = opened.unreadable,
         )
 
-        if (draft != null) {
-            val discard = {
-                defer { PendingOverride.clear(PendingOverride.SLOT_OVERRIDE) }
-
-                finish()
-            }
-
-            defer {
-                if (!draft.saveReporting(design, discard)) throw FinishCancelled()
-
-                PendingOverride.clear(PendingOverride.SLOT_OVERRIDE)
-            }
-        }
+        if (draft != null) saveOverrideOnFinish(PendingOverride.SLOT_OVERRIDE, draft, design)
 
         setContentDesign(design)
 
-        if (restore == PendingRestore.UseStoredAndWarn) {
+        if (opened.lost) {
             design.showToast(
                 com.github.kr328.clash.design.R.string.clod_override_pending_lost,
                 ToastDuration.Long,
@@ -119,8 +97,6 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        PendingOverride.put(PendingOverride.SLOT_OVERRIDE, draft)
-
-        outState.putBoolean(PendingOverride.KEY, draft?.dirty() == true)
+        PendingOverride.put(PendingOverride.SLOT_OVERRIDE, draft, outState)
     }
 }

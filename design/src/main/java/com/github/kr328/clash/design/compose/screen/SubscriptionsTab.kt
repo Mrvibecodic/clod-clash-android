@@ -608,7 +608,7 @@ fun ActiveSubscriptionCard(
 }
 
 @Composable
-private fun trafficText(profile: Profile, used: Long): String? = when (val limit = profile.trafficLimit()) {
+internal fun trafficText(profile: Profile, used: Long): String? = when (val limit = profile.trafficLimit()) {
     is TrafficLimit.Limited -> used.toBytesString() + " / " + limit.total.toBytesString()
     TrafficLimit.Unlimited -> used.toBytesString() + " · " + stringResource(R.string.clod_sub_unlimited)
     TrafficLimit.Unknown -> if (used > 0) used.toBytesString() else null

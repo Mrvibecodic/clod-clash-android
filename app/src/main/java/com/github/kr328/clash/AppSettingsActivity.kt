@@ -3,10 +3,8 @@ package com.github.kr328.clash
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.componentName
 import com.github.kr328.clash.design.AppSettingsDesign
@@ -35,7 +33,6 @@ import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.applyHideFromRecents
 import com.github.kr328.clash.util.planRestore
 import com.github.kr328.clash.util.refreshDynamicShortcuts
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -338,19 +335,8 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         }
 
     private suspend fun requestNotifications() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+        if (!requestNotificationPermission())
             return
-
-        try {
-            startActivityForResult(
-                RequestPermission(),
-                android.Manifest.permission.POST_NOTIFICATIONS,
-            )
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w("Request notifications: $e", e)
-        }
 
         uiStore.notificationsRequested = true
 

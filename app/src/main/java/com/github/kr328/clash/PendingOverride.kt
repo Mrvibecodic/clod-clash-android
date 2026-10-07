@@ -1,5 +1,6 @@
 package com.github.kr328.clash
 
+import android.os.Bundle
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.Clash
@@ -7,6 +8,8 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.NoticeKind
+import com.github.kr328.clash.design.model.PendingRestore
+import com.github.kr328.clash.design.model.pendingRestore
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.util.ServiceUnavailableException
@@ -42,15 +45,35 @@ internal object PendingOverride {
 
     private val slots = mutableMapOf<String, Draft>()
 
-    fun put(slot: String, draft: Draft?) {
+    fun put(slot: String, draft: Draft?, outState: Bundle) {
         if (draft == null) {
             slots.remove(slot)
         } else {
             slots[slot] = draft
         }
+
+        outState.putBoolean(KEY, draft?.dirty() == true)
     }
 
-    fun take(slot: String): Draft? = slots.remove(slot)
+    // Признак «правки были» без самих правок — процесс пересоздан: показываются
+    // записанные, с предупреждением (lost).
+    suspend fun take(slot: String, restored: Bundle?): Opened {
+        val pending = slots.remove(slot)
+        val restore = pendingRestore(
+            flagSet = restored?.getBoolean(KEY) == true,
+            valuePresent = pending != null,
+        )
+
+        val stored = if (pending == null) readStoredOverride() else null
+
+        return Opened(
+            draft = pending ?: (stored as? StoredOverride.Readable)?.let { Draft(it.value) },
+            unreadable = (stored as? StoredOverride.Unreadable)?.reason,
+            lost = restore == PendingRestore.UseStoredAndWarn,
+        )
+    }
+
+    class Opened(val draft: Draft?, val unreadable: String?, val lost: Boolean)
 
     fun clear(slot: String) {
         slots.remove(slot)
@@ -62,6 +85,21 @@ internal object PendingOverride {
 
     private fun snapshot(value: ConfigurationOverride): String =
         Json.encodeToString(ConfigurationOverride.serializer(), value)
+}
+
+// Уход с экрана записывает правки (saveReporting); «выйти без сохранения» снимает их.
+internal fun BaseActivity<*>.saveOverrideOnFinish(slot: String, draft: PendingOverride.Draft, design: Design<*>) {
+    defer {
+        if (!draft.saveReporting(design) { discardOverride(slot) }) throw FinishCancelled()
+
+        PendingOverride.clear(slot)
+    }
+}
+
+internal fun BaseActivity<*>.discardOverride(slot: String) {
+    defer { PendingOverride.clear(slot) }
+
+    finish()
 }
 
 internal suspend fun clearPersistedOverride() {

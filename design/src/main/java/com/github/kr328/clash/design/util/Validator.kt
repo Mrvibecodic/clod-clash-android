@@ -1,6 +1,7 @@
 package com.github.kr328.clash.design.util
 
 import com.github.kr328.clash.common.util.PatternFileName
+import com.github.kr328.clash.design.compose.screen.MIN_INTERVAL_MINUTES
 
 typealias Validator = (String) -> Boolean
 
@@ -13,5 +14,5 @@ val ValidatorHttpUrl: Validator = {
 }
 
 val ValidatorAutoUpdateInterval: Validator = {
-    it.isEmpty() || (it.toLongOrNull() ?: 0) >= 15
+    it.isEmpty() || (it.toLongOrNull() ?: 0) >= MIN_INTERVAL_MINUTES
 }

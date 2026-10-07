@@ -9,10 +9,7 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsAction
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsScreen
 import com.github.kr328.clash.design.compose.screen.MetaFeatureSettingsState
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
+import com.github.kr328.clash.design.util.Confirmation
 
 class MetaFeatureSettingsDesign(
     context: Context,
@@ -33,8 +30,8 @@ class MetaFeatureSettingsDesign(
         when (action) {
             MetaFeatureSettingsAction.Back -> requests.trySend(Request.Back)
             MetaFeatureSettingsAction.Reset -> requests.trySend(Request.ResetOverride)
-            MetaFeatureSettingsAction.ConfirmReset -> resumeReset(true)
-            MetaFeatureSettingsAction.CancelReset -> resumeReset(false)
+            MetaFeatureSettingsAction.ConfirmReset -> resetConfirmation.resume(true)
+            MetaFeatureSettingsAction.CancelReset -> resetConfirmation.resume(false)
             MetaFeatureSettingsAction.Changed -> state = state.copy(revision = state.revision + 1)
             MetaFeatureSettingsAction.OpenOverride -> requests.trySend(Request.OpenOverride)
             MetaFeatureSettingsAction.ImportGeoIp -> requests.trySend(Request.ImportGeoIp)
@@ -43,33 +40,7 @@ class MetaFeatureSettingsDesign(
         }
     }
 
-    private var resetConfirmation: CancellableContinuation<Boolean>? = null
+    private val resetConfirmation = Confirmation { state = state.copy(confirmingReset = it) }
 
-    suspend fun requestResetConfirm(): Boolean {
-        return withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { continuation ->
-                resetConfirmation = continuation
-
-                state = state.copy(confirmingReset = true)
-
-                continuation.invokeOnCancellation {
-                    resetConfirmation = null
-
-                    state = state.copy(confirmingReset = false)
-                }
-            }
-        }
-    }
-
-    private fun resumeReset(confirmed: Boolean) {
-        state = state.copy(confirmingReset = false)
-
-        val continuation = resetConfirmation ?: return
-
-        resetConfirmation = null
-
-        if (continuation.isActive) {
-            continuation.resumeWith(Result.success(confirmed))
-        }
-    }
+    suspend fun requestResetConfirm(): Boolean = resetConfirmation.request()
 }

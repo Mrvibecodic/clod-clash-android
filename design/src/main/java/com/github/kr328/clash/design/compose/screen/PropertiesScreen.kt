@@ -40,6 +40,8 @@ import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.util.UpdateSchedule
+import java.util.concurrent.TimeUnit
 
 @Immutable
 data class FetchProgress(
@@ -87,7 +89,7 @@ fun Profile.withNameField(field: String): Profile {
     return copy(name = own.ifEmpty { name }, nameManual = own.isNotEmpty())
 }
 
-const val MIN_INTERVAL_MINUTES = 15L
+val MIN_INTERVAL_MINUTES: Long = TimeUnit.MILLISECONDS.toMinutes(UpdateSchedule.MIN_INTERVAL)
 
 sealed interface PropertiesAction {
     data object Back : PropertiesAction

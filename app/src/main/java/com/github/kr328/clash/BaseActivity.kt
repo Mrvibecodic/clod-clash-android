@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationManagerCompat
@@ -12,6 +13,7 @@ import com.github.kr328.clash.common.compat.isAllowForceDarkCompat
 import com.github.kr328.clash.common.compat.isLightNavigationBarCompat
 import com.github.kr328.clash.common.compat.isLightStatusBarsCompat
 import com.github.kr328.clash.common.compat.isSystemBarsTranslucentCompat
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.AppLocale
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.design.Design
@@ -94,6 +96,22 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
                 }.apply { start() }.launch(input)
             }
         }
+    }
+
+    // Разрешение на уведомления (Android 13+); false — просить не о чем.
+    protected suspend fun requestNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+            return false
+
+        try {
+            startActivityForResult(RequestPermission(), android.Manifest.permission.POST_NOTIFICATIONS)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Request notifications: $e", e)
+        }
+
+        return true
     }
 
     suspend fun setContentDesign(design: D) {

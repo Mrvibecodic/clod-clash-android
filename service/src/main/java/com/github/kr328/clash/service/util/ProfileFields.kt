@@ -1,7 +1,5 @@
 package com.github.kr328.clash.service.util
 
-import java.util.concurrent.TimeUnit
-
 object ProfileFields {
     const val NAME_MAX = 1024
 
@@ -33,7 +31,7 @@ object ProfileFields {
 
         source.isNotEmpty() && scheme != "https" && scheme != "content" -> Violation.UnsupportedScheme
 
-        interval != 0L && TimeUnit.MILLISECONDS.toMinutes(interval) < 15 -> Violation.ShortInterval
+        interval != 0L && interval < UpdateSchedule.MIN_INTERVAL -> Violation.ShortInterval
 
         else -> null
     }

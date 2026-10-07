@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.content.Context
 import android.os.SystemClock
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.core.content.ContextCompat
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
@@ -315,7 +314,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             requestFetch()
 
                             if (!uiStore.reliabilityAsked) {
-                                launch { design.askReliability() }
+                                launch { design.fetchReliability(prompt = true) }
                             }
 
                             if (UpdatePrompt.shouldCheckInBackground(this@MainActivity)) {
@@ -539,7 +538,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             design.setNotificationPrompt(false)
 
                             launch {
-                                requestNotifications()
+                                requestNotificationPermission()
 
                                 uiStore.notificationsRequested = true
 
@@ -573,11 +572,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                         MainDesign.Request.ReliabilityDismiss -> {
                             uiStore.reliabilityAsked = true
 
-                            design.setReliability(
-                                batteryIgnored = isBatteryIgnored(),
-                                alwaysOn = alwaysOnState(),
-                                prompt = false,
-                            )
+                            design.fetchReliability(prompt = false)
                         }
                         is MainDesign.Request.SetSubscriptionGroup -> work.trySend {
                             patchSubscriptionGroup(request.profile.uuid, request.group)
@@ -1573,19 +1568,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
-    private suspend fun requestNotifications() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
-            return
-
-        try {
-            startActivityForResult(RequestPermission(), android.Manifest.permission.POST_NOTIFICATIONS)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w("Request notifications: $e", e)
-        }
-    }
-
     private fun isBatteryIgnored(): Boolean {
         val power = getSystemService(PowerManager::class.java) ?: return false
 
@@ -1603,16 +1585,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private suspend fun MainDesign.fetchReliability() {
-        setReliability(batteryIgnored = isBatteryIgnored(), alwaysOn = alwaysOnState())
-    }
-
-    private suspend fun MainDesign.askReliability() {
-        setReliability(
-            batteryIgnored = isBatteryIgnored(),
-            alwaysOn = alwaysOnState(),
-            prompt = true,
-        )
+    // prompt — показать или убрать вопрос; null — оставить как есть
+    private suspend fun MainDesign.fetchReliability(prompt: Boolean? = null) {
+        setReliability(batteryIgnored = isBatteryIgnored(), alwaysOn = alwaysOnState(), prompt = prompt)
     }
 
     private fun startSettings(vararg intents: Intent): Boolean {
