@@ -172,7 +172,7 @@ func readChanSkew(dir string) int64 {
 	}
 
 	offset, err := strconv.ParseInt(strings.TrimSpace(string(raw)), 10, 64)
-	if err != nil || abs(offset) <= chanx.Skew {
+	if err != nil || chanx.Abs(offset) <= chanx.Skew {
 		return 0
 	}
 
@@ -252,11 +252,7 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 
 	log.Infoln("Subscription fetched over the secure channel")
 
-	header := fetchHeader{
-		SubscriptionUserInfo:  meta.Get("subscription-userinfo"),
-		ProfileUpdateInterval: meta.Get("profile-update-interval"),
-		Raw:                   map[string][]string(meta),
-	}
+	header := fetchHeaderOf(meta)
 
 	if delivery.NotAConfiguration([]byte(answer.Body)) && panel.RefusesDevice(meta) {
 		return nil, header, errDeviceRefused
@@ -296,14 +292,6 @@ func chanSilence(err error) error {
 	return fmt.Errorf("%w: %w", ErrChanSilent, err)
 }
 
-func abs(v int64) int64 {
-	if v < 0 {
-		return -v
-	}
-
-	return v
-}
-
 // chanRound — один раунд: через туннель, а если он не донёс — напрямую.
 // Каждый запрос собирает свой конверт: у повтора своя метка, иначе прослойка,
 // получившая первый, отбросила бы второй как повтор.
@@ -335,18 +323,7 @@ func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, d
 // chanRequest — конверт, запрос и разбор ответа. reached — сервер ответил
 // (пусть и не тем): повторять напрямую незачем.
 func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64, direct bool) (*chanx.Answer, int64, bool, error) {
-	device := app.DeviceHeaders()
-
-	fields := chanx.Fields{
-		Hwid:   device["x-hwid"],
-		OS:     device["x-device-os"],
-		OSVer:  device["x-ver-os"],
-		Model:  device["x-device-model"],
-		UA:     "ClodClash/" + app.VersionName() + " (Android)",
-		Accept: "*/*",
-	}
-
-	secureURL, session, err := chanx.Build(url, pin, fields, time.Now().Unix()+clockOffset)
+	secureURL, session, err := chanx.Build(url, pin, chanFields(), time.Now().Unix()+clockOffset)
 	if err != nil {
 		return nil, 0, true, err
 	}
@@ -367,32 +344,41 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 
 	defer response.Body.Close()
 
-	served := serverTime(response.Header)
+	served := panel.ServerTime(response.Header)
 
-	// Канал отвечает всегда 200. 4xx — сервер на месте, а канала у него нет
-	// (старая прослойка или голая панель); 5xx — сбой по дороге, он считается
-	// молчанием.
-	if response.StatusCode >= 500 {
-		return nil, served, true, fmt.Errorf("server answered with status %d", response.StatusCode)
-	}
-	if response.StatusCode >= 400 {
-		return nil, served, true, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
-	}
-
-	wire, err := io.ReadAll(io.LimitReader(response.Body, 32<<20))
-	if err != nil {
-		return nil, served, true, err
-	}
-
-	answer, err := session.Open(wire, time.Now().Unix()+clockOffset)
+	answer, err := openAnswer(response, session, 32<<20, clockOffset)
 
 	return answer, served, true, err
 }
 
-func serverTime(header http.Header) int64 {
-	if parsed, err := http.ParseTime(strings.TrimSpace(header.Get("Date"))); err == nil {
-		return parsed.Unix()
+func chanFields() chanx.Fields {
+	device := app.DeviceHeaders()
+
+	return chanx.Fields{
+		Hwid:   device["x-hwid"],
+		OS:     device["x-device-os"],
+		OSVer:  device["x-ver-os"],
+		Model:  device["x-device-model"],
+		UA:     userAgent(),
+		Accept: "*/*",
+	}
+}
+
+// openAnswer — ответ прослойки. Канал отвечает всегда 200. 4xx — сервер на
+// месте, а канала у него нет (старая прослойка или голая панель); 5xx — сбой
+// по дороге, он считается молчанием.
+func openAnswer(response *http.Response, session *chanx.Session, limit int64, clockOffset int64) (*chanx.Answer, error) {
+	if response.StatusCode >= 500 {
+		return nil, fmt.Errorf("server answered with status %d", response.StatusCode)
+	}
+	if response.StatusCode >= 400 {
+		return nil, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
 	}
 
-	return 0
+	wire, err := io.ReadAll(io.LimitReader(response.Body, limit))
+	if err != nil {
+		return nil, err
+	}
+
+	return session.Open(wire, time.Now().Unix()+clockOffset)
 }

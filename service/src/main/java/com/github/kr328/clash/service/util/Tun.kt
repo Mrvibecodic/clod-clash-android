@@ -1,25 +1,12 @@
 package com.github.kr328.clash.service.util
 
 import android.content.Context
-import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceStore
-import kotlinx.serialization.json.Json
 import java.util.UUID
 
-private val json = Json { ignoreUnknownKeys = true }
-
-fun Context.readTunPrefs(uuid: UUID): TunPrefs? {
-    return try {
-        ProfileSwap.read(importedDir.resolve(uuid.toString()), "tun.json") { file ->
-            json.decodeFromString(TunPrefs.serializer(), file.readText())
-        }
-    } catch (e: Exception) {
-        Log.w("Read tun.json of $uuid: $e", e)
-
-        null
-    }
-}
+fun Context.readTunPrefs(uuid: UUID): TunPrefs? =
+    readProfileJson(uuid, "tun.json", TunPrefs.serializer())
 
 fun Context.activeTunPrefs(): TunPrefs? {
     return ServiceStore(this).activeProfile?.let { readTunPrefs(it) }

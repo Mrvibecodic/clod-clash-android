@@ -1,12 +1,8 @@
 package com.github.kr328.clash.service.util
 
 import android.content.Context
-import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.model.PanelInfo
-import kotlinx.serialization.json.Json
 import java.util.UUID
-
-private val json = Json { ignoreUnknownKeys = true }
 
 private const val TITLE_MAX_CHARS = 60
 
@@ -16,19 +12,9 @@ internal fun truncateTitle(value: String): String {
     return value.substring(0, value.offsetByCodePoints(0, TITLE_MAX_CHARS)).trim() + "…"
 }
 
-fun Context.readPanelInfo(uuid: UUID): PanelInfo? {
-    return try {
-        ProfileSwap.read(importedDir.resolve(uuid.toString()), "panel.json") { file ->
-            json.decodeFromString(PanelInfo.serializer(), file.readText()).let {
-                it.copy(title = truncateTitle(it.title))
-            }
-        }
-    } catch (e: Exception) {
-        Log.w("Read panel.json of $uuid: $e", e)
-
-        null
-    }
-}
+// Заголовок режется и здесь: panel.json прежних версий мог сохранить длинный.
+fun Context.readPanelInfo(uuid: UUID): PanelInfo? =
+    readProfileJson(uuid, "panel.json", PanelInfo.serializer())?.let { it.copy(title = truncateTitle(it.title)) }
 
 fun Context.profileLogoFile(uuid: UUID, panel: PanelInfo?): String? {
     val name = panel?.logoFile?.takeIf { it.isNotBlank() } ?: return null

@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"cfa/native/app"
 	budgets "cfa/native/config/budget"
 
 	clashHttp "github.com/metacubex/mihomo/component/http"
@@ -53,7 +52,7 @@ func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
 	defer cancel()
 
 	response, err := clashHttp.HttpRequest(ctx, rawURL, http.MethodGet, http.Header{
-		"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"},
+		"User-Agent": {userAgent()},
 		"Accept":     {"image/*"},
 	}, nil)
 	if err != nil {

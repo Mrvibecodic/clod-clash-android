@@ -13,10 +13,11 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.store.ServiceStore
-import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.service.util.readPanelInfo
+import com.github.kr328.clash.service.util.readProfileJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -27,8 +28,6 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
 import java.util.UUID
-
-private val json = Json { ignoreUnknownKeys = true }
 
 private val stateSerializer = MapSerializer(String.serializer(), Long.serializer())
 
@@ -79,7 +78,7 @@ private suspend fun Context.checkSubscriptionAlerts(uuid: UUID) {
     // Сначала уведомление, потом отметка «показано»: процесс службы после
     // остановки могут убить в любой момент, и лучше повтор, чем пропуск.
     if (outcome.alerts.isNotEmpty()) {
-        val name = displayProfileName(imported.uuid, imported.name, imported.nameManual)
+        val name = profileDisplayName(panel, imported.name, imported.nameManual)
 
         createAlertChannel()
 
@@ -94,17 +93,8 @@ private suspend fun Context.checkSubscriptionAlerts(uuid: UUID) {
 private fun Context.stateFile(uuid: UUID): File =
     importedDir.resolve(uuid.toString()).resolve(STATE_FILE)
 
-private fun Context.readState(uuid: UUID): Map<String, Long> {
-    return try {
-        ProfileSwap.read(importedDir.resolve(uuid.toString()), STATE_FILE) { file ->
-            json.decodeFromString(stateSerializer, file.readText())
-        } ?: emptyMap()
-    } catch (e: Exception) {
-        Log.w("Read $STATE_FILE of $uuid: $e", e)
-
-        emptyMap()
-    }
-}
+private fun Context.readState(uuid: UUID): Map<String, Long> =
+    readProfileJson(uuid, STATE_FILE, stateSerializer) ?: emptyMap()
 
 private fun Context.writeState(uuid: UUID, value: Map<String, Long>) {
     val file = stateFile(uuid)
@@ -115,7 +105,7 @@ private fun Context.writeState(uuid: UUID, value: Map<String, Long>) {
         } else {
             val temporary = File(file.path + ".tmp")
 
-            temporary.writeText(json.encodeToString(stateSerializer, value))
+            temporary.writeText(Json.encodeToString(stateSerializer, value))
 
             if (!temporary.renameTo(file)) {
                 temporary.delete()

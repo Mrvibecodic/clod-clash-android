@@ -18,6 +18,9 @@ interface PendingDao {
     @Query("SELECT uuid FROM pending ORDER BY createdAt")
     suspend fun queryAllUUIDs(): List<UUID>
 
+    @Query("SELECT * FROM pending ORDER BY createdAt")
+    suspend fun queryAll(): List<Pending>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(pending: Pending)
 

@@ -2,8 +2,6 @@ package config
 
 import (
 	"context"
-	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -59,19 +57,6 @@ func postReport(url, profileDir string, gz []byte) (int, error) {
 	return status, err
 }
 
-func reportFields() chanx.Fields {
-	device := app.DeviceHeaders()
-
-	return chanx.Fields{
-		Hwid:   device["x-hwid"],
-		OS:     device["x-device-os"],
-		OSVer:  device["x-ver-os"],
-		Model:  device["x-device-model"],
-		UA:     "ClodClash/" + app.VersionName() + " (Android)",
-		Accept: "*/*",
-	}
-}
-
 // Одна попытка: через туннель, а если он не донёс — напрямую. Каждый запрос
 // собирает свой конверт: у повтора своя метка, иначе прослойка, получившая
 // первый, отбросила бы второй как повтор.
@@ -86,7 +71,7 @@ func reportAttempt(url string, pin []byte, offset int64, gz []byte) (int, error)
 
 // reached — прослойка (или кто-то вместо неё) ответила: повторять напрямую незачем.
 func reportSend(url string, pin []byte, offset int64, gz []byte, direct bool) (int, bool, error) {
-	secureURL, session, err := chanx.BuildReport(url, pin, reportFields(), time.Now().Unix()+offset)
+	secureURL, session, err := chanx.BuildReport(url, pin, chanFields(), time.Now().Unix()+offset)
 	if err != nil {
 		return 0, true, err
 	}
@@ -115,20 +100,7 @@ func reportSend(url string, pin []byte, offset int64, gz []byte, direct bool) (i
 	}
 	defer response.Body.Close()
 
-	// 4xx — сервер на месте, а канала у него нет; 5xx — сбой по дороге.
-	if response.StatusCode >= 500 {
-		return 0, true, fmt.Errorf("server answered with status %d", response.StatusCode)
-	}
-	if response.StatusCode >= 400 {
-		return 0, true, fmt.Errorf("%w: relay answered with status %d", chanx.ErrBadAnswer, response.StatusCode)
-	}
-
-	wire, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
-	if err != nil {
-		return 0, true, err
-	}
-
-	answer, err := session.Open(wire, time.Now().Unix()+offset)
+	answer, err := openAnswer(response, session, 1<<20, offset)
 	if err != nil {
 		return 0, true, err
 	}

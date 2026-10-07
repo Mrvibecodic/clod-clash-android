@@ -49,22 +49,5 @@ func WriteInboundPrefs(dir string, prefs InboundPrefs) {
 		return
 	}
 
-	if ReadInboundPrefs(dir) == prefs {
-		return
-	}
-
-	bytes, err := json.Marshal(&prefs)
-	if err != nil {
-		return
-	}
-
-	tmp := inboundPath(dir) + ".tmp"
-
-	if err := os.WriteFile(tmp, bytes, 0o600); err != nil {
-		return
-	}
-
-	if err := os.Rename(tmp, inboundPath(dir)); err != nil {
-		_ = os.Remove(tmp)
-	}
+	writeJSON(inboundPath(dir), &prefs)
 }

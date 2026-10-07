@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestNormalizeTunStack(t *testing.T) {
@@ -87,6 +88,33 @@ func TestTunPrefsWriteEmptyRemoves(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, tunFileName)); !os.IsNotExist(err) {
 		t.Fatalf("tun.json expected to be removed, got %v", err)
+	}
+}
+
+// Разбор конфига зовёт запись на каждой загрузке и пробе: тот же tun.json не переписывается.
+func TestTunPrefsSameNotRewritten(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, tunFileName)
+
+	prefs := TunPrefs{Stack: "gvisor", IncludePackages: []string{"com.a"}}
+
+	WriteTunPrefs(dir, prefs)
+
+	old := time.Unix(1_000_000_000, 0)
+	if err := os.Chtimes(path, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	WriteTunPrefs(dir, TunPrefs{Stack: "gvisor", IncludePackages: []string{"com.a"}})
+
+	if stat, err := os.Stat(path); err != nil || !stat.ModTime().Equal(old) {
+		t.Fatalf("tun.json rewritten with the same content: %v", err)
+	}
+
+	WriteTunPrefs(dir, TunPrefs{Stack: "system"})
+
+	if got := ReadTunPrefs(dir); got.Stack != "system" || got.IncludePackages != nil {
+		t.Errorf("changed prefs not written: %+v", got)
 	}
 }
 

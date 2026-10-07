@@ -140,18 +140,30 @@ object ProfileImports {
             val failed = AtomicReference(emptyList<String>())
 
             try {
-                val (profile, secure) = channelFirst(token, fallback = true) { secure, observer ->
-                    failed.set(emptyList())
+                val name = context.getString(R.string.new_profile)
 
-                    val uuid = withProfile(retry = false) {
-                        create(Profile.Type.Url, context.getString(R.string.new_profile), source, secure = secure)
-                    }
+                // Один черновик на все попытки: перед обычным путём у него
+                // выключается канал, как при сохранении из свойств.
+                val draft = withProfile(retry = false) {
+                    create(Profile.Type.Url, name, source, secure = true)
+                }
 
-                    import(uuid, true) { status ->
-                        runCatching { FailedProviders.accumulate(failed, status) }
-                            .onFailure { Log.w("Report import status: $it", it) }
+                val (profile, secure) = releasingOnFailure(draft) {
+                    channelFirst(token, fallback = true) { secure, observer ->
+                        failed.set(emptyList())
 
-                        observer(status)
+                        if (!secure) {
+                            withProfile(retry = false) {
+                                patch(draft, name, false, source, 0L, false, false)
+                            }
+                        }
+
+                        import(draft, true) { status ->
+                            runCatching { FailedProviders.accumulate(failed, status) }
+                                .onFailure { Log.w("Report import status: $it", it) }
+
+                            observer(status)
+                        }
                     }
                 }
 
@@ -215,8 +227,10 @@ object ProfileImports {
                         }
                     }
 
-                    import(uuid, item.active) { status ->
-                        FailedProviders.accumulate(failed, status)
+                    releasingOnFailure(uuid) {
+                        import(uuid, item.active) { status ->
+                            FailedProviders.accumulate(failed, status)
+                        }
                     }
 
                     restored += 1
@@ -449,19 +463,24 @@ object ProfileImports {
         activate: Boolean,
         observer: IFetchObserver?,
     ): Profile {
+        withProfile(retry = false) {
+            commit(uuid, observer)
+        }
+
+        val profile = withProfile { queryByUUID(uuid) }
+            ?: throw IllegalStateException(Global.application.withAppLocale().getString(R.string.invalid_url))
+
+        if (activate && withProfile { queryActive() } == null) {
+            withProfile { setActive(profile) }
+        }
+
+        return profile
+    }
+
+    // Черновик новой подписки, которая так и не добавилась, убирается.
+    private suspend fun <T> releasingOnFailure(uuid: UUID, block: suspend () -> T): T {
         try {
-            withProfile(retry = false) {
-                commit(uuid, observer)
-            }
-
-            val profile = withProfile { queryByUUID(uuid) }
-                ?: throw IllegalStateException(Global.application.withAppLocale().getString(R.string.invalid_url))
-
-            if (activate && withProfile { queryActive() } == null) {
-                withProfile { setActive(profile) }
-            }
-
-            return profile
+            return block()
         } catch (e: Exception) {
             withContext(NonCancellable) {
                 withProfile(retry = false) { release(uuid) }

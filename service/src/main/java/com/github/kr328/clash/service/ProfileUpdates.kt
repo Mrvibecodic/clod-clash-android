@@ -23,18 +23,21 @@ object ProfileUpdates {
     suspend fun scheduleAll(context: Context) {
         Log.i("Schedule all profiles update")
 
-        ImportedDao().queryAllUUIDs()
-            .mapNotNull { ImportedDao().queryByUUID(it) }
+        ImportedDao().queryAll()
             .filter { it.type != Profile.Type.File }
             .forEach {
-                schedule(context, it, ExistingPeriodicWorkPolicy.KEEP).await()
-                scheduleExpiry(context, it)?.await()
+                val fetchedAt = context.fetchedAt(it.uuid)
+
+                schedule(context, it, ExistingPeriodicWorkPolicy.KEEP, fetchedAt).await()
+                scheduleExpiry(context, it, Caller.Change, fetchedAt)?.await()
             }
     }
 
     fun schedule(context: Context, imported: Imported, caller: Caller = Caller.Change) {
-        schedule(context, imported, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE)
-        scheduleExpiry(context, imported, caller)
+        val fetchedAt = context.fetchedAt(imported.uuid)
+
+        schedule(context, imported, ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE, fetchedAt)
+        scheduleExpiry(context, imported, caller, fetchedAt)
     }
 
     /** Кто переоценивает задачу загрузки после истечения — от этого зависит, что делать с прежней. */
@@ -84,12 +87,17 @@ object ProfileUpdates {
      *
      * null — делать нечего.
      */
-    fun scheduleExpiry(context: Context, imported: Imported, caller: Caller = Caller.Change): Operation? {
+    fun scheduleExpiry(
+        context: Context,
+        imported: Imported,
+        caller: Caller = Caller.Change,
+        fetchedAt: Long = context.fetchedAt(imported.uuid),
+    ): Operation? {
         val manager = WorkManager.getInstance(context)
         val name = expiryName(imported)
 
         val skew = context.readPanelInfo(imported.uuid)?.clockSkewMillis() ?: 0
-        val fetchAt = UpdateSchedule.expiryFetchAt(imported.expire, skew, context.fetchedAt(imported.uuid))
+        val fetchAt = UpdateSchedule.expiryFetchAt(imported.expire, skew, fetchedAt)
             ?: return if (caller == Caller.ExpiryRun) null else manager.cancelUniqueWork(name)
 
         val delay = (fetchAt - System.currentTimeMillis()).coerceAtLeast(0)
@@ -121,13 +129,18 @@ object ProfileUpdates {
         state == WorkInfo.State.ENQUEUED && runAttemptCount == 0 &&
             kotlin.math.abs(nextScheduleTimeMillis - fetchAt) <= UpdateSchedule.EXPIRY_SLACK
 
-    private fun schedule(context: Context, imported: Imported, policy: ExistingPeriodicWorkPolicy): Operation {
+    private fun schedule(
+        context: Context,
+        imported: Imported,
+        policy: ExistingPeriodicWorkPolicy,
+        fetchedAt: Long,
+    ): Operation {
         val manager = WorkManager.getInstance(context)
 
         if (imported.interval < UpdateSchedule.MIN_INTERVAL)
             return manager.cancelUniqueWork(periodicName(imported))
 
-        val delay = UpdateSchedule.firstDelay(imported.interval, context.fetchedAt(imported.uuid), System.currentTimeMillis())
+        val delay = UpdateSchedule.firstDelay(imported.interval, fetchedAt, System.currentTimeMillis())
 
         val request = PeriodicWorkRequestBuilder<ProfileUpdateWorker>(imported.interval, TimeUnit.MILLISECONDS)
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)

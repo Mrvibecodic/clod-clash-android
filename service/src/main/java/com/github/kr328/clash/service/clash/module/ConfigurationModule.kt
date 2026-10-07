@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.service.ProfileProcessor
 import com.github.kr328.clash.service.R
@@ -63,10 +64,8 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
         throw NullPointerException("No profile selected")
     }
 
-    private suspend fun lockDeadline(uuid: UUID): Long {
+    private suspend fun lockDeadline(uuid: UUID, session: ConfigurationOverride): Long {
         val mode = try {
-            val session = sessionOverrideFor(ModeChoiceDao().queryChoice(uuid))
-
             ProfileProcessor.queryMode(service, uuid, session)
         } catch (e: CancellationException) {
             throw e
@@ -161,18 +160,18 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                 // Выбор режима читается под coreLoad, чтобы живое переключение из
                 // ClashManager не легло между чтением и применением. Режим не входит в
                 // отпечаток: у неизменённого профиля его применяет switchMode.
-                val switched = unchanged && coreLoad.withLock {
+                val switched = if (unchanged) coreLoad.withLock {
                     val session = sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid))
 
                     Clash.patchOverride(Clash.OverrideSlot.Session, session)
 
-                    ProfileProcessor.switchMode(service, active.uuid, session)
-                }
+                    session.takeIf { ProfileProcessor.switchMode(service, active.uuid, it) }
+                } else null
 
-                if (switched) {
+                if (switched != null) {
                     ServiceLog.mark("config: profile unchanged, core load skipped")
 
-                    lockUntil = lockDeadline(active.uuid)
+                    lockUntil = lockDeadline(active.uuid, switched)
 
                     StatusProvider.currentProfile =
                         service.displayProfileName(active.uuid, active.name, active.nameManual)
@@ -191,7 +190,7 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
 
                 if (first) stage(Intents.STAGE_LOADING)
 
-                coreLoad.withLock {
+                val session = coreLoad.withLock {
                     val session = sessionOverrideFor(ModeChoiceDao().queryChoice(active.uuid))
 
                     Clash.patchOverride(Clash.OverrideSlot.Session, session)
@@ -221,11 +220,13 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
                                 "${SystemClock.elapsedRealtime() - applyStartedAt} ms",
                         )
                     }
+
+                    session
                 }
 
                 loaded = current
                 loadedInputs = inputs
-                lockUntil = lockDeadline(active.uuid)
+                lockUntil = lockDeadline(active.uuid, session)
 
                 // Ядро уже на новой подписке: метка публикуется сразу, а не после
                 // возврата выбора узлов, — по ней пишется выбор, сделанный человеком.

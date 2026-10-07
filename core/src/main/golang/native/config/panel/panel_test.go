@@ -78,16 +78,16 @@ func TestServerTime(t *testing.T) {
 	for _, key := range []string{"Date", "date", "DATE"} {
 		header := map[string][]string{key: {"Sat, 08 Aug 2026 12:00:00 GMT"}}
 
-		if got := serverTime(header); got != want {
-			t.Fatalf("serverTime(%q) = %d, ожидалось %d", key, got, want)
+		if got := ServerTime(header); got != want {
+			t.Fatalf("ServerTime(%q) = %d, ожидалось %d", key, got, want)
 		}
 	}
 
-	if got := serverTime(map[string][]string{}); got != 0 {
+	if got := ServerTime(map[string][]string{}); got != 0 {
 		t.Fatalf("без заголовка ожидался 0, получено %d", got)
 	}
 
-	if got := serverTime(map[string][]string{"Date": {"вчера"}}); got != 0 {
+	if got := ServerTime(map[string][]string{"Date": {"вчера"}}); got != 0 {
 		t.Fatalf("на неразбираемую дату ожидался 0, получено %d", got)
 	}
 }

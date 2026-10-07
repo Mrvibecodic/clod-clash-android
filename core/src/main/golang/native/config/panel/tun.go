@@ -95,20 +95,7 @@ func WriteTunPrefs(dir string, prefs TunPrefs) {
 		return
 	}
 
-	bytes, err := json.Marshal(&prefs)
-	if err != nil {
-		return
-	}
-
-	tmp := tunPath(dir) + ".tmp"
-
-	if err := os.WriteFile(tmp, bytes, 0o600); err != nil {
-		return
-	}
-
-	if err := os.Rename(tmp, tunPath(dir)); err != nil {
-		_ = os.Remove(tmp)
-	}
+	writeJSON(tunPath(dir), &prefs)
 }
 
 func StringsFromAny(value any) []string {

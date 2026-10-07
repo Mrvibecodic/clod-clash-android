@@ -254,7 +254,7 @@ func (s *Session) Open(wire []byte, now int64) (*Answer, error) {
 	if !hmac.Equal([]byte(answer.N), []byte(s.nonce)) {
 		return nil, ErrMismatch
 	}
-	if answer.T <= 0 || abs(now-answer.T) > Skew {
+	if answer.T <= 0 || Abs(now-answer.T) > Skew {
 		return nil, ErrStale
 	}
 
@@ -329,7 +329,7 @@ func concat(parts ...[]byte) []byte {
 	return out
 }
 
-func abs(v int64) int64 {
+func Abs(v int64) int64 {
 	if v < 0 {
 		return -v
 	}
@@ -342,7 +342,7 @@ func Correction(served, now, current int64) (int64, bool) {
 	}
 
 	raw := served - now
-	if abs(raw) <= Skew {
+	if Abs(raw) <= Skew {
 		raw = 0
 	}
 

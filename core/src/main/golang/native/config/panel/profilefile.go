@@ -1,6 +1,8 @@
 package panel
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"os"
@@ -73,4 +75,28 @@ func isWhole(dir string) bool {
 	info, err := os.Stat(P.Join(dir, ProfileConfigFile))
 
 	return isDir(dir) && err == nil && info.Mode().IsRegular()
+}
+
+// writeJSON пишет файл каталога профиля через временный и переименование:
+// читатель без замка не застанет его недописанным. Тот же файл не
+// переписывается — разбор конфига зовёт запись на каждой загрузке и пробе.
+func writeJSON(path string, value any) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return
+	}
+
+	if current, err := os.ReadFile(path); err == nil && bytes.Equal(current, data) {
+		return
+	}
+
+	tmp := path + ".tmp"
+
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return
+	}
+
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+	}
 }

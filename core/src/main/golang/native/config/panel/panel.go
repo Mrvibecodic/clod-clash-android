@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"os"
 	P "path"
 	"sort"
 	"strconv"
@@ -119,20 +118,7 @@ func Read(dir string) Info {
 func Write(dir string, info Info) {
 	info.Mode = templateMode(info.Mode)
 
-	bytes, err := json.Marshal(&info)
-	if err != nil {
-		return
-	}
-
-	tmp := panelPath(dir) + ".tmp"
-
-	if err := os.WriteFile(tmp, bytes, 0o600); err != nil {
-		return
-	}
-
-	if err := os.Rename(tmp, panelPath(dir)); err != nil {
-		_ = os.Remove(tmp)
-	}
+	writeJSON(panelPath(dir), &info)
 }
 
 func ApplyHeaders(info *Info, header map[string][]string, current string) {
@@ -164,7 +150,7 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 
 	info.NotifyTrafficPercent = thresholds(headerValue(header, "notify-traffic-percent"), 1, 100)
 
-	if served := serverTime(header); served > 0 {
+	if served := ServerTime(header); served > 0 {
 		now := time.Now().Unix()
 
 		info.ClockSkew = served - now
@@ -499,7 +485,7 @@ func thresholds(raw string, lo, hi int) []int {
 	return values
 }
 
-func serverTime(header map[string][]string) int64 {
+func ServerTime(header map[string][]string) int64 {
 	for key, values := range header {
 		if !strings.EqualFold(key, "date") {
 			continue

@@ -12,6 +12,9 @@ interface ImportedDao {
     @Query("SELECT uuid FROM imported ORDER BY createdAt")
     suspend fun queryAllUUIDs(): List<UUID>
 
+    @Query("SELECT * FROM imported ORDER BY createdAt")
+    suspend fun queryAll(): List<Imported>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(imported: Imported): Long
 

@@ -48,7 +48,7 @@ func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
 		return nil, err
 	}
 
-	if err := process(rawConfig, profilePath); err != nil {
+	if err := process(rawConfig, profilePath, panel.Read(profilePath)); err != nil {
 		return nil, err
 	}
 

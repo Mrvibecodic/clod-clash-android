@@ -3,6 +3,7 @@ package com.github.kr328.clash.service
 import android.content.Context
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.data.Database
+import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.data.Pending
 import com.github.kr328.clash.service.data.PendingDao
@@ -10,10 +11,8 @@ import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.remote.IProfileManager
 import com.github.kr328.clash.service.store.ServiceStore
-import com.github.kr328.clash.service.util.directoryLastModified
 import com.github.kr328.clash.service.util.fetchedAt
 import com.github.kr328.clash.service.util.generateProfileUUID
-import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -161,29 +160,26 @@ class ProfileManager(private val context: Context) : IProfileManager,
     }
 
     override suspend fun queryAll(): List<Profile> {
-        val uuids = (ImportedDao().queryAllUUIDs() + PendingDao().queryAllUUIDs()).distinct()
+        val imported = ImportedDao().queryAll().associateBy { it.uuid }
+        val pending = PendingDao().queryAll().associateBy { it.uuid }
 
-        return uuids.mapNotNull { resolveProfile(it) }
+        return (imported.keys + pending.keys).mapNotNull { resolveProfile(it, imported[it], pending[it]) }
     }
 
     override suspend fun queryActive(): Profile? {
         val active = store.activeProfile ?: return null
 
-        return if (ImportedDao().exists(active)) {
-            resolveProfile(active)
-        } else {
-            null
-        }
+        return resolveProfile(active)?.takeIf { it.imported }
     }
 
     override suspend fun setActive(profile: Profile) {
         ProfileProcessor.active(context, profile.uuid)
     }
 
-    private suspend fun resolveProfile(uuid: UUID): Profile? {
-        val imported = ImportedDao().queryByUUID(uuid)
-        val pending = PendingDao().queryByUUID(uuid)
+    private suspend fun resolveProfile(uuid: UUID): Profile? =
+        resolveProfile(uuid, ImportedDao().queryByUUID(uuid), PendingDao().queryByUUID(uuid))
 
+    private fun resolveProfile(uuid: UUID, imported: Imported?, pending: Pending?): Profile? {
         val active = store.activeProfile
         val name = pending?.name ?: imported?.name ?: return null
         val type = pending?.type ?: imported?.type ?: return null
@@ -193,6 +189,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
         val download = imported?.download ?: pending?.download ?: return null
         val total = imported?.total ?: pending?.total ?: return null
         val expire = imported?.expire ?: pending?.expire ?: return null
+        val fetchedAt = if (imported != null) context.fetchedAt(uuid) else 0
 
         return Profile(
             uuid = uuid,
@@ -205,22 +202,21 @@ class ProfileManager(private val context: Context) : IProfileManager,
             download = download,
             total = total,
             expire = expire,
-            updatedAt = resolveUpdatedAt(uuid),
+            updatedAt = fetchedAt.takeIf { it > 0 } ?: draftWrittenAt(uuid),
             imported = imported != null,
             pending = pending != null,
             secure = if (pending != null) pending.secure else imported?.secure ?: false,
             intervalManual = pending?.intervalManual ?: imported?.intervalManual ?: false,
             quota = imported?.quota ?: false,
             nameManual = pending?.nameManual ?: imported?.nameManual ?: false,
-            fetchedAt = if (imported != null) context.fetchedAt(uuid) else 0,
+            fetchedAt = fetchedAt,
         )
     }
 
-    private fun resolveUpdatedAt(uuid: UUID): Long {
-        return context.importedDir.resolve(uuid.toString()).directoryLastModified
-            ?: context.pendingDir.resolve(uuid.toString()).directoryLastModified
-            ?: -1
-    }
+    // updatedAt читает только главная — как метку свежести логотипа, а логотип
+    // меняется лишь вместе с config.yaml: обход всей папки ради неё не нужен.
+    private fun draftWrittenAt(uuid: UUID): Long =
+        context.pendingDir.resolve(uuid.toString()).resolve("config.yaml").lastModified().takeIf { it > 0 } ?: -1
 
     private suspend fun scheduleUpdate(uuid: UUID, startImmediately: Boolean) {
         val imported = ImportedDao().queryByUUID(uuid) ?: return

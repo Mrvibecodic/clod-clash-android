@@ -52,6 +52,16 @@ type fetchHeader struct {
 	Raw                   map[string][]string
 }
 
+func fetchHeaderOf(raw map[string][]string) fetchHeader {
+	header := http.Header(raw)
+
+	return fetchHeader{
+		SubscriptionUserInfo:  header.Get("subscription-userinfo"),
+		ProfileUpdateInterval: header.Get("profile-update-interval"),
+		Raw:                   raw,
+	}
+}
+
 const directOutbound = "DIRECT"
 
 func refusedByRedirectPolicy(err error) bool {
@@ -69,9 +79,13 @@ const (
 	stalePartAge      = 10 * time.Minute
 )
 
+func userAgent() string {
+	return "ClodClash/" + app.VersionName() + " (Android)"
+}
+
 func subscriptionHeaders(device bool) http.Header {
 	header := http.Header{
-		"User-Agent": {"ClodClash/" + app.VersionName() + " (Android)"},
+		"User-Agent": {userAgent()},
 		"Accept":     {"*/*"},
 	}
 
@@ -221,11 +235,7 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 		return nil, fetchHeader{}, fmt.Errorf("server answered with status %d", response.StatusCode)
 	}
 
-	header := fetchHeader{
-		SubscriptionUserInfo:  response.Header.Get("subscription-userinfo"),
-		ProfileUpdateInterval: response.Header.Get("profile-update-interval"),
-		Raw:                   map[string][]string(response.Header),
-	}
+	header := fetchHeaderOf(response.Header)
 
 	body := io.ReadCloser(response.Body)
 
@@ -359,7 +369,12 @@ func fetch(url *U.URL, file string, device bool, budget *budgets.Budget, limit t
 	return header, err
 }
 
-func writeRefusedConfig(file string, previous []byte) error {
+// previousSuffix — прежний config.yaml на время загрузки; убирается в её конце.
+const previousSuffix = ".previous"
+
+func writeRefusedConfig(file string, previousFile string) error {
+	previous, _ := os.ReadFile(previousFile)
+
 	return writeFile(file, strings.NewReader(string(sentinel.Refused(previous))))
 }
 
@@ -503,7 +518,9 @@ func FetchAndValid(
 
 	budget := budgets.Within(time.Now(), total)
 
-	var previous []byte
+	info := readPanelInfo(path)
+
+	previousConfig := configPath + previousSuffix
 	refused := false
 	replaced := false
 
@@ -522,8 +539,6 @@ func FetchAndValid(
 
 		reportStatus(string(bytes))
 
-		info := readPanelInfo(path)
-
 		spare := info.SpareAddress(url.String())
 
 		limit := fetchTimeout
@@ -531,7 +546,11 @@ func FetchAndValid(
 			limit = fetchQuickTimeout
 		}
 
-		previous, _ = os.ReadFile(configPath)
+		// Прежний конфиг нужен, только если панель откажет устройству: он
+		// откладывается переименованием и читается лишь тогда.
+		_ = os.Remove(previousConfig)
+		_ = os.Rename(configPath, previousConfig)
+		defer os.Remove(previousConfig)
 
 		header, err := fetchConfig(url, configPath, secure, budget, limit)
 		if err != nil && !errors.Is(err, errDeviceRefused) {
@@ -545,7 +564,7 @@ func FetchAndValid(
 		}
 
 		if errors.Is(err, errDeviceRefused) {
-			err = writeRefusedConfig(configPath, previous)
+			err = writeRefusedConfig(configPath, previousConfig)
 			replaced = true
 		}
 
@@ -556,8 +575,8 @@ func FetchAndValid(
 		reportSubscriptionInfo(header, reportStatus)
 
 		applyHeaders(&info, header.Raw, url.String())
+
 		info.LogoFile = fetchLogo(path, info.LogoURL, budget)
-		writePanelInfo(path, info)
 	}
 
 	defer runtime.GC()
@@ -567,15 +586,15 @@ func FetchAndValid(
 		firstReport = func(string) {}
 	}
 
-	err := verifyProfile(path, budget, firstReport)
+	err := verifyProfile(path, info, budget, firstReport)
 	if err != nil && refused && !replaced {
 		log.Warnln("The panel refused this device and sent a configuration the core rejects (%s), taking the servers away", err.Error())
 
-		if err := writeRefusedConfig(configPath, previous); err != nil {
+		if err := writeRefusedConfig(configPath, previousConfig); err != nil {
 			return err
 		}
 
-		err = verifyProfile(path, budget, reportStatus)
+		err = verifyProfile(path, info, budget, reportStatus)
 	}
 
 	if err != nil && refused {
@@ -585,13 +604,17 @@ func FetchAndValid(
 			return err
 		}
 
-		err = verifyProfile(path, budget, reportStatus)
+		err = verifyProfile(path, info, budget, reportStatus)
 	}
 
 	return err
 }
 
-func verifyProfile(path string, budget *budgets.Budget, reportStatus func(string)) error {
+// panelInfo — panel.json с заголовками этой загрузки: пишется здесь, вместе с
+// группами разобранного конфига, до загрузки провайдеров и проверки ядром. На
+// ветке отказа устройству проверок до трёх — столько же записей; папка загрузки
+// при неудаче выбрасывается целиком.
+func verifyProfile(path string, panelInfo PanelInfo, budget *budgets.Budget, reportStatus func(string)) error {
 	rawCfg, err := unmarshalProfile(path)
 	if err != nil {
 		return fmt.Errorf("%s: %w", configRejected, err)
@@ -599,11 +622,10 @@ func verifyProfile(path string, budget *budgets.Budget, reportStatus func(string
 
 	template := rawCfg.Mode
 
-	if err := process(rawCfg, path); err != nil {
+	if err := process(rawCfg, path, panelInfo); err != nil {
 		return fmt.Errorf("%s: %w", configRejected, err)
 	}
 
-	panelInfo := readPanelInfo(path)
 	applyGroups(&panelInfo, rawCfg, template)
 
 	report := sentinel.Inspect(rawCfg.Proxy)
