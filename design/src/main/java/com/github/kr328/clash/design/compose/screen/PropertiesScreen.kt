@@ -63,6 +63,8 @@ data class PropertiesState(
     // Канал включается и выключается только у добавленной подписки по ссылке:
     // новая сама сначала пробует канал при сохранении.
     val secureEditable: Boolean = false,
+    // Отпечаток ключа прослойки: по нему сверяют, что отвечала та самая прослойка.
+    val chanKey: String = "",
     val confirmingSecureOff: Boolean = false,
     val processing: FetchProgress? = null,
     val confirmingExit: Boolean = false,
@@ -238,6 +240,7 @@ fun PropertiesScreen(
             if (state.secureEditable) {
                 SecureChannelRow(
                     on = state.secure,
+                    chanKey = state.chanKey,
                     enabled = !processing,
                     onChange = { onAction(PropertiesAction.SecureChanged(it)) },
                 )
@@ -294,7 +297,7 @@ fun PropertiesScreen(
 }
 
 @Composable
-private fun SecureChannelRow(on: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+private fun SecureChannelRow(on: Boolean, chanKey: String, enabled: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -314,6 +317,14 @@ private fun SecureChannelRow(on: Boolean, enabled: Boolean, onChange: (Boolean) 
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (on) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
             )
+            if (on && chanKey.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = stringResource(R.string.clod_secure_channel_key, chanKey),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Spacer(Modifier.width(12.dp))
         Switch(checked = on, onCheckedChange = null, enabled = enabled)

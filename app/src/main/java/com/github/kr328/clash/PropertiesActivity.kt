@@ -46,7 +46,10 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         original = bundle?.let { BundleCompat.getParcelable(it, "original", Profile::class.java) }
             ?: stored
 
-        design.panelName = queryPanelInfo(uuid)?.title
+        val panel = queryPanelInfo(uuid)
+
+        design.panelName = panel?.title
+        design.chanKey = panel?.chanKey.orEmpty()
         design.profile = draft ?: original
 
         setContentDesign(design)

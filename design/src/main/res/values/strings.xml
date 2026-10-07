@@ -545,6 +545,7 @@
     <string name="clod_secure_channel">Secure connection</string>
     <string name="clod_secure_channel_on">The subscription is loaded over the provider\'s secure channel</string>
     <string name="clod_secure_channel_off">Off — the subscription is loaded in the clear. This is not safe</string>
+    <string name="clod_secure_channel_key">Provider key fingerprint: %1$s</string>
     <string name="clod_secure_off_title">Turn off the secure connection?</string>
     <string name="clod_secure_off_body">Without it, the subscription address, device data and server list travel to the provider in the clear, and anyone on the way can see them. Turn it off only if your provider asks you to.</string>
     <string name="clod_secure_off_confirm">Turn off</string>

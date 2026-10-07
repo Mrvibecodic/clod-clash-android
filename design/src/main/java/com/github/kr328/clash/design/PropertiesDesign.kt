@@ -38,6 +38,9 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
 
     var panelName: String? = null
 
+    // Отпечаток ключа прослойки у добавленной подписки; пусто — не загружалась каналом.
+    var chanKey: String = ""
+
     var profile: Profile
         get() = checkNotNull(base) { "profile is not set" }.withNameField(state.name).copy(
             source = state.url,
@@ -59,6 +62,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
                 type = value.type,
                 secure = value.secure,
                 secureEditable = value.type == Profile.Type.Url && value.imported,
+                chanKey = chanKey,
             )
         }
 
