@@ -22,6 +22,7 @@ subscription.
 | `clod-ping` | `A/B` in ms, for example `150/300` | latency colour bounds. Without the header — `200/400` |
 | `clod-disable-ping` | `true` only | a check mark or cross instead of milliseconds |
 | `clod-show-0hosts` | `true` or `false` | show the panel's placeholder nodes as they are |
+| `clod-mobile-only` | server names separated by `\|` | servers for the mobile network only: off the SIM network they are not shown |
 | `clod-16-20-check` | `true` only | the 16–20 check: whether traffic through a server is cut off on the user's network; "cut off" and "not responding" marks |
 | `clod-new-sub` | a domain, for example `backup.example.com` | spare subscription address (domain) — in case the main one does not answer |
 | `clod-move-sub` | `true` only, together with `clod-new-sub` | move everyone to the spare address |
@@ -83,6 +84,29 @@ latency and selection stay as they were. New servers and servers whose connectio
 checked; "working" and "cut off" are rechecked every 3 days, "not responding" after 6 hours on the
 same network. Results are kept per subscription and per network. Without the header (or with any
 value other than `true`) there are no checks and no marks.
+
+## Servers for the mobile network only: `clod-mobile-only`
+
+The value is the exact server names separated by `|`, for example `Moscow LTE|MTS Saint Petersburg`.
+Letter case matters; spaces around a name are ignored. A server whose name contains `|` cannot be
+listed. The names apply to servers from the subscription and from its proxy providers alike, including
+servers a provider adds on a later update.
+
+- On the mobile network (the SIM network) these servers are shown as usual, marked "mobile network".
+- On any other network — Wi-Fi (a hotspot from another phone too), cable, USB — they are in no
+  group and not in the server list, cannot be selected and are not checked. A group whose selected
+  server is one of them — or, with nothing selected, whose first server is — uses the first visible
+  server, or else the first group that still has a visible server; never a direct connection. On the
+  mobile network it returns to the selected server by itself.
+- Servers that connect through such a server (`dialer-proxy`) are hidden together with it.
+- If only such servers are left in a group, off the mobile network the group lets nothing through
+  rather than sending traffic directly; the list shows "Servers available only on mobile network"
+  instead of servers.
+- A template rule that names such a server directly still goes through it — servers are hidden from
+  groups only.
+
+Send names with Cyrillic letters or flags as base64 of the whole value: `🇷🇺 Москва LTE|МТС Питер`
+is `base64:8J+Ht/Cfh7og0JzQvtGB0LrQstCwIExURXzQnNCi0KEg0J/QuNGC0LXRgA==`.
 
 ## Placeholder nodes: `clod-show-0hosts`
 
