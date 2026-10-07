@@ -5,20 +5,23 @@ import (
 	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
-func CloseAllConnections() {
-	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
-		_ = c.Close()
-		return true
-	})
+// CloseAllConnections закрывает все соединения и отвечает, сколько закрыто
+func CloseAllConnections() int {
+	return closeMatch(func(C.Connection) bool { return true })
 }
 
-func closeMatch(filter func(conn C.Connection) bool) {
+func closeMatch(filter func(conn C.Connection) bool) int {
+	closed := 0
+
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
 		if filter(c) {
 			_ = c.Close()
+			closed++
 		}
 		return true
 	})
+
+	return closed
 }
 
 func closeConnByGroup(name string) {

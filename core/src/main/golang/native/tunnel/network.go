@@ -12,7 +12,6 @@ import (
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel"
-	"github.com/metacubex/mihomo/tunnel/statistic"
 )
 
 func OnNetworkChanged(closeConnections bool, holdProbes bool) {
@@ -44,17 +43,24 @@ func OnNetworkChanged(closeConnections bool, holdProbes bool) {
 
 	resetProxyTransports()
 
-	closed := 0
-
-	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
-		_ = c.Close()
-
-		closed++
-
-		return true
-	})
+	closed := CloseAllConnections()
 
 	log.Infoln("Network changed: interface cache, DNS cache and DNS connections reset, %d connection(s) closed", closed)
+}
+
+// eachProxy — все исходящие ядра: из его списка и из провайдеров (узлов
+// провайдеров в списке нет). Один и тот же может встретиться дважды — повторы
+// отсеивает вызывающий, по своему ключу
+func eachProxy(visit func(C.Proxy)) {
+	for _, p := range tunnel.Proxies() {
+		visit(p)
+	}
+
+	for _, pd := range tunnel.Providers() {
+		for _, p := range pd.Proxies() {
+			visit(p)
+		}
+	}
 }
 
 // resetWait — сколько сброс ждёт узлы перед тем, как рвать соединения:
@@ -91,15 +97,7 @@ func resetProxyTransports() {
 		}
 	}
 
-	for _, p := range tunnel.Proxies() {
-		resetOne(p)
-	}
-
-	for _, pd := range tunnel.Providers() {
-		for _, p := range pd.Proxies() {
-			resetOne(p)
-		}
-	}
+	eachProxy(resetOne)
 
 	done := make(chan struct{})
 

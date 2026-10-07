@@ -64,15 +64,7 @@ func runningNodes() *nodeSource {
 		proxies = append(proxies, p)
 	}
 
-	for _, p := range tunnel.Proxies() {
-		add(p)
-	}
-
-	for _, pd := range tunnel.Providers() {
-		for _, p := range pd.Proxies() {
-			add(p)
-		}
-	}
+	eachProxy(add)
 
 	return &nodeSource{proxies: proxies, pingURL: tunnel.DownloadPingURL, release: func() {}}
 }

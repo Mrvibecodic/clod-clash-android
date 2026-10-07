@@ -3,6 +3,7 @@ package tunnel
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -115,7 +116,8 @@ func healthCheckBudget(count int) time.Duration {
 }
 
 func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, statusKey string, expected utils.IntRanges[uint16]) (uint16, probeoutcome.Outcome, error) {
-	key := pool.tag + "|" + px.Name() + "|" + url + "|" + statusKey
+	// Узел — объект, как в ядре: тёзка от другого провайдера — другой сервер
+	key := fmt.Sprintf("%s|%p|%s|%s", pool.tag, px, url, statusKey)
 
 	for {
 		probeMu.Lock()
@@ -171,47 +173,42 @@ func probeProxy(ctx context.Context, pool *probePool, px C.Proxy, url string, st
 			return 0, own.outcome, own.err
 		}
 
-		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал;
-		// проверка и до очереди, чтобы такая проба её не бронировала
-		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < probeSpan+probePaceMargin {
-			own.err = context.DeadlineExceeded
-			own.outcome = probeoutcome.Expired
-
-			return 0, own.outcome, own.err
-		}
-
-		// Очередь проб к одному хосту ждём до отсчёта тайм-аута пробы: внутри
-		// URLTest ожидание съело бы до двух секунд из её пяти
-		if err := paceProbe(ctx, px); err != nil {
-			own.err = err
-			own.outcome = probeoutcome.Classify(own.err, ctx.Err())
-
-			return 0, own.outcome, own.err
-		}
-
-		// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал
-		if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < probeSpan {
-			own.err = context.DeadlineExceeded
-			own.outcome = probeoutcome.Expired
-
-			return 0, own.outcome, own.err
-		}
-
-		// Проба та же, что у плановой проверки ядра: провал подтверждается
-		// второй пробой, а идущая проба ядра того же узла отдаёт свой результат
-		own.delay, own.err = provider.ProbeNode(C.MarkProbePaced(ctx), px, url, expected, healthCheckProbeTimeout)
-
-		// Проба на смене сети или после заморозки процесса об узле ничего не говорит
-		if errors.Is(own.err, provider.ErrProbeDiscarded) {
-			own.outcome = probeoutcome.Superseded
-
-			return 0, own.outcome, own.err
-		}
-
-		own.outcome = probeoutcome.Classify(own.err, ctx.Err())
+		own.delay, own.outcome, own.err = probeNode(ctx, px, url, expected)
 
 		return own.delay, own.outcome, own.err
 	}
+}
+
+// probeNode — проба узла, когда слот пробы уже взят: очередь к хосту, проба
+// ядра, исход. Expired и Superseded об узле ничего не говорят
+func probeNode(ctx context.Context, px C.Proxy, url string, expected utils.IntRanges[uint16]) (uint16, probeoutcome.Outcome, error) {
+	// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал;
+	// проверка и до очереди, чтобы такая проба её не бронировала
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < probeSpan+probePaceMargin {
+		return 0, probeoutcome.Expired, context.DeadlineExceeded
+	}
+
+	// Очередь проб к одному хосту ждём до отсчёта тайм-аута пробы: внутри
+	// URLTest ожидание съело бы до двух секунд из её пяти
+	if err := paceProbe(ctx, px); err != nil {
+		return 0, probeoutcome.Classify(err, ctx.Err()), err
+	}
+
+	// Пробу, которую обрежет бюджет круга, ядро записало бы узлу как провал
+	if deadline, ok := ctx.Deadline(); ok && time.Until(deadline) < probeSpan {
+		return 0, probeoutcome.Expired, context.DeadlineExceeded
+	}
+
+	// Проба та же, что у плановой проверки ядра: провал подтверждается
+	// второй пробой, а идущая проба ядра того же узла отдаёт свой результат
+	delay, err := provider.ProbeNode(C.MarkProbePaced(ctx), px, url, expected, healthCheckProbeTimeout)
+
+	// Проба на смене сети или после заморозки процесса об узле ничего не говорит
+	if errors.Is(err, provider.ErrProbeDiscarded) {
+		return 0, probeoutcome.Superseded, err
+	}
+
+	return delay, probeoutcome.Classify(err, ctx.Err()), err
 }
 
 // probePaceMargin — запас сверх тайм-аута пробы: ожидание, упёршееся в свой
@@ -244,43 +241,30 @@ func paceProbe(ctx context.Context, px C.Proxy) error {
 		defer cancel()
 	}
 
-	return C.ProbePace(ctx, C.ProbeHost(px.Addr()))
+	return C.ProbePace(ctx, C.ProbeHostOf(px))
 }
 
-// resolveSelected walks nested groups down to the leaf the group points at:
-// probing a group instead of a node touches the group and disables the lazy
-// health check of the real node. The lookup goes through the members of the
-// group itself, because nodes from proxy providers are not in tunnel.Proxies().
-func resolveSelected(g outboundgroup.ProxyGroup) (string, C.Proxy) {
+// currentNode — узел, через который группа ведёт трафик сейчас: вложенные
+// группы проходятся до узла, на каждом уровне без нового выбора. Проба группы
+// вместо узла трогает группу и выключает ленивую проверку самого узла; узел
+// берётся из членов группы — узлов провайдеров в tunnel.Proxies() нет. nil —
+// группа ещё ни на что не указывает (url-test до первого соединения)
+func currentNode(g outboundgroup.ProxyGroup) C.Proxy {
 	for depth := 0; depth < 16; depth++ {
-		now := g.Now()
-		if now == "" {
-			return "", nil
+		p := currentOf(g)
+		if p == nil {
+			return nil
 		}
 
-		var selected C.Proxy
-
-		for _, px := range g.Proxies() {
-			if px.Name() == now {
-				selected = px
-
-				break
-			}
-		}
-
-		if selected == nil {
-			return "", nil
-		}
-
-		inner, isGroup := selected.Adapter().(outboundgroup.ProxyGroup)
+		inner, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 		if !isGroup {
-			return now, selected
+			return p
 		}
 
 		g = inner
 	}
 
-	return "", nil
+	return nil
 }
 
 func groupCheckOptions(g outboundgroup.ProxyGroup) (string, string, utils.IntRanges[uint16]) {
@@ -391,7 +375,7 @@ type checkTarget struct {
 }
 
 func (t checkTarget) key() string {
-	return t.proxy.Name() + "|" + t.url + "|" + t.status
+	return fmt.Sprintf("%p|%s|%s", t.proxy, t.url, t.status)
 }
 
 var errNothingChecked = errors.New("health check interrupted: no node was checked")
@@ -411,19 +395,59 @@ func routesTraffic(g outboundgroup.ProxyGroup) bool {
 	return g.Name() != "GLOBAL" || tunnel.Mode() == tunnel.Global
 }
 
-// currentMember — имя того, на что группа указывает сейчас. У url-test и
-// fallback без нового выбора: выбор url-test кэшируется на 10 с и, сделанный
-// перед проверкой, пережил бы её результаты
-func currentMember(g outboundgroup.ProxyGroup) string {
-	if c, ok := g.(outboundgroup.Pinnable); ok {
-		if current := c.CurrentNode(); current != nil {
-			return current.Name()
+// currentOf — то, на что группа указывает сейчас (узел или вложенная группа).
+// У url-test и fallback без нового выбора: выбор url-test кэшируется на 10 с
+// и, сделанный перед проверкой, пережил бы её результаты, а fallback снял бы
+// закрепление с узла, мёртвого в эту секунду. Узел ищется среди членов, как
+// в ядре: тот же объект, иначе тот же по имени от того же провайдера —
+// url-test держит прежний объект после обновления провайдера до первого
+// соединения, а проба и история нужны у нынешнего. Тёзка от другого
+// провайдера — другой сервер
+func currentOf(g outboundgroup.ProxyGroup) C.Proxy {
+	members := g.Proxies()
+
+	c, ok := g.(outboundgroup.Pinnable)
+	if !ok {
+		now := g.Now()
+
+		for _, px := range members {
+			if px.Name() == now {
+				return px
+			}
 		}
 
-		return ""
+		return nil
 	}
 
-	return g.Now()
+	current := c.CurrentNode()
+	if current == nil {
+		return nil
+	}
+
+	for _, px := range members {
+		if px == current {
+			return px
+		}
+	}
+
+	provider := current.ProxyInfo().ProviderName
+
+	for _, px := range members {
+		if px.Name() == current.Name() && px.ProxyInfo().ProviderName == provider {
+			return px
+		}
+	}
+
+	return nil
+}
+
+// currentMember — имя того, на что группа указывает сейчас
+func currentMember(g outboundgroup.ProxyGroup) string {
+	if p := currentOf(g); p != nil {
+		return p.Name()
+	}
+
+	return ""
 }
 
 func groupTargets(name string) []checkTarget {
@@ -633,7 +657,7 @@ func ProbeCurrentNodes() {
 			continue
 		}
 
-		now, target := resolveSelected(g)
+		target := currentNode(g)
 		if target == nil || builtin(target) {
 			continue
 		}
@@ -647,7 +671,7 @@ func ProbeCurrentNodes() {
 		// own: otherwise the dedup by shared leaf would swallow it.
 		reselect := reselectsItself(g)
 
-		key := now + "|" + url
+		key := target.Name() + "|" + target.ProxyInfo().ProviderName + "|" + url
 		if reselect {
 			key = g.Name() + "|" + key
 		}
