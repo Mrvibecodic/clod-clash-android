@@ -649,6 +649,70 @@ func TestApplyHeadersFreezeCheck(t *testing.T) {
 	}
 }
 
+func TestApplyHeadersHideBadges(t *testing.T) {
+	for _, raw := range []string{"true", "TRUE", " True "} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-Hide-Badges": []string{raw}}, "https://panel.example/sub")
+
+		if !info.HideBadges {
+			t.Fatalf("%q должно скрывать подпись протокола", raw)
+		}
+	}
+
+	for _, raw := range []string{"", "false", "FALSE", "0", "1", "yes", "on", "мусор"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-Hide-Badges": []string{raw}}, "https://panel.example/sub")
+
+		if info.HideBadges {
+			t.Fatalf("%q не должно скрывать подпись протокола", raw)
+		}
+	}
+
+	// Заголовок пропал при обновлении — флаг снят
+	info := Info{HideBadges: true}
+	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Панель"}}, "https://panel.example/sub")
+
+	if info.HideBadges {
+		t.Fatal("без заголовка подпись протокола должна вернуться")
+	}
+}
+
+// Флаг читает Kotlin (PanelInfo) по ключу "hideBadges" — переименование
+// json-тега молча потеряло бы его на стороне клиента
+func TestHideBadgesSurvivesPanelFile(t *testing.T) {
+	bytes, err := json.Marshal(Info{HideBadges: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(bytes), `"hideBadges":true`) {
+		t.Fatalf("флаг должен писаться ключом hideBadges: %s", bytes)
+	}
+
+	dir := t.TempDir()
+
+	Write(dir, Info{HideBadges: true})
+
+	if !Read(dir).HideBadges {
+		t.Fatal("флаг не пережил запись panel.json")
+	}
+
+	written, err := os.ReadFile(panelPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(written), `"hideBadges":true`) {
+		t.Fatalf("в panel.json флаг должен лежать ключом hideBadges: %s", written)
+	}
+
+	Write(dir, Info{})
+
+	if Read(dir).HideBadges {
+		t.Fatal("снятый флаг не должен читаться из panel.json")
+	}
+}
+
 func TestApplyHeadersDisablePing(t *testing.T) {
 	for _, raw := range []string{"true", "TRUE", " True "} {
 		info := Info{}

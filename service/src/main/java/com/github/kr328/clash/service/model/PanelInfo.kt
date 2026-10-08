@@ -48,6 +48,10 @@ data class PanelInfo(
     // clod:freeze — панель включила проверку 16–20 заголовком clod-16-20-check: true
     val freezeCheck: Boolean = false,
 
+    // Панель скрыла у серверов подпись протокола, транспорта и защиты
+    // заголовком clod-hide-badges: true
+    val hideBadges: Boolean = false,
+
     val pingFast: Int = 0,
     val pingMedium: Int = 0,
 

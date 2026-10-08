@@ -64,6 +64,8 @@ fun ServersTab(
 
     val descriptions = active?.panel?.descriptions.orEmpty()
     val protocols = active?.panel?.protocols.orEmpty()
+    // Подпись протокола прячет подписка, чьи серверы показаны (clod-hide-badges)
+    val hideBadges = active?.panel?.hideBadges == true
     val mobileOnly = active?.panel?.mobileOnly.orEmpty().toSet()
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -208,7 +210,7 @@ fun ServersTab(
                 items(items = proxies) { proxy ->
                     ProxyRow(
                         title = proxy.title,
-                        subtitle = proxySubtitle(proxy, descriptions[proxy.name], protocols[proxy.name]),
+                        subtitle = proxySubtitle(proxy, descriptions[proxy.name], protocols[proxy.name], hideBadges),
                         delay = proxy.delay,
                         marksOnly = active?.panel?.disablePing == true,
                         pingBounds = active?.panel.pingBounds(),

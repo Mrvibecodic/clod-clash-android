@@ -5,8 +5,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ProxySubtitleTest {
-    private fun proxy(subtitle: String, type: String = "Vless") =
-        Proxy(name = "node", title = "node", subtitle = subtitle, type = type, delay = 0, isGroup = false)
+    private fun proxy(
+        subtitle: String,
+        type: String = "Vless",
+        name: String = "node",
+        title: String = name,
+        isGroup: Boolean = false,
+    ) = Proxy(name = name, title = title, subtitle = subtitle, type = type, delay = 0, isGroup = isGroup)
 
     @Test
     fun `подпись ядра — как есть`() {
@@ -34,5 +39,36 @@ class ProxySubtitleTest {
     @Test
     fun `подпись по шаблону подписки не заменяется`() {
         assertEquals("NL", proxySubtitle(proxy("NL"), null, "VLESS RAW (TCP)"))
+    }
+
+    @Test
+    fun `скрытие подписи убирает протокол и транспорт у сервера`() {
+        assertEquals("", proxySubtitle(proxy("VLESS RAW (TCP) · Reality"), null, null, hideBadges = true))
+        assertEquals("", proxySubtitle(proxy("Vless"), null, "VLESS RAW (TCP)", hideBadges = true))
+        // Без туннеля — протокол из подписки тоже не подставляется
+        assertEquals("", proxySubtitle(proxy("", type = ""), null, "TUIC (UDP)", hideBadges = true))
+    }
+
+    @Test
+    fun `скрытие подписи не трогает описание сервера`() {
+        assertEquals("Быстрый", proxySubtitle(proxy("VLESS RAW (TCP)"), "Быстрый", null, hideBadges = true))
+        assertEquals("Быстрый", proxySubtitle(proxy("", type = ""), "Быстрый", "TUIC (UDP)", hideBadges = true))
+    }
+
+    @Test
+    fun `скрытие подписи не трогает подпись по шаблону подписки`() {
+        // ui-subtitle-pattern вырезал «NL» из имени — заголовок короче имени
+        assertEquals("NL", proxySubtitle(proxy("NL", name = "Амстердам NL", title = "Амстердам"), null, null, hideBadges = true))
+    }
+
+    @Test
+    fun `пробелы по краям имени не принимаются за шаблон подписки`() {
+        // Ядро обрезает пробелы у имени — заголовок короче имени и без шаблона
+        assertEquals("", proxySubtitle(proxy("VLESS RAW (TCP)", name = " node ", title = "node"), null, null, hideBadges = true))
+    }
+
+    @Test
+    fun `скрытие подписи не трогает тип группы`() {
+        assertEquals("Selector", proxySubtitle(proxy("Selector", type = "Selector", isGroup = true), null, null, hideBadges = true))
     }
 }

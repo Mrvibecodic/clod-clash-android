@@ -36,6 +36,12 @@ class PanelInfoTest {
     }
 
     @Test
+    fun `скрытие подписи протокола читается тем именем, что пишет ядро, а у старого файла его нет`() {
+        assertTrue(decode("""{"hideBadges":true}""").hideBadges)
+        assertFalse(decode("{}").hideBadges)
+    }
+
+    @Test
     fun `подписи протоколов читаются тем именем, что пишет ядро, а у старого файла их нет`() {
         assertEquals(
             mapOf("node" to "VLESS RAW (TCP) · Reality"),

@@ -78,6 +78,10 @@ type Info struct {
 	// FreezeCheck — панель включила проверку 16–20 (clod-16-20-check: true).
 	FreezeCheck bool `json:"freezeCheck,omitempty"`
 
+	// HideBadges — панель скрыла у серверов подпись протокола, транспорта и
+	// защиты (clod-hide-badges: true).
+	HideBadges bool `json:"hideBadges,omitempty"`
+
 	PingFast   int `json:"pingFast,omitempty"`
 	PingMedium int `json:"pingMedium,omitempty"`
 
@@ -186,6 +190,8 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.DisablePing = strings.EqualFold(headerValue(header, "clod-disable-ping"), "true")
 
 	info.FreezeCheck = strings.EqualFold(headerValue(header, "clod-16-20-check"), "true")
+
+	info.HideBadges = strings.EqualFold(headerValue(header, "clod-hide-badges"), "true")
 
 	info.PingFast, info.PingMedium = pingBounds(headerValue(header, "clod-ping"))
 
