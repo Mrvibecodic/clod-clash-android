@@ -23,12 +23,13 @@ subscription.
 | `clod-disable-ping` | `true` only | a check mark or cross instead of milliseconds |
 | `clod-show-0hosts` | `true` or `false` | show the panel's placeholder nodes as they are |
 | `clod-mobile-only` | server names separated by `\|` | servers for the mobile network only: off the SIM network they are not shown |
+| `clod-hide-badges` | `true` only | hide the protocol, transport and security caption under servers — "VLESS RAW (TCP) · Reality" |
 | `clod-16-20-check` | `true` only | the 16–20 check: whether traffic through a server is cut off on the user's network; "cut off" and "not responding" marks |
 | `clod-new-sub` | a domain, for example `backup.example.com` | spare subscription address (domain) — in case the main one does not answer |
 | `clod-move-sub` | `true` only, together with `clod-new-sub` | move everyone to the spare address |
 
 Instead of `true` / `false` you can use `1` / `0`, `yes` / `no`, `on` / `off` — except for
-`clod-disable-ping`, `clod-16-20-check` and `clod-move-sub`, which accept only `true`. A value that is not understood counts as no
+`clod-disable-ping`, `clod-hide-badges`, `clod-16-20-check` and `clod-move-sub`, which accept only `true`. A value that is not understood counts as no
 header. Send non-ASCII text as `base64:<text in base64>`.
 
 `clod-*` headers that work on desktop only are not listed here — Android does not understand them.
@@ -107,6 +108,39 @@ servers a provider adds on a later update.
 
 Send names with Cyrillic letters or flags as base64 of the whole value: `🇷🇺 Москва LTE|МТС Питер`
 is `base64:8J+Ht/Cfh7og0JzQvtGB0LrQstCwIExURXzQnNCi0KEg0J/QuNGC0LXRgA==`.
+
+## Protocol caption under servers: `clod-hide-badges`
+
+Under a server's name on the Servers tab the app shows its protocol, transport and security — the
+same way the panel does: `VLESS RAW (TCP) · Reality`, `Trojan WebSocket · TLS`, `Hysteria2 (UDP)`. With
+`clod-hide-badges: true` this caption is gone, with the tunnel on and off alike.
+
+```
+clod-hide-badges: true
+```
+
+Everything else stays: the server's name and flag, latency, the "mobile network", "cut off" and
+"not responding" marks, "Pinned", and the type of groups in the list (with the tunnel on; without
+it groups have no caption anyway). The built-in "Direct" and "Reject" inside groups lose their
+caption too. Captions the provider sets itself stay: the server description (the node's
+`serverDescription` field in the template) and the part of the name cut out by
+`ui-subtitle-pattern` with the tunnel on. The pattern is a regular expression in the subscription
+YAML:
+
+```yaml
+clash-for-android:
+  ui-subtitle-pattern: "[A-Z]{2}$"
+```
+
+Connections and server selection do not change with the header — only what is shown does.
+
+- When it helps: protocol and security mean nothing to your users or reveal too much, and server
+  names are enough. To still have a line under the name, set `serverDescription` — for example,
+  `For video` or `Backup`.
+- The header is read again on every subscription update: `true` arrives — no caption; the header
+  is gone (or has another value) — the caption is back after the update.
+- It works only within its own subscription: other subscriptions keep the caption.
+- On desktop the header is the same — `clod-hide-badges`.
 
 ## Placeholder nodes: `clod-show-0hosts`
 
