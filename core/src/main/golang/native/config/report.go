@@ -15,15 +15,15 @@ import (
 
 const reportRound = 20 * time.Second
 
-// SendReport — после удачного планового обновления подписки: если подошло
-// время, отчёт уходит POST'ом по защищённому каналу, адресом подписки, а не
-// ответил он — запасным адресом провайдера. Ключ прослойки и поправка часов
-// берутся из папки подписки и не меняются; без закреплённого ключа отчёт
-// ждёт следующего обновления.
+// SendReport — после удачного планового обновления подписки и между редкими
+// обновлениями: если подошло время, отчёт уходит POST'ом по защищённому
+// каналу, адресом подписки, а не ответил он — запасным адресом провайдера.
+// Ключ прослойки и поправка часов берутся из папки подписки и не меняются;
+// без закреплённого ключа отчёт ждёт следующей отправки.
 func SendReport(store, url, profileDir string) {
 	pin := readChanPin(profileDir)
 	if pin == nil {
-		log.Infoln("[Report] no relay key pinned yet, next try with the next scheduled update")
+		log.Infoln("[Report] no relay key pinned yet, next try with the next send")
 
 		return
 	}
@@ -45,7 +45,7 @@ func SendReport(store, url, profileDir string) {
 	}
 
 	if err != nil {
-		log.Infoln("[Report] the middleware did not answer over the secure channel, next try with the next scheduled update: %s", err.Error())
+		log.Infoln("[Report] the middleware did not answer over the secure channel, next try with the next send: %s", err.Error())
 
 		return
 	}

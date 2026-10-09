@@ -40,11 +40,12 @@ with a warning that this is not safe — and on again: turning it on is checked 
 and if the channel does not answer, it stays off.
 
 A subscription with the secure channel sends the provider a **server quality report** after a
-scheduled refresh (at most once every 6 hours): latency and "16–20" check results per server,
-traffic through them, the kind of network (Wi-Fi, mobile, wired) and the external address the
-measurements were made from (the app learns it from Yandex, outside the tunnel). The network
-name, location, sites and apps are not included. The report goes only over the secure channel
-and only if the provider has turned on receiving it.
+scheduled refresh, and between refreshes if they are less frequent than every 6 hours (at most
+once every 6 hours): latency and "16–20" check results per server, traffic through them, the
+kind of network (Wi-Fi, mobile, wired) and the external address the measurements were made from
+(the app learns it from Yandex, outside the tunnel). The network name, location, sites and apps
+are not included. The report goes only over the secure channel and only if the provider has
+turned on receiving it.
 
 ## Updating
 

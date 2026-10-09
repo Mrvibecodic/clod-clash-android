@@ -57,12 +57,14 @@ When a subscription is added, the app first tries the secure channel of
 if the provider has no channel, the subscription is loaded with a plain HTTPS request. The user
 can turn the channel off in the subscription properties and on again.
 
-A subscription with the channel sends a node quality report after a scheduled refresh: latency
-and "16–20" results per node, traffic, the kind of network and the external address the
+A subscription with the channel sends a node quality report after a scheduled refresh (and
+between refreshes if they are less frequent than every 6 hours, at most once every 6 hours):
+latency and "16–20" results per node, traffic, the kind of network and the external address the
 measurements were made from. The middleware receives and shows the reports (Clod Clash →
-"Статистика" tab) when receiving is turned on there. Android learns the measurement address from Yandex
-outside the tunnel by itself; on the PC this needs `DIRECT` rules in the template — see the
-[panel setup guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
+"Статистика" tab) when receiving is turned on there. Android learns the measurement address
+from Yandex outside the tunnel by itself; on the PC this needs `DIRECT` rules in the template —
+see the [panel setup
+guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
 
 An external address and a device identifier linked to a subscription can be personal data under
 the GDPR and Russian law 152-FZ, and their controller is the provider, not the authors of the

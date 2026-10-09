@@ -60,14 +60,39 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             return if (kind == Kind.Expiry) Result.retry() else Result.success()
         }
 
-        try {
+        val result = try {
             createChannels()
 
-            return run(uuid, kind)
+            run(uuid, kind)
         } finally {
             updating.remove(uuid)
         }
+
+        // Отчёт — когда подписка уже не числится обновляемой: его отправка
+        // экран не держит
+        if (result is Result.Success && kind != Kind.Manual) {
+            try {
+                ClientReports.afterScheduledUpdate(context, uuid)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Client report of $uuid: $e", e)
+            }
+        } else if (result !is Result.Success) {
+            ClientReports.updateFailed(context, uuid)
+        }
+
+        // Задачи — после отчёта: сменённый интервал перезаводит периодическую,
+        // то есть отменяет эту же
+        if (result is Result.Success) {
+            reschedule(uuid, kind)
+        }
+
+        return result
     }
+
+    // Интервал подписки, с которым загрузка начиналась
+    private var startedInterval = 0L
 
     private suspend fun run(uuid: UUID, kind: Kind): Result {
         val imported = ImportedDao().queryByUUID(uuid)
@@ -77,6 +102,8 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
             return Result.failure()
         }
+
+        startedInterval = imported.interval
 
         val name = context.displayProfileName(imported.uuid, imported.name, imported.nameManual)
 
@@ -118,31 +145,21 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             Log.w("Subscription alerts of $uuid: $e", e)
         }
 
-        if (result is Result.Success && kind != Kind.Manual) {
-            try {
-                ClientReports.afterScheduledUpdate(uuid)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w("Client report of $uuid: $e", e)
-            }
-        }
-
-        if (result is Result.Success) {
-            // Подписку могли удалить за время загрузки — ставить задачи ей некому.
-            val stored = ImportedDao().queryByUUID(uuid) ?: return result
-            val caller = if (kind == Kind.Expiry) ProfileUpdates.Caller.ExpiryRun else ProfileUpdates.Caller.Change
-
-            if (kind != Kind.Periodic || stored.interval != imported.interval) {
-                ProfileUpdates.schedule(context, stored, caller)
-            } else {
-                // Срок мог сдвинуться или только что отработать — цель
-                // загрузки после истечения переоценивается после каждой удачи.
-                ProfileUpdates.scheduleExpiry(context, stored, caller)
-            }
-        }
-
         return result
+    }
+
+    private suspend fun reschedule(uuid: UUID, kind: Kind) {
+        // Подписку могли удалить за время загрузки — ставить задачи ей некому.
+        val stored = ImportedDao().queryByUUID(uuid) ?: return
+        val caller = if (kind == Kind.Expiry) ProfileUpdates.Caller.ExpiryRun else ProfileUpdates.Caller.Change
+
+        if (kind != Kind.Periodic || stored.interval != startedInterval) {
+            ProfileUpdates.schedule(context, stored, caller)
+        } else {
+            // Срок мог сдвинуться или только что отработать — цель
+            // загрузки после истечения переоценивается после каждой удачи.
+            ProfileUpdates.scheduleExpiry(context, stored, caller)
+        }
     }
 
     private fun createChannels() {
