@@ -1,8 +1,10 @@
 package com.github.kr328.clash.service.report
 
 import android.content.Context
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -151,15 +153,18 @@ object ClientReports {
         val imported = ImportedDao().queryByUUID(uuid) ?: return
 
         // Копить нечего (подписка ещё не работала в туннеле) — будить процесс
-        // ради отправки незачем
+        // ради отправки незачем. Без сети процесс не будится: отправка
+        // дожидается сети, а не следующего срока. UPDATE не сбивает отсчёт уже
+        // заведённой задачи, только меняет её условия
         if (between(imported) && storeFile(context, uuid).isFile) {
             val request = PeriodicWorkRequestBuilder<ClientReportWorker>(BETWEEN, TimeUnit.MILLISECONDS)
                 .setInitialDelay(BETWEEN + BETWEEN_SLACK, TimeUnit.MILLISECONDS)
+                .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
                 .setInputData(workDataOf(KEY_UUID to uuid.toString()))
                 .build()
 
             WorkManager.getInstance(context)
-                .enqueueUniquePeriodicWork(betweenName(uuid), ExistingPeriodicWorkPolicy.KEEP, request)
+                .enqueueUniquePeriodicWork(betweenName(uuid), ExistingPeriodicWorkPolicy.UPDATE, request)
         } else {
             stopBetween(context, uuid)
         }
