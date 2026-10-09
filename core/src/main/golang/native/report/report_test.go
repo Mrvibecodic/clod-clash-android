@@ -419,3 +419,90 @@ func TestCollectionStopsAtOnceAndRestartsWithItsTrafficReading(t *testing.T) {
 		t.Fatalf("после нового запуска: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
 	}
 }
+
+// Смена сети вскоре после чтения замеров отдаёт старому месту только трафик;
+// сбор после неё жив, а не стоит на своём замке.
+func TestANetworkChangeRightAfterAReadKeepsTheCollectorAlive(t *testing.T) {
+	dir := t.TempDir()
+	address := Address
+	Address = func() (string, string) { return "192.0.2.1", "" }
+	SetNodes(map[string]NodeInfo{"Узел": node()}, nil)
+
+	alive := func() bool {
+		done := make(chan struct{})
+		go func() {
+			LoadedNodes()
+			close(done)
+		}()
+
+		select {
+		case <-done:
+			return true
+		case <-time.After(2 * time.Second):
+			return false
+		}
+	}
+	t.Cleanup(func() {
+		if !alive() {
+			return
+		}
+
+		SetTarget("")
+		NetworkChanged("", "", time.Now().UnixMilli())
+		SetNodes(nil, nil)
+		Address = address
+	})
+
+	SetTarget(filepath.Join(dir, "s"))
+
+	// Первая сеть: сразу чтение замеров и место (сеть с адресом).
+	NetworkChanged("net-a", "wifi", time.Now().UnixMilli())
+	known := func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+
+		return where != nil && where.place.Net == "net-a"
+	}
+	for deadline := time.Now().Add(2 * time.Second); !known(); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("место первой сети не узнано")
+		}
+	}
+
+	// Вторая сеть — через доли секунды после того чтения. Сброс перед ней
+	// сдвигает окно до момента смены; встал на замке — окно не узнать вовсе.
+	changed := time.Now().UnixMilli()
+	NetworkChanged("net-b", "mobile", changed)
+	flushed := func() (bool, bool) {
+		answer := make(chan bool, 1)
+		go func() {
+			mu.Lock()
+			defer mu.Unlock()
+
+			answer <- pingsUntil >= changed
+		}()
+
+		select {
+		case done := <-answer:
+			return done, true
+		case <-time.After(2 * time.Second):
+			return false, false
+		}
+	}
+	for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+		done, ok := flushed()
+		if !ok {
+			t.Fatal("сбор встал на своём замке после смены сети вскоре после чтения")
+		}
+		if done {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("сброс перед сменой сети не прошёл")
+		}
+	}
+
+	if !alive() {
+		t.Fatal("сбор встал на своём замке после смены сети вскоре после чтения")
+	}
+}

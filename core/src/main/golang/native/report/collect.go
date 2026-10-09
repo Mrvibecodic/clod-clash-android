@@ -445,15 +445,18 @@ func readWindow(until int64) (window, bool) {
 	return window{nodes: known, pings: pings, traffic: bytes}, true
 }
 
-// takeTraffic — только накопленный трафик, без чтения ядра.
+// takeTraffic — только накопленный трафик, без чтения ядра. Узлы берутся до
+// замка: LoadedNodes берёт его сам.
 func takeTraffic() window {
+	known := LoadedNodes()
+
 	mu.Lock()
 	defer mu.Unlock()
 
 	bytes := gathered
 	gathered = traffic{}
 
-	return window{nodes: LoadedNodes(), traffic: bytes}
+	return window{nodes: known, traffic: bytes}
 }
 
 func record(path string, place Place, w window) {
