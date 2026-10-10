@@ -2,7 +2,7 @@
 
 Languages: **English** · [Русский](./PRIVACY_POLICY.ru.md)
 
-Effective: 7 October 2026. Applies to Clod Clash for Android.
+Effective: 10 October 2026. Applies to Clod Clash for Android.
 
 Clod Clash is an open source VPN client. It is provided free of charge and as is.
 
@@ -49,15 +49,17 @@ crash-reporting code. Everything described below covers the requests this app ma
     from the next successful one), at most once every 6 hours, the app sends the provider's
     subscription server what it has already measured: latency results and the "16–20" check
     results per server of that subscription, traffic volume per server, the server list entries
-    involved (name, type, address and port from your subscription), the kind of network (Wi-Fi,
+    involved (name, type, address and port from your subscription, and the
+    transport, TLS server name, Host and path that tell servers on one address apart), the kind of network (Wi-Fi,
     mobile, wired) and the external IP address the measurements were made from, hour by hour. A
     network is identified by a hash of its properties (gateway, subnet, DNS, operator code);
     the Wi-Fi name, location, visited addresses and the list of apps are not included. The
     report carries a random per-install mark, the app version and the platform; like every
     secure-channel request, it also carries the device values described above, encrypted, while
     the "device identifier" setting is on. It is sent to the same address as the subscription,
-    encrypted, and only if the provider has turned on receiving reports; the app keeps unsent
-    measurements for at most 7 days. Turning off the secure channel for a subscription stops
+    encrypted, and only if the provider has turned on receiving reports; once the provider's server says
+    in its encrypted answer to a subscription update that it does not accept reports, the app
+    stops collecting and deletes the collected measurements. The app keeps unsent measurements for at most 7 days. Turning off the secure channel for a subscription stops
     its reports.
 *   **To Yandex, to learn the external IP address.** For the report above, the app asks
     `ipv4-internet.yandex.net` and `ipv6-internet.yandex.net` (operated by Yandex) for the

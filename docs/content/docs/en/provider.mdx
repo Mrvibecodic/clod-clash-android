@@ -61,7 +61,9 @@ A subscription with the channel sends a node quality report after a scheduled re
 between refreshes if they are less frequent than every 6 hours, at most once every 6 hours):
 latency and "16–20" results per node, traffic, the kind of network and the external address the
 measurements were made from. The middleware receives and shows the reports (Clod Clash →
-"Статистика" tab) when receiving is turned on there. Android learns the measurement address
+"Статистика" tab) when receiving is turned on there; the client learns whether it is from the
+subscription answer over the channel (current middleware versions report it) and collects nothing
+while it is off. Android learns the measurement address
 from Yandex outside the tunnel by itself; on the PC this needs `DIRECT` rules in the template —
 see the [panel setup
 guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
