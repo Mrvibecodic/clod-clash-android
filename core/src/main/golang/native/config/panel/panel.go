@@ -78,6 +78,11 @@ type Info struct {
 	// FreezeCheck — панель включила проверку 16–20 (clod-16-20-check: true).
 	FreezeCheck bool `json:"freezeCheck,omitempty"`
 
+	// Report — принимает ли прослойка отчёты о качестве узлов: её метка
+	// clod-report: true / false в ответе по защищённому каналу. nil — метки не
+	// было (прослойка старее или подписка обновлялась до неё).
+	Report *bool `json:"report,omitempty"`
+
 	// HideBadges — панель скрыла у серверов подпись протокола, транспорта и
 	// защиты (clod-hide-badges: true).
 	HideBadges bool `json:"hideBadges,omitempty"`
@@ -190,6 +195,20 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.DisablePing = strings.EqualFold(headerValue(header, "clod-disable-ping"), "true")
 
 	info.FreezeCheck = strings.EqualFold(headerValue(header, "clod-16-20-check"), "true")
+
+	// Метку ставит только прослойка и только внутри шифра: открытому ответу
+	// (у него нет ключа канала) она не верится.
+	info.Report = nil
+	if info.ChanKey != "" {
+		switch strings.ToLower(headerValue(header, "clod-report")) {
+		case "true":
+			yes := true
+			info.Report = &yes
+		case "false":
+			no := false
+			info.Report = &no
+		}
+	}
 
 	info.HideBadges = strings.EqualFold(headerValue(header, "clod-hide-badges"), "true")
 

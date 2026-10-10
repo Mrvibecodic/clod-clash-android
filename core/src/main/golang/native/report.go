@@ -41,6 +41,8 @@ func clientReport(request C.c_string) {
 	switch req.Op {
 	case "target":
 		report.SetTarget(req.Store)
+	case "forget":
+		report.Forget(req.Store)
 	case "network":
 		report.NetworkChanged(req.Net, req.Kind, req.At)
 	case "freeze":

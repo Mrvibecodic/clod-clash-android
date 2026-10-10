@@ -18,6 +18,7 @@ import com.github.kr328.clash.service.freeze.FreezeOutcome
 import com.github.kr328.clash.service.freeze.FreezeVerdict
 import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.readPanelInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,7 +38,9 @@ import java.util.concurrent.TimeUnit
 // (native/report), здесь — когда собирать, в какой сети идут замеры, итоги
 // проверки 16–20 и отправка после планового обновления подписки, а если она
 // обновляется реже — и между обновлениями. Копится только у подписки с
-// защищённым каналом: только им отчёт и может уйти.
+// защищённым каналом — только им отчёт и может уйти — и пока прослойка в ответе
+// подписки по каналу не сказала, что отчёты не принимает; сказала — накопленное
+// стирается.
 object ClientReports {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -49,6 +52,10 @@ object ClientReports {
 
     // Отправки (после обновления и между обновлениями) не идут разом
     private val sendLock = Mutex()
+
+    // Решение «копится ли» и запись в накопленное мимо сборщика (итоги 16–20,
+    // стирание) идут по одной: итог, решённый до стирания, иначе вернул бы файл
+    private val storeLock = Mutex()
 
     // Между плановыми обновлениями, если они реже: столько же, сколько ядро
     // выдерживает между отправками, и запас — чтобы первая не пришлась раньше
@@ -63,7 +70,13 @@ object ClientReports {
         context.filesDir.resolve("report").resolve("$uuid.json")
 
     private suspend fun collected(uuid: UUID): Boolean =
-        ImportedDao().queryByUUID(uuid)?.secure == true
+        ImportedDao().queryByUUID(uuid)?.let { collected(it.uuid, it.secure) } == true
+
+    // Копится ли отчёт: защищённый канал и прослойка не сказала, что отчёты не
+    // принимает. Метки не было (прослойка старее или подписка обновлялась до
+    // неё) — копится
+    private fun collected(uuid: UUID, secure: Boolean): Boolean =
+        secure && context.readPanelInfo(uuid)?.report != false
 
     private fun call(op: String, fill: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): Boolean {
         return try {
@@ -80,11 +93,24 @@ object ClientReports {
         }
     }
 
-    // Подписка загружена в ядро: собирать, если у неё защищённый канал
+    // Подписка загружена в ядро: собирать, если по ней копится отчёт
     fun profileLoaded(uuid: UUID, secure: Boolean) {
-        val store = if (secure) storeFile(context, uuid).absolutePath else ""
+        serial.execute {
+            val store = if (collected(uuid, secure)) storeFile(context, uuid).absolutePath else ""
 
-        serial.execute { call("target") { put("store", store) } }
+            call("target") { put("store", store) }
+        }
+    }
+
+    // Подписка загружена с панели (добавлена, обновлена, сохранена): отчёт по
+    // ней больше не копится (прослойка сказала, что не принимает, канал
+    // выключили) — накопленное стирается
+    fun fetched(context: Context, uuid: UUID) {
+        scope.launch {
+            storeLock.withLock {
+                if (!collected(uuid)) drop(context, uuid)
+            }
+        }
     }
 
     fun sessionStopped() {
@@ -117,26 +143,28 @@ object ClientReports {
     }
 
     // Проверка 16–20 записала итоги в сети key; path — папка подписки, когда
-    // узлы берутся из файла, а не из работающего ядра
-    fun noteFreeze(uuid: UUID, path: File?, key: String, kind: String, outcomes: Map<String, FreezeOutcome>, now: Long) {
+    // узлы берутся из файла, а не из работающего ядра. Час итога — когда он
+    // лёг в отчёт: его ставит ядро
+    fun noteFreeze(uuid: UUID, path: File?, key: String, kind: String, outcomes: Map<String, FreezeOutcome>) {
         val verdicts = outcomes.filterValues { FreezeVerdict.settled(it.verdict) }
 
         if (verdicts.isEmpty()) return
 
         scope.launch {
-            if (!collected(uuid)) return@launch
+            storeLock.withLock {
+                if (!collected(uuid)) return@withLock
 
-            call("freeze") {
-                put("store", storeFile(context, uuid).absolutePath)
-                put("path", path?.absolutePath.orEmpty())
-                put("net", key)
-                put("kind", kind)
-                putJsonObject("verdicts") {
-                    for ((name, outcome) in verdicts) {
-                        putJsonObject(name) {
-                            put("verdict", outcome.verdict)
-                            put("status", outcome.status)
-                            put("at", now)
+                call("freeze") {
+                    put("store", storeFile(context, uuid).absolutePath)
+                    put("path", path?.absolutePath.orEmpty())
+                    put("net", key)
+                    put("kind", kind)
+                    putJsonObject("verdicts") {
+                        for ((name, outcome) in verdicts) {
+                            putJsonObject(name) {
+                                put("verdict", outcome.verdict)
+                                put("status", outcome.status)
+                            }
                         }
                     }
                 }
@@ -194,10 +222,10 @@ object ClientReports {
 
     // Плановые обновления реже, чем отчёт может уходить
     private fun between(imported: Imported): Boolean =
-        imported.secure && imported.interval > BETWEEN
+        collected(imported.uuid, imported.secure) && imported.interval > BETWEEN
 
     private suspend fun send(context: Context, imported: Imported) {
-        if (!imported.secure) return
+        if (!collected(imported.uuid, imported.secure)) return
 
         val store = storeFile(context, imported.uuid)
 
@@ -214,10 +242,22 @@ object ClientReports {
         }
     }
 
+    // Подписка удалена
     fun forget(context: Context, uuid: UUID) {
+        scope.launch {
+            storeLock.withLock { drop(context, uuid) }
+        }
+    }
+
+    // Накопленное — вон: сбор по нему кончается, из памяти ядра и с диска оно
+    // уходит и в файл не возвращается. Только под storeLock; идущая отправка
+    // дожидается — иначе её запись после стирания вернула бы файл
+    private suspend fun drop(context: Context, uuid: UUID) {
         stopBetween(context, uuid)
 
-        storeFile(context, uuid).delete()
+        sendLock.withLock {
+            call("forget") { put("store", storeFile(context, uuid).absolutePath) }
+        }
     }
 
     private fun stopBetween(context: Context, uuid: UUID) {

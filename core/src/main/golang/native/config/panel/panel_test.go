@@ -649,6 +649,31 @@ func TestApplyHeadersFreezeCheck(t *testing.T) {
 	}
 }
 
+func TestApplyHeadersReportOnlyOverTheChannel(t *testing.T) {
+	yes, no := true, false
+	cases := []struct {
+		header http.Header
+		want   *bool
+	}{
+		{http.Header{"Clod-Report": []string{"true"}, "Clod-Chan-Key": []string{"k"}}, &yes},
+		{http.Header{"Clod-Report": []string{" FALSE "}, "Clod-Chan-Key": []string{"k"}}, &no},
+		{http.Header{"Clod-Report": []string{"мусор"}, "Clod-Chan-Key": []string{"k"}}, nil},
+		// Прослойка старее: метки нет — неизвестно.
+		{http.Header{"Clod-Chan-Key": []string{"k"}}, nil},
+		// Открытый ответ: метке не верится.
+		{http.Header{"Clod-Report": []string{"false"}}, nil},
+	}
+
+	for _, c := range cases {
+		info := Info{Report: &yes}
+		ApplyHeaders(&info, c.header, "https://panel.example/sub")
+
+		if (info.Report == nil) != (c.want == nil) || (c.want != nil && *info.Report != *c.want) {
+			t.Fatalf("%v: %v, а нужно %v", c.header, info.Report, c.want)
+		}
+	}
+}
+
 func TestApplyHeadersHideBadges(t *testing.T) {
 	for _, raw := range []string{"true", "TRUE", " True "} {
 		info := Info{}

@@ -142,6 +142,8 @@ object ProfileProcessor {
                 }
 
                 followMove(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
+
+                ClientReports.fetched(context, snapshot.uuid)
             }
         }
     }
@@ -206,6 +208,8 @@ object ProfileProcessor {
                 }
 
                 val moved = followMove(context, snapshot.uuid, snapshot.source, snapshot.secure)
+
+                ClientReports.fetched(context, snapshot.uuid)
 
                 (fetched.failedProviders + moved).distinct()
             }

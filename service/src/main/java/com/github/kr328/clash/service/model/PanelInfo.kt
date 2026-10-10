@@ -48,6 +48,10 @@ data class PanelInfo(
     // clod:freeze — панель включила проверку 16–20 заголовком clod-16-20-check: true
     val freezeCheck: Boolean = false,
 
+    // Принимает ли прослойка отчёты о качестве узлов: её метка clod-report:
+    // true / false внутри защищённого канала; null — метки не было
+    val report: Boolean? = null,
+
     // Панель скрыла у серверов подпись протокола, транспорта и защиты
     // заголовком clod-hide-badges: true
     val hideBadges: Boolean = false,

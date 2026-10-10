@@ -1,6 +1,7 @@
 package report
 
 import (
+	"os"
 	"sync"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 // Все замеры: ядро держит у узла только 10 последних, поэтому сборщик читает
 // их тем чаще, чем чаще узлы проверяются (от 20 секунд до 5 минут), окно
 // считается в миллисекундах и сдвигается, только когда замеры прочитаны.
+// Кончается окно на lagMs раньше чтения: часть замеров ядро кладёт в историю
+// позже, чем помечает.
 //
 // Замер лежит в той сети и при том адресе, где сделан. Сеть называет служба
 // (NetworkChanged) в момент смены: намеренное до смены уходит в старое место,
@@ -33,6 +36,12 @@ const (
 	historyCap = 10
 	// Замеры за столько до смены сети не привязать ни к старой сети, ни к новой.
 	changeGuardMs = 5_000
+	// Окно замеров кончается на столько раньше чтения. Clod Core кладёт неудачу
+	// пробы, которую спасла повторная, в историю, когда та ответила, а помечает
+	// началом первой: позже не больше чем на 1,25 с и тайм-аут проверки группы
+	// (5 с по умолчанию). Больше не надо: история узла — 10 записей, и лишнее
+	// отставание теряло бы замеры у часто проверяемых узлов.
+	lagMs = 20 * 1000
 	// Внешний адрес в одной сети переспрашивается не чаще этого.
 	ipEvery = 60 * 60
 	// Не узнался — переспрашивается не чаще этого.
@@ -45,7 +54,13 @@ type spot struct {
 	ipAt    int64
 }
 
+// ipIsDue — пора ли переспросить адрес; часы ушли назад — пора, а не ждать,
+// пока догонят.
 func (s *spot) ipIsDue(now int64) bool {
+	if s.ipAt > now {
+		return true
+	}
+
 	unknown := s.place.IP4 == "" && s.place.IP6 == ""
 	if unknown {
 		return now-s.ipAt >= ipRetry
@@ -223,12 +238,19 @@ func trafficTickOnce() {
 		return
 	}
 
+	gather(gathered, added, secs)
+}
+
+// gather — прирост одного чтения в копилку: байты и secs секунд с трафиком
+// каждому узлу, через который он шёл, — раз за чтение, сколько бы соединений
+// через узел ни было.
+func gather(into traffic, added map[string][2]uint64, secs uint64) {
 	for name, bytes := range added {
-		sum := gathered[name]
+		sum := into[name]
 		sum[0] += bytes[0]
 		sum[1] += bytes[1]
-		sum[2] = max(sum[2], secs)
-		gathered[name] = sum
+		sum[2] += secs
+		into[name] = sum
 	}
 }
 
@@ -281,7 +303,8 @@ func flushBeforeChange(at int64, before uint64) {
 		return
 	}
 
-	cut := at - changeGuardMs
+	// Раньше среза история уже полна: позже помеченное ядро могло ещё не положить.
+	cut := at - max(changeGuardMs, lagMs)
 
 	var (
 		w  window
@@ -347,23 +370,21 @@ func historyOf(p C.Proxy) delays {
 }
 
 // histories — история задержек узлов из known: из списка ядра (узлы самой
-// подписки) и из провайдеров — в списке ядра их нет.
+// подписки) и из провайдеров — в списке ядра их нет — у того же узла, чей адрес
+// в known: одноимённый узел другого провайдера не в счёт.
 func histories(known map[string]NodeInfo) map[string]delays {
 	out := map[string]delays{}
 
 	for name, p := range tunnel.Proxies() {
-		if _, ok := known[name]; ok {
+		if info, ok := known[name]; ok && info.Provider == "" {
 			out[name] = historyOf(p)
 		}
 	}
 
-	for _, provider := range tunnel.Providers() {
-		for _, p := range provider.Proxies() {
+	for provider, listed := range tunnel.Providers() {
+		for _, p := range listed.Proxies() {
 			name := p.Name()
-			if _, ok := known[name]; !ok {
-				continue
-			}
-			if _, taken := out[name]; !taken {
+			if info, ok := known[name]; ok && info.Provider == provider {
 				out[name] = historyOf(p)
 			}
 		}
@@ -388,7 +409,8 @@ func pingsOf(histories map[string]delays, since, until int64) []sample {
 }
 
 // nextRead — через сколько читать снова, чтобы застать каждый замер: у узла с
-// полной историей десять замеров уложились в span — читать вдвое чаще. Второе —
+// полной историей десять замеров уложились в span, а окно отстаёт на lagMs —
+// читать вдвое чаще, чем span без него. Второе —
 // сколько узлов, возможно, уже потеряли замеры с окна since.
 func nextRead(histories map[string]delays, since int64) (time.Duration, int) {
 	wait := tickMax
@@ -409,13 +431,14 @@ func nextRead(histories map[string]delays, since int64) (time.Duration, int) {
 			overflowed++
 		}
 
-		wait = min(wait, time.Duration(newest-oldest)*time.Millisecond/2)
+		wait = min(wait, time.Duration(newest-oldest-lagMs)*time.Millisecond/2)
 	}
 
 	return min(max(wait, tickMin), tickMax), overflowed
 }
 
-// readWindow — замеры с прошлого чтения по until (мс) и накопленный трафик.
+// readWindow — замеры с прошлого чтения по until (мс; окно назад не
+// сдвигается) и накопленный трафик.
 func readWindow(until int64) (window, bool) {
 	known := LoadedNodes()
 	if len(known) == 0 {
@@ -427,6 +450,8 @@ func readWindow(until int64) (window, bool) {
 	mu.Lock()
 	since := pingsUntil
 	mu.Unlock()
+
+	until = max(until, since)
 
 	pings := pingsOf(listed, since, until)
 
@@ -495,27 +520,36 @@ func locate(net, kind string, stamp uint64) *spot {
 	return &spot{place: Place{Net: net, Kind: kind, IP4: ip4, IP6: ip6}, changes: stamp, ipAt: time.Now().Unix()}
 }
 
-// tick — прочитать окно и разложить в место. Запросы адреса — уже без замка
-// сборщика: сайт отвечает долго, а служба ждёт замок считаные секунды.
-func tick() {
-	collectMu.Lock()
+// ipWork — что делать с адресом после чтения: узнать место заново или
+// переспросить адрес места.
+type ipWork struct {
+	locate    bool
+	net, kind string
+	stamp     uint64
+	refresh   *spot
+}
 
+// collectLocked — прочитать окно (по lagMs назад от нынешнего) и разложить в
+// место; под collectMu. Запросы адреса — уже без замка сборщика: сайт отвечает
+// долго, а служба ждёт замок считаные секунды.
+func collectLocked() ipWork {
 	mu.Lock()
 	path := target
 	before := changes
+	// Часы ушли назад: окно — от нынешнего момента, иначе замеров не было бы,
+	// пока часы не догонят прежнее.
+	if now := nowMs(); pingsUntil > now {
+		pingsUntil = now
+	}
 	mu.Unlock()
 
 	if path == "" {
-		collectMu.Unlock()
-
-		return
+		return ipWork{}
 	}
 
-	w, ok := readWindow(nowMs())
+	w, ok := readWindow(nowMs() - lagMs)
 	if !ok {
-		collectMu.Unlock()
-
-		return
+		return ipWork{}
 	}
 
 	mu.Lock()
@@ -531,17 +565,23 @@ func tick() {
 		log.Debugln("[Report] %d measurement(s) dropped: the network they were made in is not known for sure", len(w.pings)+len(w.traffic))
 	}
 
-	collectMu.Unlock()
+	switch {
+	case !known && net != "":
+		return ipWork{locate: true, net: net, kind: kind, stamp: after}
+	case known && current.ipIsDue(time.Now().Unix()):
+		return ipWork{refresh: current}
+	}
 
-	if !known {
-		if net == "" {
-			return
-		}
+	return ipWork{}
+}
 
-		fresh := locate(net, kind, after)
+// do — узнать место или переспросить адрес места.
+func (work ipWork) do() {
+	if work.locate {
+		fresh := locate(work.net, work.kind, work.stamp)
 
 		mu.Lock()
-		if changes == after && where == nil {
+		if changes == work.stamp && where == nil {
 			where = fresh
 		}
 		mu.Unlock()
@@ -549,27 +589,87 @@ func tick() {
 		return
 	}
 
-	now := time.Now().Unix()
-	if !current.ipIsDue(now) {
+	if work.refresh == nil {
 		return
 	}
 
 	ip4, ip6 := Address()
+	now := time.Now().Unix()
 
 	mu.Lock()
 	defer mu.Unlock()
 
-	if where != current {
+	if where != work.refresh {
 		return
 	}
 
-	refreshed := *current
+	refreshed := *work.refresh
 	// Не ответил сайт — прежний адрес остаётся: сеть та же.
 	if ip4 != "" || ip6 != "" {
 		refreshed.place.IP4, refreshed.place.IP6 = ip4, ip6
 	}
 	refreshed.ipAt = now
 	where = &refreshed
+}
+
+func tick() {
+	collectMu.Lock()
+	work := collectLocked()
+	collectMu.Unlock()
+
+	work.do()
+}
+
+// closedBefore — граница закрытых часов накопленного path: в часы раньше неё
+// уже ничего не ляжет. Замер задержки ложится в час, когда сделан, но не
+// раньше прочитанного окна (pingsUntil), всё прочее — в час, когда записано.
+// Окно прочитано у того, что собирается, — граница по нему; у остального —
+// нынешний час. Под collectMu: чтение, начатое до неё, уже разложено.
+func closedBefore(path string, now int64) int64 {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if path != "" && path == target {
+		return hourOf(min(pingsUntil/1000, now))
+	}
+
+	return hourOf(now)
+}
+
+// Forget — накопленное path больше не нужно (прослойка не принимает отчёты,
+// канал выключен, подписка удалена): сбор по нему кончается, из памяти и с
+// диска оно уходит и в файл не возвращается.
+func Forget(path string) {
+	if path == "" {
+		return
+	}
+
+	collectMu.Lock()
+	defer collectMu.Unlock()
+
+	mu.Lock()
+	stop := target == path
+	if stop {
+		target = ""
+		where = nil
+		gathered = traffic{}
+	}
+	mu.Unlock()
+
+	cacheMu.Lock()
+	if cachePath == path {
+		cache = nil
+		cachePath = ""
+		cacheDirty = false
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		log.Warnln("[Report] the measurements were not removed: %s", err.Error())
+	}
+	cacheMu.Unlock()
+
+	if stop {
+		poke()
+	}
 }
 
 // PlaceFor — место для замера в сети net: узнанное сборщиком, если сеть та
@@ -589,7 +689,8 @@ func PlaceFor(net, kind string) Place {
 	return Place{Net: net, Kind: kind, IP4: ip4, IP6: ip6}
 }
 
-// RecordFreeze — итоги проверки 16–20 в месте place.
+// RecordFreeze — итоги проверки 16–20 в месте place. Итог ложится в час, когда
+// записан: в отправленный час уже ничего не ложится.
 func RecordFreeze(path string, place Place, known map[string]NodeInfo, verdicts map[string]Freeze) {
 	now := time.Now().Unix()
 
@@ -600,14 +701,9 @@ func RecordFreeze(path string, place Place, known map[string]NodeInfo, verdicts 
 				continue
 			}
 
-			at := verdict.At
-			if at <= 0 {
-				at = now
-			}
-
 			key := NodeKey(info)
 			store.RememberNode(key, info)
-			store.AddFreeze(place, at, key, verdict.Verdict, verdict.Status)
+			store.AddFreeze(place, now, key, verdict.Verdict, verdict.Status)
 		}
 
 		store.Prune(now)

@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -26,12 +25,16 @@ var bucketEdges = [...]uint64{100, 200, 400, 800, 1500}
 
 const buckets = len(bucketEdges) + 1
 
-// NodeInfo — узел, как его узнаёт прослойка: тип, адрес и порт из подписки.
+// NodeInfo — узел, как его узнаёт прослойка: тип, адрес и порт из подписки и
+// чем он отличается от соседей на том же адресе и порту (Via).
 type NodeInfo struct {
 	Name   string `json:"name"`
 	Type   string `json:"type"`
 	Server string `json:"server"`
 	Port   int    `json:"port"`
+	Via    string `json:"via,omitempty"`
+	// Провайдер, у которого ядро держит узел; пусто — узел самой подписки.
+	Provider string `json:"-"`
 }
 
 type Ping struct {
@@ -79,9 +82,7 @@ type Network struct {
 
 type Store struct {
 	// Когда прослойка в последний раз ответила на отчёт каналом (любым кодом).
-	LastTry int64 `json:"last_try"`
-	// Когда отчёт в последний раз был принят.
-	LastSent int64               `json:"last_sent"`
+	LastTry  int64               `json:"last_try"`
 	Nodes    map[string]NodeInfo `json:"nodes"`
 	Networks map[string]*Network `json:"networks"`
 }
@@ -97,9 +98,27 @@ func hourOf(at int64) int64 {
 
 // NodeKey — ключ узла для прослойки: тот же расчёт, что у неё (rep_node_key).
 func NodeKey(info NodeInfo) string {
-	sum := sha256.Sum256([]byte(info.Type + "|" + strings.ToLower(info.Server) + "|" + strconv.Itoa(info.Port)))
+	text := info.Type + "|" + asciiLower(info.Server) + "|" + strconv.Itoa(info.Port)
+	if info.Via != "" {
+		text += "|" + info.Via
+	}
+
+	sum := sha256.Sum256([]byte(text))
 
 	return hex.EncodeToString(sum[:])[:12]
+}
+
+// asciiLower — нижний регистр только у латиницы, как PHP strtolower у прослойки
+// и to_ascii_lowercase у ПК.
+func asciiLower(text string) string {
+	out := []byte(text)
+	for i, c := range out {
+		if 'A' <= c && c <= 'Z' {
+			out[i] = c + 'a' - 'A'
+		}
+	}
+
+	return string(out)
 }
 
 func bucketOf(delay uint64) int {
@@ -241,15 +260,14 @@ func (s *Store) Prune(now int64) {
 	}
 }
 
-// OldestClosed — самый старый закрытый час (тот, что уже не пополнится);
-// false — отправлять нечего.
-func (s *Store) OldestClosed(now int64) (int64, bool) {
-	current := hourOf(now)
+// OldestBefore — самый старый час раньше closed — границы, раньше которой
+// ничего уже не ляжет; false — отправлять нечего.
+func (s *Store) OldestBefore(closed int64) (int64, bool) {
 	oldest, found := int64(0), false
 
 	for _, network := range s.Networks {
 		for _, entry := range network.Hours {
-			if entry.H < current && (!found || entry.H < oldest) {
+			if entry.H < closed && (!found || entry.H < oldest) {
 				oldest, found = entry.H, true
 			}
 		}
@@ -351,7 +369,8 @@ func (s *Store) Report(now, until int64, dev, client string) map[string]any {
 	}
 }
 
-// DropSent — отчёт принят: отправленные часы (раньше until) уходят, остальное остаётся.
+// DropSent — отчёт принят (или час не влез и один): отправленные часы (раньше
+// until) уходят, остальное остаётся.
 func (s *Store) DropSent(now, until int64) {
 	for _, network := range s.Networks {
 		kept := network.Hours[:0]
@@ -363,7 +382,6 @@ func (s *Store) DropSent(now, until int64) {
 		network.Hours = kept
 	}
 
-	s.LastSent = now
 	s.Prune(now)
 }
 

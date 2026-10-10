@@ -27,6 +27,89 @@ func TestNodeKeyMatchesTheMiddleware(t *testing.T) {
 	if got := NodeKey(node()); got != "5b9a8536deff" {
 		t.Fatalf("ключ узла: %s", got)
 	}
+
+	// С via — через ту же черту после порта (php: rep_node_key с $via).
+	behindCDN := node()
+	behindCDN.Via = "ws|cdn.example.com|cdn.example.com|/a"
+	if got := NodeKey(behindCDN); got != "550497e8fdee" {
+		t.Fatalf("ключ узла за CDN: %s", got)
+	}
+}
+
+// Те же записи и строки, что в тесте ПК (config/proxy_label.rs): по via
+// прослойка узнаёт один узел с обеих платформ.
+func TestViaTellsNodesOnOneAddressApart(t *testing.T) {
+	cases := []struct {
+		proxy map[string]any
+		want  string
+	}{
+		{map[string]any{"type": "vless", "server": "a.example.com", "port": 443}, ""},
+		{map[string]any{"type": "vless", "network": "tcp", "servername": "Edge.Example.com", "reality-opts": map[string]any{"public-key": "k"}}, "|edge.example.com||"},
+		{map[string]any{"type": "vless", "network": "ws", "tls": true, "servername": "cdn.example.com", "ws-opts": map[string]any{"path": "/a?ed=2048", "headers": map[string]any{"Host": "CDN.example.com"}}}, "ws|cdn.example.com|cdn.example.com|/a?ed=2048"},
+		{map[string]any{"type": "trojan", "network": "grpc", "sni": "g.example.com", "grpc-opts": map[string]any{"grpc-service-name": "svc"}}, "grpc|g.example.com||svc"},
+		{map[string]any{"type": "vless", "network": "xhttp", "servername": "x.example.com", "xhttp-opts": map[string]any{"path": "/x", "host": "X.example.com"}}, "xhttp|x.example.com|x.example.com|/x"},
+		{map[string]any{"type": "vmess", "network": "h2", "h2-opts": map[string]any{"host": []any{"h.example.com", "i.example.com"}, "path": "/h"}}, "h2||h.example.com|/h"},
+		{map[string]any{"type": "vmess", "network": "http", "http-opts": map[string]any{"path": []any{"/p", "/q"}, "headers": map[string]any{"Host": []any{"p.example.com"}}}}, "http||p.example.com|/p"},
+		{map[string]any{"type": "ss", "plugin": "v2ray-plugin", "plugin-opts": map[string]any{"mode": "websocket", "host": "s.example.com", "path": "/s"}}, "||s.example.com|/s"},
+		{map[string]any{"type": "hysteria2", "sni": "hy.example.com"}, "|hy.example.com||"},
+		{map[string]any{"type": "vless", "network": "ws", "ws_opts": map[string]any{"path": "/u"}}, "ws|||/u"},
+		{map[string]any{"type": "vless", "network": "grpc", "ws-opts": map[string]any{"path": "/ignored"}}, "grpc|||"},
+	}
+
+	for _, c := range cases {
+		kind, _ := c.proxy["type"].(string)
+		if got := Via(kind, c.proxy); got != c.want {
+			t.Fatalf("%v: %q, ждали %q", c.proxy, got, c.want)
+		}
+	}
+}
+
+// Узлы провайдеров — с именами, какими их заводит ядро (как у ПК).
+func TestProviderNodesAreNamedAsTheCoreNamesThem(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "provider.yaml")
+	if err := os.WriteFile(file, []byte("proxies:\n  - {name: A, type: ss, server: a.example.com, port: 1}\n  - {name: F, type: vless, server: f.example.com, port: 2}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	providers := ProvidersOf(map[string]map[string]any{
+		"inline": {
+			"type": "inline", "exclude-type": "ss",
+			"override": map[string]any{"additional-prefix": "[i] ", "additional-suffix": " *"},
+			"payload": []any{
+				map[string]any{"name": "D", "type": "ss", "server": "d.example.com", "port": 5},
+				map[string]any{"name": "D", "type": "TUIC", "server": "e.example.com", "port": 6},
+				map[string]any{"name": "D", "type": "vless", "server": "other.example.com", "port": 7},
+			},
+		},
+		"web": {
+			"type": "http", "path": file,
+			"payload": []any{map[string]any{"name": "F", "type": "vless", "server": "old.example.com", "port": 2}},
+		},
+		"renamed": {
+			"type": "inline", "override": map[string]any{"proxy-name": []any{map[string]any{"pattern": "a", "target": "b"}}},
+			"payload": []any{map[string]any{"name": "R", "type": "vless", "server": "r.example.com", "port": 8}},
+		},
+	})
+
+	got := AllNodes(nil, providers)
+	if info, ok := got["[i] D *"]; !ok || info.Type != "tuic" || info.Server != "e.example.com" || info.Provider != "inline" {
+		t.Fatalf("приставки, исключённый тип, первый из одноимённых: %+v", got)
+	}
+	if _, ok := got["D"]; ok {
+		t.Fatalf("имя без приставок: %+v", got)
+	}
+	if got["A"].Server != "a.example.com" {
+		t.Fatalf("узел файла: %+v", got)
+	}
+	// Файл и запасной набор расходятся адресом — какой у ядра, не узнать.
+	if _, ok := got["F"]; ok {
+		t.Fatalf("расходится с запасным набором: %+v", got["F"])
+	}
+	// proxy-name переписывает имена по-своему — узлов провайдера нет.
+	if _, ok := got["R"]; ok {
+		t.Fatalf("переименованный: %+v", got["R"])
+	}
 }
 
 func TestDelaysFallIntoBuckets(t *testing.T) {
@@ -48,7 +131,7 @@ func TestOnlyClosedHoursAreReportedAndDropped(t *testing.T) {
 	store.AddFreeze(at("203.0.113.7"), past+40, key, "ok", 200)
 	store.AddPing(at("203.0.113.7"), now, key, 50)
 
-	if oldest, ok := store.OldestClosed(now); !ok || oldest != past || store.HoursBefore(hourOf(now)) != 1 {
+	if oldest, ok := store.OldestBefore(hourOf(now)); !ok || oldest != past || store.HoursBefore(hourOf(now)) != 1 {
 		t.Fatalf("закрытые часы: %d %v", oldest, ok)
 	}
 
@@ -93,7 +176,7 @@ func TestOnlyClosedHoursAreReportedAndDropped(t *testing.T) {
 	}
 
 	store.DropSent(now, hourOf(now))
-	if _, left := store.OldestClosed(now); left || store.LastSent != now || store.Nodes[key].Name == "" {
+	if _, left := store.OldestBefore(hourOf(now)); left || store.Nodes[key].Name == "" {
 		t.Fatal("после приёма остаётся только текущий час со своими узлами")
 	}
 }
@@ -175,7 +258,7 @@ func TestANodeCheckedOftenIsReadOftenEnough(t *testing.T) {
 	rare := delays{at: []int64{start}, delay: []uint64{50}}
 
 	wait, lost := nextRead(map[string]delays{"Частый": often, "Редкий": rare}, start+30_000)
-	if wait != 270*time.Second || lost != 0 {
+	if wait != 260*time.Second || lost != 0 {
 		t.Fatalf("чтение раз в %s, потеряно %d", wait, lost)
 	}
 
@@ -245,7 +328,11 @@ func TestAReportIsSentOnlyWhenDueAndKeptUntilAccepted(t *testing.T) {
 	}
 
 	moment := time.Now().Unix()
-	packed, ok := Prepare(path, moment, "0.0.0")
+	closed, due := Due(path, moment)
+	if !due || closed != hourOf(moment) {
+		t.Fatalf("граница отправки: %v %d", due, closed)
+	}
+	packed, ok := Pack(path, moment, closed, SendHours, "0.0.0")
 	if !ok || packed.Hours != 1 || packed.Until != hourOf(moment) {
 		t.Fatalf("отчёт не собран: %v %+v", ok, packed)
 	}
@@ -264,8 +351,11 @@ func TestAReportIsSentOnlyWhenDueAndKeptUntilAccepted(t *testing.T) {
 	}
 
 	Sent(path, moment, packed.Until, 429)
-	if _, ok := Prepare(path, moment+60, "0.0.0"); ok {
+	if _, due := Due(path, moment+60); due {
 		t.Fatal("после ответа прослойки раньше 6 часов не шлём")
+	}
+	if _, due := Due(path, moment-3*hour); !due {
+		t.Fatal("часы ушли назад — прошлый ответ «в будущем» отправку не держит")
 	}
 	if Load(path).HoursBefore(hourOf(moment)) != 1 {
 		t.Fatal("не принятое остаётся")
@@ -286,22 +376,38 @@ func backlog(hours int64, moment int64) *Store {
 	return store
 }
 
-func TestAReportTakesTheOldestTwoDaysAndNothingNewerThanTheClosedHour(t *testing.T) {
+func TestAReportTakesTheOldestTwoDaysAndNothingFromTheOpenHours(t *testing.T) {
 	size := func(report map[string]any) ([]byte, error) { return json.Marshal(report) }
+	window := func(store *Store, closed, hours int64) (int64, int64, int) {
+		packed, ok, err := packWithin(store, now, closed, hours, "", "", reportMaxGz, size)
+		if err != nil || !ok {
+			return 0, 0, -1
+		}
 
-	store := backlog(7*24, now)
-	oldest, _ := store.OldestClosed(now)
-	packed, err := packWithin(store, now, oldest, "", "", reportMaxGz, size)
-	if err != nil || packed.Until != oldest+sendWindow || packed.Hours != 48 {
-		t.Fatalf("окно: %+v %v", packed, err)
+		return packed.Until, packed.Span, packed.Hours
 	}
 
-	// Завал меньше окна — граница на текущем часе, он сам не уходит.
+	store := backlog(7*24, now)
+	oldest, _ := store.OldestBefore(hourOf(now))
+	if until, span, records := window(store, hourOf(now), SendHours); until != oldest+sendWindow || span != 48 || records != 48 {
+		t.Fatalf("окно: %d %d %d", until, span, records)
+	}
+	// Окно задано меньше (прослойка сказала «велик») — столько часов и уходит.
+	if until, span, _ := window(store, hourOf(now), 6); until != oldest+6*hour || span != 6 {
+		t.Fatalf("малое окно: %d %d", until, span)
+	}
+
+	// Завал меньше окна — граница на закрытых часах, остальное не уходит.
 	small := backlog(3, now)
-	oldest, _ = small.OldestClosed(now)
-	packed, err = packWithin(small, now, oldest, "", "", reportMaxGz, size)
-	if err != nil || packed.Until != hourOf(now) || packed.Hours != 3 {
-		t.Fatalf("малый завал: %+v %v", packed, err)
+	if until, span, records := window(small, hourOf(now), SendHours); until != hourOf(now) || span != 3 || records != 3 {
+		t.Fatalf("малый завал: %d %d %d", until, span, records)
+	}
+	// Граница раньше нынешнего часа (окно ещё не дочитано) — час перед ней не уходит.
+	if until, _, records := window(small, hourOf(now)-hour, SendHours); until != hourOf(now)-hour || records != 2 {
+		t.Fatalf("граница по прочитанному: %d %d", until, records)
+	}
+	if _, ok, _ := packWithin(small, now, hourOf(now)-3*hour, SendHours, "", "", reportMaxGz, size); ok {
+		t.Fatal("закрытых часов нет — отправлять нечего")
 	}
 }
 
@@ -317,16 +423,106 @@ func TestAReportThatDoesNotFitShrinksItsWindow(t *testing.T) {
 	}
 
 	store := backlog(7*24, now)
-	oldest, _ := store.OldestClosed(now)
-	packed, err := packWithin(store, now, oldest, "", "", 1000, count)
-	if err != nil || packed.Hours != 6 || packed.Until != oldest+6*hour || len(packed.Gz) > 1000 {
+	oldest, _ := store.OldestBefore(hourOf(now))
+	packed, _, err := packWithin(store, now, hourOf(now), SendHours, "", "", 1000, count)
+	if err != nil || packed.Hours != 6 || packed.Span != 6 || packed.Until != oldest+6*hour || len(packed.Gz) > 1000 {
 		t.Fatalf("усечённое окно: %+v %v", packed, err)
 	}
 
 	// Даже одна запись не влезает — уходит всё равно она одна, не бесконечный цикл.
-	packed, err = packWithin(store, now, oldest, "", "", 1, count)
+	packed, _, err = packWithin(store, now, hourOf(now), SendHours, "", "", 1, count)
 	if err != nil || packed.Hours != 1 || packed.Until != oldest+hour {
 		t.Fatalf("одна запись: %+v %v", packed, err)
+	}
+
+	// Окно больше завала уполовинивается от того, что охвачено, а не от заданного.
+	small := backlog(3, now)
+	packed, _, err = packWithin(small, now, hourOf(now), SendHours, "", "", 250, count)
+	if err != nil || packed.Span != 1 || packed.Until != hourOf(now)-2*hour {
+		t.Fatalf("малый завал: %+v %v", packed, err)
+	}
+}
+
+func TestATooBigHourAloneIsDroppedAndTheRestKept(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sub.json")
+	if err := Save(path, backlog(3, now)); err != nil {
+		t.Fatal(err)
+	}
+
+	oldest := hourOf(now) - 3*hour
+	Sent(path, now, oldest+hour, 413)
+	if left := Load(path); left.HoursBefore(hourOf(now)) != 2 || left.LastTry != now {
+		t.Fatalf("после «велик» у одного часа: %+v", left)
+	}
+}
+
+func TestTimeOfUseAddsUpOverReads(t *testing.T) {
+	into := traffic{}
+	for i := 0; i < 3; i++ {
+		gather(into, map[string][2]uint64{"Узел": {1, 2}}, 10)
+	}
+
+	if into["Узел"] != [3]uint64{3, 6, 30} {
+		t.Fatalf("копилка: %v", into["Узел"])
+	}
+}
+
+func TestHoursAreClosedByWhatTheCollectorHasRead(t *testing.T) {
+	mu.Lock()
+	keptTarget, keptUntil := target, pingsUntil
+	target, pingsUntil = "собираемая", (hourOf(now)-hour+600)*1000
+	mu.Unlock()
+	t.Cleanup(func() {
+		mu.Lock()
+		target, pingsUntil = keptTarget, keptUntil
+		mu.Unlock()
+	})
+
+	if got := closedBefore("собираемая", now); got != hourOf(now)-hour {
+		t.Fatalf("у собираемой: %d", got)
+	}
+	if got := closedBefore("другая", now); got != hourOf(now) {
+		t.Fatalf("у другой: %d", got)
+	}
+
+	// Прочитанное «впереди» нынешнего — часы ушли назад: граница по нынешнему.
+	mu.Lock()
+	pingsUntil = (now + 2*hour) * 1000
+	mu.Unlock()
+	if got := closedBefore("собираемая", now); got != hourOf(now) {
+		t.Fatalf("часы назад: %d", got)
+	}
+}
+
+func TestAClockTurnedBackAsksTheAddressAgain(t *testing.T) {
+	s := spot{place: Place{Net: "n", IP4: "203.0.113.7"}, ipAt: now - 60}
+	if s.ipIsDue(now) {
+		t.Fatal("адрес свежий")
+	}
+
+	s.ipAt = now + hour
+	if !s.ipIsDue(now) {
+		t.Fatal("часы ушли назад — адрес переспрашивается")
+	}
+}
+
+func TestAForgottenStoreIsGoneAndStaysGone(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "sub.json")
+	withStore(path, now, true, func(store *Store) { store.AddPing(at("203.0.113.7"), now, "k", 100) })
+	withStore(path, now, false, func(store *Store) { store.AddPing(at("203.0.113.7"), now, "k", 50) })
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("файла нет до стирания: %v", err)
+	}
+
+	Forget(path)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("файл остался: %v", err)
+	}
+
+	// Несохранённое из памяти ядра в файл не возвращается.
+	Flush()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("файл вернулся: %v", err)
 	}
 }
 

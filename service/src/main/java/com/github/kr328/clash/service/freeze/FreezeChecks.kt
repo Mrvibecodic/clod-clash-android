@@ -401,7 +401,7 @@ object FreezeChecks {
 
                 net = net.copy(nodes = nodes)
 
-                ClientReports.noteFreeze(uuid, path, key, NetworkKey.kindOf(seen), outcomes, now)
+                ClientReports.noteFreeze(uuid, path, key, NetworkKey.kindOf(seen), outcomes)
             }
 
             ServiceLog.mark(
