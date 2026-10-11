@@ -13,7 +13,10 @@ name sits on top: "Customer portal", "Support", "Bot", "Server status", "Setup g
 **Mode** — rules, global or direct (see [Modes](/en/docs/modes)).
 
 **Apps** — which apps go through the tunnel: "Allow all apps", "Allow selected apps" or
-"Deny selected apps". If the subscription sends its own lists, they are applied as is.
+"Deny selected apps". The default is "Allow selected apps" with an empty list: until you check
+something, no app goes through the tunnel. If the subscription sends its own lists, they are
+applied as is: with nothing checked, its exclusion list sends every app through the tunnel except
+the listed ones.
 
 **Unrestricted battery** and **Always-on connection** lead to Android's system settings: the
 first stops the system from killing the app in the background, the second keeps the VPN up at
