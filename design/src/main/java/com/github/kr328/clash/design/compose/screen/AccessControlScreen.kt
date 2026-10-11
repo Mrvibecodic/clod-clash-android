@@ -243,6 +243,30 @@ fun AccessControlScreen(
                             )
                         }
 
+                        // Включения подписки помечены в списке сами
+                        val subIncluded = (state.includeFromProfile - state.excludeFromProfile).isNotEmpty()
+
+                        if (state.mode == MODE_ACCEPT_SELECTED && state.selected.isEmpty() && !subIncluded) {
+                            val subExcludeOnly = state.excludeFromProfile.isNotEmpty()
+
+                            Text(
+                                text = stringResource(
+                                    if (subExcludeOnly) {
+                                        R.string.clod_access_control_selected_sub_hint
+                                    } else {
+                                        R.string.clod_access_control_selected_empty_hint
+                                    }
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(
+                                    start = 18.dp,
+                                    end = 18.dp,
+                                    bottom = 8.dp,
+                                ),
+                            )
+                        }
+
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
@@ -265,6 +289,8 @@ fun AccessControlScreen(
 }
 
 private const val MODE_ACCEPT_ALL = 0
+
+private const val MODE_ACCEPT_SELECTED = 1
 
 @Composable
 private fun SearchField(

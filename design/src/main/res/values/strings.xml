@@ -384,6 +384,8 @@
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode. If the subscription sends its own app list, only those apps go through the tunnel in this mode.</string>
+    <string name="clod_access_control_selected_empty_hint">Nothing is checked — no app goes through the tunnel. Check the apps that need VPN.</string>
+    <string name="clod_access_control_selected_sub_hint">Until you check anything, the subscription list applies: all apps go through the tunnel except those marked “Bypasses VPN”. Check apps to send only them through the tunnel.</string>
     <plurals name="clod_access_control_sub_include_hint">
         <item quantity="one">The subscription limited the tunnel to %d app: “all apps” here means “all apps from the subscription list”, it is marked below. The checkboxes change nothing until you pick another mode.</item>
         <item quantity="other">The subscription limited the tunnel to %d apps: “all apps” here means “all apps from the subscription list”, they are marked below. The checkboxes change nothing until you pick another mode.</item>
