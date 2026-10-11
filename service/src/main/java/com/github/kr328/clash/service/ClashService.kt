@@ -20,7 +20,7 @@ class ClashService : BaseService() {
     private val self: ClashService
         get() = this
 
-    private val session = SessionLifecycle(this, this) { runtime.launch() }
+    private val session = SessionLifecycle(this, this) { runtime.launch(it) }
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)

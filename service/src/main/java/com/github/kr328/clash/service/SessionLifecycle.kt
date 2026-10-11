@@ -12,6 +12,7 @@ import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.service.clash.ModuleFailureSink
 import com.github.kr328.clash.service.clash.module.CloseModule
 import com.github.kr328.clash.service.clash.module.StaticNotificationModule
 import com.github.kr328.clash.service.freeze.FreezeChecks
@@ -60,6 +61,14 @@ fun startCommandOutcome(
     else -> StartCommandOutcome.Ignore
 }
 
+// Заголовок уведомления об остановке с причиной; null — молча (сессию
+// пользователь запускал с экрана, и она не поднялась: причину покажет экран)
+fun stopNoticeTitle(wasReady: Boolean, systemStarted: Boolean, unattended: Boolean): Int? = when {
+    wasReady -> R.string.clod_stopped_title
+    systemStarted || unattended -> R.string.clod_start_failed
+    else -> null
+}
+
 fun shouldWarnAlwaysOnBusy(running: Boolean, ready: Boolean, alwaysOn: Boolean): Boolean =
     running && !ready && alwaysOn
 
@@ -75,7 +84,7 @@ fun afterStopOutcome(
 class SessionLifecycle(
     private val service: Service,
     private val scope: CoroutineScope,
-    private val launchRuntime: () -> Unit,
+    private val launchRuntime: (ModuleFailureSink) -> Unit,
 ) {
     @Volatile
     var reason: String? = null
@@ -84,6 +93,18 @@ class SessionLifecycle(
 
     @Volatile
     var unattendedStart = false
+
+    @Volatile
+    var wasReady = false
+
+    // Номер сессии: отказ модуля прежней сессии не становится причиной новой
+    @Volatile
+    private var generation = 0
+
+    private val failureLock = Any()
+
+    @Volatile
+    private var failureShown = false
 
     @Volatile
     private var systemProxyRefused = false
@@ -134,13 +155,18 @@ class SessionLifecycle(
         FreezeChecks.sessionStopped()
         ClientReports.sessionStopped()
 
-        service.sendClashStopped(reason)
+        val failure = reason
+        val title = stopNoticeTitle(wasReady, systemStarted, unattendedStart)
 
-        reason?.let {
-            if (systemStarted || unattendedStart) {
-                StaticNotificationModule.notifyStartFailed(service, it)
-            }
+        // До рассылки: открытый экран по ней снимает это уведомление и сам
+        // показывает причину
+        if (failure != null && title != null) {
+            StaticNotificationModule.notifyStartFailed(service, failure, title)
+
+            failureShown = true
         }
+
+        service.sendClashStopped(failure)
 
         reportAlerts()
     }
@@ -186,7 +212,27 @@ class SessionLifecycle(
         Log.e("Create clash runtime: ${e.message}", e)
 
         if (reason == null) {
-            reason = e.message
+            reason = e.message ?: e.javaClass.simpleName
+        }
+    }
+
+    // Отказ модуля гасит рантайм отменой, и тело его не видит: причину сообщает
+    // сам рантайм — для своей сессии и пока она не начала сворачиваться
+    private fun moduleFailed(session: Int, module: String, e: Exception, live: Boolean) {
+        ServiceLog.mark("module failed: $module")
+
+        synchronized(failureLock) {
+            if (!live || stopping.get() || stopNotified.get() || session != generation) {
+                Log.i("Module failed on stopped session: ${e.message}", e)
+
+                return
+            }
+
+            Log.e("Module failed: ${e.message}", e)
+
+            if (reason == null) {
+                reason = e.message ?: e.javaClass.simpleName
+            }
         }
     }
 
@@ -199,6 +245,8 @@ class SessionLifecycle(
         ServiceStore(service).stickyRestarts = ""
 
         unattendedStart = false
+
+        wasReady = true
 
         StaticNotificationModule.cancelStartFailed(service)
 
@@ -245,11 +293,19 @@ class SessionLifecycle(
     }
 
     fun startSession() {
+        // Отказ модуля прежней сессии не должен стать причиной этой
+        val session = synchronized(failureLock) {
+            reason = null
+
+            ++generation
+        }
+
         holdStopRequests()
 
         stopNotified.set(false)
 
-        reason = null
+        wasReady = false
+        failureShown = false
 
         restartedBySystem = false
         systemProxyRefused = false
@@ -271,7 +327,7 @@ class SessionLifecycle(
             return
         }
 
-        launchRuntime()
+        launchRuntime { module, e, live -> moduleFailed(session, module, e, live) }
     }
 
     fun onStartCommand(systemStart: Boolean, unattended: Boolean, startId: Int): StartCommandOutcome {
@@ -325,11 +381,11 @@ class SessionLifecycle(
 
                 reason = failure
 
-                service.sendClashStopped(failure)
-
-                if (unattended && !systemStarted) {
+                if ((unattended || systemStart) && !failureShown) {
                     StaticNotificationModule.notifyStartFailed(service, failure)
                 }
+
+                service.sendClashStopped(failure)
 
                 service.stopSelf()
             }

@@ -15,14 +15,34 @@ interface ClashRuntimeScope {
     fun <E, T : Module<E>> install(module: T): T
 }
 
+// Отказ модуля: имя модуля, исключение, live — модуль ещё не отменён
+typealias ModuleFailureSink = (String, Exception, Boolean) -> Unit
+
 interface ClashRuntime {
-    fun launch()
+    fun launch(onModuleFailure: ModuleFailureSink)
     fun requestGc()
+}
+
+private class ModuleFailure(cause: Exception) : Exception(cause)
+
+// Отказ модуля сообщается сразу, до того как отмена дойдёт до тела рантайма:
+// тело видит только отмену, а причину остановки должна знать сессия. Отказ
+// уже отменённого модуля (сворачивание) — следствие остановки, не причина
+internal suspend fun runModule(name: String, onFailure: ModuleFailureSink, execute: suspend () -> Unit) {
+    try {
+        execute()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        onFailure(name, e, currentCoroutineContext().isActive)
+
+        throw ModuleFailure(e)
+    }
 }
 
 fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): ClashRuntime {
     return object : ClashRuntime {
-        override fun launch() {
+        override fun launch(onModuleFailure: ModuleFailureSink) {
             launch(Dispatchers.IO) {
                 globalLock.withLock {
                     Log.d("ClashRuntime: initialize")
@@ -40,7 +60,7 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                             val scope = object : ClashRuntimeScope {
                                 override fun <E, T : Module<E>> install(module: T): T {
                                     launch {
-                                        module.execute()
+                                        runModule(module.javaClass.simpleName, onModuleFailure, module::execute)
                                     }
 
                                     return module
@@ -51,6 +71,9 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
 
                             cancel()
                         }
+                    } catch (e: ModuleFailure) {
+                        // Причина уже у сессии; выпущенный наружу, отказ уронил бы
+                        // процесс службы
                     } finally {
                         withContext(NonCancellable) {
                             val startedAt = SystemClock.elapsedRealtime()

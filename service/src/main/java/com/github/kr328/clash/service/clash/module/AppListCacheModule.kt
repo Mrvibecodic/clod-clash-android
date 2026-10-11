@@ -49,7 +49,13 @@ class AppListCacheModule(service: Service, private val notifyChanges: Boolean = 
 
             delay(TimeUnit.SECONDS.toMillis(10))
 
-            reload()
+            // Диспетчер пакетов отказывает на больших списках и при своём
+            // перезапуске: ядро остаётся с прежним списком
+            try {
+                reload()
+            } catch (e: Exception) {
+                Log.w("Query installed packages: $e", e)
+            }
 
             if (notifyChanges) enqueueEvent(Unit)
         }

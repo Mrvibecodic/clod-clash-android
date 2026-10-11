@@ -40,7 +40,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         super.attachBaseContext(base.withStoredLocale())
     }
 
-    private val session = SessionLifecycle(this, this) { runtime.launch() }
+    private val session = SessionLifecycle(this, this) { runtime.launch(it) }
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
@@ -205,6 +205,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         session.systemStarted = false
         session.unattendedStart = false
+        session.wasReady = false
 
         StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_tun_revoked), R.string.clod_stopped_title)
 

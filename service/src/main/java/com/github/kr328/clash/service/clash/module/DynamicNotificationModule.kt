@@ -7,6 +7,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.util.trafficDownload
@@ -66,25 +67,39 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
 
-        while (true) {
-            select<Unit> {
-                screenToggle.onReceive {
-                    when (it.action) {
-                        Intent.ACTION_SCREEN_ON ->
-                            shouldUpdate = true
-                        Intent.ACTION_SCREEN_OFF ->
-                            shouldUpdate = false
+        var failing = false
+
+        try {
+            while (true) {
+                select<Unit> {
+                    screenToggle.onReceive {
+                        when (it.action) {
+                            Intent.ACTION_SCREEN_ON ->
+                                shouldUpdate = true
+                            Intent.ACTION_SCREEN_OFF ->
+                                shouldUpdate = false
+                        }
                     }
-                }
-                profileLoaded.onReceive {
-                    builder.setContentTitle(StatusProvider.currentProfile ?: service.getString(R.string.launch_name))
-                }
-                if (shouldUpdate) {
-                    ticker.onReceive {
-                        update()
+                    profileLoaded.onReceive {
+                        builder.setContentTitle(StatusProvider.currentProfile ?: service.getString(R.string.launch_name))
+                    }
+                    if (shouldUpdate) {
+                        ticker.onReceive {
+                            try {
+                                update()
+
+                                failing = false
+                            } catch (e: Exception) {
+                                if (!failing) Log.w("Update status notification: $e", e)
+
+                                failing = true
+                            }
+                        }
                     }
                 }
             }
+        } finally {
+            StaticNotificationModule.cancelStatus(service)
         }
     }
 }
