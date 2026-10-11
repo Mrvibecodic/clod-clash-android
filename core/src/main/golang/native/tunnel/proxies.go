@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+	"time"
 
 	"cfa/native/config"
 	"cfa/native/config/groups"
@@ -157,8 +158,9 @@ func matchTarget() string {
 // соединение), иначе текущий, пока он жив и в группе, — без нового выбора;
 // мёртвый или пропавший текущий и отсутствие текущего (до первого соединения)
 // показываются тем, что группа выберет при следующем соединении. Так же
-// показывает url-test ядро в /proxies
-func shownMember(g outboundgroup.ProxyGroup) string {
+// показывает url-test ядро в /proxies. choose=false — без этого выбора: он
+// закрепляется за группой и включает её в фоновые пробы текущих узлов
+func shownMember(g outboundgroup.ProxyGroup, choose bool) string {
 	c, ok := g.(outboundgroup.Pinnable)
 	if !ok {
 		return g.Now()
@@ -185,6 +187,10 @@ func shownMember(g outboundgroup.ProxyGroup) string {
 			return current.Name()
 		}
 
+		if !choose {
+			return ""
+		}
+
 		return g.Now()
 	}
 
@@ -193,6 +199,68 @@ func shownMember(g outboundgroup.ProxyGroup) string {
 	}
 
 	return g.Now()
+}
+
+// shownNode — узел, на котором группа стоит и который показывает выбранным
+// (по цепочке вложенных групп), без нового выбора, и группа, где он лежит.
+// Узел — объект, как в ядре: тёзка от другого провайдера — другой сервер.
+// nil — такого узла нет: load-balance, петля, все серверы скрыты, url-test или
+// fallback без текущего, с мёртвым текущим или с закреплённым не на текущем
+func shownNode(g outboundgroup.ProxyGroup) (C.Proxy, outboundgroup.ProxyGroup) {
+	for depth := 0; depth < 16; depth++ {
+		if outboundgroup.AllHidden(g.Proxies()) {
+			return nil, nil
+		}
+
+		member := currentOf(g)
+		if member == nil || member.Name() != shownMember(g, false) {
+			return nil, nil
+		}
+
+		if _, pinnable := g.(outboundgroup.Pinnable); pinnable && !member.AliveForTestUrl(GroupTestURL(g)) {
+			return nil, nil
+		}
+
+		inner, isGroup := member.Adapter().(outboundgroup.ProxyGroup)
+		if !isGroup {
+			return member, g
+		}
+
+		g = inner
+	}
+
+	return nil, nil
+}
+
+// shownDelay — задержка px, как её показывает список, и время этого замера:
+// адресом url, а если им не мерили — первым по алфавиту из прочих. Не мерили
+// вовсе — 0 (интерфейс покажет «—») и нулевое время; 0xffff ядро отдаёт и
+// мёртвому, и не промеренному
+func shownDelay(px C.Proxy, url string) (int, time.Time) {
+	histories := px.ExtraDelayHistories()
+
+	if _, ok := histories[url]; !ok {
+		fallback := ""
+
+		for k := range histories {
+			if len(k) > 0 && (fallback == "" || k < fallback) {
+				fallback = k
+			}
+		}
+
+		if fallback == "" {
+			return 0, time.Time{}
+		}
+
+		url = fallback
+	}
+
+	var at time.Time
+	if history := histories[url].History; len(history) > 0 {
+		at = history[len(history)-1].Time
+	}
+
+	return int(px.LastDelayForTestUrl(url)), at
 }
 
 func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
@@ -216,11 +284,11 @@ func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup
 		return &ProxyGroup{Type: g.Type().String(), Proxies: []*Proxy{}, AllHidden: true}
 	}
 
-	proxies := convertProxies(members, uiSubtitlePattern, GroupTestURL(g))
+	proxies := convertProxies(members, uiSubtitlePattern, GroupTestURL(g), g.Type() == C.Selector)
 
 	group := &ProxyGroup{
 		Type:    g.Type().String(),
-		Now:     shownMember(g),
+		Now:     shownMember(g, true),
 		Proxies: proxies,
 	}
 
@@ -318,7 +386,9 @@ func httpsIcon(raw string) string {
 	return parsed.String()
 }
 
-func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string) []*Proxy {
+// nodeDelays — список select: сам он членов не проверяет, и вложенная группа
+// в нём без ручной проверки осталась бы без цифры
+func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string, nodeDelays bool) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
 	for _, p := range proxies {
@@ -356,28 +426,20 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			testURL = C.DefaultTestURL
 		}
 
-		histories := p.ExtraDelayHistories()
-		if _, ok := histories[testURL]; !ok {
-			fallback := ""
+		delay, at := shownDelay(p, testURL)
 
-			for k := range histories {
-				if len(k) > 0 && (fallback == "" || k < fallback) {
-					fallback = k
+		group, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
+
+		// Вложенная группа показывает задержку узла, на котором стоит сейчас, —
+		// ту же цифру, что видна внутри неё, — если её собственный замер (через
+		// неё к тому же узлу) не свежее
+		if nodeDelays && isGroup {
+			if node, owner := shownNode(group); node != nil {
+				if d, t := shownDelay(node, GroupTestURL(owner)); t.After(at) {
+					delay = d
 				}
 			}
-
-			if fallback != "" {
-				testURL = fallback
-			}
 		}
-
-		// Не мерили — 0, интерфейс покажет «—»; 0xffff ядро отдаёт и мёртвому, и не промеренному
-		delay := 0
-		if _, measured := histories[testURL]; measured {
-			delay = int(p.LastDelayForTestUrl(testURL))
-		}
-
-		_, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
 		result = append(result, &Proxy{
 			Name:     name,
