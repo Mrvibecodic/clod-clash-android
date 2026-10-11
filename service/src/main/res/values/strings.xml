@@ -8,6 +8,7 @@
     <string name="clod_profile_reload_failed">Failed to apply the subscription «%1$s»: %2$s. The previous configuration keeps running. Check your own edits in the override, if you made any</string>
     <string name="clod_start_failed">Clod Clash could not start</string>
     <string name="clod_stopped_title">Clod Clash stopped</string>
+    <string name="clod_tun_lost">The VPN connection kept dropping, so the tunnel is stopped. Connect again</string>
     <string name="clod_tun_establish_rejected">The system did not allow the tunnel to be created. Try connecting again</string>
     <string name="clod_crash_loop">The service was restarted by the system %1$d times in a row. Automatic restart is paused — open the app and connect again</string>
     <string name="clod_foreground_denied">The system did not allow the service to start in the background. Open the app and connect again</string>

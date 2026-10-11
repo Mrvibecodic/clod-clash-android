@@ -79,5 +79,10 @@ abstract class Module<E>(val service: Service) {
         }
     }
 
+    // Упавший модуль рантайм запускает заново: run() должен начинаться с чистого
+    // листа, оставленного своим же finally
+    open val restartable: Boolean
+        get() = true
+
     protected abstract suspend fun run()
 }

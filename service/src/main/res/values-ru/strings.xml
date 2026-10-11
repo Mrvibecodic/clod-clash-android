@@ -8,6 +8,7 @@
     <string name="clod_profile_reload_failed">Не удалось применить подписку «%1$s»: %2$s. Продолжает работать прежняя конфигурация. Проверьте свои правки в переопределении, если они есть</string>
     <string name="clod_start_failed">Clod Clash не удалось запустить</string>
     <string name="clod_stopped_title">Clod Clash остановлен</string>
+    <string name="clod_tun_lost">VPN-подключение несколько раз подряд пропадало, поэтому туннель остановлен. Подключитесь снова</string>
     <string name="clod_tun_establish_rejected">Система не дала создать туннель. Попробуйте подключиться ещё раз</string>
     <string name="clod_crash_loop">Система перезапустила службу %1$d раза подряд. Автоперезапуск приостановлен — откройте приложение и подключитесь снова</string>
     <string name="clod_foreground_denied">Система не разрешила запустить службу в фоне. Откройте приложение и подключитесь снова</string>

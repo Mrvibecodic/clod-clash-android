@@ -57,6 +57,11 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
     private val store = ServiceStore(service)
     private val reload = Channel<Unit>(Channel.CONFLATED)
 
+    // Заново — значит заново применить подписку со стадиями старта при живой
+    // сессии: отказ гасит сессию
+    override val restartable: Boolean
+        get() = false
+
     private fun forgetMissingProfile(missing: UUID): Nothing {
         if (activeProfileGone(store.activeProfile, missing) == ActiveProfileAction.Clear) {
             store.activeProfile = null

@@ -15,6 +15,7 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
+import com.github.kr328.clash.service.clash.restartBudget
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.model.TunPrefs
@@ -60,8 +61,15 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             install(StaticNotificationModule(self))
 
         val apps = install(AppListCacheModule(self, notifyChanges = true))
+        val watch = install(TunWatchModule(self))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
+
+        val reopens = restartBudget()
+
+        // Когда туннель последний раз открывали: событие сторожа, поставленное до
+        // этого, устарело
+        var openedAt = 0L
 
         var opened = false
         var profile: UUID? = null
@@ -76,7 +84,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         }
 
         fun reopenTun(uuid: UUID) {
-            if (tun.reopenIfChanged(uuid)) restoreUnderlying()
+            if (tun.reopenIfChanged(uuid)) {
+                openedAt = SystemClock.elapsedRealtime()
+
+                restoreUnderlying()
+            }
         }
 
         try {
@@ -99,6 +111,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                                     tun.open(it.uuid)
 
+                                    openedAt = SystemClock.elapsedRealtime()
+
                                     restoreUnderlying()
 
                                     opened = true
@@ -117,6 +131,39 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     }
                     apps.onEvent {
                         profile?.takeIf { opened }?.let { reopenTun(it) }
+
+                        false
+                    }
+                    watch.onEvent {
+                        val current = profile
+
+                        val loss = tunLoss(
+                            opened = opened && current != null,
+                            settled = SystemClock.elapsedRealtime() - openedAt >= TUN_SETTLE_MS,
+                            budget = reopens::take,
+                        )
+
+                        when (loss) {
+                            TunLoss.Ignore -> Unit
+                            TunLoss.GiveUp -> throw IllegalStateException(getString(R.string.clod_tun_lost))
+                            TunLoss.Reopen -> current?.let {
+                                ServiceLog.mark("tun: lost, reopening")
+
+                                // Отказ — разрешение на VPN ушло к другому приложению
+                                // или снято, а отзыв до нас не дошёл. Спросить через
+                                // VpnService.prepare нельзя: он забрал бы VPN у
+                                // другого приложения
+                                try {
+                                    tun.open(it)
+                                } catch (e: EstablishRejected) {
+                                    throw IllegalStateException(getString(R.string.clod_tun_revoked), e)
+                                }
+
+                                openedAt = SystemClock.elapsedRealtime()
+
+                                restoreUnderlying()
+                            }
+                        }
 
                         false
                     }
@@ -389,7 +436,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
             TunModule.TunDevice(
                 fd = establish()?.detachFd()
-                    ?: throw IllegalStateException(getString(R.string.clod_tun_establish_rejected)),
+                    ?: throw EstablishRejected(getString(R.string.clod_tun_establish_rejected)),
                 stack = plan.stack,
                 gateway = "$TUN_GATEWAY/$TUN_SUBNET_PREFIX" + if (store.allowIpv6) ",$TUN_GATEWAY6/$TUN_SUBNET_PREFIX6" else "",
                 portal = TUN_PORTAL + if (store.allowIpv6) ",$TUN_PORTAL6" else "",
@@ -402,7 +449,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         applied = plan
     }
 
+    private class EstablishRejected(message: String) : IllegalStateException(message)
+
     companion object {
+        private const val TUN_SETTLE_MS = 30_000L
         private const val TUN_MTU = 9000
         private const val TUN_SUBNET_PREFIX = 30
         private const val TUN_GATEWAY = "172.19.0.1"

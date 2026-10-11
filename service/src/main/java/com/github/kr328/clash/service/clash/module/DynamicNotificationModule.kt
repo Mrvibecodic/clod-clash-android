@@ -1,5 +1,6 @@
 package com.github.kr328.clash.service.clash.module
 
+import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.os.PowerManager
@@ -26,6 +27,8 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
 
     private val notificationManager = NotificationManagerCompat.from(service)
 
+    private var shown: Notification? = null
+
     private fun update() {
         val now = Clash.queryTrafficNow()
         val total = Clash.queryTrafficTotal()
@@ -50,6 +53,8 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
             )
             .build()
 
+        shown = notification
+
         notificationManager.notify(R.id.nf_clash_status, notification)
     }
 
@@ -66,6 +71,8 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
         }
 
         val ticker = ticker(TimeUnit.SECONDS.toMillis(1))
+        val guard = ticker(StaticNotificationModule.STATUS_GUARD_MS)
+        val restored = StaticNotificationModule.StatusGuard(service)
 
         var failing = false
 
@@ -82,6 +89,9 @@ class DynamicNotificationModule(service: Service) : Module<Unit>(service) {
                     }
                     profileLoaded.onReceive {
                         builder.setContentTitle(StatusProvider.currentProfile ?: service.getString(R.string.launch_name))
+                    }
+                    guard.onReceive {
+                        shown?.let(restored::check)
                     }
                     if (shouldUpdate) {
                         ticker.onReceive {

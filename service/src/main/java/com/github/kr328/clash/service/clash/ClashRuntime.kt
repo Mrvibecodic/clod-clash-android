@@ -15,8 +15,9 @@ interface ClashRuntimeScope {
     fun <E, T : Module<E>> install(module: T): T
 }
 
-// Отказ модуля: имя модуля, исключение, live — модуль ещё не отменён
-typealias ModuleFailureSink = (String, Exception, Boolean) -> Unit
+// Перезапускать ли упавший модуль, решает сессия (true — перезапустить): она
+// знает, жива ли и своя ли. live — модуль ещё не отменён
+typealias ModuleFailureSink = (module: String, e: Exception, live: Boolean, tryRestart: () -> Boolean) -> Boolean
 
 interface ClashRuntime {
     fun launch(onModuleFailure: ModuleFailureSink)
@@ -25,20 +26,54 @@ interface ClashRuntime {
 
 private class ModuleFailure(cause: Exception) : Exception(cause)
 
-// Отказ модуля сообщается сразу, до того как отмена дойдёт до тела рантайма:
-// тело видит только отмену, а причину остановки должна знать сессия. Отказ
-// уже отменённого модуля (сворачивание) — следствие остановки, не причина
-internal suspend fun runModule(name: String, onFailure: ModuleFailureSink, execute: suspend () -> Unit) {
-    try {
-        execute()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        onFailure(name, e, currentCoroutineContext().isActive)
+internal class RestartBudget(private val limit: Int, private val windowMs: Long, private val now: () -> Long) {
+    private val restarts = ArrayDeque<Long>()
 
-        throw ModuleFailure(e)
+    @Synchronized
+    fun take(): Boolean {
+        val at = now()
+
+        while (restarts.isNotEmpty() && at - restarts.first() >= windowMs) {
+            restarts.removeFirst()
+        }
+
+        if (restarts.size >= limit) return false
+
+        restarts.addLast(at)
+
+        return true
     }
 }
+
+internal fun restartBudget() = RestartBudget(2, 10 * 60 * 1000L, SystemClock::elapsedRealtime)
+
+// Отказ сообщается до того, как отмена дойдёт до тела рантайма: тело видит
+// только отмену, а причину остановки должна знать сессия
+internal suspend fun runModule(
+    name: String,
+    restarts: RestartBudget?,
+    onFailure: ModuleFailureSink,
+    restartDelayMs: Long = RESTART_DELAY_MS,
+    execute: suspend () -> Unit,
+) {
+    while (true) {
+        try {
+            return execute()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val live = currentCoroutineContext().isActive
+
+            if (!onFailure(name, e, live) { restarts?.take() == true }) throw ModuleFailure(e)
+
+            // Сбой системы (перезапуск её служб, обрыв binder) мгновенно
+            // повторился бы и съел бюджет
+            delay(restartDelayMs)
+        }
+    }
+}
+
+private const val RESTART_DELAY_MS = 3_000L
 
 fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): ClashRuntime {
     return object : ClashRuntime {
@@ -60,7 +95,12 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                             val scope = object : ClashRuntimeScope {
                                 override fun <E, T : Module<E>> install(module: T): T {
                                     launch {
-                                        runModule(module.javaClass.simpleName, onModuleFailure, module::execute)
+                                        runModule(
+                                            module.javaClass.simpleName,
+                                            restartBudget().takeIf { module.restartable },
+                                            onModuleFailure,
+                                            execute = module::execute,
+                                        )
                                     }
 
                                     return module

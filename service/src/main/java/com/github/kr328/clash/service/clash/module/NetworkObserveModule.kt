@@ -457,26 +457,35 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
     }
 
     override suspend fun run() {
-        var attempt = 0
+        // Заново запущенный модуль: отложенные задачи прежнего запуска отменены,
+        // не сбросив свои флаги, а сети он узнает от новой подписки
+        retriggerScheduled = false
+        recoverScheduled = false
+        recoverForce = false
+        networkInfos.clear()
 
-        while (!register() && ++attempt < REGISTER_ATTEMPTS) {
-            delay(REGISTER_RETRY_MS)
-        }
-
-        if (attempt >= REGISTER_ATTEMPTS) {
-            ServiceLog.mark("network: callback registration failed after $attempt attempts, running without network watcher")
-        }
-
-        // Экран ядро не усыпляет (см. SuspendModule): здесь он нужен отложенной
-        // пробе и журналу
-        // Без склейки: включение, за которым сразу выключение, не теряет
-        // отложенную пробу
-        val screen = receiveBroadcast(false, Channel.UNLIMITED) {
-            addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_SCREEN_OFF)
-        }
-
+        // Регистрация — внутри try: колбэк, оставшийся без finally, перезапущенный
+        // модуль зарегистрировал бы второй раз
         try {
+            var attempt = 0
+
+            while (!register() && ++attempt < REGISTER_ATTEMPTS) {
+                delay(REGISTER_RETRY_MS)
+            }
+
+            if (attempt >= REGISTER_ATTEMPTS) {
+                ServiceLog.mark("network: callback registration failed after $attempt attempts, running without network watcher")
+            }
+
+            // Экран ядро не усыпляет (см. SuspendModule): здесь он нужен отложенной
+            // пробе и журналу
+            // Без склейки: включение, за которым сразу выключение, не теряет
+            // отложенную пробу
+            val screen = receiveBroadcast(false, Channel.UNLIMITED) {
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_SCREEN_OFF)
+            }
+
             coroutineScope {
                 val scope = this
 
@@ -540,6 +549,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
                 Log.i("NetworkObserve dns = []")
                 Clash.notifyDnsChanged(emptyList())
+
+                // Ядро осталось без DNS: заново запущенный модуль должен его засеять
+                curDnsList = emptyList()
             }
         }
     }

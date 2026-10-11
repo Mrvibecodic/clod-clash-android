@@ -69,6 +69,17 @@ fun stopNoticeTitle(wasReady: Boolean, systemStarted: Boolean, unattended: Boole
     else -> null
 }
 
+enum class ModuleFailureOutcome { Ignore, Restart, Fail }
+
+// Отказ модуля сворачивающейся или прежней сессии — следствие остановки: не
+// перезапуск и не причина; живой — перезапуск, пока хватает бюджета модуля,
+// иначе причина остановки
+fun moduleFailureOutcome(live: Boolean, sessionAlive: Boolean, tryRestart: () -> Boolean): ModuleFailureOutcome = when {
+    !live || !sessionAlive -> ModuleFailureOutcome.Ignore
+    tryRestart() -> ModuleFailureOutcome.Restart
+    else -> ModuleFailureOutcome.Fail
+}
+
 fun shouldWarnAlwaysOnBusy(running: Boolean, ready: Boolean, alwaysOn: Boolean): Boolean =
     running && !ready && alwaysOn
 
@@ -101,7 +112,9 @@ class SessionLifecycle(
     @Volatile
     private var generation = 0
 
-    private val failureLock = Any()
+    // Причина и готовность сессии меняются под ним: отказ модуля прежней сессии
+    // не становится причиной новой, готовность не взводится после остановки
+    private val stateLock = Any()
 
     @Volatile
     private var failureShown = false
@@ -142,10 +155,13 @@ class SessionLifecycle(
         get() = stopNotified.get()
 
     fun notifyStopped() {
-        if (!stopNotified.compareAndSet(false, true))
-            return
+        synchronized(stateLock) {
+            if (!stopNotified.compareAndSet(false, true))
+                return
 
-        StatusProvider.serviceReady = false
+            StatusProvider.serviceReady = false
+        }
+
         StatusProvider.startupStage = null
         StatusProvider.currentProfileUuid = null
         StatusProvider.restartedBySystem = false
@@ -216,41 +232,66 @@ class SessionLifecycle(
         }
     }
 
-    // Отказ модуля гасит рантайм отменой, и тело его не видит: причину сообщает
-    // сам рантайм — для своей сессии и пока она не начала сворачиваться
-    private fun moduleFailed(session: Int, module: String, e: Exception, live: Boolean) {
-        ServiceLog.mark("module failed: $module")
+    // Отказ модуля, гасящий рантайм, тело видит только как отмену: причину
+    // сообщает сам рантайм
+    private fun moduleFailed(session: Int, module: String, e: Exception, live: Boolean, tryRestart: () -> Boolean): Boolean {
+        synchronized(stateLock) {
+            val sessionAlive = !stopping.get() && !stopNotified.get() && session == generation
 
-        synchronized(failureLock) {
-            if (!live || stopping.get() || stopNotified.get() || session != generation) {
-                Log.i("Module failed on stopped session: ${e.message}", e)
+            return when (moduleFailureOutcome(live, sessionAlive, tryRestart)) {
+                ModuleFailureOutcome.Ignore -> {
+                    Log.i("Module $module failed on stopped session: ${e.message}", e)
 
-                return
-            }
+                    ServiceLog.mark("module failed: $module")
 
-            Log.e("Module failed: ${e.message}", e)
+                    false
+                }
+                ModuleFailureOutcome.Restart -> {
+                    Log.w("Module $module failed, restarting: ${e.message}", e)
 
-            if (reason == null) {
-                reason = e.message ?: e.javaClass.simpleName
+                    ServiceLog.mark("module restarted: $module")
+
+                    true
+                }
+                ModuleFailureOutcome.Fail -> {
+                    Log.e("Module $module failed: ${e.message}", e)
+
+                    ServiceLog.mark("module failed: $module")
+
+                    if (reason == null) {
+                        reason = e.message ?: e.javaClass.simpleName
+                    }
+
+                    false
+                }
             }
         }
     }
 
     fun notifyReady() {
-        StatusProvider.startupStage = null
-        StatusProvider.restartedBySystem = restartedBySystem
-        StatusProvider.systemProxyRefused = systemProxyRefused
-        StatusProvider.serviceReady = true
+        // Остановка во время подъёма туннеля (уничтожение службы, отзыв) уже
+        // прошла: готовность не взводится, иначе экран показывал бы
+        // «подключено» у остановленной службы
+        // Публикация целиком под замком: «запущено» не уходит после «остановлено»
+        // и не снимает уведомление о причине остановки
+        synchronized(stateLock) {
+            if (stopNotified.get()) return
 
-        ServiceStore(service).stickyRestarts = ""
+            StatusProvider.startupStage = null
+            StatusProvider.restartedBySystem = restartedBySystem
+            StatusProvider.systemProxyRefused = systemProxyRefused
+            StatusProvider.serviceReady = true
 
-        unattendedStart = false
+            ServiceStore(service).stickyRestarts = ""
 
-        wasReady = true
+            unattendedStart = false
 
-        StaticNotificationModule.cancelStartFailed(service)
+            wasReady = true
 
-        service.sendClashStarted()
+            StaticNotificationModule.cancelStartFailed(service)
+
+            service.sendClashStarted()
+        }
     }
 
     fun claimUserIntent() {
@@ -294,7 +335,7 @@ class SessionLifecycle(
 
     fun startSession() {
         // Отказ модуля прежней сессии не должен стать причиной этой
-        val session = synchronized(failureLock) {
+        val session = synchronized(stateLock) {
             reason = null
 
             ++generation
@@ -327,7 +368,7 @@ class SessionLifecycle(
             return
         }
 
-        launchRuntime { module, e, live -> moduleFailed(session, module, e, live) }
+        launchRuntime { module, e, live, tryRestart -> moduleFailed(session, module, e, live, tryRestart) }
     }
 
     fun onStartCommand(systemStart: Boolean, unattended: Boolean, startId: Int): StartCommandOutcome {
