@@ -20,6 +20,7 @@ import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.log.LogcatCache
 import com.github.kr328.clash.log.LogcatWriter
+import com.github.kr328.clash.log.OverflowGap
 import com.github.kr328.clash.service.RemoteService
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.remote.IRemoteService
@@ -39,18 +40,16 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private val cache = LogcatCache()
 
-    private val channel = Channel<LogMessage>(CACHE_CAPACITY)
+    private class Queued(val log: LogMessage, val dropped: Int = 0)
+
+    private val channel = Channel<Queued>(CACHE_CAPACITY)
 
     private val observer = object : ILogObserver {
-        private var overflowed = false
+        private val gap = OverflowGap()
 
         override fun newItem(log: LogMessage) {
             runCatching {
-                if (channel.trySend(log).isSuccess) {
-                    overflowed = false
-                } else if (!overflowed) {
-                    overflowed = true
-
+                if (gap.offer { dropped -> channel.trySend(Queued(log, dropped)).isSuccess }) {
                     Log.w("Logcat buffer overflow, messages dropped")
                 }
             }.onFailure {
@@ -71,7 +70,7 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
         override fun onServiceDisconnected(name: ComponentName?) {
             remote = null
 
-            channel.trySend(notice("background process died, waiting for restart"))
+            channel.trySend(Queued(notice("background process died, waiting for restart")))
         }
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -161,9 +160,16 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                 LogcatWriter(this@LogcatService).use {
                     while (isActive) {
-                        val msg = channel.receiveCatching().getOrNull()
+                        val queued = channel.receiveCatching().getOrNull()
+                        val msg = queued?.log
 
-                        if (msg != null && it.appendMessage(msg)) {
+                        val gap = queued?.dropped?.takeIf { lost -> lost > 0 }?.let { lost ->
+                            LogMessage(LogMessage.Level.Warning, "[APP] $lost log lines dropped, recording could not keep up", queued.log.time)
+                        }
+
+                        if (msg != null && (gap == null || it.appendMessage(gap)) && it.appendMessage(msg)) {
+                            if (gap != null) cache.append(gap)
+
                             cache.append(msg)
 
                             continue
@@ -173,7 +179,7 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
                             if (msg == null) {
                                 "background process is not restarted any more, recording stopped"
                             } else {
-                                "log file size limit reached, recording stopped"
+                                "log file could not be trimmed (${it.failure}), recording stopped"
                             },
                         )
 

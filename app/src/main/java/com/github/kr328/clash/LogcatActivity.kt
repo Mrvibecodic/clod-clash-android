@@ -134,7 +134,7 @@ class LogcatActivity : BaseActivity<LogcatDesign>() {
                 }
                 if (activityStarted) {
                     ticker.onReceive {
-                        // Запись закончилась сама (предел размера, ошибка записи):
+                        // Запись закончилась сама (ошибка записи, фоновый процесс не поднялся):
                         // файл уже в списке журналов
                         if (!LogcatService.running) {
                             if (!isFinishing) {
