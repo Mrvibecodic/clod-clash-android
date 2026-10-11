@@ -45,6 +45,34 @@ class TunAppsTest {
     }
 
     @Test
+    fun `разрешить выбранные — пустой выбор без списков подписки пускает только себя`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, emptySet(), emptySet(), emptySet(), self, uids("browser" to 12))
+
+        assertEquals(TunApps(mapOf(self to 1), emptyMap()), apps)
+    }
+
+    @Test
+    fun `разрешить выбранные — пустой выбор и только исключения подписки — все, кроме них`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, emptySet(), setOf("absent"), setOf("bank", self), self, uids("bank" to 10))
+
+        assertEquals(TunApps(emptyMap(), mapOf("bank" to 10)), apps)
+    }
+
+    @Test
+    fun `разрешить выбранные — выбор отменяет исключения подписки`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, setOf("browser"), emptySet(), setOf("bank"), self, uids("browser" to 12, "bank" to 10))
+
+        assertEquals(TunApps(mapOf("browser" to 12, self to 1), emptyMap()), apps)
+    }
+
+    @Test
+    fun `разрешить выбранные — включения подписки при пустом выборе`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, emptySet(), setOf("chat"), setOf("bank"), self, uids("chat" to 11, "bank" to 10))
+
+        assertEquals(TunApps(mapOf("chat" to 11, self to 1), emptyMap()), apps)
+    }
+
+    @Test
     fun `запретить выбранные — выбор и исключения, без себя`() {
         val apps = tunApps(AccessControlMode.DenySelected, setOf("game", self), emptySet(), setOf("bank", "gone"), self, uids("game" to 13, "bank" to 10))
 
