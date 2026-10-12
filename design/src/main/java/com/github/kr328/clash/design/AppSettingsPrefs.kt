@@ -8,6 +8,7 @@ data class AppSettingsPrefs(
     val subNotifications: Boolean,
     val profileErrorNotifications: Boolean,
     val profileUpdateNotifications: Boolean,
+    val appUpdateNotifications: Boolean,
 ) {
     companion object {
         fun read(store: ServiceStore): AppSettingsPrefs = AppSettingsPrefs(
@@ -16,6 +17,7 @@ data class AppSettingsPrefs(
             subNotifications = store.enableSubNotifications,
             profileErrorNotifications = store.notifyProfileErrors,
             profileUpdateNotifications = store.notifyProfileUpdates,
+            appUpdateNotifications = store.notifyAppUpdates,
         )
     }
 }

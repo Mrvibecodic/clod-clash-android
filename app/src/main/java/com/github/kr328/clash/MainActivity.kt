@@ -65,6 +65,7 @@ import com.github.kr328.clash.design.compose.screen.SubscriptionsState
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.update.ApkInstaller
+import com.github.kr328.clash.update.UpdateNotice
 import com.github.kr328.clash.update.UpdatePrompt
 import com.github.kr328.clash.update.UpdateTask
 import com.github.kr328.clash.util.ServersReload
@@ -534,9 +535,13 @@ class MainActivity : BaseActivity<MainDesign>() {
                         MainDesign.Request.UpdateNow -> design.launchUpdate()
                         MainDesign.Request.UpdateSkip -> {
                             UpdateTask.available?.let {
+                                val skipped = it.manifest.versionCode
+
                                 withContext(Dispatchers.IO) {
-                                    UpdatePrompt.skip(this@MainActivity, it.manifest.versionCode)
+                                    UpdatePrompt.skip(this@MainActivity, skipped)
                                 }
+
+                                UpdateNotice.withdrawIf(this@MainActivity) { shown -> shown.versionCode == skipped }
                             }
 
                             UpdateTask.dismiss()
@@ -699,10 +704,13 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 AppStore(this@MainActivity).autoCheckUpdate = request.enabled
                             }
 
-                        is MainDesign.Request.SetPrerelease ->
+                        is MainDesign.Request.SetPrerelease -> {
                             withContext(Dispatchers.IO) {
                                 AppStore(this@MainActivity).prereleaseChannel = request.enabled
                             }
+
+                            if (!request.enabled) UpdateNotice.withdrawIf(this@MainActivity) { it.prerelease }
+                        }
 
                         MainDesign.Request.LoadRoutingData ->
                             launch { design.loadRoutingData() }
@@ -2316,5 +2324,27 @@ class MainActivity : BaseActivity<MainDesign>() {
         super.onCreate(savedInstanceState)
 
         refreshDynamicShortcuts(uiStore.hideAppIcon)
+
+        if (savedInstanceState == null) checkUpdateIfAsked(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+
+        setIntent(intent)
+
+        checkUpdateIfAsked(intent)
+    }
+
+    private fun checkUpdateIfAsked(intent: Intent?) {
+        if (intent?.action != UpdateNotice.ACTION_CHECK_UPDATE) return
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
+
+        UpdateNotice.withdraw(this)
+
+        val pushed = intent.getLongExtra(UpdateNotice.EXTRA_PUSHED_VERSION_CODE, 0)
+        val offered = UpdateTask.available?.manifest?.versionCode
+
+        if (offered == null || offered < pushed) UpdateTask.check(this, manual = true)
     }
 }

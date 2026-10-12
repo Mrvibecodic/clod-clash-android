@@ -4,10 +4,12 @@ import android.content.Context
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
 
-class AppStore(context: Context) {
+class AppStore private constructor(context: Context, mode: Int) {
+    constructor(context: Context) : this(context, Context.MODE_PRIVATE)
+
     private val store = Store(
         context
-            .getSharedPreferences(FILE_NAME, Context.MODE_PRIVATE)
+            .getSharedPreferences(FILE_NAME, mode)
             .asStoreProvider()
     )
 
@@ -69,5 +71,10 @@ class AppStore(context: Context) {
 
     companion object {
         private const val FILE_NAME = "app"
+
+        // Файл пишет процесс интерфейса; :background без этого флага до своего
+        // перезапуска читал бы снимок, взятый при первом обращении.
+        @Suppress("DEPRECATION")
+        fun readFromBackground(context: Context): AppStore = AppStore(context, Context.MODE_MULTI_PROCESS)
     }
 }

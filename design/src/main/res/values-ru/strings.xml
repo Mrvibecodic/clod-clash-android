@@ -465,6 +465,16 @@
     <string name="clod_profile_error_notify_summary">Показывать уведомление, когда подписка не обновилась</string>
     <string name="clod_profile_update_notify_title">Успешные обновления подписки</string>
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
+    <string name="clod_update_notify_title">Уведомления об обновлениях</string>
+    <string name="clod_update_notify_summary">Сообщать о новой версии, даже когда приложение закрыто</string>
+    <string name="clod_update_notify_off_title">Выключить уведомления об обновлениях?</string>
+    <string name="clod_update_notify_off_text">Без них можно пропустить важные исправления — тогда регулярно проверяйте обновления в «О программе».</string>
+    <string name="clod_update_notify_off_action">Выключить</string>
+    <string name="clod_update_notify_keep">Оставить</string>
+    <string name="clod_update_notify_channel">Обновления приложения</string>
+    <string name="clod_update_notify_stable">Доступна версия %1$s</string>
+    <string name="clod_update_notify_prerelease">Доступна тестовая версия %1$s</string>
+    <string name="clod_update_notify_text">Откройте Clod Clash, чтобы обновиться</string>
     <string name="clod_delay_unavailable">Ни один сервер не ответил на проверку</string>
     <!-- clod:freeze — пометки «режется» / «не отвечает» рядом с пингом -->
     <string name="clod_freeze_frozen">режется</string>
@@ -605,7 +615,7 @@
     <string name="clod_reliability_open_settings">Открыть настройки</string>
     <string name="clod_reliability_ready">Готово</string>
     <string name="clod_reliability_no_settings">На этом устройстве нужный экран настроек недоступен</string>
-    <string name="clod_notify_blocked">Уведомления запрещены в системе. Пока запрет держится, приложение не покажет ни состояние туннеля, ни напоминания о подписке.</string>
+    <string name="clod_notify_blocked">Уведомления запрещены в системе. Пока запрет держится, приложение не покажет ни состояние туннеля, ни напоминания о подписке, ни уведомления о новых версиях.</string>
     <string name="clod_notify_open_settings">Открыть настройки</string>
     <string name="clod_reset_section">Сброс</string>
     <string name="clod_reset_title">Сбросить настройки</string>

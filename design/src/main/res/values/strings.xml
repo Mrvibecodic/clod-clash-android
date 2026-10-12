@@ -475,6 +475,16 @@
     <string name="clod_profile_error_notify_summary">Show a notification when a subscription fails to update</string>
     <string name="clod_profile_update_notify_title">Successful subscription updates</string>
     <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
+    <string name="clod_update_notify_title">Update notifications</string>
+    <string name="clod_update_notify_summary">Show a notification about a new version, even when the app is closed</string>
+    <string name="clod_update_notify_off_title">Turn off update notifications?</string>
+    <string name="clod_update_notify_off_text">Without them you can miss important fixes, so check for updates in About regularly.</string>
+    <string name="clod_update_notify_off_action">Turn off</string>
+    <string name="clod_update_notify_keep">Keep</string>
+    <string name="clod_update_notify_channel">App updates</string>
+    <string name="clod_update_notify_stable">Version %1$s is available</string>
+    <string name="clod_update_notify_prerelease">Test version %1$s is available</string>
+    <string name="clod_update_notify_text">Open Clod Clash to update</string>
     <string name="clod_delay_unavailable">No server responded to the delay test</string>
     <!-- clod:freeze — marks “cut off” / “not responding” next to the ping -->
     <string name="clod_freeze_frozen">cut off</string>
@@ -601,7 +611,7 @@
     <string name="clod_reliability_open_settings">Open settings</string>
     <string name="clod_reliability_ready">Done</string>
     <string name="clod_reliability_no_settings">The required settings screen is not available on this device</string>
-    <string name="clod_notify_blocked">Notifications are blocked in system settings. While the block holds, the app cannot show the tunnel state or subscription reminders.</string>
+    <string name="clod_notify_blocked">Notifications are blocked in system settings. While the block holds, the app cannot show the tunnel state, subscription reminders or new version notices.</string>
     <string name="clod_notify_open_settings">Open settings</string>
     <string name="clod_reset_section">Reset</string>
     <string name="clod_reset_title">Reset settings</string>

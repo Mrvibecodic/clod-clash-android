@@ -79,6 +79,22 @@ class ServiceStore(context: Context) {
         defaultValue = true,
     )
 
+    var notifyAppUpdates: Boolean by store.boolean(
+        key = "notify_app_updates",
+        defaultValue = true,
+    )
+
+    private var appUpdateAnnouncedRaw: String by store.string(
+        key = "app_update_announced",
+        defaultValue = "",
+    )
+
+    var appUpdateAnnounced: List<Long>
+        get() = appUpdateAnnouncedRaw.split(',').mapNotNull { it.toLongOrNull() }
+        set(value) {
+            appUpdateAnnouncedRaw = value.joinToString(",")
+        }
+
     var vpnAlwaysOn: Int by store.int(
         key = "vpn_always_on",
         defaultValue = -1,
@@ -180,6 +196,7 @@ class ServiceStore(context: Context) {
         enableSubNotifications = true
         notifyProfileErrors = true
         notifyProfileUpdates = true
+        notifyAppUpdates = true
         bypassPrivateNetwork = true
         accessControlMode = AccessControlMode.AcceptSelected
         accessControlPackages = emptySet()

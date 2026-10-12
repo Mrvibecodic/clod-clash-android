@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.kr328.clash.common.compat.isTelevision
+import com.github.kr328.clash.common.constants.Notifications
 import com.github.kr328.clash.design.compose.screen.AppSettingsAction
 import com.github.kr328.clash.design.compose.screen.AppSettingsScreen
 import com.github.kr328.clash.design.compose.screen.AppSettingsState
@@ -70,6 +71,7 @@ class AppSettingsDesign(
             subNotifications = prefs.subNotifications,
             profileErrorNotifications = prefs.profileErrorNotifications,
             profileUpdateNotifications = prefs.profileUpdateNotifications,
+            appUpdateNotifications = prefs.appUpdateNotifications,
             notificationsBlocked = notificationsBlocked(),
             resetEnabled = !running,
         ),
@@ -159,6 +161,7 @@ class AppSettingsDesign(
                         subNotifications = prefs.subNotifications,
                         profileErrorNotifications = prefs.profileErrorNotifications,
                         profileUpdateNotifications = prefs.profileUpdateNotifications,
+                        appUpdateNotifications = prefs.appUpdateNotifications,
                         notificationsBlocked = notificationsBlocked(),
                         resetEnabled = true,
                     )
@@ -310,6 +313,17 @@ class AppSettingsDesign(
                 ServiceSettings.write { notifyProfileUpdates = action.enabled }
 
                 state = state.copy(profileUpdateNotifications = action.enabled)
+
+                askNotificationsIfNeeded(action.enabled)
+            }
+            is AppSettingsAction.SetAppUpdateNotifications -> {
+                ServiceSettings.write {
+                    notifyAppUpdates = action.enabled
+
+                    if (!action.enabled) NotificationManagerCompat.from(context.applicationContext).cancel(Notifications.APP_UPDATE)
+                }
+
+                state = state.copy(appUpdateNotifications = action.enabled)
 
                 askNotificationsIfNeeded(action.enabled)
             }

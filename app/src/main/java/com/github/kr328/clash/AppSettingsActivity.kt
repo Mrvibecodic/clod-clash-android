@@ -28,6 +28,7 @@ import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.store.AppStore
+import com.github.kr328.clash.update.UpdateNotice
 import com.github.kr328.clash.util.ApplicationObserver
 import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.applyHideFromRecents
@@ -370,6 +371,8 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             prereleaseChannel = false
             skippedVersionCode = 0
         }
+
+        UpdateNotice.withdrawIf(this) { it.prerelease }
     }
 
     private fun onHideIconChange(hide: Boolean) {

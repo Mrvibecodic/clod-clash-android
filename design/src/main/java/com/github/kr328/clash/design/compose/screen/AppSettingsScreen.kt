@@ -49,6 +49,7 @@ data class AppSettingsState(
     val subNotifications: Boolean = true,
     val profileErrorNotifications: Boolean = true,
     val profileUpdateNotifications: Boolean = true,
+    val appUpdateNotifications: Boolean = true,
     val notificationsBlocked: Boolean = false,
     val resetEnabled: Boolean = true,
     val restore: RestoreDialog? = null,
@@ -75,6 +76,7 @@ sealed interface AppSettingsAction {
     data class SetSubNotifications(val enabled: Boolean) : AppSettingsAction
     data class SetProfileErrorNotifications(val enabled: Boolean) : AppSettingsAction
     data class SetProfileUpdateNotifications(val enabled: Boolean) : AppSettingsAction
+    data class SetAppUpdateNotifications(val enabled: Boolean) : AppSettingsAction
     data object OpenSystemNotifications : AppSettingsAction
     data object ExportProfiles : AppSettingsAction
     data object ImportProfiles : AppSettingsAction
@@ -185,6 +187,7 @@ fun AppSettingsScreen(
                 enabled = state.notificationEditable && !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetDynamicNotification(it)) },
             )
+            AppUpdateNotificationsRow(state.appUpdateNotifications, !state.notificationsBlocked, onAction)
 
             SectionHeader(stringResource(R.string.clod_tab_subscriptions))
             SwitchRow(
@@ -287,6 +290,46 @@ private fun RestoreDialog(dialog: RestoreDialog, onAction: (AppSettingsAction) -
             }
         },
     )
+}
+
+@Composable
+private fun AppUpdateNotificationsRow(checked: Boolean, enabled: Boolean, onAction: (AppSettingsAction) -> Unit) {
+    var confirming by rememberSaveable { mutableStateOf(false) }
+
+    SwitchRow(
+        title = stringResource(R.string.clod_update_notify_title),
+        subtitle = stringResource(R.string.clod_update_notify_summary),
+        icon = painterResource(R.drawable.ic_baseline_update),
+        checked = checked,
+        enabled = enabled,
+        onCheckedChange = {
+            if (it) onAction(AppSettingsAction.SetAppUpdateNotifications(true)) else confirming = true
+        },
+    )
+
+    if (confirming) {
+        AlertDialog(
+            onDismissRequest = { confirming = false },
+            title = { Text(stringResource(R.string.clod_update_notify_off_title)) },
+            text = { Text(stringResource(R.string.clod_update_notify_off_text)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirming = false
+
+                        onAction(AppSettingsAction.SetAppUpdateNotifications(false))
+                    },
+                ) {
+                    Text(stringResource(R.string.clod_update_notify_off_action))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirming = false }) {
+                    Text(stringResource(R.string.clod_update_notify_keep))
+                }
+            },
+        )
+    }
 }
 
 @Composable
