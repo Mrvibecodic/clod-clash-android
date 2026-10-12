@@ -17,6 +17,8 @@ import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.freeze.FreezeOutcome
 import com.github.kr328.clash.service.freeze.FreezeVerdict
 import com.github.kr328.clash.service.freeze.NetworkKey
+import com.github.kr328.clash.service.util.DeviceCard
+import com.github.kr328.clash.service.util.deviceCard
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.readPanelInfo
 import kotlinx.coroutines.CoroutineScope
@@ -233,10 +235,23 @@ object ClientReports {
 
         sendLock.withLock {
             withContext(Dispatchers.IO) {
+                // Карточка устройства собирается здесь, а не берётся из ядра: отправку
+                // между обновлениями будит процесс, где подписка не обновлялась, и
+                // без неё отчёт ушёл бы без x-hwid — прослойка завела бы устройство
+                // заново по метке установки. Не собралась — отчёт уходит по метке
+                val card = try {
+                    context.deviceCard()
+                } catch (e: Exception) {
+                    Log.w("Client report device card: $e", e)
+
+                    null
+                }
+
                 call("send") {
                     put("store", store.absolutePath)
                     put("url", imported.source)
                     put("path", context.importedDir.resolve(imported.uuid.toString()).absolutePath)
+                    putCard(card)
                 }
             }
         }
@@ -262,6 +277,15 @@ object ClientReports {
 
     private fun stopBetween(context: Context, uuid: UUID) {
         WorkManager.getInstance(context).cancelUniqueWork(betweenName(uuid))
+    }
+
+    private fun kotlinx.serialization.json.JsonObjectBuilder.putCard(card: DeviceCard?) {
+        if (card == null || card.hwid.isEmpty()) return
+
+        put("hwid", card.hwid)
+        put("os", card.os)
+        put("osVer", card.osVersion)
+        put("model", card.model)
     }
 
     private fun betweenName(uuid: UUID) = "client-report-$uuid"

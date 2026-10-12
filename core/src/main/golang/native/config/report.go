@@ -20,8 +20,10 @@ const reportRound = 20 * time.Second
 // каналу, адресом подписки, а не ответил он — запасным адресом провайдера.
 // Велик для прослойки (413) — тут же уходит вдвое меньшее окно.
 // Ключ прослойки и поправка часов берутся из папки подписки и не меняются;
-// без закреплённого ключа отчёт ждёт следующей отправки.
-func SendReport(store, url, profileDir string) {
+// без закреплённого ключа отчёт ждёт следующей отправки. device — заголовки
+// опознания, собранные службой на момент отправки (nil — без опознания): отчёт
+// не зависит от того, обновлялась ли подписка в этом процессе.
+func SendReport(store, url, profileDir string, device map[string]string) {
 	pin := readChanPin(profileDir)
 	if pin == nil {
 		log.Infoln("[Report] no relay key pinned yet, next try with the next send")
@@ -45,9 +47,9 @@ func SendReport(store, url, profileDir string) {
 			return
 		}
 
-		status, err := reportAttempt(url, pin, offset, packed.Gz)
+		status, err := reportAttempt(url, pin, offset, device, packed.Gz)
 		if err != nil && spare != "" {
-			status, err = reportAttempt(spare, pin, offset, packed.Gz)
+			status, err = reportAttempt(spare, pin, offset, device, packed.Gz)
 		}
 
 		if err != nil {
@@ -81,18 +83,18 @@ func SendReport(store, url, profileDir string) {
 // Одна попытка: через туннель, а если он не донёс — напрямую. Каждый запрос
 // собирает свой конверт: у повтора своя метка, иначе прослойка, получившая
 // первый, отбросила бы второй как повтор.
-func reportAttempt(url string, pin []byte, offset int64, gz []byte) (int, error) {
-	status, reached, err := reportSend(url, pin, offset, gz, false)
+func reportAttempt(url string, pin []byte, offset int64, device map[string]string, gz []byte) (int, error) {
+	status, reached, err := reportSend(url, pin, offset, device, gz, false)
 	if err != nil && !reached {
-		status, _, err = reportSend(url, pin, offset, gz, true)
+		status, _, err = reportSend(url, pin, offset, device, gz, true)
 	}
 
 	return status, err
 }
 
 // reached — прослойка (или кто-то вместо неё) ответила: повторять напрямую незачем.
-func reportSend(url string, pin []byte, offset int64, gz []byte, direct bool) (int, bool, error) {
-	secureURL, session, err := chanx.BuildReport(url, pin, chanFields(), time.Now().Unix()+offset)
+func reportSend(url string, pin []byte, offset int64, device map[string]string, gz []byte, direct bool) (int, bool, error) {
+	secureURL, session, err := chanx.BuildReport(url, pin, fieldsOf(device), time.Now().Unix()+offset)
 	if err != nil {
 		return 0, true, err
 	}

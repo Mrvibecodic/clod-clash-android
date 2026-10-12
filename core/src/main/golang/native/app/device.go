@@ -1,8 +1,14 @@
 package app
 
-import "strings"
+import (
+	"strings"
+	"sync"
+)
 
+// Карточка устройства для загрузки подписки: её задаёт служба перед загрузкой,
+// а читают горутины загрузки — поэтому под замком
 var device struct {
+	sync.RWMutex
 	hwid      string
 	os        string
 	osVersion string
@@ -10,29 +16,42 @@ var device struct {
 }
 
 func ApplyDeviceInfo(hwid, os, osVersion, model string) {
-	device.hwid = strings.TrimSpace(hwid)
-	device.os = strings.TrimSpace(os)
-	device.osVersion = strings.TrimSpace(osVersion)
-	device.model = strings.TrimSpace(model)
+	device.Lock()
+	defer device.Unlock()
+
+	device.hwid = hwid
+	device.os = os
+	device.osVersion = osVersion
+	device.model = model
 }
 
 func DeviceHeaders() map[string]string {
-	if device.hwid == "" {
+	device.RLock()
+	defer device.RUnlock()
+
+	return CardHeaders(device.hwid, device.os, device.osVersion, device.model)
+}
+
+// CardHeaders — заголовки опознания по карточке устройства; без HWID карточки
+// нет вовсе (опознание выключено)
+func CardHeaders(hwid, os, osVersion, model string) map[string]string {
+	hwid = strings.TrimSpace(hwid)
+	if hwid == "" {
 		return nil
 	}
 
-	headers := map[string]string{"x-hwid": device.hwid}
+	headers := map[string]string{"x-hwid": hwid}
 
-	if device.os != "" {
-		headers["x-device-os"] = device.os
+	if os = strings.TrimSpace(os); os != "" {
+		headers["x-device-os"] = os
 	}
 
-	if device.osVersion != "" {
-		headers["x-ver-os"] = device.osVersion
+	if osVersion = strings.TrimSpace(osVersion); osVersion != "" {
+		headers["x-ver-os"] = osVersion
 	}
 
-	if device.model != "" {
-		headers["x-device-model"] = device.model
+	if model = strings.TrimSpace(model); model != "" {
+		headers["x-device-model"] = model
 	}
 
 	return headers

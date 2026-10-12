@@ -46,14 +46,14 @@ fun Context.deviceHwid(): String? {
 
     if (raw != null) return digest(raw)
 
-    store.hwid.takeIf { isValidHwid(it) }?.let { return it }
-
-    val fallback = digest(UUID.randomUUID().toString())
-
-    store.hwid = fallback
-
-    return fallback
+    // Запасной HWID заводится один раз: загрузка подписки и отправка отчёта
+    // спрашивают его независимо, и без замка одновременные завели бы два разных
+    return synchronized(fallbackLock) {
+        store.hwid.takeIf { isValidHwid(it) } ?: digest(UUID.randomUUID().toString()).also { store.hwid = it }
+    }
 }
+
+private val fallbackLock = Any()
 
 private fun headerSafe(value: String): String {
     return value.asSequence()
@@ -78,11 +78,25 @@ private fun digest(raw: String): String {
     return hash.joinToString("") { "%02x".format(it) }.take(HWID_HEX_LEN)
 }
 
-fun Context.applyDeviceInfo() {
-    Clash.setDeviceInfo(
+class DeviceCard(val hwid: String, val os: String, val osVersion: String, val model: String)
+
+// Карточка устройства на этот момент: HWID пустой, если опознание выключено
+fun Context.deviceCard(): DeviceCard {
+    return DeviceCard(
         hwid = deviceHwid().orEmpty(),
         os = DEVICE_OS,
         osVersion = headerSafe(deviceOsVersion()),
         model = headerSafe(deviceModel()),
+    )
+}
+
+fun Context.applyDeviceInfo() {
+    val card = deviceCard()
+
+    Clash.setDeviceInfo(
+        hwid = card.hwid,
+        os = card.os,
+        osVersion = card.osVersion,
+        model = card.model,
     )
 }

@@ -6,6 +6,7 @@ import "C"
 import (
 	"encoding/json"
 
+	"cfa/native/app"
 	"cfa/native/config"
 	"cfa/native/report"
 
@@ -25,6 +26,11 @@ type reportRequest struct {
 	Path     string                   `json:"path"`
 	URL      string                   `json:"url"`
 	Verdicts map[string]report.Freeze `json:"verdicts"`
+	// Карточка устройства на момент отправки (send); пустой HWID — без опознания.
+	Hwid  string `json:"hwid"`
+	OS    string `json:"os"`
+	OSVer string `json:"osVer"`
+	Model string `json:"model"`
 }
 
 //export clientReport
@@ -65,7 +71,7 @@ func clientReport(request C.c_string) {
 		report.RecordFreeze(req.Store, report.PlaceFor(req.Net, req.Kind), known, req.Verdicts)
 	case "send":
 		if req.Store != "" && req.URL != "" && req.Path != "" {
-			config.SendReport(req.Store, req.URL, req.Path)
+			config.SendReport(req.Store, req.URL, req.Path, app.CardHeaders(req.Hwid, req.OS, req.OSVer, req.Model))
 		}
 	}
 }

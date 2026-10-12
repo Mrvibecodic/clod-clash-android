@@ -319,8 +319,11 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 }
 
 func chanFields() chanx.Fields {
-	device := app.DeviceHeaders()
+	return fieldsOf(app.DeviceHeaders())
+}
 
+// fieldsOf — поля конверта по заголовкам опознания (nil — без опознания)
+func fieldsOf(device map[string]string) chanx.Fields {
 	return chanx.Fields{
 		Hwid:   device["x-hwid"],
 		OS:     device["x-device-os"],
