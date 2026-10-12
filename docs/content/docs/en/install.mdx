@@ -28,13 +28,18 @@ system simply refuses to install a file that does not fit.
 
 On the first connection the system asks for the VPN permission. On Android 13 and newer the app
 also asks for the notification permission — without it you will not see the tunnel status
-notification, subscription reminders or update errors.
+notification, subscription reminders, update errors or new versions.
 
 ## Updates
 
 Once a day the app checks for updates by itself and shows a window with the changes.
 It is all in **More → About**: **Check for updates** (manually), **Check automatically**
 (on by default) and **Pre-releases** (off).
+
+Even while the app is closed, every few hours it checks for a new version and sends a notification
+with an **Update** button that opens the app and its update window. The notification itself
+downloads nothing. It comes once per version, and about preview versions only when **Pre-releases**
+is on. Turn it off in **More → Look and behavior → Update notifications**.
 
 <Callout type="warn" title="Pre-releases">
 Preview versions carry a suffix in the number, for example `0.1.22-alpha.6`. The app offers
