@@ -143,6 +143,10 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
     companion object {
         const val CHANNEL_ID = "clash_status_channel"
 
+        // Остановка и сбои — со звуком и отдельно от постоянного уведомления,
+        // которое часто выключают
+        private const val STOP_CHANNEL_ID = "clash_stop_channel"
+
         const val STATUS_GUARD_MS = 60_000L
 
         private fun stopIntent(service: Service, requestCode: Int): PendingIntent {
@@ -219,7 +223,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
             val reason = Redact.text(rawReason)
 
             val notification =
-                NotificationCompat.Builder(service, CHANNEL_ID)
+                NotificationCompat.Builder(service, STOP_CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_logo_service)
                     .setColor(service.getColorCompat(R.color.color_clash))
                     .setAutoCancel(true)
@@ -238,7 +242,15 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                     .build()
 
             runCatching {
-                NotificationManagerCompat.from(service).notify(R.id.nf_clash_start_failed, notification)
+                val manager = NotificationManagerCompat.from(service)
+
+                manager.createNotificationChannel(
+                    NotificationChannelCompat.Builder(STOP_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
+                        .setName(service.getText(R.string.clod_stop_channel))
+                        .build()
+                )
+
+                manager.notify(R.id.nf_clash_start_failed, notification)
             }
         }
     }

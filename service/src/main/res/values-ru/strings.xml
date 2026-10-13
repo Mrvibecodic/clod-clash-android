@@ -2,6 +2,7 @@
     <string name="clash_notification_content" translatable="false">"%1$s↑\t%2$s↓"</string>
 
     <string name="clash_service_status_channel">Состояние туннеля</string>
+    <string name="clod_stop_channel">Остановка и сбои туннеля</string>
     <string name="clod_tun_start_failed">Не удалось поднять туннель. Попробуйте подключиться ещё раз</string>
     <string name="clod_tun_revoked">Разрешение на VPN забрало другое приложение или система — туннель закрыт, трафик идёт мимо него. Подключитесь снова, когда другой VPN будет выключен</string>
     <string name="clod_profile_load_failed">Не удалось применить подписку «%1$s»: %2$s. Продолжает работать «%3$s». Проверьте свои правки в переопределении, если они есть</string>
