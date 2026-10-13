@@ -18,6 +18,7 @@ import com.github.kr328.clash.service.freeze.FreezeOutcome
 import com.github.kr328.clash.service.freeze.FreezeVerdict
 import com.github.kr328.clash.service.freeze.NetworkKey
 import com.github.kr328.clash.service.util.DeviceCard
+import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.deviceCard
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.readPanelInfo
@@ -74,11 +75,11 @@ object ClientReports {
     private suspend fun collected(uuid: UUID): Boolean =
         ImportedDao().queryByUUID(uuid)?.let { collected(it.uuid, it.secure) } == true
 
-    // Копится ли отчёт: защищённый канал и прослойка не сказала, что отчёты не
-    // принимает. Метки не было (прослойка старее или подписка обновлялась до
-    // неё) — копится
+    // Копится ли отчёт: защищённый канал и прослойка сказала, что отчёты
+    // принимает. Без её метки (прослойка старее, подписка ещё не обновлялась) —
+    // не копится
     private fun collected(uuid: UUID, secure: Boolean): Boolean =
-        secure && context.readPanelInfo(uuid)?.report != false
+        secure && context.readPanelInfo(uuid)?.report == true
 
     private fun call(op: String, fill: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): Boolean {
         return try {
@@ -222,9 +223,10 @@ object ClientReports {
         send(context, imported)
     }
 
-    // Плановые обновления реже, чем отчёт может уходить
+    // Плановые обновления реже, чем отчёт может уходить, или выключены
     private fun between(imported: Imported): Boolean =
-        collected(imported.uuid, imported.secure) && imported.interval > BETWEEN
+        collected(imported.uuid, imported.secure) &&
+            (imported.interval > BETWEEN || imported.interval < UpdateSchedule.MIN_INTERVAL)
 
     private suspend fun send(context: Context, imported: Imported) {
         if (!collected(imported.uuid, imported.secure)) return
