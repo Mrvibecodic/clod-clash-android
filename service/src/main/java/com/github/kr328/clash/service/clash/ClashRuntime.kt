@@ -1,10 +1,12 @@
 package com.github.kr328.clash.service.clash
 
 import android.os.SystemClock
+import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.clash.module.Module
+import com.github.kr328.clash.service.freeze.NetworkKey
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -87,6 +89,11 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                     try {
                         Clash.reset()
                         clearSessionOverride()
+
+                        // Мобильная ли сеть — ядру до модулей: первая загрузка подписки
+                        // уже без серверов только для мобильной сети вне неё. Дальше её
+                        // называет сторож сети, и его слово — последнее
+                        Clash.setCellular(NetworkKey.cellularNow(Global.application))
 
                         // Сброс ядра и снятие замка ждут, пока модули доработают
                         // свои finally: иначе прощание старой сессии (пустой DNS,
