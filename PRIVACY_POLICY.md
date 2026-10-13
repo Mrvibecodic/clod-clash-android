@@ -2,7 +2,7 @@
 
 Languages: **English** · [Русский](./PRIVACY_POLICY.ru.md)
 
-Effective: 10 October 2026. Applies to Clod Clash for Android.
+Effective: 14 October 2026. Applies to Clod Clash for Android.
 
 Clod Clash is an open source VPN client. It is provided free of charge and as is.
 
@@ -45,7 +45,7 @@ crash-reporting code. Everything described below covers the requests this app ma
     most, and if the provider has no secure channel, it then requests the address the usual way.
 *   **A quality report to your provider, over the secure channel only.** For a subscription
     that uses the secure channel, after a successful scheduled refresh (not a manual one), and
-    between refreshes if they are less frequent than every 6 hours (after a failed refresh,
+    between refreshes if they are less frequent than every 6 hours or turned off (after a failed refresh,
     from the next successful one), at most once every 6 hours, the app sends the provider's
     subscription server what it has already measured: latency results and the "16–20" check
     results per server of that subscription, traffic volume per server, the server list entries
@@ -64,8 +64,8 @@ crash-reporting code. Everything described below covers the requests this app ma
 *   **To Yandex, to learn the external IP address.** For the report above, the app asks
     `ipv4-internet.yandex.net` and `ipv6-internet.yandex.net` (operated by Yandex) for the
     address your connection appears from — when the network changes and at most once an hour
-    on the same network, and only while it collects a report for a subscription with the
-    secure channel. The request goes outside the tunnel and carries no identifier or device
+    on the same network (if the address could not be learned, at most once every 5 minutes),
+    and only while it collects a report for a subscription with the secure channel. The request goes outside the tunnel and carries no identifier or device
     headers, but Yandex sees your IP address.
 *   **To a connectivity-check address, through each server.** Measuring latency (the
     "check" button, the automatic check when the Servers tab is opened, and the checks
@@ -76,9 +76,12 @@ crash-reporting code. Everything described below covers the requests this app ma
     operator of the test address sees a connection from each server's IP.
 *   **The "16–20" check.** Only if your provider turns it on with the `clod-16-20-check`
     subscription header, the app downloads 64 KB from `speed.cloudflare.com` (operated by
-    Cloudflare) through each server to find servers whose traffic is being cut — when a
-    subscription is loaded, when the network changes, and at most once an hour while the
-    tunnel is on. No identifier or device headers are attached.
+    Cloudflare) through each server to find servers whose traffic is being cut. While the
+    tunnel is on — when a subscription is loaded, when the network changes, and at most once
+    an hour; without the tunnel — when the active subscription is refreshed or saved and when
+    the app is opened. Each server is checked at most once every 3 days (one that did not
+    answer, every 6 hours), and a server that failed the check is checked again right away.
+    No identifier or device headers are attached.
 *   **DNS.** Name resolution goes wherever your configuration says. If the configuration
     leaves DNS disabled — either because it has no DNS section at all, or because the
     section is present but sets `enable: false` — the app replaces that whole section with
@@ -90,8 +93,9 @@ crash-reporting code. Everything described below covers the requests this app ma
     so the names you resolve reach that resolver too; the same appending happens whenever
     the configuration itself asks for the system resolver. If the configuration enables DNS
     on its own, the app leaves the section as written.
-*   **To the update and routing-data endpoints.** Checking for an app update, downloading an
-    update package (GitHub, `Mrvibecodic/clod-clash-android`), fetching routing databases
+*   **To the update and routing-data endpoints.** Checking for an app update (also in the
+    background every 3 hours while update notifications are on), downloading an update
+    package (GitHub, `Mrvibecodic/clod-clash-android`), fetching routing databases
     (GeoIP, GeoSite, ASN — by default from GitHub, `MetaCubeX/meta-rules-dat`) and loading a
     provider logo send only a standard `User-Agent` of the form `ClodClash/<version> (Android)`. No
     device headers and no identifier are attached to these requests.

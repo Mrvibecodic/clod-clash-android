@@ -81,9 +81,10 @@ downloads 64 KB through the server and sees whether all of it arrives, whether i
 first kilobytes ("cut off") or nothing gets through ("not responding"). The outcome is a mark next
 to the latency in the Servers tab and on the home screen; tapping it opens an explanation with a
 "Contact support" button (when `support-url` was sent). The app does nothing to the servers:
-latency and selection stay as they were. New servers and servers whose connection data changed are
-checked; "working" and "cut off" are rechecked every 3 days, "not responding" after 6 hours on the
-same network. Results are kept per subscription and per network. Without the header (or with any
+latency and selection stay as they were. A mark is set only when a repeat check right away confirms
+it. New servers and servers whose connection data changed are checked (address, port, protocol,
+keys; the TLS server name and Host do not count — they may be handed out at random); "working" and
+"cut off" are rechecked every 3 days, "not responding" after 6 hours on the same network. Results are kept per subscription and per network. Without the header (or with any
 value other than `true`) there are no checks and no marks.
 
 ## Servers for the mobile network only: `clod-mobile-only`
