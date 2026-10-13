@@ -6,6 +6,7 @@ import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import androidx.core.content.getSystemService
 import java.net.Inet4Address
@@ -118,14 +119,27 @@ object NetworkKey {
         val transport = transportOf(capabilities)
 
         if (transport == "cellular") {
-            val operator = context.getSystemService<TelephonyManager>()?.networkOperator.orEmpty()
-
-            return Seen(transport = transport, operator = operator)
+            return Seen(transport = transport, operator = dataOperator(context))
         }
 
         val link = connectivity.getLinkProperties(chosen) ?: return null
 
         return seenOf(transport, link)
+    }
+
+    // Оператор SIM для интернета: без уточнения система отдаёт SIM для звонков
+    private fun dataOperator(context: Context): String {
+        val telephony = context.getSystemService<TelephonyManager>() ?: return ""
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val data = SubscriptionManager.getDefaultDataSubscriptionId()
+
+            if (data != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                return telephony.createForSubscriptionId(data).networkOperator.orEmpty()
+            }
+        }
+
+        return telephony.networkOperator.orEmpty()
     }
 
     private fun seenOf(transport: String, link: LinkProperties): Seen {
