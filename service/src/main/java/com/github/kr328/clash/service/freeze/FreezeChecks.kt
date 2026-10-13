@@ -48,7 +48,8 @@ import java.util.concurrent.atomic.AtomicLong
 // в этом процессе.
 // Проверяются отпечатки без итога в текущей сети, «работает» и «режется»
 // старше 3 суток, «не отвечает» и попытки без итога старше 6 часов; одинаковые
-// узлы делят итог по отпечатку. Смена сети или подписки посреди захода его
+// узлы делят итог по отпечатку. «Режется» и «не отвечает» ставятся только
+// после повтора. Смена сети или подписки посреди захода его
 // бросает; заход, где не прошло ничего нигде, не записывается, и в этой сети
 // следующий — через 6 часов или после загрузки, обновления или сохранения
 // подписки. Ядро без отпечатков — молчит.
@@ -360,15 +361,21 @@ object FreezeChecks {
             // тишины, оборванные остаются в очереди
             var interrupted = !outcomes.keys.containsAll(due)
 
-            // Не прошло ничего — контрольный узел тем же заходом: прошёл он, значит
-            // сеть есть и мёртвые помечаются сразу, а не через 6 часов
-            val control = if (interrupted) null else FreezePlan.control(checkable, net, outcomes)
-            if (control != null) {
-                ServiceLog.mark("freeze: $why, nothing passed, checking $control that worked here to tell the network from the nodes")
+            // «Режется» и «не отвечает» — только повторённые тем же заходом рядом с
+            // контрольным узлом: не прошёл он — это сеть, а не узлы
+            val negatives = if (interrupted) emptySet() else FreezePlan.negatives(outcomes)
+            if (negatives.isNotEmpty()) {
+                val control = FreezePlan.control(checkable, net, outcomes, negatives)
+                val again = checks(path, negatives.sorted() + listOfNotNull(control))
 
-                outcomes = outcomes + checks(path, listOf(control))
+                interrupted = !again.keys.containsAll(negatives + listOfNotNull(control))
 
-                interrupted = control !in outcomes
+                ServiceLog.mark(
+                    "freeze: $why, ${negatives.size} failed node(s) checked again" +
+                        (control?.let { " with $it that works here" } ?: "") + " — " + counted(again.values),
+                )
+
+                outcomes = FreezePlan.confirmed(outcomes, negatives, again, control)
             }
 
             val same = epoch.get() == startedAt &&

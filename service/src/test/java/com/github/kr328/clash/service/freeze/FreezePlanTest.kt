@@ -90,23 +90,86 @@ class FreezePlanTest {
     }
 
     @Test
-    fun `не прошло ничего — контрольный узел тот, что рабочий здесь свежее всех`() {
-        val fingerprints = mapOf("new" to "f0", "old" to "f1", "fresh" to "f2", "cut" to "f3", "twin" to "f2")
+    fun `неясно снимает не отвечает — узел ответил`() {
+        val node = FreezePlan.apply(checked("dead", FreezePlan.RETRY_AFTER), FreezeOutcome("unknown", 403), now, "a")
+
+        assertEquals(null, node.verdict)
+        assertEquals(now, node.tried)
+        assertEquals(emptyMap<String, String>(), FreezePlan.marks(mapOf("a" to "fp"), FreezeNetwork(nodes = mapOf("fp" to node))))
+    }
+
+    @Test
+    fun `пометку ставят только итоги, которые повторяются`() {
+        val outcomes = mapOf(
+            "ok" to FreezeOutcome("ok", 200),
+            "cut" to FreezeOutcome("frozen", 200),
+            "dead" to FreezeOutcome("dead", 0),
+            "refused" to FreezeOutcome("unknown", 403),
+        )
+
+        assertEquals(setOf("cut", "dead"), FreezePlan.negatives(outcomes))
+    }
+
+    @Test
+    fun `контрольный — прошедший в заходе, иначе рабочий здесь свежее всех`() {
+        val fingerprints = mapOf("new" to "f0", "old" to "f1", "fresh" to "f2", "cut" to "f3", "twin" to "f3", "b" to "f4", "a" to "f5")
         val network = FreezeNetwork(
             nodes = mapOf(
                 "f1" to FreezeNode(verdict = "ok", at = 100),
                 "f2" to FreezeNode(verdict = "ok", at = 200),
-                "f3" to FreezeNode(verdict = "frozen", at = 300),
+                "f3" to FreezeNode(verdict = "ok", at = 300),
             ),
         )
-        val nothing = mapOf("new" to FreezeOutcome("unknown", 0))
+        val cut = mapOf("cut" to FreezeOutcome("frozen", 200))
 
-        assertEquals("fresh", FreezePlan.control(fingerprints, network, nothing))
-        assertEquals("old", FreezePlan.control(fingerprints, network.copy(nodes = network.nodes - "f2"), nothing))
-        assertEquals("old", FreezePlan.control(fingerprints, network, nothing + ("fresh" to FreezeOutcome("unknown", 0))))
-        assertEquals(null, FreezePlan.control(fingerprints, network, nothing + ("fresh" to FreezeOutcome("unknown", 0)) + ("old" to FreezeOutcome("unknown", 0))))
-        assertEquals(null, FreezePlan.control(fingerprints, network, mapOf("new" to FreezeOutcome("dead", 0), "cut" to FreezeOutcome("frozen", 200))))
-        assertEquals(null, FreezePlan.control(fingerprints, FreezeNetwork(), nothing))
+        // Одноимённый отпечатку повторяемого не годится, хоть и свежее всех
+        assertEquals("fresh", FreezePlan.control(fingerprints, network, cut, setOf("cut")))
+        assertEquals("a", FreezePlan.control(fingerprints, network, cut + ("b" to FreezeOutcome("ok", 200)) + ("a" to FreezeOutcome("ok", 200)), setOf("cut")))
+        // Проверенный в заходе без «работает» — не контрольный
+        assertEquals("old", FreezePlan.control(fingerprints, network, cut + ("fresh" to FreezeOutcome("unknown", 0)), setOf("cut")))
+        assertEquals(null, FreezePlan.control(fingerprints, FreezeNetwork(), cut, setOf("cut")))
+    }
+
+    @Test
+    fun `итог даёт повтор, а не прошедший контрольный снимает повторяемые`() {
+        val outcomes = mapOf(
+            "ok" to FreezeOutcome("ok", 200),
+            "cut" to FreezeOutcome("frozen", 200),
+            "dead" to FreezeOutcome("dead", 0),
+            "blip" to FreezeOutcome("frozen", 200),
+        )
+        val negatives = setOf("cut", "dead", "blip")
+        val again = mapOf(
+            "cut" to FreezeOutcome("frozen", 200),
+            "dead" to FreezeOutcome("dead", 0),
+            "blip" to FreezeOutcome("ok", 200),
+            "ok" to FreezeOutcome("ok", 200),
+        )
+
+        assertEquals(
+            mapOf("ok" to FreezeOutcome("ok", 200), "cut" to FreezeOutcome("frozen", 200), "dead" to FreezeOutcome("dead", 0), "blip" to FreezeOutcome("ok", 200)),
+            FreezePlan.confirmed(outcomes, negatives, again, "ok"),
+        )
+
+        // Контрольный не прошёл или повтор оборван — повторяемых в итоге нет
+        assertEquals(mapOf("ok" to FreezeOutcome("ok", 200)), FreezePlan.confirmed(outcomes, negatives, again + ("ok" to FreezeOutcome("dead", 0)), "ok"))
+        assertEquals(mapOf("ok" to FreezeOutcome("ok", 200)), FreezePlan.confirmed(outcomes, negatives, again - "ok", "ok"))
+        assertEquals(
+            mapOf("ok" to FreezeOutcome("ok", 200), "cut" to FreezeOutcome("frozen", 200), "dead" to FreezeOutcome("dead", 0)),
+            FreezePlan.confirmed(outcomes, negatives, again - "blip", "ok"),
+        )
+
+        // Без контрольного решает повтор; контрольный со стороны входит в итог, если пометки не ставит
+        assertEquals(outcomes + ("blip" to FreezeOutcome("ok", 200)), FreezePlan.confirmed(outcomes, negatives, again, null))
+        val alone = mapOf("dead" to FreezeOutcome("dead", 0))
+        assertEquals(
+            mapOf("dead" to FreezeOutcome("dead", 0), "old" to FreezeOutcome("ok", 200)),
+            FreezePlan.confirmed(alone, setOf("dead"), mapOf("dead" to FreezeOutcome("dead", 0), "old" to FreezeOutcome("ok", 200)), "old"),
+        )
+        assertEquals(
+            mapOf("dead" to FreezeOutcome("dead", 0)),
+            FreezePlan.confirmed(alone, setOf("dead"), mapOf("dead" to FreezeOutcome("dead", 0), "old" to FreezeOutcome("frozen", 200)), "old"),
+        )
     }
 
     @Test

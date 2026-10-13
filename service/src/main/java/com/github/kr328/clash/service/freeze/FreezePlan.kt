@@ -78,14 +78,20 @@ object FreezePlan {
         }
     }
 
-    // Вердикт — целиком, «неясно» — только время попытки; имя и код ответа — всегда
+    // Вердикт — целиком, «неясно» — время попытки и снятие «не отвечает»: узел
+    // ответил; имя и код ответа — всегда
     fun apply(node: FreezeNode?, outcome: FreezeOutcome, now: Long, name: String? = null): FreezeNode {
         val previous = node ?: FreezeNode()
 
         return if (FreezeVerdict.settled(outcome.verdict)) {
             FreezeNode(verdict = outcome.verdict, at = now, tried = now, name = name, status = outcome.status)
         } else {
-            previous.copy(tried = now, name = name ?: previous.name, status = outcome.status)
+            previous.copy(
+                verdict = previous.verdict.takeUnless { it == FreezeVerdict.DEAD },
+                tried = now,
+                name = name ?: previous.name,
+                status = outcome.status,
+            )
         }
     }
 
@@ -93,22 +99,55 @@ object FreezePlan {
     // прошло ничего нигде, это скорее сеть, чем серверы
     fun worthRecording(outcomes: Collection<FreezeOutcome>): Boolean = outcomes.any { it.answered }
 
-    // Через проверенные узлы не прошло ничего — это сеть или только они? Узел,
-    // который в этой сети отмечен рабочим (свежее всех) и в этот заход не
-    // проверялся, — контрольный: прошёл он, значит сеть есть и итоги остальных в
-    // счёт. Без такого узла или если что-то уже прошло — проверять нечего
-    fun control(fingerprints: Map<String, String>, network: FreezeNetwork, outcomes: Map<String, FreezeOutcome>): String? {
-        if (worthRecording(outcomes.values)) return null
+    // Итоги, которые ставят пометку, — только повторённые: одна пауза в сети
+    // (метро, лифт) иначе повесила бы «режется» на 3 суток
+    fun negatives(outcomes: Map<String, FreezeOutcome>): Set<String> =
+        outcomes.filterValues { FreezeVerdict.mark(it.verdict) != null }.keys
 
-        val tried = outcomes.keys.mapNotNull { fingerprints[it] }.toSet()
+    // Контрольный узел к повтору — через него в этой сети трафик идёт: прошёл в
+    // этом заходе, иначе отмечен здесь рабочим (свежее всех) и не проверялся.
+    // Повторяемые и одноимённые их отпечатку не годятся. Нет такого — повтор
+    // без контроля
+    fun control(
+        fingerprints: Map<String, String>,
+        network: FreezeNetwork,
+        outcomes: Map<String, FreezeOutcome>,
+        negatives: Set<String>,
+    ): String? {
+        val doubted = negatives.mapNotNull { fingerprints[it] }.toSet()
+        val usable = fingerprints.filter { (name, fingerprint) -> name !in negatives && fingerprint !in doubted }
 
-        return fingerprints.entries
-            .filter { it.value !in tried }
+        usable.keys.filter { outcomes[it]?.verdict == FreezeVerdict.OK }.minOrNull()?.let { return it }
+
+        return usable.entries
+            .filter { it.key !in outcomes }
             .mapNotNull { (name, fingerprint) ->
                 network.nodes[fingerprint]?.takeIf { it.verdict == FreezeVerdict.OK }?.let { name to it.at }
             }
             .maxByOrNull { it.second }
             ?.first
+    }
+
+    // Итог захода после повтора: контрольный не прошёл — сеть под вопросом,
+    // повторяемые в итог не входят и остаются в очереди; иначе их итог — повтор.
+    // Оборванный повтор — тоже не в итог. Контрольный входит, только если
+    // в заходе его не было и пометки он не ставит
+    fun confirmed(
+        outcomes: Map<String, FreezeOutcome>,
+        negatives: Set<String>,
+        again: Map<String, FreezeOutcome>,
+        control: String?,
+    ): Map<String, FreezeOutcome> {
+        val settled = outcomes - negatives
+
+        if (control != null && again[control]?.answered != true) return settled
+
+        val repeated = negatives.mapNotNull { name -> again[name]?.let { name to it } }
+        val checked = control
+            ?.takeIf { it !in outcomes }
+            ?.let { name -> again[name]?.takeIf { FreezeVerdict.mark(it.verdict) == null }?.let { name to it } }
+
+        return settled + repeated + listOfNotNull(checked)
     }
 
     // Выбросить забытые сети и отпечатки, которых в подписке больше нет
