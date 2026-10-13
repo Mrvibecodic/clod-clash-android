@@ -58,6 +58,9 @@ jobs:
           grep -qF 'return ErrRedirectDowngrade' component/http/http.go
           grep -A1 -F 'loadProvider(cfg.RuleProviders)' hub/executor/executor.go | grep -qF 'tunnel.OnRunning()'
           grep -A1 -F 'tunnel.OnRunning()' hub/executor/executor.go | grep -qF 'runtime.GC()'
+          # Проверка 16–20: обрыв по пути — «неясно», отпечаток без имени сервера и Host
+          grep -A3 -F 'case ctx.Err() == nil:' adapter/download.go | grep -qF 'return DownloadUnknown'
+          grep -q disguiseKeys adapter/fingerprint.go
 
       - name: Check Core Connectivity Test Address
         run: |
