@@ -113,7 +113,9 @@ import com.github.kr328.clash.design.compose.component.FreezeSheet
 import com.github.kr328.clash.design.compose.component.freezeCurrentLine
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.PingBadge
+import com.github.kr328.clash.design.compose.component.DelayMark
 import com.github.kr328.clash.design.compose.component.PingBounds
+import com.github.kr328.clash.design.compose.component.delayMark
 import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.PowerButton
 import com.github.kr328.clash.design.compose.component.SectionHeader
@@ -187,9 +189,24 @@ data class ServersState(
     val loading: Boolean = false,
     val readOnly: Boolean = false,
     val favorites: Set<String> = emptySet(),
-    // clod:freeze — имя узла → frozen | dead в текущей сети
-    val freeze: Map<String, String> = emptyMap(),
-)
+    // clod:freeze — имя узла → frozen | dead в текущей сети, как их хранит служба
+    val freezeMarks: Map<String, String> = emptyMap(),
+) {
+    // Показываемые пометки: «не отвечает» у узла, который сейчас пингуется, — неправда
+    val freeze: Map<String, String> by lazy { shownFreeze(freezeMarks, groups) }
+}
+
+internal fun shownFreeze(marks: Map<String, String>, groups: List<ProxyGroupState>): Map<String, String> {
+    if (marks.values.none { it == "dead" }) return marks
+
+    val answering = groups.asSequence()
+        .flatMap { it.proxies.asSequence() }
+        .filter { delayMark(it.delay, PingBounds()) !in setOf(DelayMark.Untested, DelayMark.Dead) }
+        .map { it.name }
+        .toSet()
+
+    return marks.filterNot { (name, mark) -> mark == "dead" && name in answering }
+}
 
 @Immutable
 data class SubscriptionItem(

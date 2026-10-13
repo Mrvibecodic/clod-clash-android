@@ -419,8 +419,8 @@ class MainDesign(
     // clod:freeze — пометки «режется» / «не отвечает» текущей подписки в текущей сети
     suspend fun setFreezeMarks(marks: Map<String, String>) {
         withContext(Dispatchers.Main) {
-            if (state.servers.freeze != marks) {
-                state = state.copy(servers = state.servers.copy(freeze = marks))
+            if (state.servers.freezeMarks != marks) {
+                state = state.copy(servers = state.servers.copy(freezeMarks = marks))
             }
         }
     }
