@@ -206,8 +206,10 @@ class AppSettingsDesign(
         )
     }
 
+    // До Android 13 разрешения нет: уведомления запрещены только в системных
+    // настройках. С ним — не запрещены, пока о нём не спрашивали
     private fun notificationsBlocked(): Boolean {
-        if (!uiStore.notificationsRequested)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !uiStore.notificationsRequested)
             return false
 
         return !NotificationManagerCompat.from(context).areNotificationsEnabled()
