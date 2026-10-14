@@ -16,14 +16,14 @@ object FreezeStore {
     fun load(context: Context, uuid: UUID): FreezeFile {
         val file = file(context, uuid)
 
-        if (!file.isFile) return FreezeFile()
+        if (!file.isFile) return FreezePlan.upgrade(FreezeFile())
 
         return try {
-            json.decodeFromString(FreezeFile.serializer(), file.readText())
+            FreezePlan.upgrade(json.decodeFromString(FreezeFile.serializer(), file.readText()))
         } catch (e: Exception) {
             Log.w("Freeze results of $uuid could not be read and start over: $e")
 
-            FreezeFile()
+            FreezePlan.upgrade(FreezeFile())
         }
     }
 

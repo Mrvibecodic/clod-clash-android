@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class FreezeNode(
-    // ok / frozen / dead; null — вердикта ещё не было
+    // ok / frozen; null — вердикта ещё не было
     val verdict: String? = null,
     // когда вынесен verdict, unix-секунды
     val at: Long = 0,
@@ -29,37 +29,49 @@ data class FreezeNetwork(
 
 @Serializable
 data class FreezeFile(
+    val version: Int = 0,
     val networks: Map<String, FreezeNetwork> = emptyMap(),
 )
 
-// Ответ ядра на одну проверку: вердикт и код ответа сайта (0 — ответа не было)
+// Ответ ядра на одну проверку: слово ядра и код ответа сайта (0 — ответа не было)
 @Serializable
 data class FreezeOutcome(
-    val verdict: String = "unknown",
+    val verdict: String = "",
     val status: Int = 0,
-) {
-    // Через узел что-то прошло: сайт ответил, пусть и не тем, или трафик шёл
-    val answered: Boolean
-        get() = verdict == FreezeVerdict.OK || verdict == FreezeVerdict.FROZEN || status != 0
-}
+)
 
 object FreezeVerdict {
+    // Итог один — обрезается ли скачивание через узел: «работает» или «режется».
+    // Всё прочее, что отвечает ядро (в том числе dead), итогом не считается и
+    // записывается только как попытка
     const val OK = "ok"
     const val FROZEN = "frozen"
-    const val DEAD = "dead"
 
     // Итог, который показывается пометкой; «работает» пометкой не бывает
-    fun mark(verdict: String?): String? = verdict?.takeIf { it == FROZEN || it == DEAD }
+    fun mark(verdict: String?): String? = verdict?.takeIf { it == FROZEN }
 
-    fun settled(verdict: String?): Boolean = verdict == OK || verdict == FROZEN || verdict == DEAD
+    fun settled(verdict: String?): Boolean = verdict == OK || verdict == FROZEN
 }
+
+// Повтор обрезанных: снова обрезанные и прошедшие
+data class FreezeWave(
+    val cut: Map<String, FreezeOutcome>,
+    val passed: Map<String, FreezeOutcome>,
+)
 
 object FreezePlan {
     // «Работает» и «режется» — повтор не чаще раза в 3 суток
     const val RECHECK_AFTER = 3L * 24 * 60 * 60
 
-    // «Не отвечает» и попытка без итога — повтор через 6 часов
+    // Попытка без итога — повтор через 6 часов
     const val RETRY_AFTER = 6L * 60 * 60
+
+    // Сколько проверок подряд должны обрезаться, чтобы узел считался «режется»
+    const val WAVES = 3
+
+    // Файлы старее ставили «режется» после одной обрезанной проверки и хранили
+    // dead: такие итоги при чтении снимаются
+    const val VERSION = 2
 
     // Сеть, где клиент не был столько, забывается
     const val FORGET_NETWORK_AFTER = 30L * 24 * 60 * 60
@@ -67,19 +79,17 @@ object FreezePlan {
     // «Были в этой сети» обновляется в файле не чаще раза в сутки
     const val TOUCH_AFTER = 24L * 60 * 60
 
+    // Итогу 3 суток, попытке без итога 6 часов
     fun isDue(node: FreezeNode?, now: Long): Boolean {
         if (node == null) return true
 
-        val sinceTry = now - node.tried
+        if (now - node.tried < RETRY_AFTER) return false
 
-        return when (node.verdict) {
-            FreezeVerdict.OK, FreezeVerdict.FROZEN -> sinceTry >= RECHECK_AFTER
-            else -> sinceTry >= RETRY_AFTER
-        }
+        return !FreezeVerdict.settled(node.verdict) || now - node.at >= RECHECK_AFTER
     }
 
-    // Вердикт — целиком, «неясно» — время попытки и снятие «не отвечает»: узел
-    // ответил; имя и код ответа — всегда
+    // Вердикт — целиком; без итога — время попытки, прежний вердикт остаётся;
+    // имя и код ответа — всегда
     fun apply(node: FreezeNode?, outcome: FreezeOutcome, now: Long, name: String? = null): FreezeNode {
         val previous = node ?: FreezeNode()
 
@@ -87,7 +97,6 @@ object FreezePlan {
             FreezeNode(verdict = outcome.verdict, at = now, tried = now, name = name, status = outcome.status)
         } else {
             previous.copy(
-                verdict = previous.verdict.takeUnless { it == FreezeVerdict.DEAD },
                 tried = now,
                 name = name ?: previous.name,
                 status = outcome.status,
@@ -95,63 +104,132 @@ object FreezePlan {
         }
     }
 
-    // Заход записывается, только если через кого-то что-то прошло: когда не
-    // прошло ничего нигде, это скорее сеть, чем серверы
-    fun worthRecording(outcomes: Collection<FreezeOutcome>): Boolean = outcomes.any { it.answered }
+    // Обрезанные в проверке — их проверяют ещё дважды: одной обрезанной проверке
+    // не верим (пауза в сети — метро, лифт — повесила бы значок на 3 суток)
+    fun suspects(outcomes: Map<String, FreezeOutcome>): Set<String> =
+        outcomes.filterValues { it.verdict == FreezeVerdict.FROZEN }.keys
 
-    // Итоги, которые ставят пометку, — только повторённые: одна пауза в сети
-    // (метро, лифт) иначе повесила бы «режется» на 3 суток
-    fun negatives(outcomes: Map<String, FreezeOutcome>): Set<String> =
-        outcomes.filterValues { FreezeVerdict.mark(it.verdict) != null }.keys
+    // До повторов у обрезанных итога нет
+    fun unconfirmed(outcomes: Map<String, FreezeOutcome>): Map<String, FreezeOutcome> =
+        outcomes.mapValues { (_, outcome) -> if (outcome.verdict == FreezeVerdict.FROZEN) outcome.copy(verdict = "") else outcome }
 
-    // Контрольный узел к повтору — через него в этой сети трафик идёт: прошёл в
-    // этом заходе, иначе отмечен здесь рабочим (свежее всех) и не проверялся.
-    // Повторяемые и одноимённые их отпечатку не годятся. Нет такого — повтор
-    // без контроля
+    // Контрольный узел к повторам — через него в этой сети трафик идёт: прошёл в
+    // этом заходе, иначе отмечен здесь рабочим (свежее всех), последняя попытка
+    // дала итог, и в заходе он не проверялся (ни он, ни узлы с его отпечатком).
+    // Обрезанные и одноимённые их отпечатку не годятся. Нет такого — сравнить
+    // не с чем, повторов нет
     fun control(
         fingerprints: Map<String, String>,
         network: FreezeNetwork,
         outcomes: Map<String, FreezeOutcome>,
-        negatives: Set<String>,
+        suspects: Set<String>,
     ): String? {
-        val doubted = negatives.mapNotNull { fingerprints[it] }.toSet()
-        val usable = fingerprints.filter { (name, fingerprint) -> name !in negatives && fingerprint !in doubted }
+        val doubted = suspects.mapNotNull { fingerprints[it] }.toSet()
+        val usable = fingerprints.filter { (name, fingerprint) -> name !in suspects && fingerprint !in doubted }
 
         usable.keys.filter { outcomes[it]?.verdict == FreezeVerdict.OK }.minOrNull()?.let { return it }
 
+        val tried = outcomes.keys.mapNotNull { fingerprints[it] }.toSet()
+
         return usable.entries
-            .filter { it.key !in outcomes }
+            .filter { it.value !in tried }
             .mapNotNull { (name, fingerprint) ->
-                network.nodes[fingerprint]?.takeIf { it.verdict == FreezeVerdict.OK }?.let { name to it.at }
+                network.nodes[fingerprint]?.takeIf { it.verdict == FreezeVerdict.OK && it.at >= it.tried }?.let { name to it.at }
             }
             .maxByOrNull { it.second }
             ?.first
     }
 
-    // Итог захода после повтора: контрольный не прошёл — сеть под вопросом,
-    // повторяемые в итог не входят и остаются в очереди; иначе их итог — повтор.
-    // Оборванный повтор — тоже не в итог. Контрольный входит, только если
-    // в заходе его не было и пометки он не ставит
-    fun confirmed(
-        outcomes: Map<String, FreezeOutcome>,
-        negatives: Set<String>,
-        again: Map<String, FreezeOutcome>,
-        control: String?,
+    // Повтор обрезанных: контрольный не прошёл — null (это сеть, а не узлы);
+    // иначе снова обрезанные и прошедшие. Повтор без итога — узел выбывает
+    fun afterWave(left: Set<String>, control: String, again: Map<String, FreezeOutcome>): FreezeWave? {
+        if (again[control]?.verdict != FreezeVerdict.OK) return null
+
+        val checked = again.filterKeys { it in left }
+
+        return FreezeWave(
+            cut = checked.filterValues { it.verdict == FreezeVerdict.FROZEN },
+            passed = checked.filterValues { it.verdict == FreezeVerdict.OK },
+        )
+    }
+
+    // Повторы обрезанных в первой проверке; again — одна проверка узлов
+    // (контрольный первым), null — повтор оборван (сменились сеть, подписка).
+    // Итоги: прошедшие в повторе — «работает», обрезанные во всех WAVES
+    // проверках — «режется»; контрольный не прошёл или повтор без итога — итога нет
+    suspend fun repeated(
+        cut: Set<String>,
+        control: String,
+        log: (String) -> Unit,
+        again: suspend (List<String>) -> Map<String, FreezeOutcome>?,
     ): Map<String, FreezeOutcome> {
-        val settled = outcomes - negatives
+        val settled = mutableMapOf<String, FreezeOutcome>()
+        var left = cut
 
-        if (control != null && again[control]?.answered != true) return settled
+        for (wave in 2..WAVES) {
+            val checked = again(listOf(control) + left.sorted()) ?: break
+            val step = afterWave(left, control, checked)
 
-        val repeated = negatives.mapNotNull { name -> again[name]?.let { name to it } }
-        val checked = control
-            ?.takeIf { it !in outcomes }
-            ?.let { name -> again[name]?.takeIf { FreezeVerdict.mark(it.verdict) == null }?.let { name to it } }
+            if (step == null) {
+                log("check $wave of $WAVES: $control that works here did not pass, the cut nodes are not marked")
 
-        return settled + repeated + listOfNotNull(checked)
+                break
+            }
+
+            log("check $wave of $WAVES: ${left.size} cut node(s) — ${step.cut.size} cut again, ${step.passed.size} passed")
+
+            settled += step.passed
+
+            if (wave == WAVES) {
+                settled += step.cut
+
+                break
+            }
+
+            left = step.cut.keys
+
+            if (left.isEmpty()) break
+        }
+
+        return settled
+    }
+
+    // Снять итоги, поставленные прежними правилами
+    fun upgrade(file: FreezeFile): FreezeFile {
+        if (file.version >= VERSION) return file
+
+        return FreezeFile(
+            version = VERSION,
+            networks = file.networks.mapValues { (_, network) ->
+                network.copy(
+                    nodes = network.nodes.mapValues { (_, node) ->
+                        node.takeIf { it.verdict == null || it.verdict == FreezeVerdict.OK } ?: node.copy(verdict = null)
+                    },
+                )
+            },
+        )
+    }
+
+    // Проверки захода — в записи сети, по отпечатку
+    fun recorded(
+        nodes: Map<String, FreezeNode>,
+        fingerprints: Map<String, String>,
+        outcomes: Map<String, FreezeOutcome>,
+        now: Long,
+    ): Map<String, FreezeNode> {
+        val out = nodes.toMutableMap()
+
+        for ((name, outcome) in outcomes) {
+            val fingerprint = fingerprints[name] ?: continue
+
+            out[fingerprint] = apply(out[fingerprint], outcome, now, name)
+        }
+
+        return out
     }
 
     // Выбросить забытые сети и отпечатки, которых в подписке больше нет
-    fun prune(file: FreezeFile, now: Long, live: Set<String>): FreezeFile = FreezeFile(
+    fun prune(file: FreezeFile, now: Long, live: Set<String>): FreezeFile = file.copy(
         networks = file.networks
             .filterValues { now - it.lastSeen < FORGET_NETWORK_AFTER }
             .mapValues { (_, network) -> network.copy(nodes = network.nodes.filterKeys { it in live }) },

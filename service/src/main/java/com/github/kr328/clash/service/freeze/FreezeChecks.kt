@@ -13,6 +13,7 @@ import com.github.kr328.clash.service.util.ProfileInputs
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.readPanelInfo
 import com.github.kr328.clash.service.util.sendFreezeMarksChanged
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,35 +31,39 @@ import kotlinx.serialization.json.put
 import java.io.File
 import java.io.IOException
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-// clod:freeze — проверка 16–20: режется ли трафик через узел в этой сети.
+// clod:freeze — проверка 16–20: обрезается ли скачивание через узел в этой сети.
 //
 // Механизм — в ядре Clod Core: узел качает 64 КБ и отвечает ok / frozen / dead
-// / unknown. Здесь — когда звать, хранение по подписке и сети и пометки для
-// экрана. С узлами служба ничего не делает: пинг и выбор как были.
+// / unknown. Здесь — когда звать, хранение по подписке и сети и пометка для
+// экрана. Итог один — обрезается ли скачивание: «работает» или «режется»; всё
+// прочее (в том числе dead) итогом не считается и записывается только как
+// попытка. С узлами служба ничего не делает: пинг и выбор как были.
 //
 // Проверяется путь от адреса клиента до адреса сервера — туннель тут ни при
 // чём: с ним узлы берутся из работающего ядра, без него разбираются из файла
 // подписки, как в замере задержек. Поводы захода: подписка загружена в ядро
 // (старт туннеля, смена, обновление), обновление или сохранение подписки тем же
 // конфигом, сеть сменилась, тик раз в час при работающем туннеле; без туннеля —
-// обновление или сохранение активной подписки и первый запрос пометок экраном
-// в этом процессе.
-// Проверяются отпечатки без итога в текущей сети, «работает» и «режется»
-// старше 3 суток, «не отвечает» и попытки без итога старше 6 часов; одинаковые
-// узлы делят итог по отпечатку. «Режется» и «не отвечает» ставятся только
-// после повтора. Смена сети или подписки посреди захода его
-// бросает; заход, где не прошло ничего нигде, не записывается, и в этой сети
-// следующий — через 6 часов или после загрузки, обновления или сохранения
-// подписки. Ядро без отпечатков — молчит.
+// обновление или сохранение активной подписки и запрос пометок экраном, когда
+// показанные пометки не этой подписки или не этой сети.
+// Проверяются отпечатки без итога в текущей сети, итоги старше 3 суток,
+// попытки без итога старше 6 часов; одинаковые узлы делят итог по отпечатку.
+// Обрезанный узел через 10 с проверяется ещё дважды вместе с контрольным,
+// рабочим здесь: «режется» — только если обрезались все три проверки, а
+// контрольный прошёл; прошла последняя — «работает»; иначе (сравнить не с чем,
+// контрольный не прошёл) итога нет. Смена сети или подписки посреди захода его
+// бросает. Ядро без отпечатков — молчит.
 object FreezeChecks {
     private const val DOWNLOAD_URL = "https://speed.cloudflare.com/__down?bytes=65536"
     private const val DOWNLOAD_SIZE = 65_536
     private const val DOWNLOAD_TIMEOUT_MS = 10_000
     private const val DOWNLOAD_STALL_MS = 4_000
     private const val TICK_MS = 60L * 60 * 1000
+
+    // Пауза между повторами обрезанных узлов
+    private const val WAVE_PAUSE_MS = 10_000L
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -88,20 +93,19 @@ object FreezeChecks {
     @Volatile
     private var loaded: UUID? = null
 
-    @Volatile
-    private var marksOf: Pair<UUID, Map<String, String>>? = null
+    // Показанные пометки: подписка, сеть (null — не распознана) и имя узла → frozen
+    private data class Shown(val uuid: UUID, val net: String?, val marks: Map<String, String>)
 
-    // Сеть, для которой посчитаны показанные пометки; null — сеть не распознана
     @Volatile
-    private var marksNet: String? = null
+    private var shown: Shown? = null
+
+    // Экран получил пустые пометки, потому что показанные посчитаны не для этой
+    // сети или подписки: следующие посчитанные уходят ему оповещением, даже если
+    // совпали с прежними
+    @Volatile
+    private var owed = false
 
     private var ticker: Job? = null
-
-    // Подписка/сеть, где в последнем заходе не прошло ничего ни через кого (нет
-    // интернета, страница входа Wi-Fi): там повтор не раньше чем через 6 часов,
-    // а не каждый повод. В памяти; загрузка, обновление и сохранение подписки
-    // забывают всё
-    private val quiet = ConcurrentHashMap<String, Long>()
 
     private val context: Context
         get() = Global.application
@@ -111,6 +115,12 @@ object FreezeChecks {
             for (kick in kicks) {
                 try {
                     pass()
+                } catch (e: CancellationException) {
+                    // Сам цикл заходов не отменяется никогда: такое исключение — не
+                    // отмена, и заходы после него продолжаются
+                    if (!isActive) throw e
+
+                    Log.w("Freeze pass failed: $e", e)
                 } catch (e: Exception) {
                     Log.w("Freeze pass failed: $e", e)
                 }
@@ -118,25 +128,27 @@ object FreezeChecks {
         }
     }
 
-    // Пометки подписки в текущей сети: имя узла → frozen | dead. Свежий процесс
-    // их ещё не считал — заход пойдёт, экран узнает по оповещению
+    // Пометки подписки в текущей сети: имя узла → frozen. Показанные посчитаны
+    // для другой подписки или сети (свежий процесс, без туннеля о смене сети
+    // никто не сообщает) — их нет, заход пойдёт, экран узнает по оповещению
     fun marks(uuid: UUID): Map<String, String> {
-        val known = marksOf
+        val known = shown
 
-        if (known?.first != uuid) {
+        if (known?.uuid != uuid || known.net != NetworkKey.keyOf(NetworkKey.seen(context, network))) {
+            owed = true
+
             kick("marks asked", drop = false)
 
             return emptyMap()
         }
 
-        return known.second
+        return known.marks
     }
 
     // Подписка загружена в ядро: старт туннеля, смена, обновление, перезапуск.
     // Ядро отменяет пробы старого конфига — идущий заход бросается
     fun profileLoaded(uuid: UUID) {
         loaded = uuid
-        quiet.clear()
 
         synchronized(this) {
             if (ticker == null) {
@@ -205,19 +217,14 @@ object FreezeChecks {
 
         if (ServiceStore(context).activeProfile != uuid) return
 
-        quiet.clear()
-
         kick("subscription updated", drop = false)
     }
 
     // Подписку в ядре обновили или сохранили тем же конфигом: ядро её не
     // перезагружало, идущий заход не бросается. Панель могла включить или
-    // выключить проверку — пометки сверяются сразу; тишина сетей без интернета
-    // забывается: обновление — повод проверить снова
+    // выключить проверку — пометки сверяются сразу
     fun profileKept(uuid: UUID) {
         if (loaded != uuid) return
-
-        quiet.clear()
 
         kick("subscription kept", drop = false)
     }
@@ -268,33 +275,42 @@ object FreezeChecks {
     }
 
     private fun publish(uuid: UUID, marks: Map<String, String>, net: String? = null) {
-        val previous = marksOf
+        val previous = shown
 
-        marksOf = uuid to marks
-        marksNet = net
+        shown = Shown(uuid, net, marks)
 
-        if (previous?.first != uuid || previous.second != marks) {
+        if (owed || previous?.uuid != uuid || previous.marks != marks) {
+            owed = false
+
             context.sendFreezeMarksChanged(uuid)
         }
     }
 
-    private fun counted(outcomes: Collection<FreezeOutcome>): String =
-        listOf(FreezeVerdict.OK, FreezeVerdict.FROZEN, FreezeVerdict.DEAD, "unknown")
-            .joinToString(", ") { verdict -> "${outcomes.count { it.verdict == verdict }} $verdict" }
+    private fun counted(outcomes: Collection<FreezeOutcome>): String {
+        val named = listOf(FreezeVerdict.OK, FreezeVerdict.FROZEN)
 
-    private fun pass() {
+        return (named.map { verdict -> "${outcomes.count { it.verdict == verdict }} $verdict" } +
+            "${outcomes.count { it.verdict !in named }} without a result").joinToString(", ")
+    }
+
+    private suspend fun pass() {
         val startedAt = epoch.get()
         val why = reason
         val uuid = ServiceStore(context).activeProfile ?: run {
-            marksOf = null
+            shown = null
 
             return
         }
 
+        // Сеть не распознана (сторож туннеля её ещё не назвал, активна чужая VPN):
+        // ни пометок, ни проверок — следующий повод придёт от сторожа или экрана
+        val seen = NetworkKey.seen(context, network)
+        val key = NetworkKey.keyOf(seen)
+
         // Включает проверку только панель — заголовком clod-16-20-check: true
         val panel = context.readPanelInfo(uuid)
         if (panel?.freezeCheck != true) {
-            publish(uuid, emptyMap())
+            publish(uuid, emptyMap(), key)
 
             return
         }
@@ -306,13 +322,15 @@ object FreezeChecks {
 
         // Туннель ещё грузит подписку в ядро: проверки начнёт загрузка, а
         // пометки, если на экране нет пометок этой сети, показываются сразу — из
-        // файла
+        // файла. Сеть ещё не названа (активна наша VPN) — показывать вместо
+        // пометок нечего; та же сеть — они уже верны
         val starting = running == null && StatusProvider.serviceRunning
-        if (starting && marksOf?.first == uuid) {
-            // Сеть ещё не названа (активна наша VPN) — показывать вместо
-            // пометок нечего; та же сеть — они уже верны
-            val current = NetworkKey.keyOf(NetworkKey.seen(context, network))
-            if (current == null || current == marksNet) return
+        if (starting && shown?.uuid == uuid && (key == null || key == shown?.net)) return
+
+        if (key == null) {
+            publish(uuid, emptyMap())
+
+            return
         }
 
         val path = if (running == null) context.importedDir.resolve(uuid.toString()) else null
@@ -320,17 +338,7 @@ object FreezeChecks {
         val inputs = path?.let(::inputsOf)
         val fingerprints = fingerprints(path)
         if (fingerprints.isEmpty()) {
-            publish(uuid, emptyMap())
-
-            return
-        }
-
-        // Сеть не распознана (сторож туннеля её ещё не назвал, активна чужая VPN):
-        // ни пометок, ни проверок — следующий повод придёт от сторожа
-        val seen = NetworkKey.seen(context, network)
-        val key = NetworkKey.keyOf(seen)
-        if (key == null) {
-            publish(uuid, emptyMap())
+            publish(uuid, emptyMap(), key)
 
             return
         }
@@ -340,42 +348,35 @@ object FreezeChecks {
 
         var file = FreezePlan.prune(FreezeStore.load(context, uuid), now, live)
         var net = file.networks[key] ?: FreezeNetwork()
+        var stored = false
 
         // Пометки этой сети показываются сразу, не дожидаясь проверок
         publish(uuid, FreezePlan.marks(fingerprints, net), key)
 
-        val quietKey = "$uuid/$key"
-        val hushed = quiet[quietKey]?.let { now - it < FreezePlan.RETRY_AFTER } == true
         // Серверы только для мобильной сети вне сети SIM скрыты — не проверяются;
         // их прежние пометки остаются
         val cellular = NetworkKey.cellular(seen) == true
         val checkable = fingerprints.filterKeys { panel?.hidesOffMobile(it, cellular) != true }
-        val due = if (hushed || starting) emptyList() else FreezePlan.due(checkable, net, now)
-        var stored = false
+        val due = if (starting) emptyList() else FreezePlan.due(checkable, net, now)
 
         if (due.isNotEmpty()) {
-            var outcomes = checks(path, due)
+            val first = checks(path, due)
+            val suspects = FreezePlan.suspects(first)
+            val outcomes = FreezePlan.unconfirmed(first).toMutableMap()
 
-            // Проверки, оборванные ядром (его загрузка или сброс, смена сети, конец
-            // бюджета), в итог не входят: заход прерван — ни контрольного узла, ни
-            // тишины, оборванные остаются в очереди
-            var interrupted = !outcomes.keys.containsAll(due)
+            if (suspects.isNotEmpty()) {
+                val control = FreezePlan.control(checkable, net, outcomes, suspects)
 
-            // «Режется» и «не отвечает» — только повторённые тем же заходом рядом с
-            // контрольным узлом: не прошёл он — это сеть, а не узлы
-            val negatives = if (interrupted) emptySet() else FreezePlan.negatives(outcomes)
-            if (negatives.isNotEmpty()) {
-                val control = FreezePlan.control(checkable, net, outcomes, negatives)
-                val again = checks(path, negatives.sorted() + listOfNotNull(control))
+                if (control == null) {
+                    // Сравнить не с чем — повторов нет, значков тоже: это скорее плохая сеть
+                    ServiceLog.mark("freeze: $why, ${suspects.size} node(s) cut, no node works here to compare with, not marked")
+                } else {
+                    outcomes += FreezePlan.repeated(suspects, control, { ServiceLog.mark("freeze: $why, $it") }) { batch ->
+                        delay(WAVE_PAUSE_MS)
 
-                interrupted = !again.keys.containsAll(negatives + listOfNotNull(control))
-
-                ServiceLog.mark(
-                    "freeze: $why, ${negatives.size} failed node(s) checked again" +
-                        (control?.let { " with $it that works here" } ?: "") + " — " + counted(again.values),
-                )
-
-                outcomes = FreezePlan.confirmed(outcomes, negatives, again, control)
+                        if (epoch.get() != startedAt) null else checks(path, batch)
+                    }
+                }
             }
 
             val same = epoch.get() == startedAt &&
@@ -389,35 +390,18 @@ object FreezeChecks {
                 return
             }
 
-            stored = FreezePlan.worthRecording(outcomes.values)
+            // Проверки, оборванные ядром (его загрузка или сброс), не записываются:
+            // эти узлы остаются в очереди
+            net = net.copy(nodes = FreezePlan.recorded(net.nodes, fingerprints, outcomes, now))
+            stored = true
 
-            if (stored) {
-                quiet.remove(quietKey)
-            } else if (!interrupted) {
-                quiet[quietKey] = now
-            }
+            ClientReports.noteFreeze(uuid, path, key, NetworkKey.kindOf(seen), outcomes)
 
-            if (stored) {
-                val nodes = net.nodes.toMutableMap()
-
-                for ((name, outcome) in outcomes) {
-                    val fingerprint = fingerprints[name] ?: continue
-
-                    nodes[fingerprint] = FreezePlan.apply(nodes[fingerprint], outcome, now, name)
-                }
-
-                net = net.copy(nodes = nodes)
-
-                ClientReports.noteFreeze(uuid, path, key, NetworkKey.kindOf(seen), outcomes)
-            }
+            val missed = due.size - first.size
 
             ServiceLog.mark(
                 "freeze: $why, ${outcomes.size} of ${fingerprints.size} node(s) checked in network $key — " +
-                    counted(outcomes.values) + when {
-                        stored -> ""
-                        interrupted -> "; interrupted, nothing recorded"
-                        else -> "; nothing passed anywhere, not recorded, next try in 6 h"
-                    },
+                    counted(outcomes.values) + if (missed > 0) "; $missed check(s) cut short, retried next time" else "",
             )
         }
 

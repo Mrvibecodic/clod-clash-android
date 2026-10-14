@@ -189,8 +189,8 @@ fun ProxyRow(
     modifier: Modifier = Modifier,
     pingBounds: PingBounds = PingBounds(),
     pinned: Boolean = false,
-    // clod:freeze — frozen | dead; пометка рядом с пингом, пинг как был
-    freeze: String? = null,
+    // clod:freeze — значок-снежинка рядом с пингом, пинг как был
+    freeze: Boolean = false,
     onFreezeClick: () -> Unit = {},
     // Сервер только для мобильной сети (clod-mobile-only); виден он только в ней
     mobileOnly: Boolean = false,
@@ -271,8 +271,10 @@ fun ProxyRow(
             MobilePill(on = on)
             Spacer(Modifier.width(6.dp))
         }
-        if (freeze != null) {
-            FreezePill(mark = freeze, on = on, onClick = onFreezeClick)
+        if (freeze) {
+            // Без слова значок мал для пальца, а промах выбрал бы сервер под ним:
+            // место под зону касания — как у звезды, высоту строки это не меняет
+            FreezePill(on = on, onClick = onFreezeClick, modifier = Modifier.minimumInteractiveComponentSize())
             Spacer(Modifier.width(6.dp))
         }
         DelayPill(

@@ -110,12 +110,9 @@ import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.component.FreezePill
 import com.github.kr328.clash.design.compose.component.FreezeSheet
-import com.github.kr328.clash.design.compose.component.freezeCurrentLine
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.PingBadge
-import com.github.kr328.clash.design.compose.component.DelayMark
 import com.github.kr328.clash.design.compose.component.PingBounds
-import com.github.kr328.clash.design.compose.component.delayMark
 import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.PowerButton
 import com.github.kr328.clash.design.compose.component.SectionHeader
@@ -189,24 +186,9 @@ data class ServersState(
     val loading: Boolean = false,
     val readOnly: Boolean = false,
     val favorites: Set<String> = emptySet(),
-    // clod:freeze — имя узла → frozen | dead в текущей сети, как их хранит служба
-    val freezeMarks: Map<String, String> = emptyMap(),
-) {
-    // Показываемые пометки: «не отвечает» у узла, который сейчас пингуется, — неправда
-    val freeze: Map<String, String> by lazy { shownFreeze(freezeMarks, groups) }
-}
-
-internal fun shownFreeze(marks: Map<String, String>, groups: List<ProxyGroupState>): Map<String, String> {
-    if (marks.values.none { it == "dead" }) return marks
-
-    val answering = groups.asSequence()
-        .flatMap { it.proxies.asSequence() }
-        .filter { delayMark(it.delay, PingBounds()) !in setOf(DelayMark.Untested, DelayMark.Dead) }
-        .map { it.name }
-        .toSet()
-
-    return marks.filterNot { (name, mark) -> mark == "dead" && name in answering }
-}
+    // clod:freeze — имя узла → frozen в текущей сети
+    val freeze: Map<String, String> = emptyMap(),
+)
 
 @Immutable
 data class SubscriptionItem(
@@ -256,8 +238,8 @@ data class MainScreenState(
     val restartedBySystem: Boolean = false,
     val systemProxyRefused: Boolean = false,
     val dismissedPromo: String = "",
-    // clod:freeze — открытая нижняя панель с объяснением пометки
-    val freezeSheet: String? = null,
+    // clod:freeze — открыта нижняя панель с объяснением значка
+    val freezeSheet: Boolean = false,
 ) {
     val mode: TunnelState.Mode
         get() = effectiveMode(profileMode)
@@ -288,7 +270,7 @@ sealed interface MainAction {
     data class SelectProxy(val name: String) : MainAction
     data class ToggleFavorite(val name: String) : MainAction
     data class DismissPromo(val profile: Profile, val promo: String) : MainAction
-    data class ShowFreeze(val mark: String) : MainAction
+    data object ShowFreeze : MainAction
     data object HideFreeze : MainAction
 
     data class OpenUrl(val url: String) : MainAction
@@ -371,8 +353,8 @@ fun MainScreen(
             ReliabilitySheet(state.reliability, onAction)
         }
 
-        state.freezeSheet?.let { mark ->
-            FreezeSheet(mark = mark, supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
+        if (state.freezeSheet) {
+            FreezeSheet(supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
         }
 
         Row(modifier = Modifier.padding(padding)) {
@@ -655,16 +637,6 @@ private fun HomeTab(
             onAction = onAction,
         )
 
-        // clod:freeze — строка-предупреждение только у узла, через который идёт трафик
-        (route as? HomeRoute.Server)?.name?.let { state.servers.freeze[it] }?.let { mark ->
-            Text(
-                text = freezeCurrentLine(mark),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-            )
-        }
-
         if (state.servers.allOnHome) {
             val extras = remember(state.mode, state.servers) {
                 homeExtras(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly)
@@ -752,9 +724,8 @@ private fun HomeRouteRow(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (mark != null) {
                         FreezePill(
-                            mark = mark,
                             on = MaterialTheme.colorScheme.surfaceContainerLow,
-                            onClick = { onAction(MainAction.ShowFreeze(mark)) },
+                            onClick = { onAction(MainAction.ShowFreeze) },
                         )
                         if (delay != null) Spacer(Modifier.width(6.dp))
                     }

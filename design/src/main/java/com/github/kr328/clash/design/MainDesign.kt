@@ -149,8 +149,8 @@ class MainDesign(
                 request(Request.DismissPromo(action.profile.uuid, fingerprint))
             }
             is MainAction.SetMode -> request(Request.PatchMode(action.mode))
-            is MainAction.ShowFreeze -> state = state.copy(freezeSheet = action.mark)
-            MainAction.HideFreeze -> state = state.copy(freezeSheet = null)
+            MainAction.ShowFreeze -> state = state.copy(freezeSheet = true)
+            MainAction.HideFreeze -> state = state.copy(freezeSheet = false)
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
             MainAction.UpdateNow -> request(Request.UpdateNow)
@@ -416,11 +416,11 @@ class MainDesign(
         }
     }
 
-    // clod:freeze — пометки «режется» / «не отвечает» текущей подписки в текущей сети
+    // clod:freeze — пометки «режется» текущей подписки в текущей сети
     suspend fun setFreezeMarks(marks: Map<String, String>) {
         withContext(Dispatchers.Main) {
-            if (state.servers.freezeMarks != marks) {
-                state = state.copy(servers = state.servers.copy(freezeMarks = marks))
+            if (state.servers.freeze != marks) {
+                state = state.copy(servers = state.servers.copy(freeze = marks))
             }
         }
     }

@@ -222,8 +222,8 @@ fun ServersTab(
                             onAction(MainAction.SelectProxy(if (proxy.name == group.pinned) "" else proxy.name))
                         },
                         onToggleFavorite = { onAction(MainAction.ToggleFavorite(proxy.name)) },
-                        freeze = state.freeze[proxy.name],
-                        onFreezeClick = { state.freeze[proxy.name]?.let { onAction(MainAction.ShowFreeze(it)) } },
+                        freeze = proxy.name in state.freeze,
+                        onFreezeClick = { onAction(MainAction.ShowFreeze) },
                         mobileOnly = proxy.name in mobileOnly,
                     )
                 }

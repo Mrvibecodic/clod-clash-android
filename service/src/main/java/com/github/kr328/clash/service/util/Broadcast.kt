@@ -55,7 +55,7 @@ fun Context.sendProfileUpdateFailed(uuid: UUID, reason: String) {
     sendBroadcastSelf(intent)
 }
 
-// clod:freeze — пометки «режется» / «не отвечает» подписки пересчитаны
+// clod:freeze — пометки 16–20 подписки пересчитаны
 fun Context.sendFreezeMarksChanged(uuid: UUID) {
     val intent = Intent(Intents.ACTION_FREEZE_MARKS_CHANGED)
         .putExtra(Intents.EXTRA_UUID, uuid.toString())

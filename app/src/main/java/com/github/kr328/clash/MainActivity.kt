@@ -19,6 +19,7 @@ import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import android.net.ConnectivityManager
+import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -240,6 +241,14 @@ class MainActivity : BaseActivity<MainDesign>() {
         launch {
             for (change in offlineNetworkChanges) {
                 if (!clashRunning) work.trySend { design.reloadProxyGroups() }
+            }
+        }
+
+        // clod:freeze — без туннеля о смене сети службе никто не сообщает: экран
+        // переспрашивает пометки, служба сверяет их с сетью сама
+        launch {
+            for (change in offlineMarkChanges) {
+                if (!clashRunning) work.trySend { design.fetchFreezeMarks(favoritesProfile) }
             }
         }
 
@@ -866,12 +875,27 @@ class MainActivity : BaseActivity<MainDesign>() {
     @Volatile
     private var offlineCellular = false
 
+    // Без туннеля: у показанной подписки есть серверы только для мобильной сети
+    @Volatile
+    private var offlineMobileOnly = false
+
+    // Без туннеля: панель включила проверку 16–20 — её пометки зависят от сети
+    @Volatile
+    private var offlineFreeze = false
+
     private val offlineNetworkChanges = Channel<Unit>(Channel.CONFLATED)
+
+    private val offlineMarkChanges = Channel<Unit>(Channel.CONFLATED)
 
     // Сеть меняется, пока экран открыт: список без туннеля перечитывается сразу.
     // Мобильная ли сеть — по рабочим сетям из самого наблюдения, без опроса системы
     private val offlineNetworks = object : ConnectivityManager.NetworkCallback() {
         private val working = ConcurrentHashMap<Network, String>()
+
+        // Ключ сети — тот же, что считает служба, — при прошлом оповещении:
+        // пометки переспрашиваются, когда сменился он, а не любое свойство сети
+        @Volatile
+        private var shownKey: String? = null
 
         override fun onAvailable(network: Network) {
             getSystemService<ConnectivityManager>()?.getNetworkCapabilities(network)?.let { seen(network, it) }
@@ -879,13 +903,19 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = seen(network, capabilities)
 
+        // Шлюз и DNS входят в ключ сети
+        override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) = changed()
+
         override fun onLost(network: Network) {
             working.remove(network)
 
             changed()
         }
 
-        fun clear() = working.clear()
+        fun clear() {
+            working.clear()
+            shownKey = null
+        }
 
         private fun seen(network: Network, capabilities: NetworkCapabilities) {
             if (NetworkKey.working(capabilities)) {
@@ -898,12 +928,25 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         private fun changed() {
-            if (NetworkKey.cellularOnly(working.values) != offlineCellular) offlineNetworkChanges.trySend(Unit)
+            if (offlineMobileOnly && NetworkKey.cellularOnly(working.values) != offlineCellular) {
+                offlineNetworkChanges.trySend(Unit)
+            }
+
+            if (!offlineFreeze) return
+
+            val key = NetworkKey.keyOf(NetworkKey.seen(this@MainActivity, null))
+
+            if (key != shownKey) {
+                shownKey = key
+
+                offlineMarkChanges.trySend(Unit)
+            }
         }
     }
 
-    // Наблюдать сеть нужно, только когда список без туннеля и у показанной
-    // подписки есть серверы только для мобильной сети, и пока экран виден
+    // Наблюдать сеть нужно, только когда список без туннеля, у показанной
+    // подписки есть серверы только для мобильной сети или пометки проверки
+    // 16–20, и пока экран виден
     private var offlineWatchWanted = false
 
     private var offlineWatching = false
@@ -1270,7 +1313,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         runHealthCheck(manual = queuedManually, force = false)
     }
 
-    // clod:freeze — пометки «режется» / «не отвечает» считает служба; экран только читает
+    // clod:freeze — пометки «режется» считает служба; экран только читает
     private suspend fun MainDesign.fetchFreezeMarks(uuid: UUID?) {
         setFreezeMarks(uuid?.let { withClash { queryFreezeMarks(it) } }.orEmpty())
     }
@@ -1358,8 +1401,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         val mobileOnly = panel?.mobileOnly?.isNotEmpty() == true
         val cellular = mobileOnly && NetworkKey.cellularNow(this@MainActivity)
         offlineCellular = cellular
+        offlineMobileOnly = mobileOnly
+        offlineFreeze = panel?.freezeCheck == true
         offlineGone = { panel?.hidesOffMobile(it, cellular) == true }
-        watchOfflineNetworks(mobileOnly)
+        watchOfflineNetworks(mobileOnly || offlineFreeze)
         proxyGroupNames = offlineGroups.map { it.name }
         mainGroup = mainGroupOf(proxyGroupNames, panel?.main)
         healthCheckedGroups = emptyList()
