@@ -395,6 +395,50 @@ func TestAReportIsSentOnlyWhenDueAndKeptUntilAccepted(t *testing.T) {
 	}
 }
 
+func TestARejectedReportIsDroppedAndOnlySilenceAndRefusalsKeepIt(t *testing.T) {
+	for status, drops := range map[int]bool{204: true, 400: true, 413: true, 200: false, 403: false, 404: false, 429: false, 500: false} {
+		if dropsSent(status) != drops {
+			t.Errorf("%d: %v", status, !drops)
+		}
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sub.json")
+	moment := time.Now().Unix()
+	if err := Save(path, backlog(3, moment)); err != nil {
+		t.Fatal(err)
+	}
+
+	Sent(path, moment, hourOf(moment), 400)
+	if Load(path).HoursBefore(hourOf(moment)) != 0 {
+		t.Fatal("отклонённое окно остаётся и держит новые часы")
+	}
+}
+
+func TestSavedFreezeResultsOfThePreviousVersionAreDroppedOnce(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "store.json")
+	old := `{"last_try":5,"nodes":{},"networks":{"n":{"kind":"wifi","hours":[{"h":3600,` +
+		`"ping":{"k":{"n":1,"fail":0,"b":[1,0,0,0,0,0]}},"freeze":{"k":{"verdict":"dead","status":0,"at":3601}}}]}}}`
+	if err := os.WriteFile(path, []byte(old), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	store := Load(path)
+	hour := store.Networks["n"].Hours[0]
+	if hour.Freeze != nil || hour.Ping["k"] == nil || store.LastTry != 5 {
+		t.Fatalf("прежние итоги 16–20 не сняты или пропали замеры: %+v", hour)
+	}
+
+	hour.Freeze = map[string]Freeze{"k": {Verdict: "frozen", Status: 200, At: 3602}}
+	if err := Save(path, store); err != nil {
+		t.Fatal(err)
+	}
+
+	if again := Load(path); again.Networks["n"].Hours[0].Freeze["k"].Verdict != "frozen" {
+		t.Fatalf("файл этой версии читается не как есть: %+v", again.Networks["n"].Hours[0])
+	}
+}
+
 func TestConnectionsOpenedBeforeTheSubscriptionChangedAreNotCounted(t *testing.T) {
 	t.Cleanup(func() { SetNodes("", nil, nil) })
 
