@@ -86,17 +86,17 @@ Android: проверки узлов не пишут провал, пока се
 (регистр не важен), формат ответа **MIHOMO** — одно на обе платформы. Чтобы доходили описания
 серверов, в том же правиле добавьте `^ClodClash/` в
 `responseModifications.additionalExtendedClientsRegex`. Пример правила и проверка — на странице
-[«Настройка панели»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider).
+[«Настройка панели»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider/panel).
 
 ## Заголовки подписки
 
 Приложение отправляет `User-Agent: ClodClash/<версия> (Android)`, `Accept: */*` и, пока включено
 «Опознавать это устройство», `x-hwid`, `x-device-os`, `x-ver-os`, `x-device-model`. Стандартные
 заголовки ответа — на странице
-[«Заголовки подписки»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/headers).
+[«Заголовки подписки»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider/headers).
 
 Собственные заголовки `clod-*`, которые понимает Android (подробно — на странице
-[«Заголовки clod-*»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/clod-headers)):
+[«Заголовки clod-*»](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider/clod-headers)):
 
 | Заголовок | Значение | Что делает |
 | --- | --- | --- |

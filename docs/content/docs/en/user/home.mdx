@@ -1,0 +1,63 @@
+---
+title: "Home screen"
+description: "What the home screen shows, provider announcements and how to put all groups on it"
+---
+
+<Shot src="ru/home.png" alt="Home screen: subscription header, announcement, connect button, traffic and expiry, selected server" />
+
+From top to bottom:
+
+1. **Header** — the logo and name of the selected subscription, with a colored dot and a short state
+   under it: “Active · 23 d · 32.0 GiB / 100 GiB”. On the right is the subscription update icon. If
+   two auto updates in a row have failed, the icon is highlighted — tap it.
+2. **Provider announcements** — text from your VPN service: maintenance, new servers, promotions.
+   Long text is folded, the arrow on the right unfolds it. A promo banner can be closed with the cross —
+   it comes back only when the provider sends a new text.
+3. **Subscription card** — appears only when three days or less are left, the traffic has run out or
+   the subscription has expired. It shows what is left and the **Customer portal** and **Support**
+   buttons.
+4. **Connect button** and the state: “Disconnected”, “Connecting…”, “Connected”.
+5. **Traffic** and **Expires in** — while the tunnel is off and the subscription is Active, if the
+   provider sends these numbers; with three days or less left, the subscription card (item 3)
+   replaces them.
+   After connecting they are replaced by the session timer and session traffic.
+6. **Selected server** / **Connected to** — which server carries the traffic of the main group, with
+   its delay. Tapping it opens that group on the Servers tab.
+
+Instead of a server name, the row may say:
+
+- **Direct** — the group has direct access selected, its traffic goes around the servers;
+- **Blocked** — the group leads to a block, its traffic goes nowhere;
+- **Direct, no servers** (the Mode row) — direct mode is on, see [Modes](/en/docs/user/modes).
+
+## All groups on Home
+
+By default the home screen shows only the main group of the subscription. To see which server each
+group uses (video, AI services, local sites and so on), turn on **More → Look and behavior → All
+groups on Home**.
+
+<Shot src="ru/home-all-groups.png" alt="All groups on Home is on: under the main group — the selected server of every group" />
+
+Rows for all other groups appear under the main row — with the group name, the selected server and
+its delay. Tapping a row opens that group on the Servers tab, where you can change the server. Groups
+that lead to a block are not listed.
+
+**Group icons** (same screen) shows icons next to the names if the provider sent them.
+
+## If there are no servers
+
+When the provider sends no servers, a card with the reason appears above the announcement (orange
+for “Out of traffic”, red otherwise) with a hint:
+renew the subscription, wait for the traffic to refill, turn on device identification or contact
+support.
+
+<Shot src="ru/expired.png" alt="The Subscription expired card on the home screen" />
+
+All reasons are in [Common errors](/en/docs/user/errors#no-servers).
+
+## Dark theme
+
+<Shot src="ru/connected-dark.png" alt="Home screen in the dark theme" />
+
+Switch the theme in **More → Look and behavior → Dark mode**: follow the system, always light or
+always dark.

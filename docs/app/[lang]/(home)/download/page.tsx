@@ -191,7 +191,7 @@ export default async function DownloadPage({ params }: PageProps<'/[lang]/downlo
               ))}
             </ol>
             <Link
-              href={`/${lang}/docs/install`}
+              href={`/${lang}/docs/user/install`}
               className="mt-4 inline-block text-sm font-medium text-fd-primary hover:underline"
             >
               {text.docsLink} →

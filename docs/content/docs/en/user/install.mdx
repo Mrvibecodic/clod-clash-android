@@ -1,0 +1,57 @@
+---
+title: "Install"
+description: "Which APK to download, how to install it and which permissions the app asks for"
+---
+
+## Which file to download
+
+All builds are on the [download page](/en/download). The file names do not change between
+versions, so the link always leads to the latest regular release:
+
+| File | For |
+| --- | --- |
+| `clodclash-arm64-v8a.apk` | Almost all modern phones |
+| `clodclash-armeabi-v7a.apk` | Old 32-bit devices |
+| `clodclash-x86_64.apk` | Emulators and rare Intel tablets |
+| `clodclash-universal.apk` | If you are not sure: fits everyone, but is noticeably bigger |
+
+<Callout title="How to tell which one you need">
+A phone bought after 2019 is almost certainly `arm64-v8a`. A wrong pick does no harm: the system
+simply will not install a file that does not fit.
+</Callout>
+
+The app runs on Android 6.0 and newer, on phones, tablets and Android TV.
+
+## Installing
+
+1. Download the APK to the phone.
+2. Open the file. Android asks to allow installing apps from this source (the browser or file
+   manager) — allow it.
+3. Confirm the installation and open Clod Clash.
+
+If Clod Clash is already installed, the new version goes on top — subscriptions and settings stay.
+
+## Permissions the app asks for
+
+| Permission | When | Why |
+| --- | --- | --- |
+| VPN | on the first connection | the tunnel cannot start without it |
+| Notifications (Android 13+) | on the first launch | tunnel state and the **Disconnect** button, subscription reminders, update errors, new versions |
+| Unrestricted battery | after the first connection, optional | so Android does not stop the tunnel in the background |
+| Install apps | on the first update from inside the app | so the app can update itself |
+
+You can turn notifications down with **Not now** — the app asks once more a week later and then
+stops. While notifications are blocked, **Look and behavior** shows a warning with an
+**Open settings** button.
+
+<Callout type="warn" title="Another VPN">
+Android keeps only one VPN at a time. If you turn on another VPN, Clod Clash closes its tunnel and
+says that another app took the permission. Turn the other VPN off and connect again.
+</Callout>
+
+## Uninstalling
+
+The usual way — in the system settings or with a long press on the icon. Subscriptions and settings
+are removed together with the app. Save your links beforehand so you do not have to look for them:
+**More → Look and behavior → Back up subscriptions** (see
+[Moving to another device](/en/docs/user/subscription#moving-to-another-device)).

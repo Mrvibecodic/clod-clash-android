@@ -1,0 +1,52 @@
+---
+title: "Modes"
+description: "Rule, global and direct mode; a tunnel or a local proxy; the network stack"
+---
+
+## Routing mode
+
+**More → Mode** (the row is there once a subscription is added):
+
+| Mode | What it does |
+| --- | --- |
+| **Rule mode** | the subscription rules decide what goes through a server and what goes directly. This is the usual mode |
+| **Global mode** | all traffic goes through the server selected in the `GLOBAL` group |
+| **Direct mode** | the tunnel is up, but all traffic goes around the servers |
+
+The choice is remembered for each subscription separately. Next to the mode the app says where it
+came from: “from the subscription” (the default), “chosen by you”, “from the override” or “set by
+your provider”.
+
+In global mode only the `GLOBAL` group matters on the Servers tab. If nothing or `DIRECT` is
+selected there, the app uses the first suitable server; if there is none, traffic is blocked rather
+than sent directly — the app warns about it.
+
+<Callout type="warn" title="The provider can set the mode">
+A provider can lock the mode of a subscription. The mode row then says “set by your provider”, and
+you cannot change it. A regular lock lifts by itself if the subscription has not been updated for
+more than three days (or three update intervals, if the interval is longer) and comes back with the
+next successful update. There is also a lock without a time limit.
+</Callout>
+
+## A tunnel or a local proxy
+
+By default the app starts a VPN tunnel. This is the **Route system traffic** switch in
+**More → Network**.
+
+With it off there is no tunnel, and the core works as a local proxy — its address is shown under the
+switch, usually `127.0.0.1:7890`. Only apps where this proxy is set up by hand go through it; the
+rest of the traffic is not protected. This is rarely needed — for example, to share the proxy with
+another device.
+
+<Callout title="Proxy port">
+The port comes from the subscription. If it does not set one, 7890 is used — except when the
+subscription sets its own HTTP port or turns on `allow-lan` (then the port is not opened for you,
+otherwise the whole network could use it without a password). Your own value goes in
+**More → Core features → Override → Mixed port**: empty — do not change, `0` — turn the proxy off.
+</Callout>
+
+## Network stack
+
+**More → Network → Stack mode** — how traffic is captured: “Auto”, “System stack”, “gVisor stack”,
+“Mixed stack” or “MIPS stack”. The default is “Auto”: the stack from the subscription, or MIPS if it does not set one. The
+**Stack in use** row shows which one works right now. Change it only if your provider asks you to.

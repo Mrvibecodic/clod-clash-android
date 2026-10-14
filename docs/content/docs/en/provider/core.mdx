@@ -1,0 +1,47 @@
+---
+title: "Clod Core"
+description: "Which core is built into the Android client and how it differs from stock mihomo"
+---
+
+The core is updated together with the app; it cannot be updated separately. Inside is
+[Clod Core](https://github.com/Mrvibecodic/clod-core), our fork of the stable
+[mihomo](https://github.com/MetaCubeX/mihomo) v1.19.32, the `android` branch. The user sees the core
+version in **More → About**, for example “Clod Core v1.19.32-clod.5”.
+
+## Patches for Android
+
+- While the network is switching or the app was asleep, failed checks are not recorded against
+  nodes — live servers are not marked dead.
+- On a network change, if the user has “Drop connections when the network changes” on (it is by
+  default), shared node sessions (smux, anytls, tuic, hysteria2, gRPC, ssh) are reset, so new
+  connections do not land on a dead session of the old network.
+- Servers in manual-select groups are checked with the expected status code set in the group.
+- If the subscription or provider address redirects from `https` to `http`, the download is refused
+  instead of going out in the clear.
+- The core cleans up memory after it switches to running mode, not before.
+
+## Differences from stock mihomo
+
+- **A fresh MIPS network stack** — with TCP and ICMP fixes; “Auto” uses it by default if the template
+  sets no stack.
+- **A newer TLS fingerprint library** — utls v1.9.0-mod-meta: Firefox 148 and Safari 26.3
+  fingerprints with a post-quantum key, fixes for TLS session resumption. The chrome, ios and edge
+  fingerprints do not change.
+- **Nodes do not “blink” dead.** If a live node's check fails or hangs, a second one starts a second
+  later (later for slow nodes); the node counts as dead only if both fail — including a closed port,
+  an unknown name or a wrong status code. A node already marked dead gets a single probe. Both the core's scheduled checks and the app's own
+  checks work this way — by the button, on connecting and after a network change.
+- **An unstable node loses to a stable one.** Automatic selection adds a penalty to its latency — a
+  quarter of the timeout for each failure among the last three checks.
+- **Fewer extra checks.** A node that sits in several groups is checked once per round, and nodes on
+  one server are checked 250 ms apart instead of in a burst, so a blocker does not take the checks for
+  an attack.
+- **Data survives a crash.** Rule sets, providers and geo databases are written through a temporary
+  file: if a write breaks off, the old file stays intact.
+
+## Network stack
+
+The tunnel stack comes from the template: `tun.stack` (with `tun.enable: true`) or `stack` of a
+`type: tun` listener. `system`, `gvisor`, `mixed` and `mips` are accepted; any other value is skipped.
+Without a stack in the template — `mips`. The stack the user picks in **More → Network → Stack mode**
+wins over the template.

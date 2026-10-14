@@ -1,0 +1,101 @@
+---
+title: "FAQ"
+description: "The connection drops, sites do not open, the VPN does not work in one app and other common cases"
+---
+
+## The VPN is on, but apps go without it
+
+Check **More → Apps**. Right after installation it says “Allow selected apps” with an empty list — no
+app goes through the tunnel. Tick the ones you need or pick “Allow all apps”. Details in
+[Basic setup](/en/docs/user/setup#which-apps-go-through-the-vpn).
+
+## The connection drops while the phone is in a pocket
+
+Android puts background apps to sleep. In **More → Connection** turn on:
+
+1. **Unrestricted battery** — lift the restriction for the app.
+2. **Always-on connection** — turn on always-on VPN in the system.
+
+If the first request hangs after sleep, **More → Network → Keep the tunnel active while the screen is
+off** helps — at the cost of noticeably more battery use.
+
+Xiaomi, Huawei, Honor, Samsung, Oppo and Vivo also have their own autostart and “memory protection”
+lists — add the app there by hand.
+
+## Nothing loads after switching from Wi-Fi to mobile internet
+
+Check that **More → Network → Drop connections when the network changes** is on (it is by default):
+then apps reconnect at once. The first delay tests after a network change may be too high — repeat
+the test a few seconds later.
+
+## The delay is red or shows a dash
+
+Red — the server answers slower than 400 ms (or slower than the provider's limit), a red dash — it did
+not answer. Tap the lightning on the Servers tab and pick another server.
+
+## Auto selection does not switch by itself
+
+Most likely a server in the auto selection group is pinned by hand — it says “Pinned” under it. Tap it
+again so the group picks by itself again.
+
+## A server has a snowflake badge
+
+The server failed the automatic check on your network: access to it may be throttled. Try another
+server. If you want to use this one, check first that the connection does not break, and tell the
+provider. Details in [Connecting and servers](/en/docs/user/connect#server-badges).
+
+## The server list is empty
+
+The reason is on the card: the subscription expired, the traffic ran out, the device limit, the
+device is not identified or the provider sent no servers. What to do — in
+[Common errors](/en/docs/user/errors#no-servers).
+
+## A site or an app does not work through the VPN
+
+- Try another server.
+- Banking apps and some government services may refuse a VPN — exclude them:
+  **More → Apps → Deny selected apps** and tick them (or, in “Allow selected apps”, just untick them).
+- If devices on your home network (router, printer, TV) do not open, turn on **More → Network →
+  Bypass private network** (on by default).
+
+## The internet is gone completely
+
+Turn the tunnel off and check whether the network works without it. If everything is fine without
+the tunnel — switch the server and connect again. If that does not help — update the subscription
+and collect a log (below).
+
+## How to collect a log
+
+1. **More → Logs → Core log** — recording starts.
+2. Reproduce the problem.
+3. Go back to the app and tap the stop recording button in the header.
+4. Open the saved log and tap the export button in the header. Attach the file to your message.
+
+A log may contain the addresses of servers and sites you opened. Send it only to people you trust.
+
+## Where to see the version
+
+**More → About** — the app version and the Clod Core version.
+
+## How to switch the language or theme
+
+**More → Look and behavior**: “Dark mode” (follow the system, light, dark) and “Language” (system
+default, English, Russian).
+
+## Widget, tile and shortcuts
+
+The 1×1 widget is added from the home screen, the tile — from the quick settings editor, the Toggle,
+Connect and Disconnect shortcuts — with a long press on the app icon. All of them switch the tunnel
+without opening the app.
+
+## Automation: Tasker and the like
+
+The app understands the external commands “start”, “stop” and “toggle”. They are blocked by default,
+so that another app cannot turn off the VPN without asking. To allow them — **More → Look and behavior →
+Allow external control**.
+
+## No answer here
+
+Ask in the [Telegram chat](https://t.me/+8BJQXYXYLqM4YWYy): app version, Android version, phone
+model, what you did and what you got. News and releases — in the
+[Telegram group](https://t.me/+2lmP1yhxpCE3MDcy).
