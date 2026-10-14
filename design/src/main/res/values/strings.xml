@@ -609,6 +609,6 @@
     <string name="clod_reset_section">Reset</string>
     <string name="clod_reset_title">Reset settings</string>
     <string name="clod_reset_summary">App, network and notification settings go back to defaults, the list on the Apps screen and the config overrides are cleared. Subscriptions and their own settings stay.</string>
-    <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow all apps” — apps you kept out of the tunnel will go through it again. The config overrides are cleared too. Subscriptions and their own settings stay untouched.</string>
+    <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow selected apps” — no app goes through the tunnel until you tick some again. The config overrides are cleared too. Subscriptions and their own settings stay untouched.</string>
     <string name="clod_reset_action">Reset</string>
 </resources>
