@@ -293,6 +293,34 @@ func TestNodesComeFromTheSubscriptionList(t *testing.T) {
 	}
 }
 
+func TestANodeWithOnlyAPortRangeTakesItsFirstPort(t *testing.T) {
+	for ports, want := range map[any]int{
+		"20000-30000":     20000,
+		"443,8443":        443,
+		"30000-20000/443": 20000,
+		" [1000]-2000 ":   1000,
+		443:               443,
+		"443/abc":         0,
+		"1-2-3":           0,
+		"70000":           0,
+		"0":               0,
+		"":                0,
+	} {
+		if got := firstPort(ports); got != want {
+			t.Errorf("ports %v: %d, want %d", ports, got, want)
+		}
+	}
+
+	got := NodesOf([]map[string]any{
+		{"name": "Диапазон", "type": "hysteria2", "server": "h.example.com", "ports": "20000-30000"},
+		{"name": "Оба", "type": "hysteria2", "server": "h.example.com", "port": 443, "ports": "20000-30000"},
+		{"name": "Не hysteria2", "type": "hysteria", "server": "v.example.com", "ports": "20000-30000"},
+	})
+	if len(got) != 2 || got["Диапазон"].Port != 20000 || got["Оба"].Port != 443 {
+		t.Fatalf("узлы: %+v", got)
+	}
+}
+
 func TestTheAnswerIsAnAddressOfTheAskedFamily(t *testing.T) {
 	cases := []struct {
 		body string

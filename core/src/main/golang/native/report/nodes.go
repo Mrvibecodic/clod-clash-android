@@ -177,13 +177,17 @@ func nodeOf(proxy map[string]any) (NodeInfo, bool) {
 	name, _ := proxy["name"].(string)
 	kind, _ := proxy["type"].(string)
 	server, _ := proxy["server"].(string)
+
+	kind = asciiLower(kind)
+
 	port := portOf(proxy["port"])
+	if (port <= 0 || port > 65535) && kind == "hysteria2" {
+		port = firstPort(proxy["ports"])
+	}
 
 	if name == "" || kind == "" || server == "" || port <= 0 || port > 65535 {
 		return NodeInfo{}, false
 	}
-
-	kind = asciiLower(kind)
 
 	return NodeInfo{Name: name, Type: kind, Server: server, Port: port, Via: Via(kind, proxy)}, true
 }
@@ -309,6 +313,60 @@ func portOf(value any) int {
 	}
 
 	return 0
+}
+
+// firstPort — первый порт списка ports (смена портов у hysteria2), как его
+// читает ядро: части через «,» или «/», у диапазона a-b — меньший край; любая
+// нечитаемая часть — узел ядро не примет, порта нет.
+func firstPort(value any) int {
+	var text string
+
+	switch v := value.(type) {
+	case string:
+		text = v
+	case int, int64, uint64, float64:
+		text = strconv.Itoa(portOf(v))
+	default:
+		return 0
+	}
+
+	edge := func(s string) (int, bool) {
+		port, err := strconv.ParseUint(strings.Trim(s, "[ ]"), 10, 16)
+
+		return int(port), err == nil
+	}
+
+	first, found := 0, false
+
+	for _, part := range strings.FieldsFunc(text, func(r rune) bool { return r == ',' || r == '/' }) {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		edges := strings.Split(part, "-")
+		if len(edges) > 2 {
+			return 0
+		}
+
+		start, ok := edge(edges[0])
+		if !ok {
+			return 0
+		}
+
+		end := start
+		if len(edges) == 2 {
+			if end, ok = edge(edges[1]); !ok {
+				return 0
+			}
+		}
+
+		if !found {
+			first, found = min(start, end), true
+		}
+	}
+
+	return first
 }
 
 // ProvidersOf — источники узлов провайдеров подписки после patchProviders:
