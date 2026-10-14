@@ -22,6 +22,8 @@ type reportRequest struct {
 	Kind  string `json:"kind"`
 	// Момент смены сети, мс.
 	At int64 `json:"at"`
+	// Подписка, чьи это накопленное и итоги (target, freeze).
+	UUID string `json:"uuid"`
 	// Папка подписки: узлы без туннеля, ключ прослойки и запасной адрес.
 	Path     string                   `json:"path"`
 	URL      string                   `json:"url"`
@@ -46,7 +48,7 @@ func clientReport(request C.c_string) {
 
 	switch req.Op {
 	case "target":
-		report.SetTarget(req.Store)
+		report.SetTarget(req.Store, req.UUID)
 	case "forget":
 		report.Forget(req.Store)
 	case "network":
@@ -56,8 +58,16 @@ func clientReport(request C.c_string) {
 			return
 		}
 
-		known := report.LoadedNodes()
-		if req.Path != "" {
+		var known map[string]report.NodeInfo
+
+		if req.Path == "" {
+			var ours bool
+			if known, ours = report.NodesFor(req.UUID); !ours {
+				log.Debugln("[Report] 16-20 results dropped: the core runs another subscription")
+
+				return
+			}
+		} else {
 			rawCfg, err := config.UnmarshalAndPatch(req.Path)
 			if err != nil {
 				log.Warnln("[Report] the subscription nodes could not be read: %s", err.Error())

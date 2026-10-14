@@ -422,20 +422,33 @@ func AllNodes(own map[string]NodeInfo, providers []ProviderSource) map[string]No
 	return out
 }
 
-// SetNodes — узлы подписки, загруженной в ядро, и её провайдеры.
-func SetNodes(own map[string]NodeInfo, providers []ProviderSource) {
+// SetNodes — узлы подписки owner, загруженной в ядро, и её провайдеры.
+func SetNodes(owner string, own map[string]NodeInfo, providers []ProviderSource) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	nodesOwner = owner
 	nodes = own
 	nodeProviders = providers
+
+	if owner != "" && owner != lastOwner {
+		lastOwner = owner
+		// time.Now с монотонными часами: перевод часов назад не отрезает
+		// соединения новой подписки
+		nodesFrom = time.Now()
+	}
 }
 
-// LoadedNodes — узлы подписки в ядре, с провайдерскими.
-func LoadedNodes() map[string]NodeInfo {
+// NodesFor — узлы подписки owner в ядре, с провайдерскими; false — в ядре
+// узлы другой подписки (или никакой).
+func NodesFor(owner string) (map[string]NodeInfo, bool) {
 	mu.Lock()
-	own, providers := nodes, nodeProviders
+	own, providers, loaded := nodes, nodeProviders, nodesOwner
 	mu.Unlock()
 
-	return AllNodes(own, providers)
+	if owner == "" || owner != loaded {
+		return nil, false
+	}
+
+	return AllNodes(own, providers), true
 }

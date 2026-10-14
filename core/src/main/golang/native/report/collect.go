@@ -78,28 +78,38 @@ var (
 
 	mu            sync.Mutex
 	target        string
+	targetOwner   string
 	nodes         = map[string]NodeInfo{}
 	nodeProviders []ProviderSource
-	netNow        string
-	kindNow       string
-	changes       uint64
-	where         *spot
-	pingsUntil    int64
-	seen          = map[string][2]int64{}
-	readAt        int64
-	gathered      = traffic{}
-	next          = tickMin
-	running       bool
-	wake          = make(chan struct{}, 1)
+	nodesOwner    string
+	// С какого момента (мс) в ядре узлы этой подписки и чьи узлы были в ядре
+	// последними, чтобы повторная загрузка той же подписки момент не сдвигала:
+	// соединения, открытые раньше, — прежней подписки, ядро их при смене не
+	// закрывает
+	nodesFrom  time.Time
+	lastOwner  string
+	netNow     string
+	kindNow    string
+	changes    uint64
+	where      *spot
+	pingsUntil int64
+	seen       = map[string][2]int64{}
+	readAt     int64
+	gathered   = traffic{}
+	next       = tickMin
+	running    bool
+	wake       = make(chan struct{}, 1)
 )
 
 func nowMs() int64 { return time.Now().UnixMilli() }
 
-// SetTarget — файл накопленного подписки, по которой идёт сбор; пусто — сбор
-// выключен (подписка без защищённого канала, туннель остановлен). Замеры
+// SetTarget — файл накопленного подписки owner, по которой идёт сбор; пусто —
+// сбор выключен (подписка без защищённого канала, туннель остановлен). Замеры
 // считаются с этого момента.
-func SetTarget(path string) {
+func SetTarget(path, owner string) {
 	mu.Lock()
+
+	targetOwner = owner
 
 	changed := path != target
 	if changed {
@@ -188,6 +198,7 @@ func trafficTickOnce() {
 	was := seen
 	primed := readAt > 0
 	reading := target
+	from := nodesFrom
 	mu.Unlock()
 
 	alive := map[string][2]int64{}
@@ -195,7 +206,7 @@ func trafficTickOnce() {
 
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
 		info := c.Info()
-		if len(info.Chain) == 0 {
+		if len(info.Chain) == 0 || openedBefore(info.Start, from) {
 			return true
 		}
 
@@ -239,6 +250,13 @@ func trafficTickOnce() {
 	}
 
 	gather(gathered, added, secs)
+}
+
+// openedBefore — соединение открыто раньше from: оно прежней подписки. Ядро
+// ставит Start по time.Now в этом же процессе — сравнение идёт по монотонным
+// часам.
+func openedBefore(start time.Time, from time.Time) bool {
+	return !from.IsZero() && start.Before(from)
 }
 
 // gather — прирост одного чтения в копилку: байты и secs секунд с трафиком
@@ -290,7 +308,7 @@ func flushBeforeChange(at int64, before uint64) {
 	defer collectMu.Unlock()
 
 	mu.Lock()
-	path := target
+	path, owner := target, targetOwner
 	old := where
 	where = nil
 	since := pingsUntil
@@ -311,9 +329,9 @@ func flushBeforeChange(at int64, before uint64) {
 		ok bool
 	)
 	if cut > since {
-		w, ok = readWindow(cut)
+		w, ok = readWindow(owner, cut)
 	} else {
-		w, ok = takeTraffic(), true
+		w, ok = takeTraffic(owner), true
 	}
 
 	advanceTo(at)
@@ -439,8 +457,14 @@ func nextRead(histories map[string]delays, since int64) (time.Duration, int) {
 
 // readWindow — замеры с прошлого чтения по until (мс; окно назад не
 // сдвигается) и накопленный трафик.
-func readWindow(until int64) (window, bool) {
-	known := LoadedNodes()
+func readWindow(owner string, until int64) (window, bool) {
+	known, ours := NodesFor(owner)
+	if !ours {
+		dropWindow(owner, until)
+
+		return window{}, false
+	}
+
 	if len(known) == 0 {
 		return window{}, false
 	}
@@ -461,27 +485,91 @@ func readWindow(until int64) (window, bool) {
 	}
 
 	mu.Lock()
+	defer mu.Unlock()
+
+	// Пока читали, ядро или цель сбора сменились — окно дождётся следующего чтения
+	if standingLocked(owner) != standingOurs {
+		return window{}, false
+	}
+
 	pingsUntil = until
 	next = wait
 	bytes := gathered
 	gathered = traffic{}
-	mu.Unlock()
 
 	return window{nodes: known, pings: pings, traffic: bytes}, true
 }
 
 // takeTraffic — только накопленный трафик, без чтения ядра. Узлы берутся до
-// замка: LoadedNodes берёт его сам.
-func takeTraffic() window {
-	known := LoadedNodes()
+// замка: NodesFor берёт его сам.
+func takeTraffic(owner string) window {
+	known, ours := NodesFor(owner)
 
 	mu.Lock()
 	defer mu.Unlock()
+
+	switch standingLocked(owner) {
+	case standingOurs:
+		if !ours {
+			return window{}
+		}
+	case standingOthers:
+		gathered = traffic{}
+
+		return window{}
+	default:
+		return window{}
+	}
 
 	bytes := gathered
 	gathered = traffic{}
 
 	return window{nodes: known, traffic: bytes}
+}
+
+// standing — чьи узлы в ядре для сбора по owner.
+type standing int
+
+const (
+	// Подписки owner — замеры её.
+	standingOurs standing = iota
+	// Другой подписки: ядро заводит узлы новой подписки при загрузке, а цель
+	// сбора служба меняет позже — замеры в этом промежутке уже не owner.
+	standingOthers
+	// Ничьи (конфиг применяется) или цель сбора уже другая — замеры ждут
+	// следующего чтения: та же подписка после перезагрузки их заберёт.
+	standingWait
+)
+
+// standingLocked — под mu.
+func standingLocked(owner string) standing {
+	switch {
+	case owner == "" || targetOwner != owner || nodesOwner == "":
+		return standingWait
+	case nodesOwner != owner:
+		return standingOthers
+	}
+
+	return standingOurs
+}
+
+// dropWindow — замеры до until и накопленный трафик другой подписки
+// выбрасываются; ничьи — ждут.
+func dropWindow(owner string, until int64) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if standingLocked(owner) != standingOthers {
+		return
+	}
+
+	if until > pingsUntil {
+		pingsUntil = until
+	}
+
+	gathered = traffic{}
+
+	log.Debugln("[Report] measurements dropped: the core runs another subscription than the one collected")
 }
 
 func record(path string, place Place, w window) {
@@ -534,7 +622,7 @@ type ipWork struct {
 // долго, а служба ждёт замок считаные секунды.
 func collectLocked() ipWork {
 	mu.Lock()
-	path := target
+	path, owner := target, targetOwner
 	before := changes
 	// Часы ушли назад: окно — от нынешнего момента, иначе замеров не было бы,
 	// пока часы не догонят прежнее.
@@ -547,7 +635,7 @@ func collectLocked() ipWork {
 		return ipWork{}
 	}
 
-	w, ok := readWindow(nowMs() - lagMs)
+	w, ok := readWindow(owner, nowMs()-lagMs)
 	if !ok {
 		return ipWork{}
 	}

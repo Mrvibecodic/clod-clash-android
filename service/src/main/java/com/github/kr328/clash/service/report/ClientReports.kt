@@ -101,7 +101,10 @@ object ClientReports {
         serial.execute {
             val store = if (collected(uuid, secure)) storeFile(context, uuid).absolutePath else ""
 
-            call("target") { put("store", store) }
+            call("target") {
+                put("store", store)
+                put("uuid", uuid.toString())
+            }
         }
     }
 
@@ -159,6 +162,7 @@ object ClientReports {
 
                 call("freeze") {
                     put("store", storeFile(context, uuid).absolutePath)
+                    put("uuid", uuid.toString())
                     put("path", path?.absolutePath.orEmpty())
                     put("net", key)
                     put("kind", kind)

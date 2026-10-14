@@ -127,6 +127,8 @@ func applyDefaultLocked() {
 	}
 
 	loaded.Store(nil)
+	// Конфига подписки в ядре больше нет — и узлов её тоже
+	report.SetNodes("", nil, nil)
 
 	setMobileOnly(nil)
 
@@ -247,6 +249,10 @@ func Load(path string) error {
 	// скрытых серверов (ядро решает по имени, когда узел спрашивают)
 	setMobileOnly(panel.Read(path).MobileOnly)
 
+	// Узлы в ядре меняются вместе с конфигом: пока он применяется, они ничьи, и
+	// сборщик отчёта их замеры не берёт
+	report.SetNodes("", nil, nil)
+
 	applyLocked(cfg, func() {
 		declared := globalGroupDeclared(rawCfg)
 
@@ -258,7 +264,7 @@ func Load(path string) error {
 
 		loaded.Store(&path)
 
-		report.SetNodes(report.NodesOf(rawCfg.Proxy), report.ProvidersOf(rawCfg.ProxyProvider))
+		report.SetNodes(filepath.Base(path), report.NodesOf(rawCfg.Proxy), report.ProvidersOf(rawCfg.ProxyProvider))
 
 		app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
 	})

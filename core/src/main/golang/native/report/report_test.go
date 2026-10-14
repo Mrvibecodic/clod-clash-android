@@ -367,6 +367,111 @@ func TestAReportIsSentOnlyWhenDueAndKeptUntilAccepted(t *testing.T) {
 	}
 }
 
+func TestConnectionsOpenedBeforeTheSubscriptionChangedAreNotCounted(t *testing.T) {
+	t.Cleanup(func() { SetNodes("", nil, nil) })
+
+	SetNodes("a", nil, nil)
+	mu.Lock()
+	from := nodesFrom
+	mu.Unlock()
+
+	// Повторная загрузка той же подписки момент не сдвигает
+	time.Sleep(2 * time.Millisecond)
+	SetNodes("", nil, nil)
+	SetNodes("a", nil, nil)
+	mu.Lock()
+	same := nodesFrom
+	mu.Unlock()
+	if !same.Equal(from) {
+		t.Fatalf("та же подписка сдвинула момент: %v → %v", from, same)
+	}
+
+	SetNodes("b", nil, nil)
+	mu.Lock()
+	changed := nodesFrom
+	mu.Unlock()
+	if !changed.After(from) {
+		t.Fatalf("другая подписка не сдвинула момент: %v → %v", from, changed)
+	}
+
+	if !openedBefore(changed.Add(-time.Millisecond), changed) || openedBefore(changed, changed) {
+		t.Fatal("соединение прежней подписки считается или новое не считается")
+	}
+
+	if openedBefore(time.Unix(1, 0), time.Time{}) {
+		t.Fatal("без смены подписки соединения не отбрасываются")
+	}
+}
+
+// Ядро заводит узлы новой подписки раньше, чем служба меняет цель сбора: что
+// ядро намерило в этом промежутке, в файл прежней подписки не попадает.
+func TestMeasurementsOfAnotherSubscriptionAreDropped(t *testing.T) {
+	t.Cleanup(func() {
+		mu.Lock()
+		targetOwner, gathered, pingsUntil = "", traffic{}, 0
+		mu.Unlock()
+		SetNodes("", nil, nil)
+	})
+
+	mu.Lock()
+	targetOwner, gathered, pingsUntil = "a", traffic{"Узел": {1, 2, 1}}, 1000
+	mu.Unlock()
+	SetNodes("b", map[string]NodeInfo{"Узел": node()}, nil)
+
+	if _, ok := NodesFor("a"); ok {
+		t.Fatal("узлы подписки b выданы за узлы a")
+	}
+	if w := takeTraffic("a"); !w.empty() {
+		t.Fatalf("трафик подписки b ушёл в a: %+v", w)
+	}
+	if _, ok := readWindow("a", 5000); ok {
+		t.Fatal("окно подписки b прочитано для a")
+	}
+	mu.Lock()
+	until, left := pingsUntil, len(gathered)
+	mu.Unlock()
+	if until != 5000 || left != 0 {
+		t.Fatalf("окно не выброшено: до %d, трафика %d", until, left)
+	}
+
+	// Конфиг применяется (узлы ничьи) — замеры ждут: та же подписка их заберёт
+	SetNodes("", nil, nil)
+	mu.Lock()
+	gathered = traffic{"Узел": {1, 2, 1}}
+	mu.Unlock()
+	if _, ok := readWindow("a", 9000); ok {
+		t.Fatal("окно прочитано, пока узлы ничьи")
+	}
+	if w := takeTraffic("a"); !w.empty() {
+		t.Fatalf("трафик взят, пока узлы ничьи: %+v", w)
+	}
+	mu.Lock()
+	until, left = pingsUntil, len(gathered)
+	mu.Unlock()
+	if until != 5000 || left != 1 {
+		t.Fatalf("ждущие замеры выброшены: до %d, трафика %d", until, left)
+	}
+
+	SetNodes("a", map[string]NodeInfo{"Узел": node()}, nil)
+	if w := takeTraffic("a"); len(w.traffic) != 1 || w.nodes["Узел"] != node() {
+		t.Fatalf("трафик своей подписки потерян: %+v", w)
+	}
+
+	// Цель сбора уже другая — прежней ничего не достаётся и ничего не стирается
+	mu.Lock()
+	targetOwner, gathered = "b", traffic{"Узел": {1, 2, 1}}
+	mu.Unlock()
+	if w := takeTraffic("a"); !w.empty() {
+		t.Fatalf("трафик новой цели ушёл прежней: %+v", w)
+	}
+	mu.Lock()
+	left = len(gathered)
+	mu.Unlock()
+	if left != 1 {
+		t.Fatal("трафик новой цели стёрт")
+	}
+}
+
 func backlog(hours int64, moment int64) *Store {
 	store := &Store{}
 	for i := int64(1); i <= hours; i++ {
@@ -591,26 +696,26 @@ func TestCollectionStopsAtOnceAndRestartsWithItsTrafficReading(t *testing.T) {
 		return false
 	}
 	t.Cleanup(func() {
-		SetTarget("")
+		SetTarget("", "")
 		settled(0)
 	})
 
-	SetTarget(filepath.Join(dir, "a"))
+	SetTarget(filepath.Join(dir, "a"), "a")
 	// Остановка и тут же запуск: сбор продолжается, один цикл и одно чтение.
-	SetTarget("")
-	SetTarget(filepath.Join(dir, "b"))
+	SetTarget("", "")
+	SetTarget(filepath.Join(dir, "b"), "b")
 	if !settled(1) {
 		t.Fatalf("после перезапуска: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
 	}
 
 	// Остановка кончает и цикл, и чтение сразу, а не после их ожидания.
-	SetTarget("")
+	SetTarget("", "")
 	if !settled(0) {
 		t.Fatalf("после остановки идут: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
 	}
 
 	// Новый запуск после остановки читает и соединения.
-	SetTarget(filepath.Join(dir, "c"))
+	SetTarget(filepath.Join(dir, "c"), "c")
 	if !settled(1) {
 		t.Fatalf("после нового запуска: цикл %d, чтение соединений %d", inside("loop"), inside("trafficLoop"))
 	}
@@ -622,12 +727,12 @@ func TestANetworkChangeRightAfterAReadKeepsTheCollectorAlive(t *testing.T) {
 	dir := t.TempDir()
 	address := Address
 	Address = func() (string, string) { return "192.0.2.1", "" }
-	SetNodes(map[string]NodeInfo{"Узел": node()}, nil)
+	SetNodes("s", map[string]NodeInfo{"Узел": node()}, nil)
 
 	alive := func() bool {
 		done := make(chan struct{})
 		go func() {
-			LoadedNodes()
+			NodesFor("s")
 			close(done)
 		}()
 
@@ -643,13 +748,13 @@ func TestANetworkChangeRightAfterAReadKeepsTheCollectorAlive(t *testing.T) {
 			return
 		}
 
-		SetTarget("")
+		SetTarget("", "")
 		NetworkChanged("", "", time.Now().UnixMilli())
-		SetNodes(nil, nil)
+		SetNodes("", nil, nil)
 		Address = address
 	})
 
-	SetTarget(filepath.Join(dir, "s"))
+	SetTarget(filepath.Join(dir, "s"), "s")
 
 	// Первая сеть: сразу чтение замеров и место (сеть с адресом).
 	NetworkChanged("net-a", "wifi", time.Now().UnixMilli())
