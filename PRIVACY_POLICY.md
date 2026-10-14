@@ -57,9 +57,9 @@ crash-reporting code. Everything described below covers the requests this app ma
     report carries a random per-install mark, the app version and the platform; like every
     secure-channel request, it also carries the device values described above, encrypted, while
     the "device identifier" setting is on. It is sent to the same address as the subscription,
-    encrypted, and only if the provider has turned on receiving reports; once the provider's server says
-    in its encrypted answer to a subscription update that it does not accept reports, the app
-    stops collecting and deletes the collected measurements. The app keeps unsent measurements for at most 7 days. Turning off the secure channel for a subscription stops
+    encrypted. Measurements are collected only after the provider's server has confirmed in its
+    encrypted answer to a subscription update that it accepts reports; once an answer comes
+    without that confirmation, the app stops collecting and deletes the collected measurements. The app keeps unsent measurements for at most 7 days. Turning off the secure channel for a subscription stops
     its reports.
 *   **To Yandex, to learn the external IP address.** For the report above, the app asks
     `ipv4-internet.yandex.net` and `ipv6-internet.yandex.net` (operated by Yandex) for the
@@ -79,9 +79,10 @@ crash-reporting code. Everything described below covers the requests this app ma
     Cloudflare) through each server to find servers whose traffic is being cut. While the
     tunnel is on — when a subscription is loaded, when the network changes, and at most once
     an hour; without the tunnel — when the active subscription is refreshed or saved and when
-    the app is opened. Each server is checked at most once every 3 days (one that did not
-    answer, every 6 hours), and a server that failed the check is checked again right away.
-    No identifier or device headers are attached.
+    the app is opened. Each server is checked at most once every 3 days (a check without a
+    result, every 6 hours), and a server whose traffic was cut is checked twice more a few
+    seconds later, together with a server that works on this network. No identifier or device headers
+    are attached.
 *   **DNS.** Name resolution goes wherever your configuration says. If the configuration
     leaves DNS disabled — either because it has no DNS section at all, or because the
     section is present but sets `enable: false` — the app replaces that whole section with
