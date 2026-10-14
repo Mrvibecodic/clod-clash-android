@@ -56,11 +56,6 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
             launch {
                 withContext(NonCancellable) {
                     val uuid = withProfile(retry = false) {
-                        val type = when (uri.getQueryParameter("type")?.lowercase(Locale.getDefault())) {
-                            "url" -> Profile.Type.Url
-                            "file" -> Profile.Type.File
-                            else -> Profile.Type.Url
-                        }
                         val linkName = uri.getQueryParameter("name")
                             ?.trim()
                             ?.takeIf { it.isNotEmpty() }
@@ -71,7 +66,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                         val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
                         val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
 
-                        create(type, name).also {
+                        create(Profile.Type.Url, name).also {
                             // Канал выберет сохранение: сначала защищённый, без него — обычный путь.
                             patch(it, name, linkName != null, url, intervalMs, intervalMs > 0, secure = false)
                         }
