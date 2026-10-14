@@ -53,12 +53,16 @@ jobs:
           test -f out/ru/index.html
           test -f out/en/index.html
           test -f out/ru/docs/index.html
+          test -f out/ru/docs/user/index.html
+          test -f out/ru/docs/provider/index.html
+          test -f out/en/docs/user/index.html
+          test -f out/en/docs/provider/index.html
           test -f out/ru/download/index.html
           test -f out/en/download/index.html
           test -f out/promo.png
           test -f out/.nojekyll
           test -f out/screenshots/ru/more.png
-          test -f out/screenshots/en/more.png
+          test -f out/404.html
 
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
         if: github.event_name != 'pull_request'
