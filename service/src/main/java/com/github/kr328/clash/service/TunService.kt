@@ -27,6 +27,9 @@ import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.TunApps
 import com.github.kr328.clash.service.util.tunApps
 import com.github.kr328.clash.service.util.tunAppsChanged
+import com.github.kr328.clash.service.util.onlySelfThroughTunnel
+import com.github.kr328.clash.service.util.sendTunnelAppsChanged
+import com.github.kr328.clash.service.util.uidLookup
 import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.VpnTakeover
 import com.github.kr328.clash.service.util.withStoredLocale
@@ -189,6 +192,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             withContext(NonCancellable) {
                 session.beginStop()
 
+                StatusProvider.tunnelOnlySelf = null
+
                 val startedAt = SystemClock.elapsedRealtime()
 
                 TunModule.requestStop()
@@ -304,26 +309,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     private var applied: TunPlan? = null
 
-    private fun uidLookup(): (String) -> Int? {
-        val known = HashMap<String, Int?>()
-
-        return { name ->
-            known.getOrPut(name) { runCatching { packageManager.getApplicationInfo(name, 0).uid }.getOrNull() }
-        }
-    }
-
     private fun plan(store: ServiceStore, prefs: TunPrefs, uidOf: (String) -> Int?): TunPlan {
         val mode = store.accessControlMode
         val packages = store.accessControlPackages
 
-        val apps = tunApps(
-            mode = mode,
-            selected = packages,
-            include = prefs.includePackages.toSet(),
-            exclude = prefs.excludePackages.toSet(),
-            self = packageName,
-            uidOf = uidOf,
-        )
+        val apps = tunApps(mode, packages, prefs, packageName, uidOf)
 
         return TunPlan(apps, accessControlFingerprint(mode, packages), resolveTunStack(store.tunStackMode, prefs.stack))
     }
@@ -334,10 +324,15 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     // ядро меняет устройство на новое само (startTun). true — пересобран.
     private fun TunModule.reopenIfChanged(profile: UUID): Boolean {
         val applied = applied ?: return false
-        val uidOf = uidLookup()
+        val uidOf = packageManager.uidLookup()
         val wanted = plan(ServiceStore(self), readTunPrefs(profile) ?: TunPrefs(), uidOf)
 
-        if (!tunAppsChanged(applied.apps, wanted.apps, uidOf) && wanted.stack == applied.stack) return false
+        if (!tunAppsChanged(applied.apps, wanted.apps, uidOf) && wanted.stack == applied.stack) {
+            // Удалённое приложение пересборки не требует, но из пущенных выбывает
+            publishOnlySelf(appliedAllowed.filter { uidOf(it) != null })
+
+            return false
+        }
 
         ServiceLog.mark("tun: reopen, apps or stack changed")
 
@@ -350,11 +345,13 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         val store = ServiceStore(self)
         val prefs = readTunPrefs(profile) ?: TunPrefs()
 
-        open(plan(store, prefs, uidLookup()))
+        open(plan(store, prefs, packageManager.uidLookup()))
     }
 
     private fun TunModule.open(plan: TunPlan) {
         val store = ServiceStore(self)
+
+        var allowed = emptyList<String>()
 
         val device = with(Builder()) {
             addAddress(TUN_GATEWAY, TUN_SUBNET_PREFIX)
@@ -385,8 +382,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
             store.accessControlApplied = plan.access
 
-            plan.apps.allowed.keys.forEach {
-                runCatching { addAllowedApplication(it) }
+            allowed = plan.apps.allowed.keys.filter {
+                runCatching { addAllowedApplication(it) }.isSuccess
             }
             plan.apps.disallowed.keys.forEach {
                 runCatching { addDisallowedApplication(it) }
@@ -455,6 +452,22 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         attach(device)
 
         applied = plan
+
+        appliedAllowed = allowed
+
+        publishOnlySelf(allowed)
+    }
+
+    // Белый список, который система приняла при последнем открытии туннеля
+    private var appliedAllowed = emptyList<String>()
+
+    private fun publishOnlySelf(allowed: List<String>) {
+        val onlySelf = onlySelfThroughTunnel(allowed, packageName)
+        val before = StatusProvider.tunnelOnlySelf
+
+        StatusProvider.tunnelOnlySelf = onlySelf
+
+        if (before != null && before != onlySelf) sendTunnelAppsChanged()
     }
 
     private class EstablishRejected(message: String) : IllegalStateException(message)

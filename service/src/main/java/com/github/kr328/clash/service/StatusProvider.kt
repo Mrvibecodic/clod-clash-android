@@ -34,6 +34,7 @@ class StatusProvider : ContentProvider() {
                     putBoolean(KEY_PROXY_REFUSED, serviceReady && systemProxyRefused)
                     putLong(KEY_STARTED_AT, session.first)
                     putLong(KEY_STARTED_ELAPSED, session.second)
+                    tunnelOnlySelf?.let { putBoolean(KEY_TUNNEL_ONLY_SELF, it) }
                 }
             }
             METHOD_UPDATING_PROFILES -> {
@@ -91,6 +92,7 @@ class StatusProvider : ContentProvider() {
         const val KEY_PROXY_REFUSED = "proxyRefused"
         const val KEY_STARTED_AT = "startedAt"
         const val KEY_STARTED_ELAPSED = "startedElapsed"
+        const val KEY_TUNNEL_ONLY_SELF = "tunnelOnlySelf"
         const val METHOD_UPDATING_PROFILES = "updatingProfiles"
         const val KEY_UPDATING = "updating"
 
@@ -133,5 +135,9 @@ class StatusProvider : ContentProvider() {
 
         @Volatile
         var systemProxyRefused: Boolean = false
+
+        // Применённый туннель пускает только само приложение; null — туннеля нет
+        @Volatile
+        var tunnelOnlySelf: Boolean? = null
     }
 }

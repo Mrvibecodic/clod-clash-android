@@ -1,6 +1,8 @@
 package com.github.kr328.clash.service.util
 
+import android.content.pm.PackageManager
 import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.model.TunPrefs
 
 // Какие приложения идут через туннель: пакет → UID на момент расчёта. Android
 // применяет состав только при establish() и сопоставляет его приложениям по UID,
@@ -37,6 +39,27 @@ fun tunApps(
         }
         AccessControlMode.DenySelected ->
             TunApps(emptyMap(), (selected + exclude - self).installed())
+    }
+}
+
+fun tunApps(
+    mode: AccessControlMode,
+    selected: Set<String>,
+    prefs: TunPrefs,
+    self: String,
+    uidOf: (String) -> Int?,
+): TunApps = tunApps(mode, selected, prefs.includePackages.toSet(), prefs.excludePackages.toSet(), self, uidOf)
+
+// Через туннель идёт только само приложение. allowed — белый список, принятый
+// системой: пустой означает «все приложения», а не «никто».
+fun onlySelfThroughTunnel(allowed: Collection<String>, self: String): Boolean =
+    allowed.isNotEmpty() && allowed.all { it == self }
+
+fun PackageManager.uidLookup(): (String) -> Int? {
+    val known = HashMap<String, Int?>()
+
+    return { name ->
+        known.getOrPut(name) { runCatching { getApplicationInfo(name, 0).uid }.getOrNull() }
     }
 }
 

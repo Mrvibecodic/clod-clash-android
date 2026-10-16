@@ -1,6 +1,7 @@
 package com.github.kr328.clash.service.util
 
 import com.github.kr328.clash.service.model.AccessControlMode
+import com.github.kr328.clash.service.model.TunPrefs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -139,5 +140,59 @@ class TunAppsTest {
         val after = tunApps(AccessControlMode.AcceptAll, emptySet(), emptySet(), setOf("bank", "absent"), self, now)
 
         assertFalse(tunAppsChanged(before, after, now))
+    }
+
+    private fun onlySelf(apps: TunApps) = onlySelfThroughTunnel(apps.allowed.keys, self)
+
+    @Test
+    fun `только себя — разрешить выбранные без выбора и без списков подписки`() {
+        assertTrue(onlySelf(tunApps(AccessControlMode.AcceptSelected, emptySet(), emptySet(), emptySet(), self, uids("browser" to 12))))
+    }
+
+    @Test
+    fun `только себя — отмечены лишь удалённые приложения`() {
+        assertTrue(onlySelf(tunApps(AccessControlMode.AcceptSelected, setOf("gone"), emptySet(), emptySet(), self, uids("browser" to 12))))
+    }
+
+    @Test
+    fun `только себя — включения подписки не установлены`() {
+        assertTrue(onlySelf(tunApps(AccessControlMode.AcceptSelected, emptySet(), setOf("absent"), emptySet(), self, uids())))
+    }
+
+    @Test
+    fun `не только себя — исключения подписки пускают остальных`() {
+        assertFalse(onlySelf(tunApps(AccessControlMode.AcceptSelected, emptySet(), emptySet(), setOf("absent"), self, uids())))
+    }
+
+    @Test
+    fun `не только себя — установленное включение подписки`() {
+        assertFalse(onlySelf(tunApps(AccessControlMode.AcceptSelected, emptySet(), setOf("chat"), emptySet(), self, uids("chat" to 11))))
+    }
+
+    @Test
+    fun `не только себя — отмечено установленное приложение`() {
+        assertFalse(onlySelf(tunApps(AccessControlMode.AcceptSelected, setOf("browser"), emptySet(), emptySet(), self, uids("browser" to 12))))
+    }
+
+    @Test
+    fun `не только себя — запретить выбранные и все приложения`() {
+        assertFalse(onlySelf(tunApps(AccessControlMode.DenySelected, emptySet(), emptySet(), emptySet(), self, uids())))
+        assertFalse(onlySelf(tunApps(AccessControlMode.AcceptAll, emptySet(), emptySet(), emptySet(), self, uids())))
+    }
+
+    @Test
+    fun `пустой принятый белый список — это все приложения, а не никто`() {
+        assertFalse(onlySelfThroughTunnel(emptyList(), self))
+    }
+
+    @Test
+    fun `списки подписки берутся из её настроек туннеля`() {
+        val prefs = TunPrefs(includePackages = listOf("chat"), excludePackages = listOf("bank"))
+        val now = uids("chat" to 11, "bank" to 10)
+
+        assertEquals(
+            tunApps(AccessControlMode.AcceptSelected, emptySet(), setOf("chat"), setOf("bank"), self, now),
+            tunApps(AccessControlMode.AcceptSelected, emptySet(), prefs, self, now),
+        )
     }
 }

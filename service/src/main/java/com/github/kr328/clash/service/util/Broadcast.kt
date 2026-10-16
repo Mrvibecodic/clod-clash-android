@@ -68,6 +68,10 @@ fun Context.sendHiddenServersChanged() {
     sendBroadcastSelf(Intent(Intents.ACTION_HIDDEN_SERVERS_CHANGED))
 }
 
+fun Context.sendTunnelAppsChanged() {
+    sendBroadcastSelf(Intent(Intents.ACTION_TUNNEL_APPS_CHANGED))
+}
+
 fun Context.sendOverrideChanged() {
     val intent = Intent(Intents.ACTION_OVERRIDE_CHANGED)
 
