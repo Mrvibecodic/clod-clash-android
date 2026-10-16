@@ -28,6 +28,7 @@ class Broadcasts(private val context: Application) {
         fun onProfileLoadFailed(uuid: UUID?, reason: String?)
         fun onFreezeMarksChanged(uuid: UUID?) {}
         fun onHiddenServersChanged() {}
+        fun onTunnelAppsChanged() {}
     }
 
     @Volatile
@@ -170,6 +171,11 @@ class Broadcasts(private val context: Application) {
                         it.onHiddenServersChanged()
                     }
                 }
+                Intents.ACTION_TUNNEL_APPS_CHANGED -> {
+                    receivers.forEach {
+                        it.onTunnelAppsChanged()
+                    }
+                }
             }
         }
     }
@@ -204,6 +210,7 @@ class Broadcasts(private val context: Application) {
                     addAction(Intents.ACTION_PROFILE_LOAD_FAILED)
                     addAction(Intents.ACTION_FREEZE_MARKS_CHANGED)
                     addAction(Intents.ACTION_HIDDEN_SERVERS_CHANGED)
+                    addAction(Intents.ACTION_TUNNEL_APPS_CHANGED)
                 }, Permissions.RECEIVE_SELF_BROADCASTS)
 
                 registered = true

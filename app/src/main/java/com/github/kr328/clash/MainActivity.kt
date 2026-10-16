@@ -42,6 +42,7 @@ import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.compose.screen.AboutState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
 import com.github.kr328.clash.design.model.BUILTIN_OUTBOUNDS
+import com.github.kr328.clash.design.model.appsBypassVpn
 import com.github.kr328.clash.design.model.globalRoutingBlocked
 import com.github.kr328.clash.design.model.mainGroupOf
 import com.github.kr328.clash.design.model.ToggleIntent
@@ -58,6 +59,7 @@ import com.github.kr328.clash.util.offlineGroup
 import com.github.kr328.clash.util.offlineLeaf
 import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
+import com.github.kr328.clash.util.plannedOnlySelf
 import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.ProfileUpdates
 import com.github.kr328.clash.service.util.profileLogoFile
@@ -135,6 +137,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         val design = MainDesign(this, restoredState(), restored?.getString(KEY_GROUP))
 
         setContentDesign(design)
+
+        // Лист о приложениях после пересоздания экрана на виду — каким был, а не заново
+        appsPromptKept = restored?.containsKey(KEY_APPS_PROMPT) == true
 
         // Открытый до пересоздания лист надёжности — сразу со своими данными,
         // а не пустым, чтобы кнопки не перескакивали
@@ -372,6 +377,15 @@ class MainActivity : BaseActivity<MainDesign>() {
                                     design.launchUpdate()
                                 }
                             }
+
+                            // Отдельно: сбой чтения выше не лишает входа листа о приложениях
+                            work.trySend {
+                                val opportunity = !appsPromptKept
+
+                                appsPromptKept = false
+
+                                design.fetchAppsBypass(opportunity = opportunity)
+                            }
                         }
                         Event.ClashStop -> {
                             stopRequestedAt = null
@@ -401,6 +415,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                             startRequestedAt = null
 
                             requestFetch()
+
+                            work.trySend { design.fetchAppsBypass(opportunity = true) }
 
                             if (!uiStore.reliabilityAsked) {
                                 launch { design.fetchReliability(prompt = true) }
@@ -450,6 +466,9 @@ class MainActivity : BaseActivity<MainDesign>() {
                         // (или показывает их снова): группы ядра стали другими
                         Event.HiddenServersChanged -> {
                             if (clashRunning) work.trySend { design.reloadProxyGroups() }
+                        }
+                        Event.TunnelAppsChanged -> {
+                            work.trySend { design.fetchAppsBypass(opportunity = false) }
                         }
                         is Event.FreezeMarksChanged -> {
                             val uuid = it.uuid
@@ -506,6 +525,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                                 design.reloadProxyGroup(design.selectedGroup)
                             }
+
+                            design.fetchAppsBypass(opportunity = true)
                         }
                         is MainDesign.Request.ReloadGroup -> work.trySend {
                             proxyGroupNames.indexOf(request.group).takeIf { it >= 0 }
@@ -857,7 +878,34 @@ class MainActivity : BaseActivity<MainDesign>() {
         fetchFreezeMarks(favoritesProfile)
         setDismissedPromo(favoritesProfile, favoritesProfile?.let { uiStore.dismissedPromo(it) }.orEmpty())
 
+        fetchAppsBypass(notes, opportunity = false)
+
         return reloadProxyGroups()
+    }
+
+    // Идут ли приложения мимо VPN. opportunity — повод показать лист: Главная
+    // стала видна или служба запустилась. Сбой чтения или ответ, расходящийся с
+    // рассылками (служба запускается или останавливается), оставляет прежний показ.
+    private suspend fun MainDesign.fetchAppsBypass(status: StatusClient.Status? = null, opportunity: Boolean) {
+        val running = clashRunning
+
+        val bypass = try {
+            val notes = status ?: withContext(Dispatchers.IO) { StatusClient(this@MainActivity).status() }
+
+            if (notes.running != running) return
+
+            val loaded = if (running) notes.uuid?.let { runCatching { UUID.fromString(it) }.getOrNull() } else null
+
+            appsBypassVpn(running, notes.tunnelOnlySelf, plannedOnlySelf(loaded), uiStore.enableVpn)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Apps bypass: $e", e)
+
+            return
+        }
+
+        setAppsBypass(bypass, running, opportunity && selectedTab == MainTab.Home)
     }
 
     private suspend fun MainDesign.showProfiles(profiles: List<Profile>) {
@@ -1051,6 +1099,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     private var healthCheckRequestedManually = false
 
     private var homeRouteReadAt = SystemClock.elapsedRealtime()
+
+    private var appsPromptKept = false
 
     private var lastHealthCheckAt: Long
         get() = HealthProbes.checkedAt
@@ -1685,6 +1735,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         private const val KEY_SUB_GROUP = "sub_group"
         private const val KEY_FREEZE_SHEET = "freeze_sheet"
         private const val KEY_RELIABILITY_PROMPT = "reliability_prompt"
+        private const val KEY_APPS_PROMPT = "apps_prompt"
     }
 
     private var sessionStartedAt: Long = 0
@@ -2494,6 +2545,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             subScreen = bundle.getString(KEY_SUB_SCREEN)?.let { SubScreen.valueOf(it) },
             subscriptions = SubscriptionsState(selectedGroup = bundle.getString(KEY_SUB_GROUP)),
             about = about,
+            appsPrompt = bundle.getBoolean(KEY_APPS_PROMPT),
         )
     }
 
@@ -2508,6 +2560,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         outState.putString(KEY_SUB_GROUP, design.selectedSubscriptionGroup)
         outState.putBoolean(KEY_FREEZE_SHEET, design.freezeSheetOpen)
         outState.putBoolean(KEY_RELIABILITY_PROMPT, design.reliabilityPromptOpen)
+        if (isChangingConfigurations) outState.putBoolean(KEY_APPS_PROMPT, design.appsPromptOpen)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

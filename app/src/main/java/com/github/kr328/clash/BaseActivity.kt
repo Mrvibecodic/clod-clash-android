@@ -303,6 +303,10 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.HiddenServersChanged)
     }
 
+    override fun onTunnelAppsChanged() {
+        events.trySend(Event.TunnelAppsChanged)
+    }
+
     override fun onProfileLoadFailed(uuid: UUID?, reason: String?) {
         // Подписка не названа: после сбоя загрузки экран перечитывается целиком.
         events.trySend(Event.ProfileChanged(null))
@@ -381,6 +385,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         data class ProfileChanged(val uuid: UUID?) : Event
         data class FreezeMarksChanged(val uuid: UUID?) : Event
         data object HiddenServersChanged : Event
+        data object TunnelAppsChanged : Event
     }
 
     private fun syncAppLocale() {

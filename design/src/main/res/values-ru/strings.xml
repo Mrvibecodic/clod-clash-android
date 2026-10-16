@@ -603,6 +603,13 @@
     <string name="clod_notify_ask_text">В постоянном уведомлении видно состояние туннеля и есть кнопка «Отключить». Туда же приходят напоминания о подписке и сообщения об ошибках её обновления.</string>
     <string name="clod_notify_ask_allow">Разрешить</string>
     <string name="clod_notify_ask_later">Не сейчас</string>
+    <string name="clod_apps_bypass_title">Приложения не идут через VPN</string>
+    <string name="clod_apps_bypass_text">Режим «Разрешить выбранные приложения», но ни одно приложение не отмечено. Браузер, мессенджеры и остальные приложения сейчас ходят в интернет напрямую, мимо VPN.</string>
+    <string name="clod_apps_bypass_hint">Отметьте приложения, которым нужен VPN.</string>
+    <string name="clod_apps_bypass_choose">Выбрать приложения</string>
+    <string name="clod_apps_bypass_later">Позже</string>
+    <string name="clod_apps_bypass_card">Ничего не отмечено в «Приложениях»</string>
+    <string name="clod_apps_bypass_card_action">Выбрать</string>
     <string name="clod_reliability_title">Чтобы соединение не отваливалось</string>
     <string name="clod_reliability_text">Две настройки Android. Спрашиваем один раз — потом они живут во вкладке «Ещё».</string>
     <string name="clod_reliability_battery">Не ограничивать батарею</string>

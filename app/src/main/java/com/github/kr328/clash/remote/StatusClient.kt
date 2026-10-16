@@ -26,6 +26,7 @@ class StatusClient(private val context: Context) {
         val systemProxyRefused: Boolean = false,
         val startedAt: Long = 0L,
         val startedElapsed: Long = 0L,
+        val tunnelOnlySelf: Boolean? = null,
     )
 
     fun status(): Status {
@@ -47,6 +48,11 @@ class StatusClient(private val context: Context) {
                 systemProxyRefused = result.getBoolean(StatusProvider.KEY_PROXY_REFUSED),
                 startedAt = result.getLong(StatusProvider.KEY_STARTED_AT),
                 startedElapsed = result.getLong(StatusProvider.KEY_STARTED_ELAPSED),
+                tunnelOnlySelf = if (result.containsKey(StatusProvider.KEY_TUNNEL_ONLY_SELF)) {
+                    result.getBoolean(StatusProvider.KEY_TUNNEL_ONLY_SELF)
+                } else {
+                    null
+                },
             )
         } catch (e: Exception) {
             Log.w("Query clash status: $e", e)

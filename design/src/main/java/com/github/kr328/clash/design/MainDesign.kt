@@ -26,6 +26,7 @@ import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.model.RoutingDataMerge
+import com.github.kr328.clash.design.model.appsPromptAfter
 import com.github.kr328.clash.design.model.groupIndexOf
 import com.github.kr328.clash.design.model.promoFingerprint
 import com.github.kr328.clash.design.ui.ToastDuration
@@ -109,6 +110,12 @@ class MainDesign(
             MainAction.ReliabilityAllowBattery -> request(Request.ReliabilityAllowBattery)
             MainAction.ReliabilityOpenVpnSettings -> request(Request.ReliabilityOpenVpnSettings)
             MainAction.ReliabilityDismiss -> request(Request.ReliabilityDismiss)
+            MainAction.AppsBypassLater -> state = state.copy(appsPrompt = false)
+            MainAction.AppsBypassChoose -> {
+                state = state.copy(appsPrompt = false)
+
+                request(Request.OpenAccessControl)
+            }
             MainAction.OpenAccessControl -> request(Request.OpenAccessControl)
             MainAction.OpenLogs -> request(Request.OpenLogs)
             MainAction.OpenAppSettings -> request(Request.OpenAppSettings)
@@ -218,6 +225,15 @@ class MainDesign(
     suspend fun setNotificationPrompt(show: Boolean) {
         withContext(Dispatchers.Main) {
             state = state.copy(notificationPrompt = show)
+        }
+    }
+
+    suspend fun setAppsBypass(bypass: Boolean, running: Boolean, opportunity: Boolean) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                appsBypass = bypass,
+                appsPrompt = appsPromptAfter(state.appsPrompt, state.appsBypass, bypass, running, opportunity),
+            )
         }
     }
 
@@ -332,6 +348,9 @@ class MainDesign(
 
     val reliabilityPromptOpen: Boolean
         get() = state.reliability.prompt
+
+    val appsPromptOpen: Boolean
+        get() = state.appsPrompt
 
     suspend fun setProxyGroupNames(
         names: List<String>,

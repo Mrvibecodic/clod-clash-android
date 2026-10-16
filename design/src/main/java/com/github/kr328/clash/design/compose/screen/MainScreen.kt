@@ -251,9 +251,17 @@ data class MainScreenState(
     // Первое чтение экрана закончилось (удачно или нет): до этого «серверов
     // нет» и «добавьте подписку» — неправда, данные просто ещё не пришли
     val loaded: Boolean = false,
+    // Приложения идут мимо VPN (null — ещё не известно) и лист об этом
+    val appsBypass: Boolean? = null,
+    val appsPrompt: Boolean = false,
 ) {
     val mode: TunnelState.Mode
         get() = effectiveMode(profileMode)
+
+    // Лист о приложениях — на Главной и не поверх другого окна или листа
+    val appsSheetShown: Boolean
+        get() = appsPrompt && selectedTab == MainTab.Home && subScreen == null && update == null &&
+            !notificationPrompt && !reliability.prompt && !freezeSheet
 }
 
 @Immutable
@@ -308,6 +316,8 @@ sealed interface MainAction {
     data object ReliabilityAllowBattery : MainAction
     data object ReliabilityOpenVpnSettings : MainAction
     data object ReliabilityDismiss : MainAction
+    data object AppsBypassChoose : MainAction
+    data object AppsBypassLater : MainAction
 }
 
 private const val TAB_TRANSITION_MILLIS = 200
@@ -367,6 +377,10 @@ fun MainScreen(
 
             if (state.freezeSheet) {
                 FreezeSheet(supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
+            }
+
+            if (state.appsSheetShown) {
+                AppsBypassSheet(onAction)
             }
 
             Row(modifier = Modifier.padding(padding)) {
@@ -614,6 +628,11 @@ private fun HomeTab(
             if (connected && state.systemProxyRefused) {
                 SessionNote(stringResource(R.string.clod_session_proxy_refused))
             }
+        }
+
+        if (state.appsBypass == true && !state.appsSheetShown) {
+            Spacer(Modifier.height(16.dp))
+            AppsBypassCard(onAction)
         }
 
         Spacer(Modifier.height(28.dp))

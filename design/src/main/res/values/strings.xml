@@ -600,6 +600,13 @@
     <string name="clod_notify_ask_text">The ongoing notification shows the tunnel state and carries a Disconnect button. Subscription reminders and update errors arrive there too.</string>
     <string name="clod_notify_ask_allow">Allow</string>
     <string name="clod_notify_ask_later">Not now</string>
+    <string name="clod_apps_bypass_title">Apps are not going through the VPN</string>
+    <string name="clod_apps_bypass_text">The mode is “Allow selected apps”, but no app is checked. Your browser, messengers and other apps reach the internet directly, bypassing the VPN.</string>
+    <string name="clod_apps_bypass_hint">Check the apps that need the VPN.</string>
+    <string name="clod_apps_bypass_choose">Choose apps</string>
+    <string name="clod_apps_bypass_later">Later</string>
+    <string name="clod_apps_bypass_card">Nothing is checked in Apps</string>
+    <string name="clod_apps_bypass_card_action">Choose</string>
     <string name="clod_reliability_title">Keep the connection from dropping</string>
     <string name="clod_reliability_text">Two Android settings. Asked once — afterwards they live in the More tab.</string>
     <string name="clod_reliability_battery">Unrestricted battery</string>
