@@ -13,9 +13,9 @@ import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.packageName
-import com.github.kr328.clash.util.withAppLocale
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.remote.StatusClient
+import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,7 +116,7 @@ class ToggleWidgetProvider : AppWidgetProvider() {
 
             views.setContentDescription(
                 R.id.widget_button,
-                context.withAppLocale().getString(
+                context.withStoredLocale().getString(
                     when (state) {
                         State.Off -> DesignR.string.shortcut_start_long
                         State.Wait -> R.string.launch_name

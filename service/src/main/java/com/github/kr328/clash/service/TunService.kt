@@ -27,7 +27,6 @@ import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.TunApps
 import com.github.kr328.clash.service.util.tunApps
 import com.github.kr328.clash.service.util.tunAppsChanged
-import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.VpnTakeover
 import com.github.kr328.clash.service.util.withStoredLocale
@@ -54,7 +53,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         // До загрузки конфига: ядро открывает сокеты уже при его применении
         tun.attachSocketCallbacks()
 
-        val config = install(ConfigurationModule(self))
+        val config = install(ConfigurationModule(self, session::notifyStage))
         val network = install(NetworkObserveModule(self))
 
         if (store.dynamicNotification)
@@ -107,9 +106,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                                 if (opened) {
                                     reopenTun(it.uuid)
                                 } else {
-                                    StatusProvider.startupStage = Intents.STAGE_TUNNEL
-
-                                    sendClashStarting(Intents.STAGE_TUNNEL)
+                                    session.notifyStage(Intents.STAGE_TUNNEL)
 
                                     tun.open(it.uuid)
 

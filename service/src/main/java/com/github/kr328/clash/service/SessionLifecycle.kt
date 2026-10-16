@@ -20,6 +20,7 @@ import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.sendClashStarted
+import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.CancellationException
@@ -116,6 +117,10 @@ class SessionLifecycle(
     // Причина и готовность сессии меняются под ним: отказ модуля прежней сессии
     // не становится причиной новой, готовность не взводится после остановки
     private val stateLock = Any()
+
+    // Признак остановки и отложенная команда старта меняются только вместе:
+    // команда, пришедшая во время остановки, не остаётся в слоте, который уже прочитан
+    private val startLock = Any()
 
     @Volatile
     private var failureShown = false
@@ -295,6 +300,16 @@ class SessionLifecycle(
         }
     }
 
+    fun notifyStage(stage: String) {
+        synchronized(stateLock) {
+            if (stopNotified.get()) return
+
+            StatusProvider.startupStage = stage
+
+            service.sendClashStarting(stage)
+        }
+    }
+
     fun claimUserIntent() {
         wantedByUser = StatusProvider.shouldStartClashOnBoot
     }
@@ -373,12 +388,26 @@ class SessionLifecycle(
     }
 
     fun onStartCommand(systemStart: Boolean, unattended: Boolean, startId: Int): StartCommandOutcome {
-        val pending = !rejected && stopping.get()
+        val pending = synchronized(startLock) {
+            val pending = !rejected && stopping.get()
 
-        if (!pending) {
-            lastStartId = startId
+            if (pending) {
+                val held = pendingStart.get()
 
-            pendingStart.set(null)
+                pendingStart.set(
+                    PendingStart(
+                        startId = startId,
+                        bySystem = systemStart && (held?.bySystem ?: true),
+                        unattended = unattended || held?.unattended == true,
+                    ),
+                )
+            } else {
+                lastStartId = startId
+
+                pendingStart.set(null)
+            }
+
+            pending
         }
 
         if (!rejected && !pending && systemStart) {
@@ -400,19 +429,7 @@ class SessionLifecycle(
 
         when (outcome) {
             StartCommandOutcome.Rejected -> service.stopSelf()
-            StartCommandOutcome.Remember -> {
-                val held = pendingStart.get()
-
-                pendingStart.set(
-                    PendingStart(
-                        startId = startId,
-                        bySystem = systemStart && (held?.bySystem ?: true),
-                        unattended = unattended || held?.unattended == true,
-                    ),
-                )
-
-                ServiceLog.mark("start command $startId held until stop finishes")
-            }
+            StartCommandOutcome.Remember -> ServiceLog.mark("start command $startId held until stop finishes")
             StartCommandOutcome.StopSticky -> {
                 notifyStopped()
 
@@ -445,23 +462,31 @@ class SessionLifecycle(
     }
 
     fun beginStop() {
-        stopId = lastStartId
+        synchronized(startLock) {
+            stopId = lastStartId
 
-        stopping.set(true)
+            stopping.set(true)
+        }
     }
 
     fun finishSession() {
         notifyStopped()
 
-        val held = pendingStart.getAndSet(null)
-
-        if (held != null) {
-            lastStartId = held.startId
-        }
-
+        // Вне замка: binder-вызов. Запомненная команда новее stopId, и с ней
+        // stopSelfResult службу не остановит
         val stopSelfSucceeded = service.stopSelfResult(stopId)
 
-        stopping.set(false)
+        val held = synchronized(startLock) {
+            val held = pendingStart.getAndSet(null)
+
+            if (held != null) {
+                lastStartId = held.startId
+            }
+
+            stopping.set(false)
+
+            held
+        }
 
         if (held != null && held.bySystem) {
             systemStarted = true

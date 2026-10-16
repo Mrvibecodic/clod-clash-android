@@ -12,6 +12,7 @@ import com.github.kr328.clash.common.compat.isTelevision
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.remote.Remote
+import com.github.kr328.clash.service.ProfileUpdateWorker
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendServiceRecreated
 import com.github.kr328.clash.update.UpdateNotice
@@ -64,6 +65,10 @@ class MainApplication : Application(), Configuration.Provider {
             ToggleWidgetProvider.renderRecreated(this)
 
             UpdateNotice.onBackgroundStart(this)
+
+            // Раньше любого воркера этого процесса: «Обновление подписки…» в шторке
+            // осталось от загрузки погибшего процесса, снять его больше некому
+            ProfileUpdateWorker.dropOrphanedStatus(this)
         }
     }
 

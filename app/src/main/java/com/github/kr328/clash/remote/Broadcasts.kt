@@ -11,6 +11,7 @@ import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.util.stopClashService
 import java.util.*
 
 class Broadcasts(private val context: Application) {
@@ -56,6 +57,28 @@ class Broadcasts(private val context: Application) {
     private fun set(status: StatusClient.Status?) {
         clashRunning = status?.running == true
         clashActive = status?.let { it.running || it.starting } == true
+
+        releaseHeldStop()
+    }
+
+    // Рассылку стопа слышит только уже поднятая сессия: стоп, нажатый раньше,
+    // ждёт, пока служба подтвердит сессию
+    private var stopHeld = false
+
+    fun requestStop() {
+        if (clashActive) context.stopClashService() else stopHeld = true
+    }
+
+    fun takeHeldStop(): Boolean {
+        val held = stopHeld
+
+        stopHeld = false
+
+        return held
+    }
+
+    private fun releaseHeldStop() {
+        if (clashActive && takeHeldStop()) context.stopClashService()
     }
 
     private var registered = false
@@ -78,6 +101,8 @@ class Broadcasts(private val context: Application) {
                     clashRunning = false
                     clashActive = true
 
+                    releaseHeldStop()
+
                     receivers.forEach {
                         it.onStarting(intent.getStringExtra(Intents.EXTRA_STAGE))
                     }
@@ -87,11 +112,15 @@ class Broadcasts(private val context: Application) {
                     clashRunning = true
                     clashActive = true
 
+                    releaseHeldStop()
+
                     receivers.forEach {
                         it.onStarted()
                     }
                 }
                 Intents.ACTION_CLASH_STOPPED -> {
+                    stopHeld = false
+
                     refreshRunning()
 
                     receivers.forEach {

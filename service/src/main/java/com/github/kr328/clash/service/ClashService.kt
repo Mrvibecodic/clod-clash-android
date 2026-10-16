@@ -10,7 +10,6 @@ import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.module.*
 import com.github.kr328.clash.service.store.ServiceStore
-import com.github.kr328.clash.service.util.cancelAndJoinBlocking
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
@@ -26,7 +25,7 @@ class ClashService : BaseService() {
         val store = ServiceStore(self)
 
         val close = install(CloseModule(self))
-        val config = install(ConfigurationModule(self))
+        val config = install(ConfigurationModule(self, session::notifyStage))
         val network = install(NetworkObserveModule(self))
 
         if (store.dynamicNotification)
@@ -131,14 +130,12 @@ class ClashService : BaseService() {
 
         session.destroy()
 
-        cancelAndJoinBlocking()
+        super.onDestroy()
 
         Log.i(
             "ClashService destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms: " +
                 (session.reason ?: "successfully")
         )
-
-        super.onDestroy()
     }
 
     override fun onTrimMemory(level: Int) {

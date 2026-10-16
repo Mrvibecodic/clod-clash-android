@@ -242,7 +242,8 @@
         <receiver
             android:name=".ToggleWidgetProvider"
             android:exported="false"
-            android:label="@string/launch_name">
+            android:label="@string/launch_name"
+            android:process=":background">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

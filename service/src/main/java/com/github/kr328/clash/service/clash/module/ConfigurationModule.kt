@@ -24,7 +24,6 @@ import com.github.kr328.clash.service.util.activeProfileRollback
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.loadFailureKeepsRetained
-import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendProfileLoadFailed
 import com.github.kr328.clash.service.freeze.FreezeChecks
 import com.github.kr328.clash.service.report.ClientReports
@@ -41,7 +40,10 @@ import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 import java.util.*
 
-class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(service) {
+class ConfigurationModule(
+    service: Service,
+    private val stage: (String) -> Unit,
+) : Module<ConfigurationModule.Event>(service) {
     companion object {
         val coreLoad = Mutex()
 
@@ -82,12 +84,6 @@ class ConfigurationModule(service: Service) : Module<ConfigurationModule.Event>(
             (mode.lockUntil + 1) * 1000
         else
             0
-    }
-
-    private fun stage(stage: String) {
-        StatusProvider.startupStage = stage
-
-        service.sendClashStarting(stage)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

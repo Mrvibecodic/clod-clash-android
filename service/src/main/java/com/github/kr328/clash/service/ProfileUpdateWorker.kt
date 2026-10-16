@@ -1,5 +1,6 @@
 package com.github.kr328.clash.service
 
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -325,6 +326,16 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
     companion object {
         val updating: MutableSet<UUID> = Collections.newSetFromMap(ConcurrentHashMap())
+
+        fun dropOrphanedStatus(context: Context) {
+            val manager = context.getSystemService(NotificationManager::class.java) ?: return
+
+            runCatching {
+                manager.activeNotifications
+                    .filter { it.notification.group == STATUS_CHANNEL }
+                    .forEach { manager.cancel(it.tag, it.id) }
+            }
+        }
 
         fun input(imported: Imported, kind: Kind): Data =
             workDataOf(KEY_UUID to imported.uuid.toString(), KEY_KIND to kind.name)

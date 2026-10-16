@@ -81,7 +81,6 @@ import com.github.kr328.clash.util.HealthCheckRoute
 import com.github.kr328.clash.util.healthCheckRoute
 import com.github.kr328.clash.util.shouldAutoHealthCheck
 import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.launchHoldingService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
@@ -383,13 +382,19 @@ class MainActivity : BaseActivity<MainDesign>() {
                             requestFetch()
                         }
                         Event.ClashStarting -> {
-                            stopRequestedAt = null
+                            val stopping = stopRequestedAt?.let {
+                                SystemClock.elapsedRealtime() - it < STOP_FEEDBACK_TIMEOUT_MS
+                            } == true
 
-                            design.setConnecting(startupStage)
+                            if (!stopping) {
+                                stopRequestedAt = null
 
-                            // Старт, узнанный по рассылке, тоже сверяется, если
-                            // служба замолчит (гибель посреди старта)
-                            watchStart()
+                                design.setConnecting(startupStage)
+
+                                // Старт, узнанный по рассылке, тоже сверяется, если
+                                // служба замолчит (гибель посреди старта)
+                                watchStart()
+                            }
                         }
                         Event.ClashStart -> {
                             stopRequestedAt = null
@@ -1853,7 +1858,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         startRequestedAt = null
 
-        stopClashService()
+        Remote.broadcasts.requestStop()
 
         launch {
             target.setDisconnecting()
@@ -2104,6 +2109,9 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
+        // Новое нажатие отменяет стоп, отложенный от прежнего
+        Remote.broadcasts.takeHeldStop()
+
         setConnecting()
 
         watchStart()
@@ -2113,6 +2121,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             // должны лечь раньше.
             ServiceSettings.access { }
 
+            if (Remote.broadcasts.takeHeldStop()) {
+                setClashRunning(clashRunning)
+
+                return
+            }
+
             val vpnRequest = startClashService()
 
             if (vpnRequest != null) {
@@ -2121,7 +2135,9 @@ class MainActivity : BaseActivity<MainDesign>() {
                     vpnRequest
                 )
 
-                if (result.resultCode == RESULT_OK) {
+                if (Remote.broadcasts.takeHeldStop()) {
+                    setClashRunning(clashRunning)
+                } else if (result.resultCode == RESULT_OK) {
                     startClashService()
                 } else {
                     setClashRunning(clashRunning)
