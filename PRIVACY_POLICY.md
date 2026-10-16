@@ -31,7 +31,9 @@ crash-reporting code. Everything described below covers the requests this app ma
     decision, described in the provider's own policy.
     One more thing to know about this request: while the VPN is on, it normally travels
     through the tunnel like any other traffic. If that attempt fails — the selected server
-    is down, or the connection through it breaks — the app retries that request outside the
+    is down, the connection through it breaks, or the secure channel address answers with a
+    refusal (for example 403 or 429, when the provider's site protection blocks the VPN server's
+    address) — the app retries that request outside the
     tunnel, directly from your network. In that case the provider sees your real IP address
     together with the device headers above. Every failed attempt is retried directly at most
     once, and one refresh can make several attempts: the address you entered, the spare

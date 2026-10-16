@@ -77,6 +77,22 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://sub.example.com/c1/test
 connection was closed with no answer — also fine. `502` and other 5xx — fix the reverse proxy so
 that it answers unknown paths with 404.
 
+Two more cases where the subscription is not added:
+
+- Cloudflare or another intermediary stands in front of the server. A connection your server
+  closes with no answer reaches the app from the intermediary as 520 or 502, which is a 5xx. Make
+  unknown paths answer 404.
+- The channel address redirects to `http://` or through a chain of 10 or more redirects. Answer
+  `/c1/…` without a redirect or with a redirect to `https://` only.
+
+With the middleware, update it to a version newer than 1.8.0. When the panel server closes the
+connection with no answer (nginx `return 444`), earlier versions answered the channel address with
+502: with the channel turned off and for subscriptions the middleware did not know yet, the
+subscription was not added in the app, and after reinstalling the middleware (a new key)
+subscriptions with the channel stopped updating. The new version answers 404 — the subscription is
+added the usual way, without the channel, and a subscription with the channel picks up the new key
+by itself.
+
 A subscription with the channel sends a node quality report after a scheduled refresh (and
 between refreshes if they are less frequent than every 6 hours or turned off, at most once every 6 hours):
 latency and “16–20” results per node, traffic, the kind of network and the external address the

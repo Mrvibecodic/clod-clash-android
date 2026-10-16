@@ -182,3 +182,6 @@ this header.
   subscription address”; server choice, mode and subscription name stay. If it does not answer
   or refuses, nothing changes, and the next update with this header tries again. On the new
   address the same header does nothing.
+- For a subscription with the secure channel, the spare address and the move go through the same
+  channel: the spare domain must run the same middleware and answer `/c1/…`. Without it the spare
+  address does not help and the move does not happen.
