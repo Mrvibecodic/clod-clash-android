@@ -297,6 +297,8 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 		return nil, 0, true, err
 	}
 
+	ctx, droppedBy := chanx.Track(ctx)
+
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
 	if err != nil {
 		return nil, 0, true, err
@@ -306,6 +308,12 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 
 	response, err := chanClient(direct).Do(request)
 	if err != nil {
+		// TLS прошёл с самим сервером, и через туннель тоже; прямой повтор
+		// после туннеля всё равно пробуется (reached только у прямого)
+		if dropped := droppedBy(err); dropped != nil {
+			return nil, 0, direct, dropped
+		}
+
 		return nil, 0, false, err
 	}
 

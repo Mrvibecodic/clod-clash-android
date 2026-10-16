@@ -11,8 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"context"
+	"net/http/httptrace"
 	"strconv"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
@@ -55,6 +59,11 @@ var (
 	// ErrBadURL — адрес подписки не подходит для канала (нет пути с меткой,
 	// не http): канала по такому адресу нет, подписка идёт обычным путём.
 	ErrBadURL = errors.New("clod-chan-bad-url")
+	// ErrDropped — сервер принял соединение (с TLS) и закрыл его, не ответив:
+	// так отвечает на незнакомый путь сервер, рвущий такие запросы (например,
+	// nginx с return 444). Для обновления это молчание; при добавлении
+	// подписки — повод считать, что канала нет, если так кончились все попытки.
+	ErrDropped = errors.New("clod-chan-dropped")
 	// ErrNoPin — отчёт без закреплённого ключа прослойки не уходит.
 	ErrNoPin = errors.New("clod-chan-no-pin")
 	// ErrNoRound — на обмен не осталось времени; Exchange оставляет прежний исход.
@@ -406,6 +415,32 @@ func Correction(served, now, current int64) (int64, bool) {
 	}
 
 	return raw, true
+}
+
+// Track — следить на запросе, установлено ли соединение (с TLS) с сервером.
+// dropped(err) — ErrDropped (с исходной ошибкой), если сервер закрыл уже
+// установленное соединение, не ответив; иначе nil: обрыв до соединения или
+// на рукопожатии — молчание сети. Каждое новое соединение (переадресация)
+// отслеживается заново.
+func Track(ctx context.Context) (context.Context, func(error) error) {
+	var connected atomic.Bool
+
+	ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+		GetConn: func(string) { connected.Store(false) },
+		GotConn: func(httptrace.GotConnInfo) { connected.Store(true) },
+	})
+
+	return ctx, func(err error) error {
+		if !connected.Load() {
+			return nil
+		}
+
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET) {
+			return fmt.Errorf("%w: %w", ErrDropped, err)
+		}
+
+		return nil
+	}
 }
 
 // Spoke — исход сказал сам ответ (канала нет, посредник отказал, канал ответил

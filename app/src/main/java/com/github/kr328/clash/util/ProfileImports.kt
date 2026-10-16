@@ -371,7 +371,7 @@ object ProfileImports {
         fallback: Boolean,
         attempt: suspend (secure: Boolean, observer: (FetchStatus) -> Unit) -> T,
     ): Pair<T, Boolean> {
-        var doubted = false
+        var alwaysDoubted = true
 
         for (n in 1..CHANNEL_ATTEMPTS) {
             val stage = if (n == 1) ChannelStage.Checking else ChannelStage.Retry(n, CHANNEL_ATTEMPTS)
@@ -385,7 +385,7 @@ object ProfileImports {
             } catch (e: Exception) {
                 val channel = UpdateFailures.channel(e.message.orEmpty())
 
-                when (val verdict = UpdateFailures.channelVerdict(channel, n, CHANNEL_ATTEMPTS, doubted)) {
+                when (val verdict = UpdateFailures.channelVerdict(channel, n, CHANNEL_ATTEMPTS, alwaysDoubted)) {
                     UpdateFailures.Channel.Answered -> throw e
                     UpdateFailures.Channel.Absent -> {
                         Log.i("Secure channel: the provider has none (${Redact.text(e.message.orEmpty())})")
@@ -399,7 +399,7 @@ object ProfileImports {
 
                         if (verdict == UpdateFailures.Channel.Silent) throw ChannelSilent(e)
 
-                        doubted = doubted || channel == UpdateFailures.Channel.Doubtful
+                        alwaysDoubted = alwaysDoubted && channel == UpdateFailures.Channel.Doubtful
 
                         delay(CHANNEL_PAUSE_MS)
                     }

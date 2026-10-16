@@ -1,12 +1,17 @@
 package chanx
 
 import (
+	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -681,5 +686,80 @@ func TestExchangeCorrectsTheClockBeforeDoubtingTheKey(t *testing.T) {
 	round, calls = rounds(fails(notFound, served))
 	if _, _, err := Exchange(pinned, 0, round, func(string, ...any) {}); !errors.Is(err, ErrBadAnswer) || len(*calls) != 3 {
 		t.Fatalf("без времени на повтор: %v %+v", err, *calls)
+	}
+}
+
+// Обрыв после установленного соединения (с TLS) узнаётся, но не считается
+// ответом канала; обрыв до соединения, сброс на рукопожатии и переадресация
+// на такой сервер — молчание сети.
+func TestTrackTellsAServerDropFromSilence(t *testing.T) {
+	dropping := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err == nil {
+			_ = conn.Close()
+		}
+	}))
+	defer dropping.Close()
+
+	// Принимает TCP и сразу сбрасывает: до TLS дело не доходит
+	refusing, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer refusing.Close()
+	go func() {
+		for {
+			conn, err := refusing.Accept()
+			if err != nil {
+				return
+			}
+			_ = conn.(*net.TCPConn).SetLinger(0)
+			_ = conn.Close()
+		}
+	}()
+
+	redirect := func(to string) *httptest.Server {
+		return httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, to, http.StatusFound)
+		}))
+	}
+	toDropping := redirect(dropping.URL + "/c1/kid/0/payload")
+	defer toDropping.Close()
+	toRefusing := redirect("https://" + refusing.Addr().String() + "/c1/kid/0/payload")
+	defer toRefusing.Close()
+
+	client := &http.Client{Transport: &http.Transport{
+		DisableKeepAlives: true,
+		TLSClientConfig:   &tls.Config{InsecureSkipVerify: true},
+	}}
+
+	request := func(url string) error {
+		ctx, droppedBy := Track(context.Background())
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		response, err := client.Do(req)
+		if err == nil {
+			_ = response.Body.Close()
+			t.Fatalf("%s: the request must fail", url)
+		}
+
+		return droppedBy(err)
+	}
+
+	for _, url := range []string{dropping.URL + "/c1/kid/0/payload", toDropping.URL} {
+		dropped := request(url)
+		if !errors.Is(dropped, ErrDropped) || Spoke(dropped) {
+			t.Fatalf("%s: dropped after TLS, got %v", url, dropped)
+		}
+	}
+
+	for _, url := range []string{"https://" + refusing.Addr().String() + "/c1/kid/0/payload", toRefusing.URL} {
+		if dropped := request(url); dropped != nil {
+			t.Fatalf("%s: dropped before TLS is silence, got %v", url, dropped)
+		}
 	}
 }

@@ -31,7 +31,8 @@ object UpdateFailures {
     enum class Channel {
         // Сервер на месте, а канала у него нет: можно загружать обычным путём.
         Absent,
-        // Отказал посредник по дороге (не 404 и не 5xx): канал мог и быть, пробовать снова.
+        // Отказал посредник по дороге (не 404 и не 5xx) или сервер закрыл
+        // соединение, не ответив: канал мог и быть, пробовать снова.
         Doubtful,
         // Канал не ответил (сеть, таймаут, 5xx по дороге): пробовать его снова.
         Silent,
@@ -40,6 +41,7 @@ object UpdateFailures {
     }
 
     fun channel(raw: String): Channel = when {
+        raw.contains(CHAN_DROPPED) -> Channel.Doubtful
         raw.contains(CHAN_SILENT) -> Channel.Silent
         raw.contains(CHAN_BAD_ANSWER) || raw.contains(CHAN_BAD_URL) -> Channel.Absent
         raw.contains(CHAN_DOUBT) -> Channel.Doubtful
@@ -47,12 +49,13 @@ object UpdateFailures {
     }
 
     // Итог неудачной попытки канала из attempts; null — пробовать ещё раз.
-    // doubted — посредник отказывал на одной из прежних попыток: тогда к концу
-    // попыток канала нет (обычный путь), а одно молчание — ошибка.
-    fun channelVerdict(channel: Channel, attempt: Int, attempts: Int, doubted: Boolean): Channel? = when {
+    // alwaysDoubted — все прежние попытки кончились отказом посредника или
+    // обрывом: если и эта так же, канала нет (обычный путь); хоть одно
+    // молчание сети — ошибка, иначе случайный сбой лишал бы подписку канала.
+    fun channelVerdict(channel: Channel, attempt: Int, attempts: Int, alwaysDoubted: Boolean): Channel? = when {
         channel == Channel.Absent || channel == Channel.Answered -> channel
         attempt < attempts -> null
-        doubted || channel == Channel.Doubtful -> Channel.Absent
+        alwaysDoubted && channel == Channel.Doubtful -> Channel.Absent
         else -> Channel.Silent
     }
 
@@ -137,6 +140,9 @@ object UpdateFailures {
 
     // Ядро (chanx): адрес без пути с меткой — канала по нему не бывает.
     private const val CHAN_BAD_URL = "clod-chan-bad-url"
+
+    // Ядро (chanx): сервер закрыл соединение, не ответив.
+    private const val CHAN_DROPPED = "clod-chan-dropped"
 
     // Ядро (config/chan.go): канал не ответил, под меткой — сетевая причина.
     private const val CHAN_SILENT = "clod-chan-silent"

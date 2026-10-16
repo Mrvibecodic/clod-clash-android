@@ -91,17 +91,25 @@ class UpdateFailuresTest {
     }
 
     @Test
-    fun `the channel attempts end as absent once a middlebox refused`() {
+    fun `a connection the server closed unanswered is doubtful but keeps the connection text`() {
+        val raw = "clod-chan-silent: clod-chan-dropped: Get \"https://sub.example.com/***\": EOF"
+
+        assertEquals(UpdateFailures.Channel.Doubtful, UpdateFailures.channel(raw))
+        assertEquals(Reason(Cause.Connection), UpdateFailures.classify(raw))
+    }
+
+    @Test
+    fun `the channel attempts end as absent only when every attempt was refused`() {
         val absent = UpdateFailures.Channel.Absent
         val doubtful = UpdateFailures.Channel.Doubtful
         val silent = UpdateFailures.Channel.Silent
         val answered = UpdateFailures.Channel.Answered
 
         fun run(vararg outcomes: UpdateFailures.Channel): UpdateFailures.Channel? {
-            var doubted = false
+            var alwaysDoubted = true
             outcomes.forEachIndexed { i, outcome ->
-                UpdateFailures.channelVerdict(outcome, i + 1, outcomes.size, doubted)?.let { return it }
-                doubted = doubted || outcome == doubtful
+                UpdateFailures.channelVerdict(outcome, i + 1, outcomes.size, alwaysDoubted)?.let { return it }
+                alwaysDoubted = alwaysDoubted && outcome == doubtful
             }
             return null
         }
@@ -114,8 +122,10 @@ class UpdateFailuresTest {
         assertNull(UpdateFailures.channelVerdict(silent, 2, 3, true))
 
         assertEquals(absent, run(doubtful, doubtful, doubtful))
-        assertEquals(absent, run(doubtful, silent, silent))
-        assertEquals(absent, run(silent, silent, doubtful))
+        // Хоть одно молчание сети — ошибка: случайный сбой не лишает канала
+        assertEquals(silent, run(doubtful, silent, silent))
+        assertEquals(silent, run(silent, silent, doubtful))
+        assertEquals(silent, run(doubtful, silent, doubtful))
         assertEquals(silent, run(silent, silent, silent))
         assertEquals(absent, run(silent, absent))
     }
