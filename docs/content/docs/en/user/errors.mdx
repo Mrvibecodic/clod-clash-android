@@ -4,7 +4,7 @@ description: "What an error message in the app means and what to do about it"
 ---
 
 The app always states the reason in plain words. Find the text you see on this page — next to it is
-what to do. “Ask the provider” means only your VPN service can fix it: the app has nothing to do with
+what to do. “Ask the provider” means only your provider can fix it: the app has nothing to do with
 it.
 
 ## A subscription cannot be added
@@ -16,24 +16,24 @@ provider and tap **Add subscription** again.
 
 | Text | What it means and what to do |
 | --- | --- |
-| Invalid URL | the field holds no link, or an `http://` one. Copy the whole link; it must start with `https://` |
+| The address has to start with https:// | the field holds no link, or an `http://` one. Copy the whole link |
 | Another subscription is still loading… | wait for the previous download to finish |
 | The provider did not find this subscription (code 404 or 410) | the link is outdated or copied partially. Get a fresh link from the provider's portal |
-| The provider refused access (code 401, 402 or 403) | the subscription has ended or the device limit is reached — ask the provider |
-| The provider server is having trouble (code 5xx) | a failure on the provider's side, try later |
+| The provider refused access (code 401, 402 or 403) | the subscription has expired or the device limit is reached — ask the provider |
+| The provider's server is having trouble (code 5xx) | a failure on the provider's side, try later |
 | The provider answered with code … | an unusual server answer — ask the provider |
-| The provider's server is not responding | the secure channel did not answer three times in a row. Check the internet and try later |
+| The provider's server is not responding | the secure channel did not answer three times in a row, and no network cause was recognised (for example, the server answers with a 5xx error). Try later; if it repeats — ask the provider |
 | The subscription server did not answer in time | slow or unstable internet. Try again, if needed over another network |
 | The subscription server name could not be resolved | no internet, or the address changed. If the internet works — ask the provider for a new link |
 | Could not connect to the subscription server… | no internet, or the server is unreachable from your network. Try later or over another network |
 | The subscription server certificate failed the check… | check the date and time on the phone (better — “Automatic”). If they are right — ask the provider |
 | The clock on the device is far off… | turn on automatic date and time in the Android settings |
 | The address answered, but not with a subscription… | the link opens a website, not a subscription. Check the link; if it is right — ask the provider |
-| The subscription contains no servers and no providers… | this is how an expired subscription or used-up traffic looks — ask the provider |
+| The subscription contains no servers and no server sets… | this is how an expired subscription or used-up traffic looks — ask the provider |
 | The subscription settings contain an error, and the core did not accept them | the provider sent a broken configuration — ask the provider |
 | The answer is too large for a subscription… | the link does not lead to a subscription — check it |
 | The provider redirected the request to an unencrypted address… | a misconfiguration on the provider's side; the app does not send data in the clear |
-| The provider answer failed the secure channel check… | try again. If it repeats on different networks — tell the provider: the answer may have been substituted on the way |
+| The provider's answer failed the secure channel check… | try again. If it repeats on different networks — tell the provider: the answer may have been substituted on the way |
 | The provider answered with something the secure channel does not understand… | the address is not a Clod Clash subscription, or the channel is off there — ask the provider |
 
 ## The subscription does not update
@@ -44,8 +44,8 @@ notification — unless **Subscription update errors** is off. The old servers k
 - **“Not updated · updated …”** on the subscription card — one auto update was missed.
 - The **Update the subscription** frame on the card and a highlighted update icon on the home screen —
   missed twice in a row. Tap **Update** and look at the reason.
-- **“… updated, but not downloaded: …”** — the subscription updated, but some extra lists
-  (providers) did not download. Usually fixed by the next update; if not — ask the provider.
+- **“… updated, but not downloaded: …”** — the subscription updated, but some server and rule sets
+  did not download. Usually fixed by the next update; if not — ask the provider.
 - **The subscription does not update while the VPN is off** — Android restricts the app in the
   background. Allow unrestricted battery: **More → Unrestricted battery**.
 
@@ -73,7 +73,7 @@ After renewing or refilling, update the subscription — by itself it updates on
 | Another app or the system took the VPN permission… | another VPN was turned on. Turn it off and connect again |
 | Could not bring the tunnel up / The system did not allow the tunnel to be created | try connecting again; if it repeats — restart the phone |
 | Always-on VPN cannot start while the proxy-only mode is active | turn on **More → Network → Route system traffic** or turn off always-on VPN in the Android settings |
-| Failed to apply the subscription «…»: … «…» keeps running | the new version of the subscription was not accepted, the previous one works. If you changed anything in **Core features → Override** — reset it. Otherwise update the subscription later or tell the provider |
+| Failed to apply the subscription “…”: … “…” keeps running | the new version of the subscription was not accepted, the previous one works. If you changed anything in **Core features → Override** — reset it. Otherwise update the subscription later or tell the provider |
 | The VPN connection kept dropping… | the system closed the tunnel many times. Connect again and lift the battery restriction |
 | The service was restarted by the system … times in a row. Automatic restart is paused… | open the app and connect by hand. If it repeats — collect a log (see [FAQ](/en/docs/user/faq#how-to-collect-a-log)) |
 | The system did not allow the service to start in the background… | open the app and connect from there; lift the battery restriction |

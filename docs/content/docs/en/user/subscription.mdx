@@ -5,8 +5,8 @@ description: "Where to get the link, how to add a subscription, set up its updat
 
 ## Where to get the link
 
-Your VPN service gives you the subscription link — usually in the customer portal, a Telegram bot
-or an email after payment. It looks like this:
+Your provider gives you the subscription link — usually in the customer portal, a Telegram bot or
+an email after payment. It looks like this:
 
 ```
 https://sub.example.com/a1b2c3d4
@@ -55,6 +55,7 @@ becomes the selected one right away — you can connect.
 </Steps>
 
 If the subscription cannot be added, the reason appears under the link field and nothing is saved.
+If you left the adding screen earlier, the reason comes to Home as “Subscription not added: …”.
 What each reason means — in [Common errors](/en/docs/user/errors#a-subscription-cannot-be-added).
 
 <Shot src="ru/add-profile-error.png" alt="An error under the field: the provider did not find the subscription (code 404)" />
@@ -62,7 +63,7 @@ What each reason means — in [Common errors](/en/docs/user/errors#a-subscriptio
 **Other ways to import** (the button under the field) — a subscription from a configuration file on
 the phone or from an arbitrary URL. Regular users do not need them.
 
-### Secure connection
+### Provider secure channel
 
 This is not plain HTTPS (that is always used) but an extra layer of encryption with the provider on
 top of it: the link, the device details and the server list travel inside it, and middlemen on the
@@ -73,8 +74,10 @@ There is no switch when adding — the app decides by itself:
 - the provider has the channel — the subscription is added through it;
 - there is no channel — the app says “The provider has no secure channel — loading the usual way…”
   and adds the subscription the regular way;
-- the server does not answer — the app tries again (“No answer, trying again (2 of 3)…”), three
-  attempts in total, then says “The provider's server is not responding”; nothing is added.
+- the server does not answer — the app tries again (“Trying again (2 of 3)…”), three attempts in
+  total; nothing is added. If the cause is in the network, the app names it (for example, “The
+  subscription server did not answer in time…”); otherwise it says “The provider's server is not
+  responding”.
 
 ## Several subscriptions
 
@@ -90,7 +93,7 @@ A card shows used traffic and days left. The card menu **⋮**:
 | Item | What it does |
 | --- | --- |
 | **Update** | download the subscription again right now |
-| **Edit** | open the properties: name, link, auto update, secure connection |
+| **Edit** | open the properties: name, link, auto update, secure channel |
 | **Group** | sort subscriptions into groups — tabs “All” and the group names appear above the list |
 | **Delete** | erase the subscription and its settings; cannot be undone |
 
@@ -98,20 +101,21 @@ A card shows used traffic and days left. The card menu **⋮**:
 
 Card menu **⋮ → Edit**. Save the changes with the button in the header.
 
-<Shot src="ru/properties.png" alt="Subscription properties: name, link, auto update, secure connection" />
+<Shot src="ru/properties.png" alt="Subscription properties: name, link, auto update, secure channel" />
 
 - **Name** — your own name for the subscription. Empty — the provider's name is shown. If you set
   your own, the provider's name stays next to it in brackets.
-- **URL** — the subscription link. If the provider gave you a new link, paste it here: the selected
-  servers, mode and favorites are kept.
+- **Subscription link** — if the provider gave you a new link, paste it here: the selected servers,
+  mode and favorites are kept.
 - **Auto update** — how often the subscription is downloaded again, in minutes, at least 15. Until
-  you set your own value, the provider sends the interval (“Set by the subscription panel”).
-  **Use the panel value** returns the provider's interval. An empty field with no interval from the
+  you set your own value, the provider sends the interval (“Set by the provider”). **Use the
+  provider value** returns the provider's interval. An empty field with no interval from the
   provider means manual updates only.
-- **Secure connection** — can be turned off if your provider asks for it: the app warns that this
-  is unsafe. You can turn it back on right there — the channel is checked on save, and if it does
-  not answer, it stays off. Below is the provider key fingerprint.
-- **Browse files** — the downloaded configuration and provider files. Only for those who know what
+- **Provider secure channel** — can be turned off if your provider asks for it: the subscription
+  then travels over plain HTTPS, without the channel's extra encryption. You can turn it back on
+  right there — the channel is checked on save, and if it does not answer, it stays off. Below is
+  the provider key fingerprint.
+- **Browse files** — the downloaded configuration and set files. Only for those who know what
   is in there.
 
 ## Updating the subscription

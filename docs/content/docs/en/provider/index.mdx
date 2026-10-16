@@ -31,7 +31,7 @@ mode lock, the 16–20 server check and more — [clod-* headers](/en/docs/provi
 
 **Optionally — the secure channel** through the
 [remnawave-subscription-middleware](https://github.com/Mrvibecodic/remnawave-subscription-middleware)
-layer — [Panel setup](/en/docs/provider/panel#secure-connection).
+layer — [Panel setup](/en/docs/provider/panel#secure-channel).
 
 </Step>
 </Steps>
@@ -71,7 +71,7 @@ Screenshots show the Russian interface; the English one has the same layout.
 
 - The app adds a subscription only from an `https://` link (or a `clodclash://install-config?url=…`
   deep link). `http://` links are not accepted.
-- By default no app goes through the tunnel until the user ticks it — unless the subscription sent
+- By default no app goes through the tunnel until the user checks it — unless the subscription sent
   its own app list (`tun.include-package` / `tun.exclude-package`). Warn users in your guide or send
   an exclusion list: then all apps except the listed ones go through the tunnel.
 - The network stack, mode and other parameters come from the MIHOMO template. What the app overwrites

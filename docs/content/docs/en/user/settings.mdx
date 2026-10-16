@@ -24,7 +24,7 @@ the links that were sent are shown.
 <Shot src="ru/network.png" alt="The whole Network screen" />
 
 Most items can be changed only while the tunnel is off — while it is on, they are grey and the top
-says “Options unavailable until the tunnel is stopped”. The exception is **Drop connections when the
+says “Available only while the tunnel is off”. The exception is **Drop connections when the
 network changes**: it takes effect at once.
 
 | Setting | What it does | Default |
@@ -82,13 +82,14 @@ connections.
   [Home screen](/en/docs/user/home#all-groups-on-home). Off by default.
 - **Hide app icon** — remove the app from the launcher. Afterwards open it by pressing and holding
   its quick settings tile (a short tap only turns the tunnel on and off) or via the app info in the
-  system settings — add the tile beforehand. The icon shortcuts stop working. Not available on TVs
-  and Android 6.
+  system settings — add the tile beforehand. The icon shortcuts stop working. Not available on TVs,
+  Android 6 and Android 10 or later: since Android 10 the system itself keeps an icon that leads to
+  the app info.
 - **Hide from recents** — do not show the app on the recents screen.
 - **Allow external control** — lets Tasker, MacroDroid and the like turn the tunnel on and off. Off
   by default. The app's own shortcuts, tile and widget work either way.
 
-**Service**
+**Notifications**
 
 - **Show traffic** — a traffic counter in the notification, updated every second. Uses noticeably
   more battery.
@@ -109,7 +110,8 @@ connections.
 
 - **Reset settings** — app, network and notification settings return to the defaults, the list on
   the Apps screen and the overrides are cleared. Subscriptions stay. After a reset the Apps mode is
-  “Allow selected apps” with an empty list: no app goes through the tunnel until you tick some.
+  “Allow selected apps” with an empty list: until you check apps again, the subscription's app list
+  applies; without one, no app goes through the tunnel.
 
 ## Core features
 
@@ -133,12 +135,12 @@ subscription… Check your own edits in the override”. Reset the override and 
 how it was.
 </Callout>
 
-## Routing data and providers
+## Databases and sets
 
 Routing data — lists of countries, sites and networks the core uses to decide what goes through the
-tunnel — and the providers from the subscription. Each provider has its own update button; the
-databases are refreshed with **Update all** in the header. Providers update at once, new databases
-apply after reconnecting.
+tunnel — and the server and rule sets from the subscription. Each set has its own update button; the
+databases are refreshed with **Update all** in the header. Sets update at once, new databases apply
+after reconnecting.
 
 ## Help
 

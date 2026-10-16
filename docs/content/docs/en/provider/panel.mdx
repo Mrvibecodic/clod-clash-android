@@ -50,7 +50,7 @@ The MIHOMO template and the keys the client overrides are in the
 Response headers are on the [Subscription headers](/en/docs/provider/headers) and
 [clod-* headers](/en/docs/provider/clod-headers) pages.
 
-## Secure connection
+## Secure channel
 
 When a subscription is added, the app first tries the secure channel of
 [remnawave-subscription-middleware](https://github.com/Mrvibecodic/remnawave-subscription-middleware);
@@ -73,15 +73,15 @@ Check what the subscription domain returns for any unknown path — it must not 
 curl -sS -o /dev/null -w '%{http_code}\n' https://sub.example.com/c1/test
 ```
 
-`404` is fine. `000` with the error `Empty reply from server` means the connection was closed
-with no answer — also fine. `502` and other 5xx — fix the reverse proxy so that it answers
-unknown paths with 404.
+`404` is fine. `000` with the error `Empty reply from server` or an HTTP/2 stream reset means the
+connection was closed with no answer — also fine. `502` and other 5xx — fix the reverse proxy so
+that it answers unknown paths with 404.
 
 A subscription with the channel sends a node quality report after a scheduled refresh (and
 between refreshes if they are less frequent than every 6 hours or turned off, at most once every 6 hours):
-latency and "16–20" results per node, traffic, the kind of network and the external address the
+latency and “16–20” results per node, traffic, the kind of network and the external address the
 measurements were made from. The middleware receives and shows the reports (Clod Clash →
-"Статистика" tab) when receiving is turned on there. The client collects measurements only after the
+“Статистика” tab) when receiving is turned on there. The client collects measurements only after the
 middleware has confirmed receiving in the subscription answer over the channel (current
 middleware versions do); once an answer comes without that confirmation, it stops collecting and
 deletes what it has collected. Android learns the measurement address
@@ -91,7 +91,7 @@ guide](https://github.com/Mrvibecodic/clod-clash/blob/main/docs/REMNAWAVE.md).
 
 An external address and a device identifier linked to a subscription can be personal data under
 the GDPR and Russian law 152-FZ, and their controller is the provider, not the authors of the
-client. If you turn on receiving reports or the "16–20" check, describe it in your own privacy
+client. If you turn on receiving reports or the “16–20” check, describe it in your own privacy
 policy (purpose, legal basis, retention, recipients) and inform your users. What exactly the
 client sends is in the
 [client's privacy policy](https://github.com/Mrvibecodic/clod-clash-android/blob/main/PRIVACY_POLICY.md).

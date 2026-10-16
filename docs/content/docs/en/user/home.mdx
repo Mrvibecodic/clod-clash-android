@@ -10,7 +10,7 @@ From top to bottom:
 1. **Header** — the logo and name of the selected subscription, with a colored dot and a short state
    under it: “Active · 23 d · 32.0 GiB / 100 GiB”. On the right is the subscription update icon. If
    two auto updates in a row have failed, the icon is highlighted — tap it.
-2. **Provider announcements** — text from your VPN service: maintenance, new servers, promotions.
+2. **Provider announcements** — text from your provider: maintenance, new servers, promotions.
    Long text is folded, the arrow on the right unfolds it. A promo banner can be closed with the cross —
    it comes back only when the provider sends a new text.
 3. **Subscription card** — appears only when three days or less are left, the traffic has run out or
@@ -27,7 +27,11 @@ From top to bottom:
 Instead of a server name, the row may say:
 
 - **Direct** — the group has direct access selected, its traffic goes around the servers;
-- **Blocked** — the group leads to a block, its traffic goes nowhere;
+- **Blocked** — the group leads to a block, its traffic goes nowhere; the row looks the same when
+  the provider has taken the servers away (device limit, expired subscription);
+- **Servers are available only on a mobile network** — every server of the group is for mobile
+  internet only, and the phone is on Wi-Fi or another network: the group does not work until you are
+  back on the SIM network;
 - **Direct, no servers** (the Mode row) — direct mode is on, see [Modes](/en/docs/user/modes).
 
 ## All groups on Home

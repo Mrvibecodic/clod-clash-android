@@ -51,12 +51,14 @@ Dialog buttons:
 - **In the background** — even with the app closed, every few hours it checks for a new version and
   sends a “Version … is available” notification with an **Update** button. Tapping it opens the app
   and the update dialog. The notification itself downloads nothing; it comes once per version and
-  never for a skipped version.
+  never for a skipped version. With “Check automatically” turned off there is no background check
+  either — the app does not go online by itself.
 
 <Shot src="ru/about.png" alt="About: app and core version, update check" />
 
-Background notifications are turned off in **More → Look and behavior → Update notifications**. The
-app warns that you may miss important fixes — then check for updates yourself in About.
+Background notifications are turned off in **More → Look and behavior → Update notifications**.
+While “Check automatically” is off, this switch is grey: there is no check, so nothing to notify
+about. The app warns that you may miss important fixes — then check for updates yourself in About.
 
 ## Pre-releases
 

@@ -16,7 +16,7 @@ version in **More → About**, for example “Clod Core v1.19.32-clod.5”.
   default), shared node sessions (smux, anytls, tuic, hysteria2, gRPC, ssh) are reset, so new
   connections do not land on a dead session of the old network.
 - Servers in manual-select groups are checked with the expected status code set in the group.
-- If the subscription or provider address redirects from `https` to `http`, the download is refused
+- If the subscription or set address redirects from `https` to `http`, the download is refused
   instead of going out in the clear.
 - The core cleans up memory after it switches to running mode, not before.
 
@@ -36,8 +36,8 @@ version in **More → About**, for example “Clod Core v1.19.32-clod.5”.
 - **Fewer extra checks.** A node that sits in several groups is checked once per round, and nodes on
   one server are checked 250 ms apart instead of in a burst, so a blocker does not take the checks for
   an attack.
-- **Data survives a crash.** Rule sets, providers and geo databases are written through a temporary
-  file: if a write breaks off, the old file stays intact.
+- **Data survives a crash.** Server sets, rule sets and geo databases are written through a
+  temporary file: if a write breaks off, the old file stays intact.
 
 ## Network stack
 

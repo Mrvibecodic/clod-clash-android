@@ -15,20 +15,20 @@ The mode is at the top:
 | Mode | What happens |
 | --- | --- |
 | **Allow all apps** | all apps on the phone go through the tunnel. This mode is not recommended: better narrow the list — allow only the apps you need or deny the ones you do not |
-| **Allow selected apps** | only the ticked apps go through the tunnel; the rest go directly |
-| **Deny selected apps** | all apps go through the tunnel except the ticked ones |
+| **Allow selected apps** | only the checked apps go through the tunnel; the rest go directly |
+| **Deny selected apps** | all apps go through the tunnel except the checked ones |
 
 <Callout type="warn" title="Right after installation">
-The default is **Allow selected apps** with an empty list: until you tick something, **no app goes
-through the tunnel**, and the hint on the screen warns about it. Tick the apps that need the VPN.
+The default is **Allow selected apps** with an empty list: until you check something, **no app goes
+through the tunnel**, and the hint on the screen warns about it. Check the apps that need the VPN.
 </Callout>
 
 <Shots>
-  <Shot src="ru/apps-empty.png" alt="Nothing ticked — no app goes through the tunnel" />
-  <Shot src="ru/apps.png" alt="The apps that need the VPN are ticked" />
+  <Shot src="ru/apps-empty.png" alt="Nothing checked — no app goes through the tunnel" />
+  <Shot src="ru/apps.png" alt="The apps that need the VPN are checked" />
 </Shots>
 
-- Tapping a row ticks or unticks the app.
+- Tapping a row checks or unchecks the app.
 - **Search** in the header looks through names and package names.
 - The **⋮** menu has **Select all**, **Invert selection**, **Select none** — they act on all apps in
   the list as filtered by **System apps** (the menu is hidden while searching); **Import from clipboard** and
@@ -42,12 +42,12 @@ on, restarts in the background.
 
 <Callout title="If your provider sent its own list">
 A provider can send a list of apps that go through the VPN or around it. Such apps are marked
-“Via VPN (subscription)” or “Bypasses VPN (subscription)”. While you have ticked nothing, the
+“Via VPN (subscription)” or “Bypasses VPN (subscription)”. While you have checked nothing, the
 provider's list applies: for example, all apps go through the tunnel except those marked “Bypasses
 VPN”. The hint above the list says what applies right now.
 </Callout>
 
-Banking apps and some government services may refuse to work through a VPN — do not tick them.
+Banking apps and some government services may refuse to work through a VPN — do not check them.
 
 ## The first connection
 

@@ -11,10 +11,10 @@ subscription.
 
 | Header | Value | What it does |
 | --- | --- | --- |
-| `clod-portal-url` | `https://` link | "Customer portal" button — where the plan is renewed |
-| `clod-bot-url` | `https://`, `tg:` or `mailto:` link | "Bot" button |
-| `clod-monitor-url` | `https://` link | "Server status" button |
-| `clod-guide-url` | `https://` link | "Setup guide" button |
+| `clod-portal-url` | `https://` link | “Customer portal” button — where the plan is renewed |
+| `clod-bot-url` | `https://`, `tg:` or `mailto:` link | “Bot” button |
+| `clod-monitor-url` | `https://` link | “Server status” button |
+| `clod-guide-url` | `https://` link | “Setup guide” button |
 | `clod-announce` | text | permanent announcement; wins over `announce` |
 | `clod-promo` | text | promo banner that can be closed |
 | `clod-promo-url` | `https://` link | where a tap on the promo leads |
@@ -23,7 +23,7 @@ subscription.
 | `clod-disable-ping` | `true` only | a check mark or cross instead of milliseconds |
 | `clod-show-0hosts` | `true` or `false` | show the panel's placeholder nodes as they are |
 | `clod-mobile-only` | server names separated by `\|` | servers for the mobile network only: off the SIM network they are not shown |
-| `clod-hide-badges` | `true` only | hide the protocol, transport and security caption under servers — "VLESS RAW (TCP) · Reality" |
+| `clod-hide-badges` | `true` only | hide the protocol, transport and security caption under servers — “VLESS RAW (TCP) · Reality” |
 | `clod-16-20-check` | `true` only | the 16–20 check: whether a download through a server is cut off on the user's network; the snowflake mark |
 | `clod-new-sub` | a domain, for example `backup.example.com` | spare subscription address (domain) — in case the main one does not answer |
 | `clod-move-sub` | `true` only, together with `clod-new-sub` | move everyone to the spare address |
@@ -36,9 +36,9 @@ header. Send non-ASCII text as `base64:<text in base64>`.
 
 ## Provider links
 
-"Customer portal", "Support" (`support-url`), "Bot", "Server status" and "Setup guide" are
+“Customer portal”, “Support” (`support-url`), “Bot”, “Server status” and “Setup guide” are
 gathered in a block named after the subscription at the top of the **More** tab. Only the links
-that were sent are shown; with none, there is no block. "Customer portal" and "Support" also
+that were sent are shown; with none, there is no block. “Customer portal” and “Support” also
 appear on the subscription card when expiry is near or has passed.
 
 ## Announcement and promo
@@ -55,8 +55,8 @@ appear on the subscription card when expiry is near or has passed.
 
 ## Routing mode: `clod-lock-mode`
 
-Locks the mode to the one in the template's `mode:` (without it — "Rule mode"). The mode row
-says "set by your provider" and the mode cannot be changed.
+Locks the mode to the one in the template's `mode:` (without it — “Rule mode”). The mode row
+says “set by your provider” and the mode cannot be changed.
 
 | Value | What happens |
 | --- | --- |
@@ -65,7 +65,7 @@ says "set by your provider" and the mode cannot be changed.
 | `false` | no lock |
 
 For compatibility with Prizrak-Box, `global-mode: false` is read as `clod-lock-mode: true` and
-`global-mode: true` as "no lock". `clod-lock-mode` wins.
+`global-mode: true` as “no lock”. `clod-lock-mode` wins.
 
 ## Latency
 
@@ -84,7 +84,7 @@ latency in the Servers tab and on the home screen is set only when all three che
 the working server passed; if the last check passed, the server counts as working. With nothing to
 compare against, or if the working server failed too, no mark is set: that is more likely a bad
 network. Tapping the mark opens an explanation: check the connection yourself and tell support (the
-"Contact support" button is there when `support-url` was sent). The app does nothing to the
+“Contact support” button is there when `support-url` was sent). The app does nothing to the
 servers: latency and selection stay as they were. New servers and servers whose connection data
 changed are checked (address, port, protocol, keys; the TLS server name and Host do not count — they
 may be handed out at random); results are rechecked every 3 days, and a check that gave no result is
@@ -95,10 +95,10 @@ header (or with any value other than `true`) there are no checks and no marks.
 
 The value is the exact server names separated by `|`, for example `Moscow LTE|MTS Saint Petersburg`.
 Letter case matters; spaces around a name are ignored. A server whose name contains `|` cannot be
-listed. The names apply to servers from the subscription and from its proxy providers alike, including
-servers a provider adds on a later update.
+listed. The names apply to servers from the subscription and from its server sets alike, including
+servers a set gets on a later update.
 
-- On the mobile network (the SIM network) these servers are shown as usual, marked "mobile network".
+- On the mobile network (the SIM network) these servers are shown as usual, marked “mobile network”.
 - On any other network — Wi-Fi (a hotspot from another phone too), cable, USB — they are in no
   group and not in the server list, cannot be selected and are not checked. A group whose selected
   server is one of them — or, with nothing selected, whose first server is — uses the first visible
@@ -106,8 +106,8 @@ servers a provider adds on a later update.
   mobile network it returns to the selected server by itself.
 - Servers that connect through such a server (`dialer-proxy`) are hidden together with it.
 - If only such servers are left in a group, off the mobile network the group lets nothing through
-  rather than sending traffic directly; the list shows "Servers available only on mobile network"
-  instead of servers.
+  rather than sending traffic directly; the list shows “Servers are available only on a mobile
+  network” instead of servers.
 - A template rule that names such a server directly still goes through it — servers are hidden from
   groups only.
 
@@ -124,9 +124,9 @@ same way the panel does: `VLESS RAW (TCP) · Reality`, `Trojan WebSocket · TLS`
 clod-hide-badges: true
 ```
 
-Everything else stays: the server's name and flag, latency, the "mobile network" mark, the
-snowflake, "Pinned", and the type of groups in the list (with the tunnel on; without
-it groups have no caption anyway). The built-in "Direct" and "Reject" inside groups lose their
+Everything else stays: the server's name and flag, latency, the “mobile network” mark, the
+snowflake, “Pinned”, and the type of groups in the list (with the tunnel on; without
+it groups have no caption anyway). The built-in “Direct” and “Reject” inside groups lose their
 caption too. Captions the provider sets itself stay: the server description (the node's
 `serverDescription` field in the template) and the part of the name cut out by
 `ui-subtitle-pattern` with the tunnel on. The pattern is a regular expression in the subscription
@@ -150,7 +150,7 @@ Connections and server selection do not change with the header — only what is 
 ## Placeholder nodes: `clod-show-0hosts`
 
 Without the header the app recognises the panel's placeholder nodes (expired subscription, no
-traffic left, "no servers") and shows its own screen with the reason instead. With `true` the
+traffic left, “no servers”) and shows its own screen with the reason instead. With `true` the
 panel's nodes go into the server list as they are. The device limit screen does not depend on
 this header.
 
@@ -167,7 +167,7 @@ this header.
   - the spare server answers on port 443.
 - Write the domain in the users' subscription links the same way — in punycode and without a
   trailing dot. Otherwise the app does not recognise the main address's domain in
-  `clod-new-sub`, takes it for a spare one, and with `clod-move-sub` "moves" the subscription to
+  `clod-new-sub`, takes it for a spare one, and with `clod-move-sub` “moves” the subscription to
   the same server.
 - The spare address is used only when the main one does not answer. The subscription from it is
   applied as a normal update. A device limit refusal is not retried on the spare address — it
@@ -177,7 +177,7 @@ this header.
   main address does nothing.
 - **`clod-move-sub: true`** works only together with `clod-new-sub`. After an update with it the
   app checks the spare address. If it returns the subscription, the subscription address changes
-  to the spare one for good and the user sees the notification "The provider updated the
-  subscription address"; server choice, mode and subscription name stay. If it does not answer
+  to the spare one for good and the user sees the notification “The provider updated the
+  subscription address”; server choice, mode and subscription name stay. If it does not answer
   or refuses, nothing changes, and the next update with this header tries again. On the new
   address the same header does nothing.
