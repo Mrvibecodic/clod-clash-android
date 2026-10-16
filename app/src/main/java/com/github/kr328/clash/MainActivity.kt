@@ -1728,6 +1728,20 @@ class MainActivity : BaseActivity<MainDesign>() {
             )
         }
 
+        if (store.addedProfileExisting) {
+            val name = store.addedProfileName
+
+            store.addedProfileExisting = false
+            store.addedProfilePending = false
+            store.addedProfileName = ""
+
+            selectTab(MainTab.Home)
+
+            showToast(DesignR.string.clod_sub_already_added, ToastDuration.Long, detail = name.ifBlank { null })
+
+            return
+        }
+
         val providers = store.profileProvidersFailed
 
         if (providers.isNotBlank()) {

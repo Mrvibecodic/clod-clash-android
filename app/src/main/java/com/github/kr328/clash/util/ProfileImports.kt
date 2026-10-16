@@ -182,14 +182,19 @@ object ProfileImports {
                 }
 
                 val uuid = profile.uuid
+                val existing = uuid != draft
 
                 val title = profileDisplayName(context.queryPanelInfo(uuid), profile.name, profile.nameManual)
 
                 AppStore(context).apply {
                     addedProfileName = title
-                    addedProfileSecure = secure
+                    addedProfileExisting = existing
                     addedProfilePending = true
-                    profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
+
+                    if (!existing) {
+                        addedProfileSecure = secure
+                        profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
+                    }
                 }
 
                 state_.value = State.Done(token, uuid, title, failed.get(), secure)
@@ -240,15 +245,15 @@ object ProfileImports {
             for ((index, item) in items.withIndex()) {
                 try {
                     val uuid = withProfile(retry = false) {
-                        create(Profile.Type.Url, item.name, item.source, secure = item.secure)
-                    }
-
-                    if (item.intervalManual || item.nameManual) {
-                        val interval = if (item.intervalManual) item.interval else 0L
-
-                        withProfile(retry = false) {
-                            patch(uuid, item.name, item.nameManual, item.source, interval, item.intervalManual, item.secure)
-                        }
+                        create(
+                            Profile.Type.Url,
+                            item.name,
+                            item.source,
+                            secure = item.secure,
+                            interval = if (item.intervalManual) item.interval else 0L,
+                            intervalManual = item.intervalManual,
+                            nameManual = item.nameManual,
+                        )
                     }
 
                     releasingOnFailure(uuid) {
@@ -304,7 +309,7 @@ object ProfileImports {
             val context = Global.application.withAppLocale()
             val failed = AtomicReference(emptyList<String>())
 
-            val save: suspend (Boolean, (FetchStatus) -> Unit) -> Unit = { secure, observer ->
+            val save: suspend (Boolean, (FetchStatus) -> Unit) -> UUID = { secure, observer ->
                 failed.set(emptyList())
 
                 withProfile(retry = false) {
@@ -320,7 +325,7 @@ object ProfileImports {
                 }
 
                 withProfile(retry = false) {
-                    commit(profile.uuid) { status ->
+                    commit(profile.uuid, true) { status ->
                         FailedProviders.accumulate(failed, status)
 
                         observer(status)
@@ -329,33 +334,32 @@ object ProfileImports {
             }
 
             try {
-                val secure = if (viaChannel) {
-                    channelFirst(token, fallback = !profile.imported, save).second
+                val (saved, secure) = if (viaChannel) {
+                    channelFirst(token, fallback = !profile.imported, save)
                 } else {
-                    save(profile.secure) { status -> state_.value = State.Running(token, status) }
-
-                    profile.secure
+                    save(profile.secure) { status -> state_.value = State.Running(token, status) } to profile.secure
                 }
 
-                if (withProfile { queryActive() } == null) {
-                    withProfile { setActive(profile) }
-                }
+                val existing = saved != profile.uuid
+                val shown = if (existing) withProfile { queryByUUID(saved) } ?: profile else profile
 
                 AppStore(context).apply {
                     if (!profile.imported) {
                         addedProfileName = profileDisplayName(
-                            context.queryPanelInfo(profile.uuid),
-                            profile.name,
-                            profile.nameManual,
+                            context.queryPanelInfo(shown.uuid),
+                            shown.name,
+                            shown.nameManual,
                         )
-                        addedProfileSecure = secure
+                        addedProfileExisting = existing
                         addedProfilePending = true
+
+                        if (!existing) addedProfileSecure = secure
                     }
 
-                    profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
+                    if (!existing) profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
                 }
 
-                state_.value = State.Done(token, profile.uuid, profile.name, failed.get(), secure)
+                state_.value = State.Done(token, saved, shown.name, failed.get(), secure)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -500,18 +504,12 @@ object ProfileImports {
         activate: Boolean,
         observer: IFetchObserver?,
     ): Profile {
-        withProfile(retry = false) {
-            commit(uuid, observer)
+        val saved = withProfile(retry = false) {
+            commit(uuid, activate, observer)
         }
 
-        val profile = withProfile { queryByUUID(uuid) }
+        return withProfile { queryByUUID(saved) }
             ?: throw IllegalStateException(Global.application.withAppLocale().getString(R.string.invalid_url))
-
-        if (activate && withProfile { queryActive() } == null) {
-            withProfile { setActive(profile) }
-        }
-
-        return profile
     }
 
     // Черновик новой подписки, которая так и не добавилась, убирается.

@@ -18,7 +18,9 @@ import com.github.kr328.clash.service.util.pendingDir
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -49,6 +51,9 @@ class ProfileManager(private val context: Context) : IProfileManager,
         name: String,
         source: String,
         secure: Boolean,
+        interval: Long,
+        intervalManual: Boolean,
+        nameManual: Boolean,
     ): UUID {
         val uuid = generateProfileUUID()
         val pending = Pending(
@@ -56,23 +61,33 @@ class ProfileManager(private val context: Context) : IProfileManager,
             name = name,
             type = type,
             source = source,
-            interval = 0,
+            interval = interval,
             upload = 0,
             total = 0,
             download = 0,
             expire = 0,
             secure = secure,
+            intervalManual = intervalManual,
+            nameManual = nameManual,
         )
 
         PendingDao().insert(pending)
 
-        context.pendingDir.resolve(uuid.toString()).apply {
-            deleteRecursively()
-            mkdirs()
+        try {
+            context.pendingDir.resolve(uuid.toString()).apply {
+                deleteRecursively()
+                mkdirs()
 
-            @Suppress("BlockingMethodInNonBlockingContext")
-            resolve("config.yaml").createNewFile()
-            resolve("providers").mkdir()
+                @Suppress("BlockingMethodInNonBlockingContext")
+                resolve("config.yaml").createNewFile()
+                resolve("providers").mkdir()
+            }
+        } catch (e: Exception) {
+            withContext(NonCancellable) {
+                PendingDao().remove(uuid)
+            }
+
+            throw e
         }
 
         return uuid
@@ -138,15 +153,20 @@ class ProfileManager(private val context: Context) : IProfileManager,
         scheduleUpdate(uuid, true)
     }
 
-    override suspend fun commit(uuid: UUID, callback: IFetchObserver?) {
-        ProfileProcessor.apply(context, uuid, callback)
+    override suspend fun commit(uuid: UUID, activate: Boolean, callback: IFetchObserver?): UUID =
+        withContext(NonCancellable) {
+            val saved = ProfileProcessor.apply(context, uuid, callback, activate)
 
-        // Сохранение (у подписки по ссылке — с новой загрузкой) без туннеля
-        // сверяет пометки 16–20: панель могла включить или выключить проверку
-        FreezeChecks.profileUpdated(uuid)
+            if (saved == uuid) {
+                // Сохранение (у подписки по ссылке — с новой загрузкой) без туннеля
+                // сверяет пометки 16–20: панель могла включить или выключить проверку
+                FreezeChecks.profileUpdated(uuid)
 
-        scheduleUpdate(uuid, false)
-    }
+                scheduleUpdate(uuid, false)
+            }
+
+            saved
+        }
 
     override suspend fun release(uuid: UUID) {
         ProfileProcessor.release(context, uuid)

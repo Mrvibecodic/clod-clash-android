@@ -329,6 +329,7 @@
     <string name="clod_sub_fetching">Fetching subscription\u2026</string>
     <string name="clod_sub_added">Subscription added</string>
     <string name="clod_sub_added_named">Subscription “%1$s” added</string>
+    <string name="clod_sub_already_added">This subscription is already added</string>
     <string name="clod_sub_add_failed">Subscription not added: %1$s</string>
     <string name="clod_sub_added_partial">Subscription added, but some sets were not downloaded</string>
     <string name="clod_providers_failed_plural">Some sets were not downloaded</string>

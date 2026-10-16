@@ -63,4 +63,11 @@ class ActiveProfileTest {
         assertFalse(loadFailureKeepsRetained(ready = false, retained = a, coreLoaded = true))
         assertFalse(loadFailureKeepsRetained(ready = true, retained = null, coreLoaded = true))
     }
+
+    @Test
+    fun vacantWithoutLiveActive() {
+        assertTrue(activeProfileVacant(null, false))
+        assertTrue(activeProfileVacant(a, false))
+        assertFalse(activeProfileVacant(a, true))
+    }
 }

@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.util
 
 import com.github.kr328.clash.service.util.ProfileFields.Violation
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.concurrent.TimeUnit
@@ -70,5 +71,31 @@ class ProfileFieldsTest {
             Violation.NameTooLong,
             violation(name = "я".repeat(ProfileFields.NAME_MAX + 1), source = "http://panel/sub", scheme = "http"),
         )
+    }
+
+    @Test
+    fun `the same subscription address gives the same key`() {
+        val key = ProfileFields.sourceKey("https://example.com/sub/AbC?x=1")
+
+        assertEquals(key, ProfileFields.sourceKey("  HTTPS://Example.COM/sub/AbC?x=1 "))
+        assertEquals(key, ProfileFields.sourceKey("https://example.com:443/sub/AbC?x=1"))
+        assertEquals(key, ProfileFields.sourceKey("https://example.com/sub/AbC?x=1#name"))
+        assertEquals(ProfileFields.sourceKey("https://example.com/sub/AbC"), ProfileFields.sourceKey("https://example.com/sub/AbC/"))
+    }
+
+    @Test
+    fun `a different path or query gives a different key`() {
+        val key = ProfileFields.sourceKey("https://example.com/sub/AbC?x=1")
+
+        assertNotEquals(key, ProfileFields.sourceKey("https://example.com/sub/abc?x=1"))
+        assertNotEquals(key, ProfileFields.sourceKey("https://example.com/sub/AbC?x=2"))
+        assertNotEquals(key, ProfileFields.sourceKey("https://example.com:8443/sub/AbC?x=1"))
+        assertNotEquals(ProfileFields.sourceKey("https://Ab:Cd@example.com/sub"), ProfileFields.sourceKey("https://ab:cd@example.com/sub"))
+        assertEquals(ProfileFields.sourceKey("https://Ab:Cd@example.com/sub"), ProfileFields.sourceKey("https://Ab:Cd@EXAMPLE.com/sub"))
+    }
+
+    @Test
+    fun `an unparsable address is only trimmed`() {
+        assertEquals("https://example.com/a b", ProfileFields.sourceKey(" https://example.com/a b "))
     }
 }

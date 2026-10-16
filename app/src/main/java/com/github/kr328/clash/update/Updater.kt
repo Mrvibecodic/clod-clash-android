@@ -7,6 +7,7 @@ import androidx.annotation.StringRes
 import com.github.kr328.clash.BuildConfig
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.net.Redirects
+import com.github.kr328.clash.service.util.UpdateFailures
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -22,6 +23,7 @@ import java.net.Proxy
 import java.net.URL
 import java.security.MessageDigest
 import com.github.kr328.clash.design.R as DesignR
+import com.github.kr328.clash.service.R as ServiceR
 
 object Updater {
     private const val TAG = "Updater"
@@ -45,6 +47,7 @@ object Updater {
             Network(DesignR.string.clod_update_reason_network),
             Rejected(DesignR.string.clod_update_reason_rejected),
             NoBuild(DesignR.string.clod_update_reason_no_build),
+            Storage(ServiceR.string.clod_update_cause_storage),
         }
     }
 
@@ -241,7 +244,7 @@ object Updater {
                     connection.disconnect()
                 }
             }.onFailure {
-                if (it is CancellationException) throw it
+                if (it is CancellationException || it is UpdateException) throw it
 
                 Log.i("$TAG: $url через $proxy не удалось: ${it.message}")
             }
@@ -301,30 +304,34 @@ object Updater {
         var lastReported = 0L
 
         connection.inputStream.use { input ->
-            target.outputStream().use { output ->
-                while (true) {
-                    currentCoroutineContext().ensureActive()
+            try {
+                target.outputStream().use { output ->
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
 
-                    val read = input.read(buffer)
-                    if (read < 0) break
+                        val read = input.read(buffer)
+                        if (read < 0) break
 
-                    output.write(buffer, 0, read)
-                    digest.update(buffer, 0, read)
+                        output.write(buffer, 0, read)
+                        digest.update(buffer, 0, read)
 
-                    received += read
+                        received += read
 
-                    if (received > APK_MAX_BYTES) {
-                        throw LimitExceededException("файл больше $APK_MAX_BYTES байт")
+                        if (received > APK_MAX_BYTES) {
+                            throw LimitExceededException("файл больше $APK_MAX_BYTES байт")
+                        }
+
+                        if (received - lastReported >= PROGRESS_STEP) {
+                            lastReported = received
+
+                            onProgress(received, total)
+                        }
                     }
 
-                    if (received - lastReported >= PROGRESS_STEP) {
-                        lastReported = received
-
-                        onProgress(received, total)
-                    }
+                    output.flush()
                 }
-
-                output.flush()
+            } catch (e: IOException) {
+                throw if (UpdateFailures.noSpace(e.message.orEmpty())) UpdateException(UpdateException.Kind.Storage, e.message.orEmpty()) else e
             }
         }
 

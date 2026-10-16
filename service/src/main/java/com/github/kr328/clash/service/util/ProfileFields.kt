@@ -1,5 +1,9 @@
 package com.github.kr328.clash.service.util
 
+import java.net.URI
+import java.net.URISyntaxException
+import java.util.Locale
+
 object ProfileFields {
     const val NAME_MAX = 1024
 
@@ -34,5 +38,25 @@ object ProfileFields {
         interval != 0L && interval < UpdateSchedule.MIN_INTERVAL -> Violation.ShortInterval
 
         else -> null
+    }
+
+    // Регистр пути не трогается: в нём токен подписки, и у панелей он регистрозависим.
+    fun sourceKey(source: String): String {
+        val text = source.trim()
+
+        val uri = try {
+            URI(text)
+        } catch (e: URISyntaxException) {
+            return text
+        }
+
+        val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return text
+        val authority = uri.rawAuthority ?: return text
+        val user = authority.substringBeforeLast('@', "").let { if (it.isEmpty()) "" else "$it@" }
+        val hostPort = authority.substringAfterLast('@').lowercase(Locale.ROOT)
+        val host = user + if (scheme == "https") hostPort.removeSuffix(":443") else hostPort
+        val query = uri.rawQuery?.let { "?$it" }.orEmpty()
+
+        return "$scheme://$host${uri.rawPath.orEmpty().trimEnd('/')}$query"
     }
 }

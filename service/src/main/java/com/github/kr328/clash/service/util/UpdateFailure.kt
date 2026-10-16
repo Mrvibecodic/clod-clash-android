@@ -20,6 +20,7 @@ object UpdateFailures {
         Status,
         Rejected,
         DraftChanged,
+        Storage,
         Timeout,
         Tls,
         Dns,
@@ -93,6 +94,8 @@ object UpdateFailures {
 
         if (text.contains(DRAFT_CHANGED)) return Reason(Cause.DraftChanged)
 
+        if (noSpace(text)) return Reason(Cause.Storage)
+
         val status = statusOf(text)
             ?: return transportOf(text.lowercase())
                 ?: Reason(Cause.Silent).takeIf { text.contains(CHAN_SILENT) }
@@ -104,6 +107,8 @@ object UpdateFailures {
             else -> Reason(Cause.Status, status)
         }
     }
+
+    fun noSpace(raw: String): Boolean = raw.lowercase().let { text -> STORAGE.any(text::contains) }
 
     // Причины, у которых общая фраза без подробности бесполезна: строка YAML или
     // сертификата нужна человеку, чтобы понять, что именно не так.
@@ -172,6 +177,8 @@ object UpdateFailures {
 
     private val DETAILED = setOf(Cause.Rejected, Cause.Tls)
 
+    private val STORAGE = listOf("no space left on device", "enospc", "disk is full")
+
     private val TIMEOUT = listOf(
         "time budget for the update is exhausted",
         "context deadline exceeded",
@@ -218,6 +225,7 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
             getString(R.string.clod_update_cause_status, reason.status)
         UpdateFailures.Cause.Rejected -> getString(R.string.clod_update_cause_rejected)
         UpdateFailures.Cause.DraftChanged -> getString(R.string.clod_draft_changed)
+        UpdateFailures.Cause.Storage -> getString(R.string.clod_update_cause_storage)
         UpdateFailures.Cause.Timeout -> getString(R.string.clod_update_cause_timeout)
         UpdateFailures.Cause.Tls -> getString(R.string.clod_update_cause_tls)
         UpdateFailures.Cause.Dns -> getString(R.string.clod_update_cause_dns)

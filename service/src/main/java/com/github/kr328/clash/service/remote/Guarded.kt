@@ -117,10 +117,13 @@ class GuardedProfileManager(private val delegate: IProfileManager) : IProfileMan
         name: String,
         source: String,
         secure: Boolean,
-    ): UUID = guard { delegate.create(type, name, source, secure) }
+        interval: Long,
+        intervalManual: Boolean,
+        nameManual: Boolean,
+    ): UUID = guard { delegate.create(type, name, source, secure, interval, intervalManual, nameManual) }
 
-    override suspend fun commit(uuid: UUID, callback: IFetchObserver?) =
-        guard { delegate.commit(uuid, callback) }
+    override suspend fun commit(uuid: UUID, activate: Boolean, callback: IFetchObserver?): UUID =
+        guard { delegate.commit(uuid, activate, callback) }
 
     override suspend fun release(uuid: UUID) =
         guard { delegate.release(uuid) }

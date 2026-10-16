@@ -68,7 +68,7 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             run(uuid, kind)
         } finally {
             updating.remove(uuid)
-        }
+        } ?: return Result.failure()
 
         // Отчёт — когда подписка уже не числится обновляемой: его отправка
         // экран не держит
@@ -96,13 +96,13 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
     // Интервал подписки, с которым загрузка начиналась
     private var startedInterval = 0L
 
-    private suspend fun run(uuid: UUID, kind: Kind): Result {
+    private suspend fun run(uuid: UUID, kind: Kind): Result? {
         val imported = ImportedDao().queryByUUID(uuid)
 
         if (imported == null) {
             WorkManager.getInstance(context).cancelWorkById(id)
 
-            return Result.failure()
+            return null
         }
 
         startedInterval = imported.interval
@@ -114,7 +114,7 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         val result = try {
             val failedProviders = processing(name) {
                 ProfileProcessor.update(context, imported.uuid)
-            }
+            } ?: return gone(imported.uuid)
 
             completed(imported.uuid, context.displayProfileName(imported.uuid, imported.name, imported.nameManual), failedProviders)
 
@@ -265,6 +265,14 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         context.sendProfileUpdateCompleted(uuid, warning)
 
         FreezeChecks.profileUpdated(uuid)
+    }
+
+    private fun gone(uuid: UUID): Result? {
+        Log.i("Update of $uuid: subscription deleted meanwhile")
+
+        context.sendProfileUpdateCompleted(uuid, null)
+
+        return null
     }
 
     private fun failed(uuid: UUID, name: String, reason: String, notify: Boolean) {

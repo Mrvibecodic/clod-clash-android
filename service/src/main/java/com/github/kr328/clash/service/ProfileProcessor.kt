@@ -28,6 +28,7 @@ import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.ActiveProfileAction
 import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.activeProfileSelect
+import com.github.kr328.clash.service.util.activeProfileVacant
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.copyProfileTo
 import com.github.kr328.clash.service.util.ProfileFields
@@ -68,110 +69,148 @@ object ProfileProcessor {
             Clash.switchMode(context.importedDir.resolve(uuid.toString()), session)
         }
 
-    suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver? = null) {
+    suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver?, activate: Boolean): UUID =
         withContext(NonCancellable) {
             processLock.withLock {
-                val snapshot = profileLock.withLock {
-                    val pending =
-                        PendingDao().queryByUUID(uuid) ?: throw IllegalArgumentException("profile $uuid not found")
+                var promoted = false
 
-                    pending.enforceFieldValid()
+                try {
+                    val snapshot = profileLock.withLock {
+                        val pending =
+                            PendingDao().queryByUUID(uuid) ?: throw IllegalArgumentException("profile $uuid not found")
 
-                    repairLocked(context)
+                        pending.enforceFieldValid()
 
-                    context.processingDir.deleteRecursively()
-                    context.processingDir.mkdirs()
+                        val existing = pending.addedAlready()
 
-                    context.pendingDir.resolve(pending.uuid.toString())
-                        .copyProfileTo(context.processingDir, overwrite = true)
+                        if (existing != null) {
+                            PendingDao().remove(uuid)
 
-                    pending
-                }
+                            context.pendingDir.resolve(uuid.toString()).deleteRecursively()
 
-                val force = snapshot.type != Profile.Type.File
-                val subscriptionInfo =
-                    fetchProfile(context, context.processingDir, snapshot.source, force, false, snapshot.secure, callback).info
+                            val store = ServiceStore(context)
 
-                profileLock.withLock {
-                    val current = PendingDao().queryByUUID(snapshot.uuid)
+                            if (activate && activeProfileSelect(store.activeProfile, existing, true) == ActiveProfileAction.Set) {
+                                store.activeProfile = existing
+                            }
 
-                    if (current == null || !current.sameDraft(snapshot)) {
-                        Log.w("Draft $uuid changed while its subscription was loading, result dropped")
+                            context.sendProfileChanged(uuid)
+                            context.sendProfileChanged(existing)
 
-                        throw IllegalStateException(UpdateFailures.DRAFT_CHANGED)
+                            return@withContext existing
+                        }
+
+                        repairLocked(context)
+
+                        context.processingDir.deleteRecursively()
+                        context.processingDir.mkdirs()
+
+                        context.pendingDir.resolve(pending.uuid.toString())
+                            .copyProfileTo(context.processingDir, overwrite = true)
+
+                        pending
                     }
 
-                    ProfileSwap.replace(
-                        context.importedDir.resolve(snapshot.uuid.toString()),
-                        context.processingDir,
-                        warn = { Log.w(it) },
-                    )
+                    val force = snapshot.type != Profile.Type.File
+                    val subscriptionInfo =
+                        fetchProfile(context, context.processingDir, snapshot.source, force, false, snapshot.secure, callback).info
 
-                    val old = ImportedDao().queryByUUID(snapshot.uuid)
-                    val manual = snapshot.intervalManual
-                    val updateInterval = UpdateSchedule.effectiveInterval(manual, subscriptionInfo?.subUpdateInterval, snapshot.interval)
-                    val new = Imported(
-                        snapshot.uuid,
-                        snapshot.name,
-                        snapshot.type,
-                        snapshot.source,
-                        updateInterval,
-                        subscriptionInfo?.subUpload ?: 0,
-                        subscriptionInfo?.subDownload ?: 0,
-                        subscriptionInfo?.subTotal ?: 0,
-                        subscriptionInfo?.subExpire ?: 0,
-                        old?.createdAt ?: System.currentTimeMillis(),
-                        secure = snapshot.secure,
-                        intervalManual = manual,
-                        quota = subscriptionInfo?.subUpload != null,
-                        nameManual = snapshot.nameManual,
-                    )
-                    if (old != null) {
-                        ImportedDao().update(new)
-                    } else {
-                        ImportedDao().insert(new)
+                    profileLock.withLock {
+                        val current = PendingDao().queryByUUID(snapshot.uuid)
+
+                        if (current == null || !current.sameDraft(snapshot)) {
+                            Log.w("Draft $uuid changed while its subscription was loading, result dropped")
+
+                            throw IllegalStateException(UpdateFailures.DRAFT_CHANGED)
+                        }
+
+                        ProfileSwap.replace(
+                            context.importedDir.resolve(snapshot.uuid.toString()),
+                            context.processingDir,
+                            warn = { Log.w(it) },
+                        )
+
+                        promoted = true
+
+                        val old = ImportedDao().queryByUUID(snapshot.uuid)
+                        val manual = snapshot.intervalManual
+                        val updateInterval = UpdateSchedule.effectiveInterval(manual, subscriptionInfo?.subUpdateInterval, snapshot.interval)
+                        val new = Imported(
+                            snapshot.uuid,
+                            snapshot.name,
+                            snapshot.type,
+                            snapshot.source,
+                            updateInterval,
+                            subscriptionInfo?.subUpload ?: 0,
+                            subscriptionInfo?.subDownload ?: 0,
+                            subscriptionInfo?.subTotal ?: 0,
+                            subscriptionInfo?.subExpire ?: 0,
+                            old?.createdAt ?: System.currentTimeMillis(),
+                            secure = snapshot.secure,
+                            intervalManual = manual,
+                            quota = subscriptionInfo?.subUpload != null,
+                            nameManual = snapshot.nameManual,
+                        )
+                        if (old != null) {
+                            ImportedDao().update(new)
+                        } else {
+                            ImportedDao().insert(new)
+                        }
+
+                        Clash.markProfileUpdated(context.importedDir.resolve(snapshot.uuid.toString()), updateInterval)
+
+                        PendingDao().remove(snapshot.uuid)
+
+                        context.pendingDir.resolve(snapshot.uuid.toString()).deleteRecursively()
+
+                        val store = ServiceStore(context)
+                        val stored = store.activeProfile
+
+                        if (activate && activeProfileVacant(stored, stored != null && ImportedDao().exists(stored))) {
+                            store.activeProfile = snapshot.uuid
+                        }
+
+                        context.sendProfileChanged(snapshot.uuid)
                     }
 
-                    Clash.markProfileUpdated(context.importedDir.resolve(snapshot.uuid.toString()), updateInterval)
+                    followMove(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
 
-                    PendingDao().remove(snapshot.uuid)
+                    ClientReports.fetched(context, snapshot.uuid)
 
-                    context.pendingDir.resolve(snapshot.uuid.toString()).deleteRecursively()
-
-                    context.sendProfileChanged(snapshot.uuid)
+                    snapshot.uuid
+                } finally {
+                    if (!promoted) context.processingDir.deleteRecursively()
                 }
-
-                followMove(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
-
-                ClientReports.fetched(context, snapshot.uuid)
             }
         }
-    }
 
-    suspend fun update(context: Context, uuid: UUID): List<String> {
+    // null — подписки больше нет: удалили, пока обновление ждало очереди или загружалось.
+    suspend fun update(context: Context, uuid: UUID): List<String>? {
         return withContext(NonCancellable) {
             processLock.withLock {
-                val snapshot = profileLock.withLock {
-                    val imported =
-                        ImportedDao().queryByUUID(uuid) ?: throw IllegalArgumentException("profile $uuid not found")
+                var promoted = false
 
-                    repairLocked(context)
+                try {
+                    val snapshot = profileLock.withLock {
+                        val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock null
 
-                    context.processingDir.deleteRecursively()
-                    context.processingDir.mkdirs()
+                        repairLocked(context)
 
-                    context.importedDir.resolve(imported.uuid.toString())
-                        .copyProfileTo(context.processingDir, overwrite = true)
+                        context.processingDir.deleteRecursively()
+                        context.processingDir.mkdirs()
 
-                    imported
-                }
+                        context.importedDir.resolve(imported.uuid.toString())
+                            .copyProfileTo(context.processingDir, overwrite = true)
 
-                val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, snapshot.secure, null)
-                val subscriptionInfo = fetched.info
+                        imported
+                    } ?: return@withLock null
 
-                profileLock.withLock {
-                    val imported = ImportedDao().queryByUUID(snapshot.uuid)
-                    if (imported != null) {
+                    val fetched = fetchProfile(context, context.processingDir, snapshot.source, true, false, snapshot.secure, null)
+                    val subscriptionInfo = fetched.info
+
+                    promoted = profileLock.withLock {
+                        val imported = ImportedDao().queryByUUID(snapshot.uuid) ?: return@withLock false
+
                         ProfileSwap.replace(
                             context.importedDir.resolve(snapshot.uuid.toString()),
                             context.processingDir,
@@ -204,14 +243,20 @@ object ProfileProcessor {
                         Clash.markProfileUpdated(context.importedDir.resolve(snapshot.uuid.toString()), stored.interval)
 
                         context.sendProfileChanged(snapshot.uuid)
+
+                        true
                     }
+
+                    if (!promoted) return@withLock null
+
+                    val moved = followMove(context, snapshot.uuid, snapshot.source, snapshot.secure)
+
+                    ClientReports.fetched(context, snapshot.uuid)
+
+                    (fetched.failedProviders + moved).distinct()
+                } finally {
+                    if (!promoted) context.processingDir.deleteRecursively()
                 }
-
-                val moved = followMove(context, snapshot.uuid, snapshot.source, snapshot.secure)
-
-                ClientReports.fetched(context, snapshot.uuid)
-
-                (fetched.failedProviders + moved).distinct()
             }
         }
     }
@@ -493,6 +538,14 @@ object ProfileProcessor {
                 }
             }
         }
+    }
+
+    private suspend fun Pending.addedAlready(): UUID? {
+        if (type != Profile.Type.Url || ImportedDao().exists(uuid)) return null
+
+        val key = ProfileFields.sourceKey(source)
+
+        return ImportedDao().queryAll().firstOrNull { it.uuid != uuid && ProfileFields.sourceKey(it.source) == key }?.uuid
     }
 
     private fun Pending.enforceFieldValid() {

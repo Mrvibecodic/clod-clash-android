@@ -1,5 +1,7 @@
 package com.github.kr328.clash.util
 
+import com.github.kr328.clash.service.util.ProfileFields
+
 // Судьба каждой записи копии до загрузки: адрес негоден, такая подписка уже есть или
 // запись идёт на загрузку. Уже имеющиеся — не провал восстановления; повтор адреса
 // внутри копии — одна подписка, активная, если активна любая из записей.
@@ -11,12 +13,14 @@ internal data class RestorePlan(
 
 internal fun planRestore(
     items: List<ProfileImports.Item>,
-    known: Set<String>,
+    known: Collection<String>,
     valid: (String) -> Boolean,
 ): RestorePlan {
-    val unique = items.groupBy { it.source }.values.map { same -> same.first().copy(active = same.any { it.active }) }
+    val present = known.mapTo(HashSet(), ProfileFields::sourceKey)
+    val unique = items.groupBy { ProfileFields.sourceKey(it.source) }.values
+        .map { same -> same.first().copy(active = same.any { it.active }) }
     val (good, rejected) = unique.partition { valid(it.source) }
-    val load = good.filterNot { it.source in known }
+    val load = good.filterNot { ProfileFields.sourceKey(it.source) in present }
 
     return RestorePlan(load, good.size - load.size, rejected)
 }

@@ -7,14 +7,19 @@ import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.HumanMessage
+import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.ProfileFields
+import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withProfile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -54,36 +59,47 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
             }
 
             launch {
-                withContext(NonCancellable) {
-                    val uuid = withProfile(retry = false) {
-                        val linkName = uri.getQueryParameter("name")
-                            ?.trim()
-                            ?.takeIf { it.isNotEmpty() }
-                            ?.take(MAX_NAME_LENGTH)
-                        val name = linkName ?: getString(R.string.new_profile)
+                try {
+                    withContext(NonCancellable) {
+                        val uuid = withProfile(retry = false) {
+                            val linkName = uri.getQueryParameter("name")
+                                ?.trim()
+                                ?.takeIf { it.isNotEmpty() }
+                                ?.take(MAX_NAME_LENGTH)
+                            val name = linkName ?: getString(R.string.new_profile)
 
-                        val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
-                        val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
-                        val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
+                            val parsedInterval = uri.getQueryParameter("update-interval")?.toLongOrNull() ?: 0L
+                            val updateInterval = if (parsedInterval > 0) parsedInterval.coerceAtLeast(15L) else 0L
+                            val intervalMs = java.util.concurrent.TimeUnit.MINUTES.toMillis(updateInterval)
 
-                        create(Profile.Type.Url, name).also {
                             // Канал выберет сохранение: сначала защищённый, без него — обычный путь.
                             // Интервал из ссылки — от панели, не выбор человека: его
                             // сменит то, что панель пришлёт при обновлении
-                            patch(it, name, linkName != null, url, intervalMs, false, secure = false)
+                            create(Profile.Type.Url, name, url, interval = intervalMs, nameManual = linkName != null)
+                        }
+
+                        val opened = !isFinishing && !isDestroyed && runCatching {
+                            startActivity(PropertiesActivity::class.intent.setUUID(uuid))
+                        }.isSuccess
+
+                        if (!opened) {
+                            withProfile(retry = false) { release(uuid) }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w("Add subscription from a link: $e", e)
 
-                    val opened = !isFinishing && !isDestroyed && runCatching {
-                        startActivity(PropertiesActivity::class.intent.setUUID(uuid))
-                    }.isSuccess
+                    val raw = e.message.orEmpty()
+                    val reason = humanizeUpdateFailure(raw)
+                        ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
+                        ?: Redact.text(raw).ifBlank { e.javaClass.name }
 
-                    if (!opened) {
-                        withProfile(retry = false) { release(uuid) }
-                    }
+                    Toast.makeText(applicationContext, getString(R.string.clod_sub_add_failed, reason), Toast.LENGTH_LONG).show()
+                } finally {
+                    finish()
                 }
-
-                finish()
             }
 
             return

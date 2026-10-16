@@ -12,6 +12,9 @@ enum class ActiveProfileAction {
 fun activeProfileGone(stored: UUID?, gone: UUID): ActiveProfileAction =
     if (stored == gone) ActiveProfileAction.Clear else ActiveProfileAction.Keep
 
+fun activeProfileVacant(stored: UUID?, storedImported: Boolean): Boolean =
+    stored == null || !storedImported
+
 fun activeProfileSelect(stored: UUID?, requested: UUID, exists: Boolean): ActiveProfileAction =
     if (exists && stored != requested) ActiveProfileAction.Set else ActiveProfileAction.Keep
 

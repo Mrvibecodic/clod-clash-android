@@ -67,4 +67,16 @@ class RestorePlanTest {
 
         assertEquals(listOf(true), plan.load.map { it.active })
     }
+
+    @Test
+    fun `адрес отличается регистром узла и косой чертой на конце — уже есть`() {
+        val plan = planRestore(
+            listOf(item("https://Example.COM/sub/AbC/")),
+            setOf("https://example.com/sub/AbC"),
+            valid,
+        )
+
+        assertEquals(emptyList<ProfileImports.Item>(), plan.load)
+        assertEquals(1, plan.present)
+    }
 }

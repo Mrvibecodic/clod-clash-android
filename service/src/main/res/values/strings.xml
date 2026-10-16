@@ -61,5 +61,6 @@
     <string name="clod_update_cause_timeout">The subscription server did not answer in time. Check the internet connection and try again</string>
     <string name="clod_update_cause_tls">The subscription server certificate failed the check, so no connection was made. Make sure the date and time on the device are correct; if they are, ask the provider</string>
     <string name="clod_update_cause_dns">The subscription server name could not be resolved. Check the internet connection; if it repeats, the address may have changed</string>
+    <string name="clod_update_cause_storage">Not enough storage on the device</string>
     <string name="clod_update_cause_connection">Could not connect to the subscription server: no internet, or the server is unreachable. Try again later</string>
 </resources>

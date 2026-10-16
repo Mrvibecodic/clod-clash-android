@@ -255,7 +255,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             return
         }
 
-        val known = withProfile { queryAll() }.map { it.source.trim() }.toSet()
+        val known = withProfile { queryAll() }.filter { it.imported }.map { it.source }
 
         val candidates = wanted.map { item ->
             ProfileImports.Item(

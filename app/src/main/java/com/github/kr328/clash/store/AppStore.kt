@@ -58,6 +58,11 @@ class AppStore private constructor(context: Context, mode: Int) {
         defaultValue = "",
     )
 
+    var addedProfileExisting: Boolean by store.boolean(
+        key = "added_profile_existing",
+        defaultValue = false,
+    )
+
     // Пришла ли добавленная подписка защищённым каналом — для сообщения «добавлена».
     var addedProfileSecure: Boolean by store.boolean(
         key = "added_profile_secure",

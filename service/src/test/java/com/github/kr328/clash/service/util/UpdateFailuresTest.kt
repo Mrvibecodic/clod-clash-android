@@ -3,7 +3,9 @@ package com.github.kr328.clash.service.util
 import com.github.kr328.clash.service.util.UpdateFailures.Cause
 import com.github.kr328.clash.service.util.UpdateFailures.Reason
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UpdateFailuresTest {
@@ -325,5 +327,20 @@ class UpdateFailuresTest {
         assertNull(UpdateFailures.detail("Get \"https://p/s\": dial tcp: i/o timeout"))
         assertNull(UpdateFailures.detail("something nobody has seen before"))
         assertNull(UpdateFailures.detail("clod-config-rejected: "))
+    }
+
+    @Test
+    fun `a full storage is explained and is not a network failure`() {
+        listOf(
+            "write failed: ENOSPC (No space left on device)",
+            "write /data/user/0/example/files/processing/config.yaml: no space left on device",
+            "database or disk is full (code 13 SQLITE_FULL)",
+        ).forEach {
+            assertEquals(Reason(Cause.Storage), UpdateFailures.classify(it))
+            assertFalse(Cause.Storage.transport)
+            assertTrue(UpdateFailures.noSpace(it))
+        }
+
+        assertFalse(UpdateFailures.noSpace("Get \"https://example.com/s\": dial tcp: i/o timeout"))
     }
 }

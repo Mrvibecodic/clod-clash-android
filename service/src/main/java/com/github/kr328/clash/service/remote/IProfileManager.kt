@@ -11,8 +11,11 @@ interface IProfileManager {
         name: String,
         source: String = "",
         secure: Boolean = false,
+        interval: Long = 0,
+        intervalManual: Boolean = false,
+        nameManual: Boolean = false,
     ): UUID
-    suspend fun commit(uuid: UUID, callback: IFetchObserver? = null)
+    suspend fun commit(uuid: UUID, activate: Boolean, callback: IFetchObserver? = null): UUID
     suspend fun release(uuid: UUID)
     suspend fun delete(uuid: UUID)
     suspend fun patch(
