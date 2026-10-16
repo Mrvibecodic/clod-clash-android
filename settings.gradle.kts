@@ -7,10 +7,3 @@ include(":design")
 include(":common")
 include(":hideapi")
 include(":screenshots")
-
-pluginManagement {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}

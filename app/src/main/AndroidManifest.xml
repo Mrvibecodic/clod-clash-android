@@ -34,13 +34,6 @@
         android:theme="@style/BootstrapTheme"
         tools:ignore="GoogleAppIndexingWarning"
         tools:targetApi="N">
-        <meta-data
-            android:name="releaseName"
-            android:value="@string/release_name" />
-        <meta-data
-            android:name="releaseCode"
-            android:value="@integer/release_code" />
-
         <provider
             android:name="androidx.startup.InitializationProvider"
             android:authorities="${applicationId}.androidx-startup"

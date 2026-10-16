@@ -159,34 +159,8 @@ jobs:
           git submodule update --init --recursive --force --remote
           git -C core/src/foss/golang/clash log -1 --format='Clod Core: %H %s'
 
-      # Патчи Android живут коммитами в ветке android репозитория Mrvibecodic/clod-core,
-      # submodule смотрит туда; маркеры ниже проверяют, что они в подтянутом ядре есть.
       - name: Патчи ядра на месте
-        run: |
-          set -euo pipefail
-          cd core/src/foss/golang/clash
-          grep -q ProbeHolding adapter/adapter.go
-          grep -qF 'ctx.Err() == context.Canceled' adapter/adapter.go
-          grep -q ProbeHolding adapter/outboundgroup/groupbase.go
-          grep -q ProbeFreezeGap constant/probehold.go
-          # Общие правки проб из main clod-core: повторная проба рядом с первой,
-          # штраф нестабильным узлам в url-test, шаг между пробами к одному хосту
-          grep -q HeldProbe constant/probeconfirm.go
-          grep -q probeHedgeDelay adapter/provider/healthcheck.go
-          grep -q flakyPenalty adapter/outboundgroup/urltest.go
-          grep -q ProbePace constant/probepace.go
-          grep -Eq 'expectedStatus +string' adapter/outboundgroup/selector.go
-          grep -Eq '"expectedStatus": +s\.expectedStatus,' adapter/outboundgroup/selector.go
-          grep -Eq 'expectedStatus: +option\.ExpectedStatus,' adapter/outboundgroup/selector.go
-          grep -q ResetNetwork adapter/outbound/base.go
-          grep -q ErrRedirectDowngrade component/http/http.go
-          grep -qF 'req.URL.Scheme != "https"' component/http/http.go
-          grep -qF 'return ErrRedirectDowngrade' component/http/http.go
-          grep -A1 -F 'loadProvider(cfg.RuleProviders)' hub/executor/executor.go | grep -qF 'tunnel.OnRunning()'
-          grep -A1 -F 'tunnel.OnRunning()' hub/executor/executor.go | grep -qF 'runtime.GC()'
-          # Проверка 16–20: обрыв по пути — «неясно», отпечаток без имени сервера и Host
-          grep -A3 -F 'case ctx.Err() == nil:' adapter/download.go | grep -qF 'return DownloadUnknown'
-          grep -q disguiseKeys adapter/fingerprint.go
+        run: .github/scripts/core-patches.sh
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
@@ -200,38 +174,14 @@ jobs:
       - name: Go
         run: .github/scripts/go.sh
 
-      # Ядро свежее, поэтому и его replace-правила (utls, protobuf) берутся из его
-      # go.mod: зависимостям Go их не передаёт, а без копии в модулях клиента
-      # соберётся стоковый utls. Версии остальных зависимостей до требований
-      # ядра поднимает сам Go (GOFLAGS=-mod=mod у задачи).
       - name: Правила модулей из ядра
-        run: |
-          set -euo pipefail
-          rules=$(awk '$1 == "replace" && NF == 5 {print $2 "=" $4 "@" $5}' core/src/foss/golang/clash/go.mod)
-          echo "$rules" | grep -q '^github.com/metacubex/utls='
-          for m in core/src/foss/golang core/src/main/golang; do
-            for r in $rules; do (cd "$m" && go mod edit -replace="$r"); done
-          done
+        run: .github/scripts/core-rules.sh
 
       - name: Патчи Go-тулчейна
-        run: |
-          set -euo pipefail
-          cd $(go env GOROOT)
-          for p in $GITHUB_WORKSPACE/.github/patch/*.patch; do patch --verbose -p 1 -F 0 < "$p"; done
-          # Стражи на оба патча: первый ДОБАВЛЯЕТ ветку, второй УДАЛЯЕТ две.
-          grep -q 'tailscale/tailscale/issues/13452' src/os/pidfd_linux.go
-          test "$(grep -c 'if use64bitsTimeOn32bits' src/runtime/os_linux32.go)" = "0"
+        run: .github/scripts/go-patches.sh
 
       - name: Обновить CA-сертификаты ядра
-        run: |
-          set -euo pipefail
-          sudo apt-get update && sudo apt-get install -y ca-certificates
-          sudo update-ca-certificates
-          cp -f /etc/ssl/certs/ca-certificates.crt core/src/foss/golang/clash/component/ca/ca-certificates.crt
-          # Пустой или несостоявшийся бандл ядро не заметит — молча уедет на
-          # хранилище устройства.
-          test -s core/src/foss/golang/clash/component/ca/ca-certificates.crt
-          test "$(grep -c 'BEGIN CERTIFICATE' core/src/foss/golang/clash/component/ca/ca-certificates.crt)" -gt 100
+        run: .github/scripts/core-ca.sh
 
       - name: Сборка релиза
         run: ./gradlew --no-daemon --no-build-cache app:assembleStandardRelease
@@ -359,7 +309,7 @@ jobs:
           for apk in signed/*.apk; do
             name=$(basename "$apk")
             abi=universal
-            for candidate in arm64-v8a armeabi-v7a x86_64 x86; do
+            for candidate in arm64-v8a armeabi-v7a x86_64; do
               if [[ "$name" == *"-$candidate-"* ]]; then abi="$candidate"; break; fi
             done
             cp "$apk" "dist/clodclash-$abi.apk"
@@ -374,17 +324,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          NOTES=$(awk -v ver="## v$VERSION" '
-            $0 == ver { grab = 1; next }
-            /^## v/ || /^---/ { if (grab) exit }
-            grab { print }
-          ' UPDATELOG.md 2>/dev/null || true)
-          if [[ -z "${NOTES// }" ]]; then
-            NOTES=$(git tag -l --format='%(contents)' "$TAG")
-          fi
-          if [[ -z "${NOTES// }" ]]; then
-            NOTES="Вышла версия $VERSION."
-          fi
+          NOTES=$(.github/scripts/release-notes.sh)
 
           BASE="https://github.com/${{ github.repository }}/releases/download/$TAG"
           jq -n \
@@ -465,13 +405,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          NOTES=$(awk -v ver="## v$VERSION" '
-            $0 == ver { grab = 1; next }
-            /^## v/ || /^---/ { if (grab) exit }
-            grab { print }
-          ' UPDATELOG.md 2>/dev/null || true)
-          [[ -z "${NOTES// }" ]] && NOTES=$(git tag -l --format='%(contents)' "$TAG")
-          [[ -z "${NOTES// }" ]] && NOTES="Вышла версия $VERSION."
+          NOTES=$(.github/scripts/release-notes.sh)
 
           PRERELEASE=false
           [[ "$VERSION" == *-* ]] && PRERELEASE=true

@@ -15,7 +15,7 @@ golang {
     sourceSets {
         create("standard") {
             tags.set(listOf("foss","with_gvisor","cmfa") + listOfNotNull("pprof".takeIf { project.findProperty("clod.pprof") == "true" }))
-            srcDir.set(file("src/foss/golang"))
+            srcDir.set(file("src/main/golang"))
         }
         all {
             fileName.set("libclash.so")
@@ -56,11 +56,14 @@ dependencies {
 
 afterEvaluate {
     tasks.withType(GolangBuildTask::class.java).forEach {
-        it.inputs.dir(golangSource)
+        // Ядро лежит вне srcDir: без этого правка ядра не пересоберёт libclash.so.
+        it.inputs.dir("src/foss/golang/clash")
+        // Модуль cfa собирается главным: без флага Go вписывает в .so коммит клиента и зовёт git на каждой сборке.
+        it.environment("GOFLAGS", listOfNotNull(System.getenv("GOFLAGS"), "-buildvcs=false").joinToString(" "))
     }
 }
 
-val abis = listOf("arm64-v8a" to "Arm64V8a", "armeabi-v7a" to "ArmeabiV7a", "x86" to "X86", "x86_64" to "X8664")
+val abis = listOf("arm64-v8a" to "Arm64V8a", "armeabi-v7a" to "ArmeabiV7a", "x86_64" to "X8664")
 
 androidComponents.onVariants { variant ->
     val cmakeName = if (variant.buildType == "debug") "Debug" else "RelWithDebInfo"
@@ -69,7 +72,6 @@ androidComponents.onVariants { variant ->
         tasks.configureEach {
             if (name.startsWith("buildCMake$cmakeName[$abi]")) {
                 dependsOn("externalGolangBuild${variant.name.capitalizeUS()}$goAbi")
-                println("Set up dependency: $name -> externalGolangBuild${variant.name.capitalizeUS()}$goAbi")
             }
         }
     }

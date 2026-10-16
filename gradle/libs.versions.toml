@@ -17,7 +17,6 @@ roborazzi = "1.75.0"
 room = "2.8.5"
 multiprocess = "1.0.0"
 composeBom = "2026.06.01"
-activityCompose = "1.10.1"
 lifecycle = "2.10.0"
 work = "2.11.2"
 
@@ -54,6 +53,6 @@ androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 androidx-compose-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
-androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 
 [plugins]

@@ -1,5 +1,3 @@
-@file:Suppress("UNUSED_VARIABLE")
-
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.BaseExtension
 import java.net.URL
@@ -76,9 +74,6 @@ subprojects {
 
             versionName = "0.1.24"
             versionCode = 12499
-
-            resValue("string", "release_name", "v$versionName")
-            resValue("integer", "release_code", "$versionCode")
 
             ndk {
                 abiFilters += abiList
