@@ -54,6 +54,20 @@ class ServiceStore(context: Context) {
         defaultValue = true,
     )
 
+    // Соль ключа сети в отчёте прослойке: своя у каждой установки, чтобы по
+    // ключу нельзя было перебором восстановить оператора и страну
+    var reportNetSalt: String by store.string(
+        key = "report_net_salt",
+        defaultValue = "",
+    )
+
+    // Подписки, у которых отправки между обновлениями сняло упавшее обновление:
+    // ждут удачного, подключение их не заводит
+    var reportBetweenHeld: Set<String> by store.stringSet(
+        key = "report_between_held",
+        defaultValue = emptySet(),
+    )
+
     var hwid: String by store.string(
         key = "hwid",
         defaultValue = "",

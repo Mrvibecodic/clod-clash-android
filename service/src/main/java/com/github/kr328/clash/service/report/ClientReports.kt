@@ -17,6 +17,7 @@ import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.freeze.FreezeOutcome
 import com.github.kr328.clash.service.freeze.FreezeVerdict
 import com.github.kr328.clash.service.freeze.NetworkKey
+import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.DeviceCard
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.deviceCard
@@ -33,6 +34,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.io.File
+import java.security.MessageDigest
+import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -81,6 +84,21 @@ object ClientReports {
     private fun collected(uuid: UUID, secure: Boolean): Boolean =
         secure && context.readPanelInfo(uuid)?.report == true
 
+    // Ключ сети для отчёта: хеш признаков сети с солью установки. Без соли ключ
+    // мобильной сети — хеш кода оператора, и перебором по паре тысяч кодов он
+    // выдаёт оператора и страну. Для проверки 16–20 на устройстве ключ прежний
+    private val salt: String by lazy {
+        val store = ServiceStore(context)
+
+        store.reportNetSalt.ifEmpty {
+            val bytes = ByteArray(16).also { SecureRandom().nextBytes(it) }
+
+            bytes.joinToString("") { "%02x".format(it) }.also { store.reportNetSalt = it }
+        }
+    }
+
+    private fun salted(key: String): String = if (key.isEmpty()) "" else saltedKey(salt, key)
+
     private fun call(op: String, fill: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): Boolean {
         return try {
             Clash.clientReport(buildJsonObject {
@@ -106,6 +124,15 @@ object ClientReports {
                 put("uuid", uuid.toString())
             }
         }
+
+        // Сбор идёт — отправки между обновлениями заведены, если положены и их
+        // не держит упавшее обновление (так и у подписок, ни разу не
+        // обновлявшихся с тех пор, как условие стало их требовать)
+        scope.launch {
+            if (collected(uuid, secure) && !held(uuid)) {
+                ImportedDao().queryByUUID(uuid)?.let { scheduleBetween(context, it) }
+            }
+        }
     }
 
     // Подписка загружена с панели (добавлена, обновлена, сохранена): отчёт по
@@ -116,6 +143,14 @@ object ClientReports {
             storeLock.withLock {
                 if (!collected(uuid)) drop(context, uuid)
             }
+
+            // Удачное обновление любого вида (и ручное, и при сохранении) снова
+            // заводит отправки между обновлениями, если их сняло упавшее, — и
+            // заводит вовсе у подписки без автообновления: плановых загрузок,
+            // после которых они заводились, у неё нет. Само ручное отчёт не шлёт
+            hold(uuid, false)
+
+            ImportedDao().queryByUUID(uuid)?.let { scheduleBetween(context, it) }
         }
     }
 
@@ -130,11 +165,14 @@ object ClientReports {
     // Сторож туннеля назвал сеть (при старте, смене, позднем приходе свойств);
     // null — сети нет. Момент берётся при событии: замеры до него — старой сети
     fun network(seen: NetworkKey.Seen?) {
-        val key = NetworkKey.keyOf(seen).orEmpty()
-        val kind = if (key.isEmpty()) "" else NetworkKey.kindOf(seen)
+        val raw = NetworkKey.keyOf(seen).orEmpty()
+        val kind = if (raw.isEmpty()) "" else NetworkKey.kindOf(seen)
         val at = System.currentTimeMillis()
 
         serial.execute {
+            // Соль при первом обращении читает хранилище — не на потоке сторожа
+            val key = salted(raw)
+
             if (named == key to kind) return@execute
 
             // Несостоявшийся вызов не запоминается: следующее событие повторит
@@ -164,7 +202,7 @@ object ClientReports {
                     put("store", storeFile(context, uuid).absolutePath)
                     put("uuid", uuid.toString())
                     put("path", path?.absolutePath.orEmpty())
-                    put("net", key)
+                    put("net", salted(key))
                     put("kind", kind)
                     putJsonObject("verdicts") {
                         for ((name, outcome) in verdicts) {
@@ -181,17 +219,29 @@ object ClientReports {
 
     // Плановое обновление подписки удалось: если подошло время, отчёт уходит.
     // Отправки между обновлениями заводятся один раз (после неудачного
-    // обновления — заново) и идут своим ходом: сброс отсчёта на каждом
-    // обновлении ставил бы их сразу за отправкой после него, и ядро,
+    // обновления — заново, после удачного) и идут своим ходом: сброс отсчёта на
+    // каждом обновлении ставил бы их сразу за отправкой после него, и ядро,
     // выдерживая 6 часов, пропускало бы каждую вторую
     suspend fun afterScheduledUpdate(context: Context, uuid: UUID) {
         val imported = ImportedDao().queryByUUID(uuid) ?: return
 
-        // Копить нечего (подписка ещё не работала в туннеле) — будить процесс
-        // ради отправки незачем. Без сети процесс не будится: отправка
-        // дожидается сети, а не следующего срока. UPDATE не сбивает отсчёт уже
-        // заведённой задачи, только меняет её условия
-        if (between(imported) && storeFile(context, uuid).isFile) {
+        hold(uuid, false)
+
+        scheduleBetween(context, imported)
+
+        send(context, imported)
+    }
+
+    // Отправки между обновлениями — пока подписка собирается и обновляется реже
+    // раза в 6 ч (или не обновляется сама). Наличие файла не условие: он
+    // появляется через несколько минут сбора, а метка приёма могла прийти этим
+    // же обновлением — пустую отправку ядро отбросит само. Без сети процесс не
+    // будится: отправка дожидается сети, а не следующего срока. UPDATE не сбивает
+    // отсчёт уже заведённой задачи, только меняет её условия
+    private fun scheduleBetween(context: Context, imported: Imported) {
+        val uuid = imported.uuid
+
+        if (between(imported)) {
             val request = PeriodicWorkRequestBuilder<ClientReportWorker>(BETWEEN, TimeUnit.MILLISECONDS)
                 .setInitialDelay(BETWEEN + BETWEEN_SLACK, TimeUnit.MILLISECONDS)
                 .setConstraints(Constraints(requiredNetworkType = NetworkType.CONNECTED))
@@ -203,14 +253,26 @@ object ClientReports {
         } else {
             stopBetween(context, uuid)
         }
-
-        send(context, imported)
     }
 
     // Обновление подписки не удалось (любое): отправки между обновлениями
-    // ждут следующего удачного планового
+    // ждут следующего удачного
     fun updateFailed(context: Context, uuid: UUID) {
+        hold(uuid, true)
+
         stopBetween(context, uuid)
+    }
+
+    private fun held(uuid: UUID): Boolean = uuid.toString() in ServiceStore(context).reportBetweenHeld
+
+    @Synchronized
+    private fun hold(uuid: UUID, held: Boolean) {
+        val store = ServiceStore(context)
+        val key = uuid.toString()
+
+        if ((key in store.reportBetweenHeld) != held) {
+            store.reportBetweenHeld = if (held) store.reportBetweenHeld + key else store.reportBetweenHeld - key
+        }
     }
 
     // Отправка между плановыми обновлениями. Подписки нет, канал выключен или
@@ -276,6 +338,8 @@ object ClientReports {
     private suspend fun drop(context: Context, uuid: UUID) {
         stopBetween(context, uuid)
 
+        hold(uuid, false)
+
         sendLock.withLock {
             call("forget") { put("store", storeFile(context, uuid).absolutePath) }
         }
@@ -308,3 +372,9 @@ class ClientReportWorker(context: Context, parameters: WorkerParameters) : Corou
         return Result.success()
     }
 }
+
+// Ключ сети с солью — та же длина, что у ключа без неё
+internal fun saltedKey(salt: String, key: String): String =
+    MessageDigest.getInstance("SHA-256").digest("$salt;$key".toByteArray())
+        .joinToString("") { "%02x".format(it) }
+        .take(key.length)

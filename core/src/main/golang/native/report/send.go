@@ -149,7 +149,7 @@ func Due(path string, now int64) (int64, bool) {
 
 	var work ipWork
 	if collecting {
-		work = collectLocked()
+		work = collectLocked(nowMs() - lagMs)
 	}
 
 	closed := closedBefore(path, now)

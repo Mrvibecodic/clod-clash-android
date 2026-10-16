@@ -68,7 +68,7 @@ func TestViaTellsNodesOnOneAddressApart(t *testing.T) {
 func TestProviderNodesAreNamedAsTheCoreNamesThem(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "provider.yaml")
-	if err := os.WriteFile(file, []byte("proxies:\n  - {name: A, type: ss, server: a.example.com, port: 1}\n  - {name: F, type: vless, server: f.example.com, port: 2}\n"), 0o600); err != nil {
+	if err := os.WriteFile(file, []byte("proxies:\n  - {name: A, type: ss, server: a.example.com, port: 1, password: p}\n  - {name: F, type: vless, server: f.example.com, port: 2}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -314,10 +314,59 @@ func TestANodeWithOnlyAPortRangeTakesItsFirstPort(t *testing.T) {
 	got := NodesOf([]map[string]any{
 		{"name": "Диапазон", "type": "hysteria2", "server": "h.example.com", "ports": "20000-30000"},
 		{"name": "Оба", "type": "hysteria2", "server": "h.example.com", "port": 443, "ports": "20000-30000"},
-		{"name": "Не hysteria2", "type": "hysteria", "server": "v.example.com", "ports": "20000-30000"},
+		{"name": "Hysteria", "type": "hysteria", "server": "v.example.com", "ports": "20000-30000"},
+		{"name": "Не hysteria", "type": "vless", "server": "x.example.com", "ports": "20000-30000"},
 	})
-	if len(got) != 2 || got["Диапазон"].Port != 20000 || got["Оба"].Port != 443 {
+	if len(got) != 3 || got["Диапазон"].Port != 20000 || got["Оба"].Port != 443 || got["Hysteria"].Port != 20000 {
 		t.Fatalf("узлы: %+v", got)
+	}
+}
+
+func TestPanelPlaceholdersAreNotNodes(t *testing.T) {
+	got := NodesOf([]map[string]any{
+		{"name": "Подписка истекла", "type": "vless", "server": "0.0.0.0", "port": 1, "uuid": "00000000-0000-0000-0000-000000000000"},
+		{"name": "Нулевой ключ", "type": "vless", "server": "a.example.com", "port": 443, "uuid": "00000000-0000-0000-0000-000000000000"},
+		{"name": "Сервер", "type": "vless", "server": "b.example.com", "port": 443, "uuid": "11111111-2222-3333-4444-555555555555"},
+	})
+	if len(got) != 1 || got["Сервер"].Port != 443 {
+		t.Fatalf("узлы: %+v", got)
+	}
+}
+
+// Остановка сбора дописывает в файл всё, что накопилось с прошлого чтения,
+// а не выбрасывает его.
+func TestStoppingTheCollectionKeepsWhatWasGatheredSinceTheLastRead(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s")
+	SetNodes("s", map[string]NodeInfo{"Узел": node()}, nil)
+	t.Cleanup(func() {
+		SetTarget("", "")
+		SetNodes("", nil, nil)
+		mu.Lock()
+		netNow, kindNow, where = "", "", nil
+		mu.Unlock()
+	})
+
+	SetTarget(path, "s")
+
+	mu.Lock()
+	netNow, kindNow = "net-a", "wifi"
+	where = &spot{place: Place{Net: "net-a", Kind: "wifi", IP4: "192.0.2.1"}, changes: changes, ipAt: time.Now().Unix()}
+	gathered = traffic{"Узел": {100, 200, 3}}
+	mu.Unlock()
+
+	SetTarget("", "")
+
+	store := Load(path)
+	var up uint64
+	for _, network := range store.Networks {
+		for _, entry := range network.Hours {
+			for _, use := range entry.Use {
+				up += use.Up
+			}
+		}
+	}
+	if up != 100 {
+		t.Fatalf("трафик с прошлого чтения при остановке: %d байт, ждали 100", up)
 	}
 }
 
@@ -727,7 +776,7 @@ func TestProviderNodesComeFromPayloadAndFile(t *testing.T) {
 	}
 
 	// Файл перечитывается, когда менялся.
-	if err := os.WriteFile(file, []byte("proxies:\n  - name: Новый\n    type: ss\n    server: n.example.com\n    port: 1\n"), 0o600); err != nil {
+	if err := os.WriteFile(file, []byte("proxies:\n  - name: Новый\n    type: ss\n    server: n.example.com\n    port: 1\n    password: p\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	later := time.Now().Add(time.Minute)

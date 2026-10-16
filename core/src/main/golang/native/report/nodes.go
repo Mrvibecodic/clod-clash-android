@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"cfa/native/config/sentinel"
+
 	"github.com/metacubex/mihomo/common/yaml"
 )
 
@@ -181,11 +183,17 @@ func nodeOf(proxy map[string]any) (NodeInfo, bool) {
 	kind = asciiLower(kind)
 
 	port := portOf(proxy["port"])
-	if (port <= 0 || port > 65535) && kind == "hysteria2" {
+	if (port <= 0 || port > 65535) && (kind == "hysteria" || kind == "hysteria2") {
 		port = firstPort(proxy["ports"])
 	}
 
 	if name == "" || kind == "" || server == "" || port <= 0 || port > 65535 {
+		return NodeInfo{}, false
+	}
+
+	// Заглушки панели (истёкшая подписка, отказ по устройству) — не серверы:
+	// их провалы — не статистика узлов, как и в проверке 16–20
+	if sentinel.Is(proxy) {
 		return NodeInfo{}, false
 	}
 

@@ -107,6 +107,19 @@ func nowMs() int64 { return time.Now().UnixMilli() }
 // сбор выключен (подписка без защищённого канала, туннель остановлен). Замеры
 // считаются с этого момента.
 func SetTarget(path, owner string) {
+	collectMu.Lock()
+	defer collectMu.Unlock()
+
+	mu.Lock()
+	leaving := target != "" && path != target
+	mu.Unlock()
+
+	// Намеренное с прошлого чтения — в прежнее место, а не в сброс: иначе
+	// каждая остановка теряла бы до tickMax замеров и трафика
+	if leaving {
+		collectLocked(nowMs())
+	}
+
 	mu.Lock()
 
 	targetOwner = owner
@@ -617,10 +630,10 @@ type ipWork struct {
 	refresh   *spot
 }
 
-// collectLocked — прочитать окно (по lagMs назад от нынешнего) и разложить в
-// место; под collectMu. Запросы адреса — уже без замка сборщика: сайт отвечает
-// долго, а служба ждёт замок считаные секунды.
-func collectLocked() ipWork {
+// collectLocked — прочитать окно до until (мс) и разложить в место; под
+// collectMu. Запросы адреса — уже без замка сборщика: сайт отвечает долго, а
+// служба ждёт замок считаные секунды.
+func collectLocked(until int64) ipWork {
 	mu.Lock()
 	path, owner := target, targetOwner
 	before := changes
@@ -635,7 +648,7 @@ func collectLocked() ipWork {
 		return ipWork{}
 	}
 
-	w, ok := readWindow(owner, nowMs()-lagMs)
+	w, ok := readWindow(owner, until)
 	if !ok {
 		return ipWork{}
 	}
@@ -702,7 +715,7 @@ func (work ipWork) do() {
 
 func tick() {
 	collectMu.Lock()
-	work := collectLocked()
+	work := collectLocked(nowMs() - lagMs)
 	collectMu.Unlock()
 
 	work.do()
