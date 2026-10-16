@@ -30,7 +30,6 @@ class NoServersReasonTest {
         download = download,
         total = total,
         expire = expire,
-        updatedAt = now,
         imported = true,
         pending = false,
     )

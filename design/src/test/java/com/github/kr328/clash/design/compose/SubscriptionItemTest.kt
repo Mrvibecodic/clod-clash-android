@@ -20,7 +20,6 @@ class SubscriptionItemTest {
             download = 0,
             total = 0,
             expire = 0,
-            updatedAt = 0,
             imported = imported,
             pending = false,
         ),

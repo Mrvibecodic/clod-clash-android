@@ -83,7 +83,6 @@ fun delayMark(delay: Int, bounds: PingBounds): DelayMark = when {
 
 @Composable
 private fun delayLabel(mark: DelayMark, delay: Int, marksOnly: Boolean): String = when {
-    mark == DelayMark.Untested -> "—"
     mark == DelayMark.Dead -> if (marksOnly) "✕" else "—"
     marksOnly -> "✓"
     else -> stringResource(R.string.clod_delay_ms, delay)

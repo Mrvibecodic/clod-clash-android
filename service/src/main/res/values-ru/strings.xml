@@ -1,5 +1,4 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
-    <string name="clash_notification_content" translatable="false">"%1$s↑\t%2$s↓"</string>
 
     <string name="clash_service_status_channel">Состояние туннеля</string>
     <string name="clod_stop_channel">Остановка и сбои туннеля</string>
@@ -27,9 +26,7 @@
     <string name="format_update_failure">«%1$s»: %2$s</string>
     <string name="running">Запущен</string>
     <string name="loading">Загрузка</string>
-    <string name="clash_meta_for_android">Clod Clash</string>
     <string name="profiles_and_providers">Подписки и наборы</string>
-    <string name="configuration_yaml">Configuration.yaml</string>
     <string name="provider_files">Файлы наборов</string>
     <string name="clod_file_name_invalid">Недопустимое название файла: %1$s</string>
     <string name="clod_file_exists">Файл «%1$s» уже есть</string>

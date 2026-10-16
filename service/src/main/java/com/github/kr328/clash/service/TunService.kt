@@ -435,7 +435,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                         ProxyInfo.buildDirectProxy(
                             it.address.hostAddress,
                             it.port,
-                            HTTP_PROXY_BLACK_LIST + HTTP_PROXY_LOOPBACK_LIST + if (store.bypassPrivateNetwork) HTTP_PROXY_LOCAL_LIST else emptyList()
+                            HTTP_PROXY_LOOPBACK_LIST + if (store.bypassPrivateNetwork) HTTP_PROXY_LOCAL_LIST else emptyList()
                         )
                     )
                 }
@@ -492,6 +492,5 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             "172.31.*",
             "192.168.*"
         )
-        private val HTTP_PROXY_BLACK_LIST: List<String> = emptyList()
     }
 }

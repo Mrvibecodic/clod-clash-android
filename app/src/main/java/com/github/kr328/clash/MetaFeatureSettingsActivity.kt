@@ -11,7 +11,7 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.ui.ToastDuration
-import com.github.kr328.clash.util.clashDir
+import com.github.kr328.clash.common.util.clashDir
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select

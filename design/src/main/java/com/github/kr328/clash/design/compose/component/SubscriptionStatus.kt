@@ -220,15 +220,8 @@ private fun messageOf(reason: NoServersReason, panel: PanelInfo?, profile: Profi
 
     NoServersReason.DeviceNotIdentified -> stringResource(R.string.clod_no_servers_unidentified)
 
-    NoServersReason.Expired -> {
-        val expire = profile?.expire ?: 0
-
-        if (expire > 0) {
-            stringResource(R.string.clod_no_servers_expired_date, formatDate(expire))
-        } else {
-            stringResource(R.string.clod_no_servers_expired)
-        }
-    }
+    NoServersReason.Expired ->
+        stringResource(R.string.clod_no_servers_expired_date, formatDate(profile?.expire ?: 0))
 
     NoServersReason.Traffic -> {
         val refill = refillMillis(panel)

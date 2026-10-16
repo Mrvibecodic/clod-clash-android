@@ -172,7 +172,6 @@ private fun profile(
     download = used - used / 8,
     total = total,
     expire = expire,
-    updatedAt = System.currentTimeMillis() - fetchedAgo,
     imported = true,
     pending = false,
     secure = true,

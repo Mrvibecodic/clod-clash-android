@@ -5,6 +5,7 @@ import android.os.ParcelFileDescriptor
 import androidx.annotation.Keep
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.clashDir
 import kotlinx.coroutines.CompletableDeferred
 import java.io.File
 
@@ -22,7 +23,7 @@ object Bridge {
     external fun nativeStopTun()
     external fun nativeStartHttp(listenAt: String): String?
     external fun nativeStopHttp()
-    external fun nativeQueryGroupNames(excludeNotSelectable: Boolean): String?
+    external fun nativeQueryGroupNames(): String?
     external fun nativeQueryGroup(name: String): String?
     external fun nativeHealthCheck(completable: CompletableDeferred<Unit>, name: String)
     external fun nativeHealthCheckGroups(completable: CompletableDeferred<Unit>, request: String)
@@ -75,7 +76,7 @@ object Bridge {
         ParcelFileDescriptor.open(File(ctx.packageCodePath), ParcelFileDescriptor.MODE_READ_ONLY)
             .detachFd()
 
-        val home = ctx.filesDir.resolve("clash").apply { mkdirs() }.absolutePath
+        val home = ctx.clashDir.apply { mkdirs() }.absolutePath
         val versionName = ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: "unknown"
         val sdkVersion = Build.VERSION.SDK_INT
 

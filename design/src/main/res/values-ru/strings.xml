@@ -50,7 +50,6 @@
     <string name="exit_without_save_warning">Все изменения будут потеряны</string>
     <string name="clod_exit_discard">Выйти</string>
 
-    <string name="raw_cn" translatable="false">cn</string>
     <string name="disabled">Выключено</string>
     <string name="empty_name">Пустое название</string>
     <string name="invalid_url">Неверный URL</string>
@@ -535,7 +534,6 @@
     <string name="clod_no_servers_unidentified_title">Устройство не опознано</string>
     <string name="clod_no_servers_unidentified">Для этой подписки нужно опознание устройства. Включите «Опознавать это устройство» в настройках приложения.</string>
     <string name="clod_no_servers_expired_title">Подписка истекла</string>
-    <string name="clod_no_servers_expired">Срок подписки закончился. Продлите её — серверы вернутся при следующем обновлении.</string>
     <string name="clod_no_servers_expired_date">Срок подписки закончился (%1$s). Продлите её — серверы вернутся при следующем обновлении.</string>
     <string name="clod_no_servers_traffic_title">Трафик закончился</string>
     <string name="clod_no_servers_traffic">Трафик израсходован. Докупите или дождитесь обновления.</string>

@@ -23,7 +23,6 @@ class TrafficLimitTest {
         download = 0,
         total = total,
         expire = 0,
-        updatedAt = 0,
         imported = true,
         pending = false,
         quota = quota,

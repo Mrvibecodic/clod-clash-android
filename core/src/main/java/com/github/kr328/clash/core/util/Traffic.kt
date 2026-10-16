@@ -18,10 +18,6 @@ fun Traffic.trafficDownload(): String {
     return bytesDownload().toBytesString()
 }
 
-fun Traffic.trafficTotal(): String {
-    return (bytesUpload() + bytesDownload()).toBytesString()
-}
-
 private fun bytesTraffic(value: Long): Long {
     val scaled = scaleTraffic(value)
 

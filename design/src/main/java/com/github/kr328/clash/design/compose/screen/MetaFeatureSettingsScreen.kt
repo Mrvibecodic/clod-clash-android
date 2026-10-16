@@ -22,6 +22,7 @@ import com.github.kr328.clash.design.compose.component.LinesRow
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.ResetConfirmDialog
 import com.github.kr328.clash.design.compose.component.SelectRow
+import com.github.kr328.clash.design.compose.component.TriStateRow
 import com.github.kr328.clash.design.compose.component.UnreadableSettingsCard
 
 sealed interface MetaFeatureSettingsAction {
@@ -57,22 +58,6 @@ fun MetaFeatureSettingsScreen(
     val changed = { onAction(MetaFeatureSettingsAction.Changed) }
 
     val dontModify = stringResource(R.string.dont_modify)
-    val enabled = stringResource(R.string.enabled)
-    val disabled = stringResource(R.string.disabled)
-
-    val booleans = listOf(dontModify, enabled, disabled)
-
-    fun booleanIndex(value: Boolean?): Int = when (value) {
-        null -> 0
-        true -> 1
-        false -> 2
-    }
-
-    fun booleanValue(index: Int): Boolean? = when (index) {
-        1 -> true
-        2 -> false
-        else -> null
-    }
 
     ActivityScaffold(
         title = stringResource(R.string.meta_features),
@@ -121,23 +106,20 @@ fun MetaFeatureSettingsScreen(
 
             SectionHeader(stringResource(R.string.settings))
 
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.unified_delay),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.unifiedDelay),
-                onSelect = { configuration.unifiedDelay = booleanValue(it); changed() },
+                value = configuration.unifiedDelay,
+                onValue = { configuration.unifiedDelay = it; changed() },
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.geodata_mode),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.geodataMode),
-                onSelect = { configuration.geodataMode = booleanValue(it); changed() },
+                value = configuration.geodataMode,
+                onValue = { configuration.geodataMode = it; changed() },
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.tcp_concurrent),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.tcpConcurrent),
-                onSelect = { configuration.tcpConcurrent = booleanValue(it); changed() },
+                value = configuration.tcpConcurrent,
+                onValue = { configuration.tcpConcurrent = it; changed() },
             )
             SelectRow(
                 title = stringResource(R.string.find_process_mode),
@@ -166,11 +148,10 @@ fun MetaFeatureSettingsScreen(
 
             SectionHeader(stringResource(R.string.sniffer_setting))
 
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.strategy),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.enable),
-                onSelect = { configuration.sniffer.enable = booleanValue(it); changed() },
+                value = configuration.sniffer.enable,
+                onValue = { configuration.sniffer.enable = it; changed() },
             )
 
             val sniffing = configuration.sniffer.enable != false
@@ -181,14 +162,10 @@ fun MetaFeatureSettingsScreen(
                 onValues = { configuration.sniffer.sniff.http.ports = it; changed() },
                 enabled = sniffing,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.sniff_http_override_destination),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.sniff.http.overrideDestination),
-                onSelect = {
-                    configuration.sniffer.sniff.http.overrideDestination = booleanValue(it)
-                    changed()
-                },
+                value = configuration.sniffer.sniff.http.overrideDestination,
+                onValue = { configuration.sniffer.sniff.http.overrideDestination = it; changed() },
                 enabled = sniffing,
             )
             LinesRow(
@@ -197,14 +174,10 @@ fun MetaFeatureSettingsScreen(
                 onValues = { configuration.sniffer.sniff.tls.ports = it; changed() },
                 enabled = sniffing,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.sniff_tls_override_destination),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.sniff.tls.overrideDestination),
-                onSelect = {
-                    configuration.sniffer.sniff.tls.overrideDestination = booleanValue(it)
-                    changed()
-                },
+                value = configuration.sniffer.sniff.tls.overrideDestination,
+                onValue = { configuration.sniffer.sniff.tls.overrideDestination = it; changed() },
                 enabled = sniffing,
             )
             LinesRow(
@@ -213,35 +186,28 @@ fun MetaFeatureSettingsScreen(
                 onValues = { configuration.sniffer.sniff.quic.ports = it; changed() },
                 enabled = sniffing,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.sniff_quic_override_destination),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.sniff.quic.overrideDestination),
-                onSelect = {
-                    configuration.sniffer.sniff.quic.overrideDestination = booleanValue(it)
-                    changed()
-                },
+                value = configuration.sniffer.sniff.quic.overrideDestination,
+                onValue = { configuration.sniffer.sniff.quic.overrideDestination = it; changed() },
                 enabled = sniffing,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.force_dns_mapping),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.forceDnsMapping),
-                onSelect = { configuration.sniffer.forceDnsMapping = booleanValue(it); changed() },
+                value = configuration.sniffer.forceDnsMapping,
+                onValue = { configuration.sniffer.forceDnsMapping = it; changed() },
                 enabled = sniffing,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.parse_pure_ip),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.parsePureIp),
-                onSelect = { configuration.sniffer.parsePureIp = booleanValue(it); changed() },
+                value = configuration.sniffer.parsePureIp,
+                onValue = { configuration.sniffer.parsePureIp = it; changed() },
                 enabled = sniffing,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.override_destination),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.sniffer.overrideDestination),
-                onSelect = { configuration.sniffer.overrideDestination = booleanValue(it); changed() },
+                value = configuration.sniffer.overrideDestination,
+                onValue = { configuration.sniffer.overrideDestination = it; changed() },
                 enabled = sniffing,
             )
             LinesRow(

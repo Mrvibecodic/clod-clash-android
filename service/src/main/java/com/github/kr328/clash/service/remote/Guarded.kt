@@ -59,8 +59,8 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
     override fun queryTrafficTotal(): Long =
         guardSync("queryTrafficTotal") { delegate.queryTrafficTotal() }
 
-    override fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames =
-        guardSync("queryProxyGroupNames") { delegate.queryProxyGroupNames(excludeNotSelectable) }
+    override fun queryProxyGroupNames(): ProxyGroupNames =
+        guardSync("queryProxyGroupNames") { delegate.queryProxyGroupNames() }
 
     override fun queryProxyGroup(name: String): ProxyGroup =
         guardSync("queryProxyGroup") { delegate.queryProxyGroup(name) }

@@ -5,6 +5,7 @@ import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.common.util.GeoAssets
+import com.github.kr328.clash.common.util.clashDir
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.update.Updater
 import kotlinx.coroutines.Dispatchers

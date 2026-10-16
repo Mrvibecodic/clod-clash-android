@@ -167,6 +167,41 @@ fun SelectRow(
 }
 
 @Composable
+fun TriStateRow(
+    title: String,
+    value: Boolean?,
+    onValue: (Boolean?) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    options: List<String> = listOf(
+        stringResource(R.string.dont_modify),
+        stringResource(R.string.enabled),
+        stringResource(R.string.disabled),
+    ),
+) {
+    SelectRow(
+        title = title,
+        options = options,
+        selectedIndex = when (value) {
+            null -> 0
+            true -> 1
+            false -> 2
+        },
+        onSelect = {
+            onValue(
+                when (it) {
+                    1 -> true
+                    2 -> false
+                    else -> null
+                },
+            )
+        },
+        modifier = modifier,
+        enabled = enabled,
+    )
+}
+
+@Composable
 internal fun iconTint(enabled: Boolean) = if (enabled) {
     MaterialTheme.colorScheme.primary
 } else {

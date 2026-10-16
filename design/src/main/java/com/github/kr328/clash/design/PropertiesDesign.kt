@@ -14,6 +14,7 @@ import com.github.kr328.clash.design.compose.screen.isValidSource
 import com.github.kr328.clash.design.compose.screen.nameField
 import com.github.kr328.clash.design.compose.screen.withNameField
 import com.github.kr328.clash.design.model.ChannelStage
+import com.github.kr328.clash.design.model.text
 import com.github.kr328.clash.design.util.Confirmation
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.service.model.Profile
@@ -106,7 +107,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
     suspend fun setImporting(status: FetchStatus?, stage: ChannelStage? = null) {
         val progress = status?.toProgress() ?: FetchProgress(context.getString(R.string.initializing))
 
-        setProgress(progress.copy(stage = stage?.let(::stageText).orEmpty()))
+        setProgress(progress.copy(stage = stage?.text(context).orEmpty()))
     }
 
     // Канал включали, а он не ответил: переключатель обратно в «выкл».
@@ -114,12 +115,6 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         withContext(Dispatchers.Main) {
             state = state.copy(secure = on)
         }
-    }
-
-    private fun stageText(stage: ChannelStage): String = when (stage) {
-        ChannelStage.Checking -> context.getString(R.string.clod_chan_stage_checking)
-        is ChannelStage.Retry -> context.getString(R.string.clod_chan_stage_retry, stage.attempt, stage.total)
-        ChannelStage.Plain -> context.getString(R.string.clod_chan_stage_plain)
     }
 
     suspend fun clearImporting() {
@@ -151,24 +146,13 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         requests.trySend(request)
     }
 
-    private fun FetchStatus.toProgress(): FetchProgress = when (action) {
-        FetchStatus.Action.FetchConfiguration -> FetchProgress(
-            text = context.getString(R.string.format_fetching_configuration, args[0]),
+    private fun FetchStatus.toProgress(): FetchProgress {
+        val label = text(context) ?: return state.processing ?: FetchProgress(context.getString(R.string.initializing))
+
+        return FetchProgress(
+            text = label,
+            progress = if (action == FetchStatus.Action.FetchConfiguration) -1f else fraction(),
         )
-        FetchStatus.Action.FetchProviders -> FetchProgress(
-            text = context.getString(R.string.format_fetching_provider, args.firstOrNull().orEmpty()),
-            progress = fraction(),
-        )
-        FetchStatus.Action.ProviderFailed -> FetchProgress(
-            text = context.getString(R.string.clod_provider_failed, args.firstOrNull().orEmpty()),
-            progress = fraction(),
-        )
-        FetchStatus.Action.Verifying -> FetchProgress(
-            text = context.getString(R.string.verifying),
-            progress = fraction(),
-        )
-        FetchStatus.Action.SubscriptionInfo -> state.processing
-            ?: FetchProgress(context.getString(R.string.initializing))
     }
 
     private fun FetchStatus.fraction(): Float =

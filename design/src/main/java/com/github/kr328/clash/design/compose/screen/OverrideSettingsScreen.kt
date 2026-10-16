@@ -27,6 +27,7 @@ import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.ResetConfirmDialog
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.TextRow
+import com.github.kr328.clash.design.compose.component.TriStateRow
 import com.github.kr328.clash.design.compose.component.UnreadableSettingsCard
 
 sealed interface OverrideSettingsAction {
@@ -61,22 +62,7 @@ fun OverrideSettingsScreen(
     val changed = { onAction(OverrideSettingsAction.Changed) }
 
     val dontModify = stringResource(R.string.dont_modify)
-    val enabled = stringResource(R.string.enabled)
     val disabled = stringResource(R.string.disabled)
-
-    val booleans = listOf(dontModify, enabled, disabled)
-
-    fun booleanIndex(value: Boolean?): Int = when (value) {
-        null -> 0
-        true -> 1
-        false -> 2
-    }
-
-    fun booleanValue(index: Int): Boolean? = when (index) {
-        1 -> true
-        2 -> false
-        else -> null
-    }
 
     ActivityScaffold(
         title = stringResource(R.string.override),
@@ -155,17 +141,15 @@ fun OverrideSettingsScreen(
                 values = configuration.authentication,
                 onValues = { configuration.authentication = it; changed() },
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.allow_lan),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.allowLan),
-                onSelect = { configuration.allowLan = booleanValue(it); changed() },
+                value = configuration.allowLan,
+                onValue = { configuration.allowLan = it; changed() },
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.ipv6),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.ipv6),
-                onSelect = { configuration.ipv6 = booleanValue(it); changed() },
+                value = configuration.ipv6,
+                onValue = { configuration.ipv6 = it; changed() },
             )
             TextRow(
                 title = stringResource(R.string.bind_address),
@@ -190,14 +174,10 @@ fun OverrideSettingsScreen(
                 values = configuration.externalControllerCors.allowOrigins,
                 onValues = { configuration.externalControllerCors.allowOrigins = it; changed() },
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.allow_private_network),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.externalControllerCors.allowPrivateNetwork),
-                onSelect = {
-                    configuration.externalControllerCors.allowPrivateNetwork = booleanValue(it)
-                    changed()
-                },
+                value = configuration.externalControllerCors.allowPrivateNetwork,
+                onValue = { configuration.externalControllerCors.allowPrivateNetwork = it; changed() },
             )
             TextRow(
                 title = stringResource(R.string.secret),
@@ -283,24 +263,23 @@ fun OverrideSettingsScreen(
 
             SectionHeader(stringResource(R.string.dns))
 
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.strategy),
+                value = configuration.dns.enable,
+                onValue = { configuration.dns.enable = it; changed() },
                 options = listOf(
                     dontModify,
                     stringResource(R.string.force_enable),
                     stringResource(R.string.use_built_in),
                 ),
-                selectedIndex = booleanIndex(configuration.dns.enable),
-                onSelect = { configuration.dns.enable = booleanValue(it); changed() },
             )
 
             val dnsEditable = configuration.dns.enable != false
 
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.prefer_h3),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.dns.preferH3),
-                onSelect = { configuration.dns.preferH3 = booleanValue(it); changed() },
+                value = configuration.dns.preferH3,
+                onValue = { configuration.dns.preferH3 = it; changed() },
                 enabled = dnsEditable,
             )
             TextRow(
@@ -310,25 +289,22 @@ fun OverrideSettingsScreen(
                 onValue = { configuration.dns.listen = it; changed() },
                 enabled = dnsEditable,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.append_system_dns),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.app.appendSystemDns),
-                onSelect = { configuration.app.appendSystemDns = booleanValue(it); changed() },
+                value = configuration.app.appendSystemDns,
+                onValue = { configuration.app.appendSystemDns = it; changed() },
                 enabled = dnsEditable,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.ipv6),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.dns.ipv6),
-                onSelect = { configuration.dns.ipv6 = booleanValue(it); changed() },
+                value = configuration.dns.ipv6,
+                onValue = { configuration.dns.ipv6 = it; changed() },
                 enabled = dnsEditable,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.use_hosts),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.dns.useHosts),
-                onSelect = { configuration.dns.useHosts = booleanValue(it); changed() },
+                value = configuration.dns.useHosts,
+                onValue = { configuration.dns.useHosts = it; changed() },
                 enabled = dnsEditable,
             )
             SelectRow(
@@ -405,11 +381,10 @@ fun OverrideSettingsScreen(
                 },
                 enabled = dnsEditable,
             )
-            SelectRow(
+            TriStateRow(
                 title = stringResource(R.string.geoip_fallback),
-                options = booleans,
-                selectedIndex = booleanIndex(configuration.dns.fallbackFilter.geoIp),
-                onSelect = { configuration.dns.fallbackFilter.geoIp = booleanValue(it); changed() },
+                value = configuration.dns.fallbackFilter.geoIp,
+                onValue = { configuration.dns.fallbackFilter.geoIp = it; changed() },
                 enabled = dnsEditable,
             )
             TextRow(

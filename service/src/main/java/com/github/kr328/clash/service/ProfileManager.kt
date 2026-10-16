@@ -207,7 +207,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
             download = download,
             total = total,
             expire = expire,
-            updatedAt = fetchedAt.takeIf { it > 0 } ?: draftWrittenAt(uuid),
             imported = imported != null,
             pending = pending != null,
             secure = if (pending != null) pending.secure else imported?.secure ?: false,
@@ -218,11 +217,6 @@ class ProfileManager(private val context: Context) : IProfileManager,
             importedSecure = imported?.secure ?: false,
         )
     }
-
-    // updatedAt читает только главная — как метку свежести логотипа, а логотип
-    // меняется лишь вместе с config.yaml: обход всей папки ради неё не нужен.
-    private fun draftWrittenAt(uuid: UUID): Long =
-        context.pendingDir.resolve(uuid.toString()).resolve("config.yaml").lastModified().takeIf { it > 0 } ?: -1
 
     private suspend fun scheduleUpdate(uuid: UUID, startImmediately: Boolean) {
         val imported = ImportedDao().queryByUUID(uuid) ?: return

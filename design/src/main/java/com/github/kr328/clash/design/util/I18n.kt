@@ -25,21 +25,8 @@ fun localeCollator(): Collator {
     return collator
 }
 
-@JvmOverloads
-fun Date.format(
-    context: Context,
-    includeDate: Boolean = true,
-    includeTime: Boolean = true,
-): String {
+fun Date.format(context: Context, includeDate: Boolean = true): String {
     val locale = context.resources.configuration.preferredLocale
 
-    return when {
-        includeDate && includeTime ->
-            SimpleDateFormat(DATE_ALL, locale).format(this)
-        includeDate ->
-            SimpleDateFormat(DATE_DATE_ONLY, locale).format(this)
-        includeTime ->
-            SimpleDateFormat(DATE_TIME_ONLY, locale).format(this)
-        else -> ""
-    }
+    return SimpleDateFormat(if (includeDate) DATE_ALL else DATE_TIME_ONLY, locale).format(this)
 }

@@ -220,7 +220,7 @@ object GeoAssets {
     }
 
     private fun extractAll(context: Context) {
-        val dir = File(context.filesDir, "clash")
+        val dir = context.clashDir
 
         dir.mkdirs()
 

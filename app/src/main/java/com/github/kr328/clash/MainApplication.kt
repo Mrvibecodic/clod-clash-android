@@ -15,7 +15,7 @@ import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendServiceRecreated
 import com.github.kr328.clash.update.UpdateNotice
-import com.github.kr328.clash.util.clashDir
+import com.github.kr328.clash.common.util.clashDir
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 

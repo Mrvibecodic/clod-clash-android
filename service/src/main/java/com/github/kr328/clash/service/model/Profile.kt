@@ -22,7 +22,6 @@ data class Profile(
     val download: Long,
     val total: Long,
     val expire: Long,
-    val updatedAt: Long,
     val imported: Boolean,
     val pending: Boolean,
     val secure: Boolean = false,

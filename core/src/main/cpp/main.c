@@ -143,11 +143,10 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeStopHttp(JNIEnv *env, jobje
 }
 
 JNIEXPORT jstring JNICALL
-Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryGroupNames(JNIEnv *env, jobject thiz,
-                                                                     jboolean exclude_not_selectable) {
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryGroupNames(JNIEnv *env, jobject thiz) {
     TRACE_METHOD();
 
-    scoped_string response = queryGroupNames((int) exclude_not_selectable);
+    scoped_string response = queryGroupNames();
 
     if (response == NULL)
         return NULL;

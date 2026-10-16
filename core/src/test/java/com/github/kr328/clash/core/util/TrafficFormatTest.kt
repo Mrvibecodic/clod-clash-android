@@ -57,20 +57,6 @@ class TrafficFormatTest {
     }
 
     @Test
-    fun `итог складывает обе половины до перевода в строку`() {
-        val traffic = packed(upload = scaled(2, 500), download = scaled(2, 700))
-
-        assertEquals("12.0 MiB", traffic.trafficTotal())
-    }
-
-    @Test
-    fun `итог поднимается на единицу выше, когда половины складываются`() {
-        val traffic = packed(upload = scaled(3, 600), download = scaled(3, 600))
-
-        assertEquals("12.0 GiB", traffic.trafficTotal())
-    }
-
-    @Test
     fun `старший бит приёма не уезжает в отдачу`() {
         val traffic = packed(upload = scaled(0, 1), download = scaled(3, 1000))
 

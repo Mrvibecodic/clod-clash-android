@@ -1413,7 +1413,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     // другой подписки убираются, причина — в уведомлении. panelRunning не
     // выставляется, и следующая перезагрузка панели повторит запрос.
     private suspend fun MainDesign.queryLiveGroupNames(): ProxyGroupNames? = try {
-        withClash { queryProxyGroupNames(true) }
+        withClash { queryProxyGroupNames() }
     } catch (e: CancellationException) {
         throw e
     } catch (e: ServiceUnavailableException) {

@@ -11,6 +11,7 @@ import com.github.kr328.clash.design.compose.screen.AddProfileScreen
 import com.github.kr328.clash.design.compose.screen.AddProfileState
 import com.github.kr328.clash.design.compose.screen.AddProfileStep
 import com.github.kr328.clash.design.model.ChannelStage
+import com.github.kr328.clash.design.model.text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -53,12 +54,7 @@ class AddProfileDesign(
     // Шаг защищённого канала: строка над ходом загрузки, чтобы было видно,
     // что сейчас происходит — проверка канала, повтор или обычный путь.
     suspend fun setStage(stage: ChannelStage?) {
-        val text = when (stage) {
-            null -> ""
-            ChannelStage.Checking -> context.getString(R.string.clod_chan_stage_checking)
-            is ChannelStage.Retry -> context.getString(R.string.clod_chan_stage_retry, stage.attempt, stage.total)
-            ChannelStage.Plain -> context.getString(R.string.clod_chan_stage_plain)
-        }
+        val text = stage?.text(context).orEmpty()
 
         withContext(Dispatchers.Main) {
             state = state.copy(step = AddProfileStep.Fetching, stageText = text)
@@ -72,19 +68,7 @@ class AddProfileDesign(
     }
 
     suspend fun setProgress(status: FetchStatus) {
-        val text = when (status.action) {
-            FetchStatus.Action.FetchConfiguration ->
-                context.getString(R.string.format_fetching_configuration, status.args.firstOrNull().orEmpty())
-
-            FetchStatus.Action.FetchProviders ->
-                context.getString(R.string.format_fetching_provider, status.args.firstOrNull().orEmpty())
-
-            FetchStatus.Action.ProviderFailed ->
-                context.getString(R.string.clod_provider_failed, status.args.firstOrNull().orEmpty())
-
-            FetchStatus.Action.Verifying -> context.getString(R.string.verifying)
-            FetchStatus.Action.SubscriptionInfo -> null
-        } ?: return
+        val text = status.text(context) ?: return
 
         val progress = if (status.max > 0) status.progress.toFloat() / status.max else 0f
 

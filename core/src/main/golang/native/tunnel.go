@@ -34,10 +34,10 @@ func queryTotal(upload, download *C.uint64_t) {
 }
 
 //export queryGroupNames
-func queryGroupNames(excludeNotSelectable C.int) (result *C.char) {
+func queryGroupNames() (result *C.char) {
 	defer guard("queryGroupNames", func() {})()
 
-	return marshalJson(tunnel.QueryProxyGroupNames(excludeNotSelectable != 0))
+	return marshalJson(tunnel.QueryProxyGroupNames())
 }
 
 //export queryGroup

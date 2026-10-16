@@ -56,7 +56,7 @@ type ProxyGroupNames struct {
 	Profile string `json:"profile,omitempty"`
 }
 
-func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
+func QueryProxyGroupNames() *ProxyGroupNames {
 	seq := config.ApplySeq()
 
 	mode := tunnel.Mode()
@@ -132,7 +132,7 @@ func QueryProxyGroupNames(excludeNotSelectable bool) *ProxyGroupNames {
 	}
 
 	names := all
-	if excludeNotSelectable && len(selectable) > 0 {
+	if len(selectable) > 0 {
 		names = selectable
 	}
 

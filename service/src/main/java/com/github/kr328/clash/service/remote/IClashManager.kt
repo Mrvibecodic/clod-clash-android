@@ -8,7 +8,7 @@ import java.util.UUID
 @BinderInterface
 interface IClashManager {
     fun queryTrafficTotal(): Long
-    fun queryProxyGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames
+    fun queryProxyGroupNames(): ProxyGroupNames
     fun queryProxyGroup(name: String): ProxyGroup
     fun queryProviders(): ProviderList
 

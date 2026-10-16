@@ -14,7 +14,7 @@
         <service
             android:name=".ClashService"
             android:exported="false"
-            android:label="@string/clash_meta_for_android"
+            android:label="@string/launch_name"
             android:process=":background"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -23,7 +23,7 @@
         <service
             android:name=".TunService"
             android:exported="false"
-            android:label="@string/clash_meta_for_android"
+            android:label="@string/launch_name"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:process=":background"
             android:foregroundServiceType="specialUse">

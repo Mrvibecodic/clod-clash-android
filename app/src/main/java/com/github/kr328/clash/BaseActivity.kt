@@ -217,13 +217,9 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         events.trySend(Event.ProfileChanged(uuid))
     }
 
-    override fun onProfileUpdateStarted(uuid: UUID?) {
-        events.trySend(Event.ProfileUpdateStarted)
-    }
+    override fun onProfileUpdateStarted(uuid: UUID?) = Unit
 
     override fun onProfileUpdateCompleted(uuid: UUID?, warning: String?) {
-        events.trySend(Event.ProfileUpdateCompleted)
-
         if (warning == null || !activityStarted) return
 
         launch {
@@ -232,8 +228,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     }
 
     override fun onProfileUpdateFailed(uuid: UUID?, reason: String?) {
-        events.trySend(Event.ProfileUpdateFailed)
-
         if (reason == null || !activityStarted) return
 
         val human = humanizeUpdateFailure(reason)
@@ -350,9 +344,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         data object ClashStart : Event
         data object ProfileLoaded : Event
         data class ProfileChanged(val uuid: UUID?) : Event
-        data object ProfileUpdateStarted : Event
-        data object ProfileUpdateCompleted : Event
-        data object ProfileUpdateFailed : Event
         data class FreezeMarksChanged(val uuid: UUID?) : Event
         data object HiddenServersChanged : Event
     }

@@ -196,7 +196,7 @@ private fun LogRow(message: LogMessage, onCopy: () -> Unit) {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = message.time.format(context, includeDate = false, includeTime = true),
+                text = message.time.format(context, includeDate = false),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )

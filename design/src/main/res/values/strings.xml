@@ -545,7 +545,6 @@
     <string name="clod_no_servers_unidentified_title">Device not identified</string>
     <string name="clod_no_servers_unidentified">This subscription needs the device to be identified. Turn on “Identify this device” in app settings.</string>
     <string name="clod_no_servers_expired_title">Subscription expired</string>
-    <string name="clod_no_servers_expired">The subscription has expired. Renew it and the servers come back with the next update.</string>
     <string name="clod_no_servers_expired_date">The subscription expired on %1$s. Renew it and the servers come back with the next update.</string>
     <string name="clod_no_servers_traffic_title">Out of traffic</string>
     <string name="clod_no_servers_traffic">The traffic is used up. Buy more, or wait for the next reset.</string>

@@ -134,8 +134,8 @@ object Clash {
 
     // Нет ответа — ошибка, а не «групп нет»: пустой ответ при живом ядре уводит
     // экран в офлайн-список, где выбор узла к ядру не применяется.
-    fun queryGroupNames(excludeNotSelectable: Boolean): ProxyGroupNames {
-        val json = Bridge.nativeQueryGroupNames(excludeNotSelectable)
+    fun queryGroupNames(): ProxyGroupNames {
+        val json = Bridge.nativeQueryGroupNames()
             ?: throw IllegalStateException("the core returned no group list")
 
         return decodeGroupNames(json)
@@ -195,7 +195,7 @@ object Clash {
     }
 
     // cellular — сеть мобильная: без неё серверы только для мобильной сети не проверяются
-    fun testProfileDelays(path: File, cellular: Boolean = true): String {
+    fun testProfileDelays(path: File, cellular: Boolean): String {
         return Bridge.nativeTestProfileDelays(path.absolutePath, cellular) ?: "{}"
     }
 

@@ -783,7 +783,7 @@ private fun MainHeader(
 ) {
     val profileName = active?.title
     val logoPath = active?.logoPath
-    val logoVersion = active?.profile?.updatedAt ?: 0L
+    val logoVersion = active?.profile?.fetchedAt ?: 0L
 
     Row(
         modifier = Modifier
@@ -1033,8 +1033,7 @@ private fun QuotaCards(item: SubscriptionItem) {
         if (profile.expire > 0) {
             QuotaCard(
                 label = stringResource(R.string.clod_quota_expiry),
-                value = expiryLeft(profile.expire, now)
-                    ?: stringResource(R.string.clod_sub_expired),
+                value = expiryLeft(profile.expire, now).orEmpty(),
                 progress = null,
                 note = expiryDate(profile.expire, now),
                 modifier = Modifier
