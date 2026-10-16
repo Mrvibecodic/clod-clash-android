@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/url"
 	"strings"
-	"time"
 
 	"cfa/native/config"
 	"cfa/native/config/groups"
@@ -232,11 +231,10 @@ func shownNode(g outboundgroup.ProxyGroup) (C.Proxy, outboundgroup.ProxyGroup) {
 	return nil, nil
 }
 
-// shownDelay — задержка px, как её показывает список, и время этого замера:
-// адресом url, а если им не мерили — первым по алфавиту из прочих. Не мерили
-// вовсе — 0 (интерфейс покажет «—») и нулевое время; 0xffff ядро отдаёт и
-// мёртвому, и не промеренному
-func shownDelay(px C.Proxy, url string) (int, time.Time) {
+// shownDelay — задержка px, как её показывает список: адресом url, а если им
+// не мерили — первым по алфавиту из прочих. Не мерили вовсе — 0 (интерфейс
+// покажет «—»); 0xffff ядро отдаёт и мёртвому, и не промеренному
+func shownDelay(px C.Proxy, url string) int {
 	histories := px.ExtraDelayHistories()
 
 	if _, ok := histories[url]; !ok {
@@ -249,18 +247,13 @@ func shownDelay(px C.Proxy, url string) (int, time.Time) {
 		}
 
 		if fallback == "" {
-			return 0, time.Time{}
+			return 0
 		}
 
 		url = fallback
 	}
 
-	var at time.Time
-	if history := histories[url].History; len(history) > 0 {
-		at = history[len(history)-1].Time
-	}
-
-	return int(px.LastDelayForTestUrl(url)), at
+	return int(px.LastDelayForTestUrl(url))
 }
 
 func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
@@ -426,18 +419,15 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			testURL = C.DefaultTestURL
 		}
 
-		delay, at := shownDelay(p, testURL)
+		delay := shownDelay(p, testURL)
 
 		group, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
 		// Вложенная группа показывает задержку узла, на котором стоит сейчас, —
-		// ту же цифру, что видна внутри неё, — если её собственный замер (через
-		// неё к тому же узлу) не свежее
+		// ту же цифру, что видна внутри неё
 		if nodeDelays && isGroup {
 			if node, owner := shownNode(group); node != nil {
-				if d, t := shownDelay(node, GroupTestURL(owner)); t.After(at) {
-					delay = d
-				}
+				delay = shownDelay(node, GroupTestURL(owner))
 			}
 		}
 

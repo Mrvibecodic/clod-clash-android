@@ -353,7 +353,20 @@ func healthCheckGroup(pool *probePool, name string) error {
 	targets := make([]checkTarget, 0, len(proxies))
 
 	for _, px := range proxies {
-		targets = append(targets, checkTarget{proxy: px, url: url, status: statusKey, expected: expectedStatus, first: px.Name() == now})
+		first := px.Name() == now
+
+		// У select вложенная группа показывает задержку своего текущего узла:
+		// пробуется он, адресом своей группы, — иначе цифра в списке не обновится
+		if inner, isGroup := px.Adapter().(outboundgroup.ProxyGroup); isGroup && g.Type() == C.Selector {
+			if node, owner := shownNode(inner); node != nil {
+				nodeURL, nodeStatus, nodeExpected := groupCheckOptions(owner)
+				targets = append(targets, checkTarget{proxy: node, url: nodeURL, status: nodeStatus, expected: nodeExpected, first: first})
+
+				continue
+			}
+		}
+
+		targets = append(targets, checkTarget{proxy: px, url: url, status: statusKey, expected: expectedStatus, first: first})
 	}
 
 	log.Infoln("Health check `%s`: %d proxies via %s", name, len(proxies), url)
