@@ -57,6 +57,26 @@ When a subscription is added, the app first tries the secure channel of
 if the provider has no channel, the subscription is loaded with a plain HTTPS request. The user
 can turn the channel off in the subscription properties and on again.
 
+Without the middleware, your server answers the channel request (the `/c1/…` path on the
+subscription domain), and that answer decides whether the subscription is added:
+
+| Answer to an unknown path | What the app does |
+| --- | --- |
+| 404 or 410 | loads the subscription the plain way right away |
+| another 4xx code | tries the channel twice more; if all three attempts got that answer — the plain way |
+| connection closed with no answer (for example, nginx `return 444`) | same as another 4xx code |
+| 5xx (for example, 502 from a reverse proxy) | treats it as a failure on the way: after three attempts the subscription is not added |
+
+Check what the subscription domain returns for any unknown path — it must not be a 5xx:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' https://sub.example.com/c1/test
+```
+
+`404` is fine. `000` with the error `Empty reply from server` means the connection was closed
+with no answer — also fine. `502` and other 5xx — fix the reverse proxy so that it answers
+unknown paths with 404.
+
 A subscription with the channel sends a node quality report after a scheduled refresh (and
 between refreshes if they are less frequent than every 6 hours or turned off, at most once every 6 hours):
 latency and "16–20" results per node, traffic, the kind of network and the external address the
