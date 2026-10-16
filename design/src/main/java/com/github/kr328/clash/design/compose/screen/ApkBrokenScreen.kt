@@ -53,7 +53,7 @@ fun ApkBrokenScreen(
             ActionRow(
                 title = stringResource(R.string.github_releases),
                 icon = painterResource(R.drawable.ic_baseline_get_app),
-                subtitle = stringResource(R.string.meta_github_url),
+                subtitle = stringResource(R.string.meta_github_url) + RELEASES_PATH,
                 onClick = { onAction(ApkBrokenAction.OpenReleases) },
             )
 
@@ -61,3 +61,6 @@ fun ApkBrokenScreen(
         }
     }
 }
+
+// Страница выпусков с APK, а не главная страница репозитория
+internal const val RELEASES_PATH = "/releases/latest"

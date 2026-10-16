@@ -74,9 +74,10 @@ fun SyncIconButton(
     val warn = ClodTheme.extraColors.statusConnecting
     val lit = highlight && !spinning
 
+    // Во время обновления кнопка не выключается, а молчит: выключенная теряет
+    // фокус, и на ТВ пульт уходит неизвестно куда
     IconButton(
-        onClick = onClick,
-        enabled = !spinning,
+        onClick = { if (!spinning) onClick() },
         modifier = if (lit) modifier.border(2.dp, warn, CircleShape) else modifier,
         colors = if (lit) {
             IconButtonDefaults.iconButtonColors(

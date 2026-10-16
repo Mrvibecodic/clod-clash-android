@@ -221,6 +221,12 @@ class MainDesign(
         }
     }
 
+    suspend fun showFreezeSheet() {
+        withContext(Dispatchers.Main) {
+            state = state.copy(freezeSheet = true)
+        }
+    }
+
     suspend fun setReliability(batteryIgnored: Boolean, alwaysOn: Boolean?, prompt: Boolean? = null) {
         withContext(Dispatchers.Main) {
             state = state.copy(
@@ -320,6 +326,13 @@ class MainDesign(
     val selectedSubscriptionGroup: String?
         get() = state.subscriptions.selectedGroup
 
+    // Открытые листы переживают пересоздание экрана
+    val freezeSheetOpen: Boolean
+        get() = state.freezeSheet
+
+    val reliabilityPromptOpen: Boolean
+        get() = state.reliability.prompt
+
     suspend fun setProxyGroupNames(
         names: List<String>,
         offline: Boolean = false,
@@ -336,6 +349,7 @@ class MainDesign(
                     now = "",
                     selectable = false,
                     proxies = emptyList(),
+                    read = false,
                 )
             }
             state = state.copy(
@@ -385,8 +399,21 @@ class MainDesign(
                             pinned = pinned,
                             proxies = proxies.filterNot { state.active?.panel?.hides(it.name) == true },
                             allHidden = allHidden,
+                            read = true,
                         )
                     },
+                ),
+            )
+        }
+    }
+
+    // Группа не прочиталась: прежний список (если был) остаётся, но «Серверы»
+    // не ждут её без конца
+    suspend fun markProxyGroupRead(name: String) {
+        withContext(Dispatchers.Main) {
+            state = state.copy(
+                servers = state.servers.copy(
+                    groups = state.servers.groups.map { if (it.name == name) it.copy(read = true) else it },
                 ),
             )
         }
@@ -425,6 +452,15 @@ class MainDesign(
         }
     }
 
+    // Часы карточек подписок: сдвигаются с каждым чтением подписок и раз в
+    // минуту, пока экран виден. Не раньше данных: вчерашняя подписка при
+    // сегодняшних часах показала бы ложное «Не обновилась»
+    suspend fun tickClock() {
+        withContext(Dispatchers.Main) {
+            state = state.copy(clock = System.currentTimeMillis())
+        }
+    }
+
     suspend fun setDismissedPromo(profile: UUID?, stored: String) {
         withContext(Dispatchers.Main) {
             state = state.copy(dismissedPromo = profile?.let { dismissedPromos[it] } ?: stored)
@@ -455,7 +491,16 @@ class MainDesign(
                     profiles = profiles,
                     selectedGroup = group,
                 ),
+                clock = System.currentTimeMillis(),
             )
+        }
+    }
+
+    // Первое чтение закончилось (удачно или нет): дальше «Серверы» показывают,
+    // что есть, а не ожидание
+    suspend fun markLoaded() {
+        withContext(Dispatchers.Main) {
+            state = state.copy(loaded = true)
         }
     }
 

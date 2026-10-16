@@ -175,7 +175,9 @@ fun PropertiesScreen(
                 OutlinedTextField(
                     value = state.url,
                     onValueChange = { onAction(PropertiesAction.UrlChanged(it)) },
-                    label = { Text(stringResource(R.string.url)) },
+                    label = {
+                        Text(stringResource(if (state.type == Profile.Type.Url) R.string.clod_sub_url_label else R.string.url))
+                    },
                     placeholder = if (state.urlEditable) {
                         { Text(stringResource(R.string.accept_http_content)) }
                     } else {
@@ -315,7 +317,14 @@ private fun SecureChannelRow(on: Boolean, chanKey: String, enabled: Boolean, onC
             Text(
                 text = stringResource(if (on) R.string.clod_secure_channel_on else R.string.clod_secure_channel_off),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (on) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            // Канал путают с HTTPS: нужна поддержка провайдера
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.clod_secure_channel_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (on && chanKey.isNotBlank()) {
                 Spacer(Modifier.height(2.dp))
@@ -383,7 +392,7 @@ private fun Tip(type: Profile.Type) {
 private fun ProgressDialog(progress: FetchProgress) {
     AlertDialog(
         onDismissRequest = {},
-        title = { Text(stringResource(R.string.save)) },
+        title = { Text(stringResource(R.string.clod_saving)) },
         text = {
             Column {
                 if (progress.stage.isNotBlank()) {

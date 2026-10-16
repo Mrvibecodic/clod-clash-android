@@ -137,11 +137,11 @@ private fun Context.notifyAlert(uuid: UUID, alert: SubscriptionAlert, name: Stri
 
     val title = when (alert) {
         is SubscriptionAlert.Expired -> getString(R.string.clod_alert_expired)
-        is SubscriptionAlert.ExpiresIn -> resources.getQuantityString(
-            R.plurals.clod_alert_expires_in,
-            alert.days,
-            alert.days,
-        )
+        is SubscriptionAlert.ExpiresIn -> if (alert.days > 0) {
+            resources.getQuantityString(R.plurals.clod_alert_expires_in, alert.days, alert.days)
+        } else {
+            getString(R.string.clod_alert_last_day)
+        }
 
         is SubscriptionAlert.TrafficUsed -> getString(R.string.clod_alert_traffic, alert.percent)
     }

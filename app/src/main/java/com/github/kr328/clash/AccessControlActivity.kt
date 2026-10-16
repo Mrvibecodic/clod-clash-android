@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.Global
@@ -29,6 +30,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -42,34 +45,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
 
         this.current = selected
 
-        defer {
-            // Через очередь настроек: отпечаток считается по режиму и списку уже
-            // после всех записей, сделанных на экране.
-            val changed = ServiceSettings.access {
-                accessControlPackages = selected.toSet()
-
-                accessControlFingerprint(accessControlMode, selected) != accessControlApplied
-            }
-
-            val restart = changed && uiStore.enableVpn && withContext(Dispatchers.IO) {
-                StatusClient(this@AccessControlActivity).isActive()
-            }
-            if (restart) {
-                val app = applicationContext
-
-                Global.launch(Dispatchers.IO) {
-                    app.stopClashService()
-                    withTimeoutOrNull(10_000) {
-                        while (StatusClient(app).isActive()) {
-                            delay(200)
-                        }
-                    }
-                    if (app.startClashService(unattended = true) != null) {
-                        Log.w("Access control: VPN permission required, service not restarted")
-                    }
-                }
-            }
-        }
+        defer { apply(selected) }
 
         val tunPrefs = withContext(Dispatchers.IO) { activeTunPrefs() }
 
@@ -78,8 +54,9 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             uiStore,
             mode,
             selected,
-            tunPrefs?.includePackages?.filter { runCatching { packageManager.getApplicationInfo(it, 0) }.isSuccess }?.toSet() ?: emptySet(),
+            tunPrefs?.includePackages?.filter(::installed)?.toSet() ?: emptySet(),
             tunPrefs?.excludePackages?.toSet() ?: emptySet(),
+            withContext(Dispatchers.IO) { selected.filterNot(::installed).toSet() },
         )
 
         setContentDesign(design)
@@ -89,7 +66,11 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         while (isActive) {
             select<Unit> {
                 events.onReceive {
-
+                    // Ушли с экрана, не закрыв его («Домой», другое приложение):
+                    // выбор действует сразу, а не когда экран закроют
+                    if (it == Event.ActivityStop && !isChangingConfigurations && !isFinishing) {
+                        apply(selected)
+                    }
                 }
                 design.requests.onReceive {
                     when (it) {
@@ -154,6 +135,11 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                             )
 
                             clipboard?.setPrimaryClip(data)
+
+                            // С Android 13 копирование подтверждает сама система
+                            if (clipboard != null && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                                design.showToast(R.string.copied, ToastDuration.Short)
+                            }
                         }
                     }
                 }
@@ -187,6 +173,50 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         if (!isChangingConfigurations) retainedApps = null
         super.onDestroy()
     }
+
+    // Отпечаток, с которым туннель уже отправлен на перезапуск: повторный уход с
+    // экрана с тем же выбором, пока перезапуск идёт, его не повторяет
+    private var restartedFor: String? = null
+
+    // «Назад» и сразу «Домой» дают два применения подряд: второе ждёт первое и
+    // видит уже отправленный перезапуск
+    private val applying = Mutex()
+
+    private suspend fun apply(selected: Set<String>) = applying.withLock {
+        // Через очередь настроек: отпечаток считается по режиму и списку уже
+        // после всех записей, сделанных на экране.
+        val wanted = ServiceSettings.access {
+            accessControlPackages = selected.toSet()
+
+            accessControlFingerprint(accessControlMode, selected).takeIf { it != accessControlApplied }
+        }
+
+        if (wanted == null || wanted == restartedFor) return@withLock
+
+        val restart = uiStore.enableVpn && withContext(Dispatchers.IO) {
+            StatusClient(this@AccessControlActivity).isActive()
+        }
+        if (restart) {
+            restartedFor = wanted
+
+            val app = applicationContext
+
+            Global.launch(Dispatchers.IO) {
+                app.stopClashService()
+                withTimeoutOrNull(10_000) {
+                    while (StatusClient(app).isActive()) {
+                        delay(200)
+                    }
+                }
+                if (app.startClashService(unattended = true) != null) {
+                    Log.w("Access control: VPN permission required, service not restarted")
+                }
+            }
+        }
+    }
+
+    private fun installed(packageName: String): Boolean =
+        runCatching { packageManager.getApplicationInfo(packageName, 0) }.isSuccess
 
     private suspend fun loadApps(selected: Set<String>): List<AppInfo> {
         val chosen = selected.toSet()

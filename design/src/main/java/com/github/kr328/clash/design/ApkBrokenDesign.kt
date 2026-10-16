@@ -3,6 +3,7 @@ package com.github.kr328.clash.design
 import android.content.Context
 import android.view.View
 import com.github.kr328.clash.design.compose.screen.ApkBrokenAction
+import com.github.kr328.clash.design.compose.screen.RELEASES_PATH
 import com.github.kr328.clash.design.compose.screen.ApkBrokenScreen
 
 class ApkBrokenDesign(context: Context) : Design<ApkBrokenDesign.Request>(context) {
@@ -20,7 +21,7 @@ class ApkBrokenDesign(context: Context) : Design<ApkBrokenDesign.Request>(contex
         when (action) {
             ApkBrokenAction.Back -> requests.trySend(Request.Back)
             ApkBrokenAction.OpenReleases ->
-                requests.trySend(Request.OpenUrl(context.getString(R.string.meta_github_url)))
+                requests.trySend(Request.OpenUrl(context.getString(R.string.meta_github_url) + RELEASES_PATH))
         }
     }
 }

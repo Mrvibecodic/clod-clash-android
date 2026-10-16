@@ -27,6 +27,7 @@ import com.github.kr328.clash.design.R
 
 class PropertiesActivity : BaseActivity<PropertiesDesign>() {
     private var canceled: Boolean = false
+    private var filesOpened: Boolean = false
     private var token: Long = 0
     private lateinit var original: Profile
 
@@ -53,6 +54,9 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         design.profile = draft ?: original
 
         setContentDesign(design)
+
+        if (bundle?.getBoolean(KEY_SECURE_OFF) == true) design.reopenSecureOffConfirmation()
+        if (bundle?.getBoolean(KEY_EXIT) == true) onBackPressed()
 
         launch {
             ProfileImports.state.collect {
@@ -87,6 +91,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
             select<Unit> {
                 events.onReceive {
                     when (it) {
+                        Event.ActivityStart -> filesOpened = false
                         Event.ActivityStop -> {
                             val profile = design.profile
 
@@ -123,7 +128,10 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                 }
                 design.requests.onReceive {
                     when (it) {
-                        PropertiesDesign.Request.BrowseFiles -> {
+                        PropertiesDesign.Request.BrowseFiles -> if (!filesOpened) {
+                            // Второе нажатие, пока «Файлы» открываются, — не второй экран
+                            filesOpened = true
+
                             startActivity(FilesActivity::class.intent.setUUID(uuid))
                         }
                         PropertiesDesign.Request.Commit -> {
@@ -145,6 +153,8 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
 
         outState.putParcelable("draft", design.profile)
         outState.putParcelable("original", original)
+        outState.putBoolean(KEY_SECURE_OFF, design.confirmingSecureOff)
+        outState.putBoolean(KEY_EXIT, design.confirmingExit)
     }
 
     override fun onBackPressed() {
@@ -182,9 +192,11 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
 
         when {
             violation != null -> showToast(violationText(violation), ToastDuration.Long)
-            !isValidSource(profile.type, profile.source) -> showToast(R.string.invalid_url, ToastDuration.Long)
+            !isValidSource(profile.type, profile.source) -> showToast(sourceError(profile.type), ToastDuration.Long)
             else -> {
-                val started = ProfileImports.commit(profile, enablingChannel = profile.secure && !original.secure)
+                // Включают ли канал — по рабочей подписке: в черновике переключатель
+                // мог остаться включённым с прошлого раза, без проверки
+                val started = ProfileImports.commit(profile, enablingChannel = profile.secure && !original.importedSecure)
 
                 if (started != 0L) {
                     token = started
@@ -200,8 +212,17 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         ProfileFields.Violation.NameTooLong -> getString(R.string.clod_name_too_long, ProfileFields.NAME_MAX)
         ProfileFields.Violation.EmptySource,
         ProfileFields.Violation.UnsupportedScheme,
-        -> getString(R.string.invalid_url)
+        -> getString(sourceError(design?.profile?.type))
         ProfileFields.Violation.SourceTooLong -> getString(R.string.clod_url_too_long, ProfileFields.SOURCE_MAX)
         ProfileFields.Violation.ShortInterval -> getString(R.string.at_least_15_minutes)
+    }
+
+    // Адрес подписки — одна фраза на всех экранах; у файла адреса нет
+    private fun sourceError(type: Profile.Type?): Int =
+        if (type == Profile.Type.Url) R.string.accept_http_content else R.string.invalid_url
+
+    private companion object {
+        const val KEY_SECURE_OFF = "confirming_secure_off"
+        const val KEY_EXIT = "confirming_exit"
     }
 }

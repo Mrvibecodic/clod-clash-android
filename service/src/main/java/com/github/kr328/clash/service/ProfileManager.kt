@@ -215,6 +215,7 @@ class ProfileManager(private val context: Context) : IProfileManager,
             quota = imported?.quota ?: false,
             nameManual = pending?.nameManual ?: imported?.nameManual ?: false,
             fetchedAt = fetchedAt,
+            importedSecure = imported?.secure ?: false,
         )
     }
 

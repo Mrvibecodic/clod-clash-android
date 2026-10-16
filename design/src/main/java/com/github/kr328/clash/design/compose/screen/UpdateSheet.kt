@@ -42,7 +42,7 @@ fun UpdateDialog(
         title = {
             Text(
                 text = stringResource(R.string.clod_update_available, state.version.take(32)),
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },

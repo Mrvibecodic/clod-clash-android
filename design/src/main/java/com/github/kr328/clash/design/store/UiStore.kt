@@ -83,6 +83,8 @@ class UiStore(context: Context) {
         defaultValue = false,
     )
 
+    // «Уже спрашивали о разрешении» — факт о системе, а не настройка: при
+    // сбросе настроек не стирается, иначе прятал бы запрет уведомлений на 13+
     var notificationsRequested: Boolean by store.boolean(
         key = "notifications_asked",
         defaultValue = false,
@@ -171,7 +173,6 @@ class UiStore(context: Context) {
             "access_control_sort",
             "access_control_reverse",
             "access_control_system_app",
-            "notifications_asked",
             "notifications_snoozed_at",
             "notifications_snoozes",
             "reliability_asked",

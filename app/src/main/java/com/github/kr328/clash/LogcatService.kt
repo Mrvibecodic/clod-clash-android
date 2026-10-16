@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.os.IInterface
 import androidx.core.app.NotificationChannelCompat
@@ -64,6 +65,8 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
     @Volatile
     private var finished = false
 
+    private var restartWait: Job? = null
+
     // Привязка переживает смерть фонового процесса: система поднимает его заново
     // и зовёт onServiceConnected ещё раз — запись продолжается в тот же файл
     private val connection = object : ServiceConnection {
@@ -71,9 +74,22 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
             remote = null
 
             channel.trySend(Queued(notice("background process died, waiting for restart")))
+
+            // До Android 8 нет onBindingDied: что система процесс больше не
+            // поднимет, узнаётся только по тому, что он долго не вернулся
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                restartWait?.cancel()
+                restartWait = launch {
+                    delay(RESTART_WAIT_MS)
+
+                    if (remote == null) channel.close()
+                }
+            }
         }
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            restartWait?.cancel()
+
             subscribe(service ?: return stopSelf())
         }
 
@@ -257,6 +273,9 @@ class LogcatService : Service(), CoroutineScope by CoroutineScope(Dispatchers.De
     companion object {
         private const val CHANNEL_ID = "clash_logcat_channel"
         private const val CACHE_CAPACITY = 128
+
+        // Перезапуск упавшей службы система откладывает всё дольше (до ~4 мин)
+        private const val RESTART_WAIT_MS = 5L * 60 * 1000
 
         @Volatile
         var running: Boolean = false

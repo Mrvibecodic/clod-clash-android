@@ -28,8 +28,9 @@ fun tunApps(
         } else {
             TunApps(emptyMap(), (exclude - self).installed())
         }
-        // Ничего не выбрано, у подписки только исключения — все, кроме них
-        AccessControlMode.AcceptSelected -> if (selected.isEmpty() && exclude.isNotEmpty() && includes.installed().isEmpty()) {
+        // Ничего не выбрано (из установленных), у подписки только исключения —
+        // все, кроме них
+        AccessControlMode.AcceptSelected -> if (selected.installed().isEmpty() && exclude.isNotEmpty() && includes.installed().isEmpty()) {
             TunApps(emptyMap(), (exclude - self).installed())
         } else {
             TunApps((selected + includes + self).installed(), emptyMap())

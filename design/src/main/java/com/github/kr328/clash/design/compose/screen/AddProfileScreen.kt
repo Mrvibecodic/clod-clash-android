@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -23,6 +24,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -44,6 +49,8 @@ data class AddProfileState(
     val progressText: String = "",
     val progress: Float = 0f,
     val error: String? = null,
+    // Служебная подробность ошибки — за кнопкой «Детали», как у плашек
+    val errorDetail: String? = null,
     // Что сейчас с защищённым каналом: проверка, повтор, обычный путь.
     val stageText: String = "",
 )
@@ -102,6 +109,24 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         ),
         modifier = Modifier.fillMaxWidth(),
     )
+    state.errorDetail?.let { detail ->
+        var open by rememberSaveable { mutableStateOf(false) }
+
+        TextButton(onClick = { open = true }) {
+            Text(stringResource(R.string.detail))
+        }
+
+        if (open) {
+            AlertDialog(
+                onDismissRequest = { open = false },
+                title = { Text(stringResource(R.string.error)) },
+                text = { Text(detail, Modifier.verticalScroll(rememberScrollState())) },
+                confirmButton = {
+                    TextButton(onClick = { open = false }) { Text(stringResource(R.string.ok)) }
+                },
+            )
+        }
+    }
     Spacer(Modifier.height(8.dp))
     Text(
         text = stringResource(R.string.clod_sub_url_hint),

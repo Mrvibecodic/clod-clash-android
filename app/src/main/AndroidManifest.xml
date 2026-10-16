@@ -159,7 +159,7 @@
             android:name=".AppSettingsActivity"
             android:configChanges="uiMode"
             android:exported="false"
-            android:label="@string/app" />
+            android:label="@string/clod_settings_app_title" />
         <activity
             android:name=".OverrideSettingsActivity"
             android:configChanges="uiMode"

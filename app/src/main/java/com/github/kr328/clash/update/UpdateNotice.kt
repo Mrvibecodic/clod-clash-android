@@ -144,7 +144,7 @@ object UpdateNotice {
         // Пока шла проверка, человек мог выключить пуши, пропустить версию или
         // выключить пре-релизы — сверяем всё это прямо перед показом.
         val app = AppStore.readFromBackground(context)
-        val wanted = ServiceStore(context).notifyAppUpdates &&
+        val wanted = ServiceStore(context).notifyAppUpdates && app.autoCheckUpdate &&
             app.skippedVersionCode != available.manifest.versionCode &&
             (!prerelease || app.prereleaseChannel)
 
@@ -160,15 +160,16 @@ object UpdateNotice {
             val context = applicationContext
             val settings = ServiceStore(context)
 
-            if (!settings.notifyAppUpdates) {
+            val app = AppStore.readFromBackground(context)
+
+            // Выключена автопроверка — в сеть в фоне не ходим вовсе
+            if (!settings.notifyAppUpdates || !app.autoCheckUpdate) {
                 withdraw(context)
 
                 return Result.success()
             }
 
             if (!canPost(NotificationManagerCompat.from(context))) return Result.success()
-
-            val app = AppStore.readFromBackground(context)
 
             val checked = try {
                 Updater.check(context, app.prereleaseChannel, context.activeLocalProxyPort())

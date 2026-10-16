@@ -27,6 +27,6 @@ class AppCrashedDesign(context: Context) : Design<AppCrashedDesign.Request>(cont
     }
 
     fun setAppLogs(logs: String) {
-        state = state.copy(logs = logs)
+        state = state.copy(logs = logs, loaded = true)
     }
 }

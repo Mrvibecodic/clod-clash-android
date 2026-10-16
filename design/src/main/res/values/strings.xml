@@ -1,6 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
 
     <string name="tap_to_start">Tap to start</string>
+    <string name="clod_logcat_recording">Recording · tap to open</string>
+    <string name="clod_log_empty">The log is empty</string>
+    <string name="clod_system_log_unavailable">The system log is not available</string>
+    <string name="clod_nothing_found">Nothing found</string>
 
     <string name="proxy">Proxy</string>
     <string name="direct_mode">Direct mode</string>
@@ -35,7 +39,7 @@
 
     <string name="accept_http_content">The address has to start with https://</string>
     <string name="at_least_15_minutes">At least 15 minutes or empty</string>
-    <string name="detail">Detail</string>
+    <string name="detail">Details</string>
     <string name="update">Update</string>
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
@@ -53,10 +57,10 @@
     <string name="invalid_url">Invalid URL</string>
     <string name="clod_link_no_app">No app to open the link</string>
 
-    <string name="format_fetching_configuration">Fetching configuration from \'%s\'</string>
-    <string name="format_fetching_provider">Fetching provider \'%s\'</string>
-    <string name="clod_provider_update">Update this provider</string>
-    <string name="clod_provider_failed">Provider \'%s\' could not be downloaded</string>
+    <string name="format_fetching_configuration">Fetching configuration from “%s”</string>
+    <string name="format_fetching_provider">Fetching set “%s”</string>
+    <string name="clod_provider_update">Update this set</string>
+    <string name="clod_provider_failed">Set “%s” could not be downloaded</string>
     <string name="initializing">Initializing</string>
     <string name="verifying">Verifying</string>
 
@@ -88,26 +92,25 @@
     <string name="allow_clash_auto_restart">Bring the tunnel back after the phone restarts or the app updates, if it was on</string>
 
     <string name="route_system_traffic">Route system traffic</string>
-    <string name="routing_via_vpn_service">Auto routing all system traffic via VpnService</string>
+    <string name="routing_via_vpn_service">Route all system traffic through the VPN</string>
     <string name="clod_local_proxy_summary">Local proxy %1$s for apps set up to use it; other traffic is not protected</string>
     <string name="clod_local_proxy_missing">Local proxy: no HTTP port is set — the subscription does not define one, it is disabled in the override, or allow-lan is enabled</string>
     <string name="clod_local_proxy_allow_lan">If the subscription turns on allow-lan, the port listens on every interface: any device on the same local network can use this proxy</string>
 
-    <string name="vpn_service_options">VpnService options</string>
+    <string name="vpn_service_options">VPN options</string>
     <string name="bypass_private_network">Bypass private network</string>
     <string name="bypass_private_network_summary">Bypass private network addresses</string>
     <string name="dns_hijacking">DNS hijacking</string>
-    <string name="dns_hijacking_summary">Handle all dns packet</string>
+    <string name="dns_hijacking_summary">Intercept all DNS queries</string>
     <string name="clod_private_dns_strict">Private DNS with an explicit host (%1$s) is on in the system settings: apps get real addresses, so domain rules and fake-ip do not apply to them</string>
     <string name="allow_bypass">Allow bypass</string>
     <string name="allow_bypass_summary">Lets apps that explicitly bind to a network (some messengers, banking and telecom apps) connect around the VPN. Off: their traffic goes through the tunnel too</string>
     <string name="allow_ipv6">Allow IPv6</string>
-    <string name="allow_ipv6_summary">Allows IPv6 traffic via VpnService</string>
+    <string name="allow_ipv6_summary">Allow IPv6 traffic through the VPN</string>
     <string name="system_proxy">System proxy</string>
     <string name="system_proxy_summary">Announce an HTTP proxy of this VPN to apps that respect the system proxy setting (no password, reachable only inside the device)</string>
     <string name="access_control_mode">Access control mode</string>
 
-    <string name="options_unavailable">Options unavailable until the tunnel is stopped</string>
 
     <string name="general">General</string>
     <string name="dns">DNS</string>
@@ -190,8 +193,7 @@
     <string name="meta_github_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android</string>
     <string name="clash_meta_core_url" translatable="false">https://github.com/Mrvibecodic/clod-core</string>
 
-    <string name="app">App</string>
-    <string name="service">Service</string>
+    <string name="service">Notifications</string>
 
     <string name="dark_mode">Dark mode</string>
 
@@ -215,11 +217,11 @@
     <string name="deny_selected_apps">Deny selected apps</string>
 
 
-    <string name="providers">Providers</string>
+    <string name="providers">Server and rule sets</string>
 
     <string name="files">Files</string>
     <string name="browse_files">Browse files</string>
-    <string name="browse_configuration_providers"><![CDATA[Browse configuration & providers]]></string>
+    <string name="browse_configuration_providers"><![CDATA[Browse configuration & sets]]></string>
     <string name="rename">Rename</string>
     <string name="file_name">File name</string>
     <string name="invalid_file_name">Invalid file name</string>
@@ -230,6 +232,7 @@
     <string name="use_built_in">Use built-in</string>
     <string name="more">More</string>
     <string name="save">Save</string>
+    <string name="clod_saving">Saving\u2026</string>
 
     <string name="rule">Rule</string>
     <string name="update_all">Update all</string>
@@ -241,7 +244,7 @@
     <string name="clod_external_control_summary">Let other apps turn the tunnel on and off — for automation such as Tasker. Own shortcuts, the quick tile and the widget work regardless.</string>
     <string name="clod_service_unavailable">The background service is not responding. Try again; if it keeps happening, reopen the app</string>
     <string name="clod_action_failed">Something went wrong</string>
-    <string name="clod_external_control_refused">External control is off. Turn it on in settings, App.</string>
+    <string name="clod_external_control_refused">External control is off. Turn it on in More → Look and behavior.</string>
     <string name="clod_sub_menu">Subscription actions</string>
 
     <string name="invalid_log_file">Invalid log file</string>
@@ -275,7 +278,7 @@
     <string name="import_geoip_file">Import GeoIP database</string>
     <string name="import_geosite_file">Import GeoSite database</string>
     <string name="import_asn_file">Import ASN database</string>
-    <string name="press_to_import">Press to import...</string>
+    <string name="press_to_import">Tap to choose a file</string>
     <string name="geofile_import_failed">Import failed</string>
     <string name="geofile_unknown_db_format">Unknown database format</string>
     <string name="geofile_unknown_db_format_message">Only %1$s are supported</string>
@@ -291,7 +294,7 @@
     <string name="hide_from_recents_desc">Hide app from the Recent apps screen</string>
 
     <string name="clod_shortcut_disabled">The app icon is hidden in settings</string>
-    <string name="clod_sub_delete_message">Delete subscription \"%1$s\"? Its settings and downloaded configuration will be removed, there is no undo.</string>
+    <string name="clod_sub_delete_message">Delete subscription “%1$s”? Its settings and downloaded configuration will be removed, there is no undo.</string>
     <string name="shortcut_toggle_short">Toggle</string>
     <string name="shortcut_toggle_long">Turn the VPN on or off</string>
     <string name="shortcut_start_short">Connect</string>
@@ -326,15 +329,16 @@
     <string name="clod_sub_fetching">Fetching subscription\u2026</string>
     <string name="clod_sub_added">Subscription added</string>
     <string name="clod_sub_added_named">Subscription “%1$s” added</string>
-    <string name="clod_sub_added_partial">Subscription added, but some provider lists were not downloaded</string>
-    <string name="clod_providers_failed_plural">Some provider lists were not downloaded</string>
+    <string name="clod_sub_add_failed">Subscription not added: %1$s</string>
+    <string name="clod_sub_added_partial">Subscription added, but some sets were not downloaded</string>
+    <string name="clod_providers_failed_plural">Some sets were not downloaded</string>
     <string name="clod_sub_draft">Not loaded</string>
     <string name="clod_sub_draft_activate">This subscription isn’t loaded yet. Save it to select it</string>
     <string name="clod_sub_active">Active</string>
     <string name="clod_sub_expiring">Expiring</string>
     <string name="clod_sub_exhausted">Out of traffic</string>
     <string name="clod_sub_expired">Expired</string>
-    <string name="clod_sub_unlimited">Unlimited</string>
+    <string name="clod_sub_unlimited">unlimited</string>
     <string name="clod_sub_days">%1$d d</string>
     <string name="clod_delay_ms">%1$d ms</string>
     <plurals name="clod_delays_measuring">
@@ -349,7 +353,7 @@
     <string name="clod_sub_stale_detail">updated %1$s, auto-update keeps failing</string>
     <string name="clod_quota_traffic">Traffic</string>
     <string name="clod_quota_expiry">Expires in</string>
-    <string name="clod_quota_left">%1$s left</string>
+    <string name="clod_quota_of_left">of %1$s · %2$s left</string>
     <string name="clod_sub_add">Add subscription</string>
     <string name="clod_sub_update_all">Update all</string>
     <string name="clod_sub_updating">Updating</string>
@@ -360,9 +364,9 @@
     <string name="clod_section_connection">Connection</string>
     <string name="clod_help_notice">Clod Clash is free software. Support for the subscription itself comes from whoever issued you the link — not from us.</string>
     <string name="clod_setting_needs_stop">Available only while the tunnel is off</string>
-    <string name="clod_interval_by_panel">Set by the subscription panel; changes with the next update</string>
+    <string name="clod_interval_by_panel">Set by the provider; changes with the next update</string>
     <string name="clod_name_empty_shows">Empty — “%1$s” is shown</string>
-    <string name="clod_interval_from_panel">Use the panel value</string>
+    <string name="clod_interval_from_panel">Use the provider value</string>
     <string name="clod_properties_tip">The link must point to a Clash config — proxies and rules included. Name and update interval can be changed at any time.</string>
     <string name="clod_properties_tip_source">The address of this subscription is set by the source it came from and cannot be changed here. The name can be changed at any time.</string>
     <string name="clod_properties_tip_file">This subscription is a local file: it has no address, and its configuration is edited on the Files screen. The name can be changed at any time.</string>
@@ -380,10 +384,11 @@
     <string name="clod_settings_app_subtitle">Theme, auto restart, icon</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, system proxy</string>
     <string name="clod_settings_override_subtitle">Applied on top of any subscription config</string>
-    <string name="clod_settings_meta_subtitle">Sniffer, geodata sources, TLS</string>
+    <string name="clod_settings_meta_subtitle">Override, sniffer, geo databases</string>
     <string name="clod_apps">Apps</string>
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode. If the subscription sends its own app list, only those apps go through the tunnel in this mode.</string>
+    <string name="clod_access_control_all_sub_exclude_hint">All apps go through the tunnel except those marked “Bypasses VPN” — the subscription set this. The checkboxes below change nothing until you pick another mode.</string>
     <string name="clod_access_control_selected_empty_hint">Nothing is checked — no app goes through the tunnel. Check the apps that need VPN.</string>
     <string name="clod_access_control_selected_sub_hint">Until you check anything, the subscription list applies: all apps go through the tunnel except those marked “Bypasses VPN”. Check apps to send only them through the tunnel.</string>
     <plurals name="clod_access_control_sub_include_hint">
@@ -432,7 +437,9 @@
     <string name="clod_no_servers">No servers</string>
     <string name="clod_notice_expand">Show full text</string>
     <string name="clod_notice_collapse">Collapse</string>
-    <string name="clod_no_servers_hint">Add a subscription and connect — the list comes from the panel.</string>
+    <string name="clod_no_servers_hint">Add a subscription and connect — the provider sends the server list.</string>
+    <string name="clod_no_servers_in_subscription">The subscription has no server groups.</string>
+    <string name="clod_no_servers_in_group">This group has no servers.</string>
     <string name="clod_action_connect">Connect</string>
     <string name="clod_action_disconnect">Disconnect</string>
     <string name="clod_refresh_profile">Update subscription</string>
@@ -449,7 +456,7 @@
     <string name="clod_geo_update_failed">Could not update routing data</string>
     <string name="clod_geo_update_partial">Some routing lists were not updated</string>
     <string name="clod_geo_updated_reconnect">Lists downloaded, the core will use them after reconnecting</string>
-    <string name="clod_geo_providers_failed">Lists updated, providers were not</string>
+    <string name="clod_geo_providers_failed">Lists updated, sets were not</string>
     <string name="clod_geo_after_reconnect">The core will use the new lists after reconnecting</string>
     <string name="clod_geo_missing">Not downloaded</string>
     <string name="clod_group_index">Group \u00b7 %1$d of %2$d</string>
@@ -460,15 +467,15 @@
     <string name="clod_favorite_add">Add to favorites</string>
     <string name="clod_proxy_pinned">Pinned</string>
     <string name="clod_proxy_mobile_only">mobile network</string>
-    <string name="clod_servers_mobile_only">Servers available only on mobile network</string>
-    <string name="clod_select_mobile_only">This server is available only on mobile network</string>
+    <string name="clod_servers_mobile_only">Servers are available only on a mobile network</string>
+    <string name="clod_select_mobile_only">This server is available only on a mobile network</string>
     <string name="clod_favorite_remove">Remove from favorites</string>
     <string name="clod_servers_direct">“Direct mode” is on: traffic goes past the servers, so picking one changes nothing. The mode is shown in the More tab and can be switched there unless your provider has set it.</string>
     <string name="clod_servers_query_failed">The core did not return the server list</string>
     <string name="clod_one_per_line">One per line</string>
-    <string name="clod_key_value_per_line">One «key = value» pair per line</string>
+    <string name="clod_key_value_per_line">One “key = value” pair per line</string>
     <string name="clod_hwid_title">Identify this device</string>
-    <string name="clod_hwid_summary">Panels that limit the number of devices count them by this. The id is derived from a device value and hashed — the raw value never leaves the phone.</string>
+    <string name="clod_hwid_summary">Providers that limit the number of devices count them by this. The id is derived from a device value and hashed — the raw value never leaves the phone.</string>
     <string name="clod_sub_notify_title">Subscription reminders</string>
     <string name="clod_sub_notify_summary">Notify when the subscription is about to end or the traffic runs low. Thresholds are set by your provider.</string>
     <string name="clod_profile_error_notify_title">Subscription update errors</string>
@@ -477,6 +484,7 @@
     <string name="clod_profile_update_notify_summary">Show a notification when a subscription updates successfully</string>
     <string name="clod_update_notify_title">Update notifications</string>
     <string name="clod_update_notify_summary">Show a notification about a new version, even when the app is closed</string>
+    <string name="clod_update_notify_needs_auto">Off while “Check automatically” in About is off</string>
     <string name="clod_update_notify_off_title">Turn off update notifications?</string>
     <string name="clod_update_notify_off_text">Without them you can miss important fixes, so check for updates in About regularly.</string>
     <string name="clod_update_notify_off_action">Turn off</string>
@@ -534,7 +542,7 @@
     <string name="clod_no_servers_device_title">Device limit reached</string>
     <string name="clod_no_servers_device">Too many devices are using this subscription. Contact your provider\'s support.</string>
     <string name="clod_no_servers_unidentified_title">Device not identified</string>
-    <string name="clod_no_servers_unidentified">This subscription needs the device to be identified. Turn on «Identify this device» in app settings.</string>
+    <string name="clod_no_servers_unidentified">This subscription needs the device to be identified. Turn on “Identify this device” in app settings.</string>
     <string name="clod_no_servers_expired_title">Subscription expired</string>
     <string name="clod_no_servers_expired">The subscription has expired. Renew it and the servers come back with the next update.</string>
     <string name="clod_no_servers_expired_date">The subscription expired on %1$s. Renew it and the servers come back with the next update.</string>
@@ -550,17 +558,18 @@
     <string name="clod_background">Background</string>
     <string name="clod_keep_awake">Keep the tunnel active while the screen is off</string>
     <string name="clod_keep_awake_summary">Keeps the device from sleeping: the CPU stays up, heartbeat and server checks run around the clock. Noticeably drains the battery. Useful when the server drops idle sessions and the first request after sleep hangs.</string>
-    <string name="clod_secure_channel">Secure connection</string>
+    <string name="clod_secure_channel">Provider secure channel</string>
     <string name="clod_secure_channel_on">The subscription is loaded over the provider\'s secure channel</string>
-    <string name="clod_secure_channel_off">Off — the subscription is loaded in the clear. This is not safe</string>
+    <string name="clod_secure_channel_off">Off — the subscription goes over plain HTTPS, without the provider\'s extra protection</string>
+    <string name="clod_secure_channel_hint">Works only if your provider supports it. This is not plain HTTPS but an extra layer of encryption on top of it, between the app and the provider</string>
     <string name="clod_secure_channel_key">Provider key fingerprint: %1$s</string>
-    <string name="clod_secure_off_title">Turn off the secure connection?</string>
-    <string name="clod_secure_off_body">Without it, the subscription address, device data and server list travel to the provider in the clear, and anyone on the way can see them. Turn it off only if your provider asks you to.</string>
+    <string name="clod_secure_off_title">Turn off the secure channel?</string>
+    <string name="clod_secure_off_body">Without it, the subscription address, device data and server list travel to the provider over plain HTTPS — without the extra encryption the channel adds. Turn it off only if your provider asks.</string>
     <string name="clod_secure_off_confirm">Turn off</string>
     <string name="clod_chan_stage_checking">Checking the provider\'s secure channel\u2026</string>
-    <string name="clod_chan_stage_retry">No answer, trying again (%1$d of %2$d)\u2026</string>
+    <string name="clod_chan_stage_retry">Trying again (%1$d of %2$d)\u2026</string>
     <string name="clod_chan_stage_plain">The provider has no secure channel — loading the usual way\u2026</string>
-    <string name="clod_chan_absent">The provider does not support the secure connection</string>
+    <string name="clod_chan_absent">The provider does not support the secure channel</string>
     <string name="clod_sub_channel_on">Secure channel</string>
     <string name="clod_sub_channel_off">Without the secure channel — the provider does not support it</string>
     <string name="clod_home_connected_to">Connected to</string>
@@ -569,7 +578,7 @@
     <string name="clod_home_bypass">Direct</string>
     <string name="clod_home_blocked">Blocked</string>
     <string name="clod_section_configuration">Configuration</string>
-    <string name="clod_data_title">Routing data and providers</string>
+    <string name="clod_data_title">Databases and sets</string>
     <string name="clod_just_now">Just now</string>
     <plurals name="clod_minutes_ago">
         <item quantity="one">%d minute ago</item>
@@ -599,6 +608,7 @@
     <string name="clod_reliability_always_on_enabled">Enabled</string>
     <string name="clod_reliability_always_on_disabled">Not enabled · “Always-on VPN” in system settings</string>
     <string name="clod_reliability_always_on_unknown">Checked after the first connection</string>
+    <string name="clod_reliability_always_on_manual">Turn on “Always-on VPN” in system settings</string>
     <string name="clod_reliability_later">Later</string>
     <string name="clod_reliability_setup">Set up</string>
     <string name="clod_reliability_open_settings">Open settings</string>
@@ -609,6 +619,6 @@
     <string name="clod_reset_section">Reset</string>
     <string name="clod_reset_title">Reset settings</string>
     <string name="clod_reset_summary">App, network and notification settings go back to defaults, the list on the Apps screen and the config overrides are cleared. Subscriptions and their own settings stay.</string>
-    <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow selected apps” — no app goes through the tunnel until you tick some again. The config overrides are cleared too. Subscriptions and their own settings stay untouched.</string>
+    <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow selected apps” — until you check apps again, the subscription\'s app list applies; without one, no app goes through the tunnel. The config overrides are cleared too. Subscriptions and their own settings stay untouched.</string>
     <string name="clod_reset_action">Reset</string>
 </resources>

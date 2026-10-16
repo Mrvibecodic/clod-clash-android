@@ -68,7 +68,9 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
 
                         create(Profile.Type.Url, name).also {
                             // Канал выберет сохранение: сначала защищённый, без него — обычный путь.
-                            patch(it, name, linkName != null, url, intervalMs, intervalMs > 0, secure = false)
+                            // Интервал из ссылки — от панели, не выбор человека: его
+                            // сменит то, что панель пришлёт при обновлении
+                            patch(it, name, linkName != null, url, intervalMs, false, secure = false)
                         }
                     }
 
@@ -149,9 +151,9 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
     private fun startClash() {
         if (isFinishing || isDestroyed) return
 
-        val vpnRequest = startClashService(unattended = true)
-        if (vpnRequest != null) {
-            startActivity(MainActivity::class.intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        // Нет разрешения на VPN — то же окно разрешения, что у плитки и виджета
+        if (startClashService(unattended = true) != null) {
+            startActivity(WidgetToggleActivity::class.intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return
         }
         ToggleWidgetProvider.notifyWait(this)

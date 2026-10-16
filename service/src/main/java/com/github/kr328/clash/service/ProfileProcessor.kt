@@ -465,11 +465,19 @@ object ProfileProcessor {
 
     suspend fun release(context: Context, uuid: UUID) {
         withContext(NonCancellable) {
-            profileLock.withLock {
+            val vanished = profileLock.withLock {
+                // Черновик ещё не добавленной подписки — это вся подписка: со
+                // списка она пропадает, и экранам надо об этом узнать
+                val vanished = PendingDao().queryByUUID(uuid) != null && ImportedDao().queryByUUID(uuid) == null
+
                 PendingDao().remove(uuid)
 
                 context.pendingDir.resolve(uuid.toString()).deleteRecursively()
+
+                vanished
             }
+
+            if (vanished) context.sendProfileChanged(uuid)
         }
     }
 

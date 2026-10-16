@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Process
 import androidx.core.content.getSystemService
@@ -219,7 +220,7 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
             NotificationManagerCompat.from(service).cancel(R.id.nf_clash_start_failed)
         }
 
-        fun notifyStartFailed(service: Service, rawReason: String, title: Int = R.string.clod_start_failed) {
+        fun notifyStartFailed(service: Context, rawReason: String, title: Int = R.string.clod_start_failed) {
             val reason = Redact.text(rawReason)
 
             val notification =
@@ -227,6 +228,9 @@ class StaticNotificationModule(service: Service) : Module<Unit>(service) {
                     .setSmallIcon(R.drawable.ic_logo_service)
                     .setColor(service.getColorCompat(R.color.color_clash))
                     .setAutoCancel(true)
+                    // Звук — у канала, а каналов до Android 8 нет: там его даёт
+                    // само уведомление (с 8-й версии флаг игнорируется)
+                    .setDefaults(NotificationCompat.DEFAULT_SOUND)
                     .setContentTitle(service.getText(title))
                     .setContentText(reason)
                     .setStyle(NotificationCompat.BigTextStyle().bigText(reason))

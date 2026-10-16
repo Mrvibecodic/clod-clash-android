@@ -59,6 +59,13 @@ class TunAppsTest {
     }
 
     @Test
+    fun `разрешить выбранные — отмеченное и удалённое приложение выбором не считается`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, setOf("gone"), emptySet(), setOf("bank", self), self, uids("bank" to 10))
+
+        assertEquals(TunApps(emptyMap(), mapOf("bank" to 10)), apps)
+    }
+
+    @Test
     fun `разрешить выбранные — выбор отменяет исключения подписки`() {
         val apps = tunApps(AccessControlMode.AcceptSelected, setOf("browser"), emptySet(), setOf("bank"), self, uids("browser" to 12, "bank" to 10))
 

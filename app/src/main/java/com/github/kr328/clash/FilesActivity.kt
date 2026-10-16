@@ -10,6 +10,7 @@ import com.github.kr328.clash.common.util.grantPermissions
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.design.FilesDesign
+import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.FilesClient
 import com.github.kr328.clash.service.model.Profile
@@ -101,7 +102,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
 
                                 if (uri != null) {
                                     if (it.file == null) {
-                                        val name = design.requestFileName(uri.displayName(contentResolver) ?: "File")
+                                        val name = design.requestFileName(uri.displayName(contentResolver) ?: getString(R.string.file))
 
                                         if (name != null) {
                                             client.importDocument(stack.last(), uri, name)

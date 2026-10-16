@@ -1,5 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,6 +53,7 @@ import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.GroupIcon
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.rememberGroupIcon
+import com.github.kr328.clash.design.model.BUILTIN_OUTBOUNDS
 import com.github.kr328.clash.design.model.proxySubtitle
 
 @Composable
@@ -59,6 +61,7 @@ fun ServersTab(
     state: ServersState,
     active: SubscriptionItem?,
     onAction: (MainAction) -> Unit,
+    loaded: Boolean,
 ) {
     val noServers = active?.let { noServersReason(it.profile, it.panel, it.panelNow()) }
 
@@ -81,7 +84,10 @@ fun ServersTab(
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                val count = state.groups.getOrNull(state.selected)?.proxies?.size ?: 0
+                // Серверы — без вложенных групп и встроенных DIRECT/REJECT
+                val count = state.groups.getOrNull(state.selected)?.proxies.orEmpty().count { proxy ->
+                    !proxy.isGroup && proxy.name !in BUILTIN_OUTBOUNDS && state.groups.none { it.name == proxy.name }
+                }
 
                 if (state.testing && state.measuring > 0) {
                     Text(
@@ -102,18 +108,18 @@ fun ServersTab(
                     )
                 }
             }
-            if (state.testing) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .size(24.dp),
-                    strokeWidth = 2.dp,
-                )
-            } else {
-                IconButton(
-                    onClick = { onAction(MainAction.TestDelays) },
-                    enabled = state.groups.isNotEmpty() && !state.readOnly && noServers == null,
-                ) {
+            // Во время замера кнопка остаётся на месте (крутилка внутри неё) и
+            // держит фокус: на ТВ пульт иначе теряет его
+            IconButton(
+                onClick = { if (!state.testing) onAction(MainAction.TestDelays) },
+                enabled = state.groups.isNotEmpty() && !state.readOnly && noServers == null,
+            ) {
+                if (state.testing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_flash_on),
                         contentDescription = stringResource(R.string.clod_test_delays),
@@ -143,7 +149,11 @@ fun ServersTab(
         }
 
         if (state.groups.isEmpty()) {
-            EmptyServers()
+            if (loaded) {
+                EmptyServers(if (active != null) R.string.clod_no_servers_in_subscription else R.string.clod_no_servers_hint)
+            } else {
+                Waiting()
+            }
             return@Column
         }
 
@@ -175,7 +185,7 @@ fun ServersTab(
             return@Column
         }
         if (group == null || group.proxies.isEmpty()) {
-            EmptyServers()
+            if (group?.read == false) Waiting() else EmptyServers(R.string.clod_no_servers_in_group)
             return@Column
         }
 
@@ -185,11 +195,6 @@ fun ServersTab(
             } else {
                 group.proxies.sortedByDescending { it.name in state.favorites }
             }
-        }
-
-        if (proxies.isEmpty()) {
-            EmptyServers()
-            return@Column
         }
 
         key(state.selected) {
@@ -233,7 +238,20 @@ fun ServersTab(
 }
 
 @Composable
-private fun EmptyServers() {
+internal fun Waiting() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+// hint — почему пусто: нет подписки, в подписке нет групп или пуста группа
+@Composable
+private fun EmptyServers(@StringRes hint: Int) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -249,7 +267,7 @@ private fun EmptyServers() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.clod_no_servers_hint),
+                text = stringResource(hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

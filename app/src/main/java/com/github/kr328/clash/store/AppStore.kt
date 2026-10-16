@@ -64,6 +64,19 @@ class AppStore private constructor(context: Context, mode: Int) {
         defaultValue = false,
     )
 
+    // Добавление не удалось, а экран добавления к тому времени закрыли: причину
+    // покажет Главная. Рядом с итогом удачного добавления, а не в общем ходе
+    // загрузки — его перезаписало бы следующее сохранение свойств
+    var addFailedMessage: String by store.string(
+        key = "add_failed_message",
+        defaultValue = "",
+    )
+
+    var addFailedDetail: String by store.string(
+        key = "add_failed_detail",
+        defaultValue = "",
+    )
+
     var profileProvidersFailed: String by store.string(
         key = "profile_providers_failed",
         defaultValue = "",

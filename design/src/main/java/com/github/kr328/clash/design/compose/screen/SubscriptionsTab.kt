@@ -75,6 +75,7 @@ import com.github.kr328.clash.design.util.formatDate
 import com.github.kr328.clash.design.util.localeCollator
 import com.github.kr328.clash.design.util.relativeTime
 import com.github.kr328.clash.service.model.Profile
+import com.github.kr328.clash.service.subscription.wholeDaysLeft
 import java.util.concurrent.TimeUnit
 
 internal enum class SubscriptionState {
@@ -121,7 +122,7 @@ internal fun SubscriptionState.label(): String = stringResource(
 internal fun expiryLeft(expire: Long, now: Long): String? {
     if (expire <= 0 || expire <= now) return null
 
-    val days = ((expire - now) / TimeUnit.DAYS.toMillis(1)).toInt()
+    val days = wholeDaysLeft(expire - now)
 
     return if (days > 0) {
         stringResource(R.string.clod_sub_days, days)
@@ -137,7 +138,7 @@ internal fun expiryDate(expire: Long, now: Long): String = stringResource(
 )
 
 @Composable
-fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) {
+fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit, loaded: Boolean) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -168,7 +169,8 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit) 
         }
 
         if (state.profiles.isEmpty()) {
-            EmptySubscriptions(onAction)
+            // До первого чтения «подписок нет» — неправда: данные ещё не пришли
+            if (loaded) EmptySubscriptions(onAction) else Waiting()
             return@Column
         }
 
@@ -240,11 +242,11 @@ private fun SubscriptionCard(
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
-    val now = remember(profile) { item.panelNow() }
+    val clock = LocalClock.current
+    val now = remember(profile, clock) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
-    val clock = remember(profile) { System.currentTimeMillis() }
-    val missed = remember(profile) { item.missedUpdates(clock) }
+    val missed = remember(profile, clock) { item.missedUpdates(clock) }
     val warn = ClodTheme.extraColors.statusConnecting
     var menuOpen by rememberSaveable { mutableStateOf(false) }
     var picking by rememberSaveable { mutableStateOf(false) }
@@ -495,7 +497,8 @@ fun ActiveSubscriptionCard(
     onAction: (MainAction) -> Unit,
 ) {
     val profile = item.profile
-    val now = remember(profile) { item.panelNow() }
+    val clock = LocalClock.current
+    val now = remember(profile, clock) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val critical = status != SubscriptionState.Active
 

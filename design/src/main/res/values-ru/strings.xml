@@ -1,5 +1,9 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
     <string name="tap_to_start">Нажмите для запуска</string>
+    <string name="clod_logcat_recording">Идёт запись · нажмите, чтобы открыть</string>
+    <string name="clod_log_empty">Журнал пуст</string>
+    <string name="clod_system_log_unavailable">Системный журнал недоступен</string>
+    <string name="clod_nothing_found">Ничего не найдено</string>
 
     <string name="proxy">Прокси</string>
     <string name="direct_mode">Прямой режим</string>
@@ -53,9 +57,9 @@
     <string name="clod_link_no_app">Нет приложения, чтобы открыть ссылку</string>
 
     <string name="format_fetching_configuration">Загрузка настроек из «%s»</string>
-    <string name="format_fetching_provider">Загрузка провайдера «%s»</string>
-    <string name="clod_provider_update">Обновить этот провайдер</string>
-    <string name="clod_provider_failed">Провайдер «%s» не скачался</string>
+    <string name="format_fetching_provider">Загрузка набора «%s»</string>
+    <string name="clod_provider_update">Обновить этот набор</string>
+    <string name="clod_provider_failed">Набор «%s» не скачался</string>
     <string name="initializing">Инициализация</string>
     <string name="verifying">Проверка</string>
 
@@ -96,7 +100,7 @@
     <string name="bypass_private_network">Игнорировать частные сети</string>
     <string name="bypass_private_network_summary">Игнорировать адреса частных сетей</string>
     <string name="dns_hijacking">Перехват DNS</string>
-    <string name="dns_hijacking_summary">Обрабатывать все DNS запросы</string>
+    <string name="dns_hijacking_summary">Перехватывать все DNS-запросы</string>
     <string name="clod_private_dns_strict">В системных настройках включён Private DNS с указанным хостом (%1$s) — приложения получают настоящие адреса, поэтому правила по доменам и fake-ip для них не действуют</string>
     <string name="allow_bypass">Разрешить обход</string>
     <string name="allow_bypass_summary">Приложения, которые явно привязываются к сети (некоторые мессенджеры, банковские и операторские), смогут ходить в обход VPN. Выключено — их трафик тоже идёт через туннель</string>
@@ -104,7 +108,6 @@
     <string name="system_proxy_summary">Объявить приложениям, уважающим системный прокси, HTTP-прокси этого VPN (без пароля, доступен только внутри устройства)</string>
     <string name="access_control_mode">Режим контроля доступа</string>
 
-    <string name="options_unavailable">Настройки недоступны, пока туннель не остановлен</string>
 
     <string name="general">Основные</string>
     <string name="dns">DNS</string>
@@ -175,8 +178,7 @@
     <string name="sources">Исходный код</string>
     <string name="clash_meta_core">Ядро Clod Core</string>
 
-    <string name="app">Приложение</string>
-    <string name="service">Сервис</string>
+    <string name="service">Уведомления</string>
 
     <string name="dark_mode">Тёмный режим</string>
 
@@ -192,11 +194,11 @@
     <string name="deny_selected_apps">Запретить выбранные приложения</string>
 
 
-    <string name="providers">Провайдеры</string>
+    <string name="providers">Наборы серверов и правил</string>
 
     <string name="files">Файлы</string>
     <string name="browse_files">Обзор файлов</string>
-    <string name="browse_configuration_providers"><![CDATA[Обзор конфигурации и провайдеров]]></string>
+    <string name="browse_configuration_providers"><![CDATA[Обзор конфигурации и наборов]]></string>
     <string name="rename">Переименовать</string>
     <string name="file_name">Название файла</string>
     <string name="invalid_file_name">Недопустимое название файла</string>
@@ -207,6 +209,7 @@
     <string name="use_built_in">Использовать встроенный</string>
     <string name="more">Ещё</string>
     <string name="save">Сохранить</string>
+    <string name="clod_saving">Сохранение\u2026</string>
 
     <string name="rule">Правило</string>
     <string name="update_all">Обновить всё</string>
@@ -218,7 +221,7 @@
     <string name="clod_external_control_summary">Другие приложения смогут включать и выключать туннель — для автоматизации вроде Tasker. Свои ярлыки, плитка в шторке и виджет работают в любом случае.</string>
     <string name="clod_service_unavailable">Фоновая служба не отвечает. Попробуйте ещё раз, а если повторяется — откройте приложение заново</string>
     <string name="clod_action_failed">Не получилось выполнить действие</string>
-    <string name="clod_external_control_refused">Внешнее управление выключено. Включите его в настройках, раздел «Приложение».</string>
+    <string name="clod_external_control_refused">Внешнее управление выключено. Включите его: Ещё → Внешний вид и поведение.</string>
     <string name="clod_sub_menu">Действия с подпиской</string>
 
     <string name="invalid_log_file">Недопустимый файл журнала</string>
@@ -271,7 +274,7 @@
     <string name="clod_traffic_downloaded">Скачано</string>
     <string name="clod_traffic_uploaded">Отправлено</string>
     <string name="clod_sub_url_label">Ссылка на подписку</string>
-    <string name="clod_sub_url_hint">Ссылку выдаёт ваш сервис. Всё остальное подтянется само.</string>
+    <string name="clod_sub_url_hint">Ссылку выдаёт провайдер. Всё остальное подтянется само.</string>
     <string name="clod_sub_other_ways">Другие способы импорта</string>
     <string name="clod_sub_fetch_failed">Не удалось загрузить подписку</string>
     <string name="clod_sub_import_busy">Ещё загружается другая подписка. Дождитесь, пока она закончит</string>
@@ -280,13 +283,14 @@
     <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
     <string name="clod_sub_added">Подписка успешно добавлена</string>
     <string name="clod_sub_added_named">Подписка «%1$s» добавлена</string>
-    <string name="clod_sub_added_partial">Подписка добавлена, но часть провайдеров не скачалась</string>
-    <string name="clod_providers_failed_plural">Часть провайдеров не скачалась</string>
+    <string name="clod_sub_add_failed">Подписка не добавлена: %1$s</string>
+    <string name="clod_sub_added_partial">Подписка добавлена, но часть наборов не скачалась</string>
+    <string name="clod_providers_failed_plural">Часть наборов не скачалась</string>
     <string name="clod_sub_draft">Не загружена</string>
     <string name="clod_sub_draft_activate">Подписка ещё не загружена. Сохраните её, чтобы выбрать</string>
     <string name="clod_sub_active">Активна</string>
     <string name="clod_sub_expiring">Истекает</string>
-    <string name="clod_sub_exhausted">Трафик кончился</string>
+    <string name="clod_sub_exhausted">Трафик закончился</string>
     <string name="clod_sub_expired">Истекла</string>
     <string name="clod_sub_unlimited">безлимит</string>
     <string name="clod_sub_days">%1$d дн</string>
@@ -305,18 +309,18 @@
     <string name="clod_sub_stale_detail">обновлено %1$s, автообновление не проходит</string>
     <string name="clod_quota_traffic">Трафик</string>
     <string name="clod_quota_expiry">Срок действия</string>
-    <string name="clod_quota_left">осталось %1$s</string>
+    <string name="clod_quota_of_left">из %1$s · осталось %2$s</string>
     <string name="clod_sub_add">Добавить подписку</string>
     <string name="clod_sub_update_all">Обновить все</string>
     <string name="clod_sub_updating">Обновляется</string>
     <string name="clod_sub_nothing_to_update">Нечего обновлять</string>
     <string name="clod_no_subscriptions">Подписок нет</string>
     <string name="clod_sub_not_selected">Подписка не выбрана</string>
-    <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт ваш сервис.</string>
+    <string name="clod_no_subscriptions_hint">Добавьте ссылку на подписку — её выдаёт провайдер.</string>
     <string name="clod_section_connection">Подключение</string>
     <string name="clod_help_notice">Clod Clash — свободное приложение. Поддержку по самой подписке оказывает тот, кто выдал вам ссылку, а не мы.</string>
     <string name="allow_ipv6">Разрешить IPv6</string>
-    <string name="allow_ipv6_summary">Пропускать трафик IPv6 через VpnService</string>
+    <string name="allow_ipv6_summary">Пропускать трафик IPv6 через VPN</string>
     <string name="tun_stack_mode">Сетевой стек</string>
     <string name="tun_stack_auto">Авто</string>
     <string name="tun_stack_system">Системный</string>
@@ -329,9 +333,9 @@
     <string name="hide_from_recents_title">Скрыть из недавних</string>
     <string name="hide_from_recents_desc">Не показывать приложение на экране недавних</string>
     <string name="clod_setting_needs_stop">Меняется только при выключенном туннеле</string>
-    <string name="clod_interval_by_panel">Задаёт панель подписки; меняется при следующем обновлении</string>
+    <string name="clod_interval_by_panel">Задаёт провайдер; меняется при следующем обновлении</string>
     <string name="clod_name_empty_shows">Пусто — показывается «%1$s»</string>
-    <string name="clod_interval_from_panel">Как в панели</string>
+    <string name="clod_interval_from_panel">Как у провайдера</string>
     <string name="clod_properties_tip">Ссылка должна вести на конфигурацию Clash — с прокси и правилами. Имя и интервал обновления можно менять когда угодно.</string>
     <string name="clod_properties_tip_source">Адрес этой подписки задан источником, из которого она пришла, и здесь не меняется. Имя можно менять когда угодно.</string>
     <string name="clod_properties_tip_file">Это подписка из локального файла: адреса у неё нет, конфигурация правится на экране «Файлы». Имя можно менять когда угодно.</string>
@@ -349,10 +353,11 @@
     <string name="clod_settings_app_subtitle">Тема, автозапуск, значок</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, системный прокси</string>
     <string name="clod_settings_override_subtitle">Применяется поверх конфигурации любой подписки</string>
-    <string name="clod_settings_meta_subtitle">Sniffer, источники geodata, TLS</string>
+    <string name="clod_settings_meta_subtitle">Переопределение, перехват доменов, гео-базы</string>
     <string name="clod_apps">Приложения</string>
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
     <string name="clod_access_control_all_hint">Через туннель идут все приложения — отметки ниже ни на что не влияют, пока не выбран другой режим. Если подписка пришлёт свой список приложений, в этом режиме через туннель пойдут только они.</string>
+    <string name="clod_access_control_all_sub_exclude_hint">Через туннель идут все приложения, кроме помеченных «Мимо VPN» — так задала подписка. Отметки ниже ни на что не влияют, пока не выбран другой режим.</string>
     <string name="clod_access_control_selected_empty_hint">Ничего не отмечено — через туннель не идёт ни одно приложение. Отметьте те, которым нужен VPN.</string>
     <string name="clod_access_control_selected_sub_hint">Пока ничего не отмечено, действует список подписки: через туннель идут все приложения, кроме помеченных «Мимо VPN». Отметьте приложения, чтобы через туннель шли только они.</string>
     <plurals name="clod_access_control_sub_include_hint">
@@ -390,9 +395,9 @@
     <string name="clod_update_confirm_title">Обновление готово к установке</string>
     <string name="clod_update_confirm_text">Нажмите, чтобы подтвердить установку</string>
     <string name="clod_mode">Режим</string>
-    <string name="clod_mode_locked">%s · задан вашим сервисом</string>
-    <string name="clod_mode_locked_hint">Режим маршрутизации для этой подписки задан вашим сервисом и в приложении не меняется.</string>
-    <string name="clod_mode_locked_toast">Режим задан вашим сервисом</string>
+    <string name="clod_mode_locked">%s · задан провайдером</string>
+    <string name="clod_mode_locked_hint">Режим маршрутизации для этой подписки задан провайдером и в приложении не меняется.</string>
+    <string name="clod_mode_locked_toast">Режим задан провайдером</string>
     <string name="clod_mode_chosen">%s · выбран вами</string>
     <string name="clod_mode_from_subscription">%s · из подписки</string>
     <string name="clod_mode_from_override">%s · из переопределения</string>
@@ -403,7 +408,9 @@
     <string name="clod_no_servers">Серверов нет</string>
     <string name="clod_notice_expand">Показать полностью</string>
     <string name="clod_notice_collapse">Свернуть</string>
-    <string name="clod_no_servers_hint">Добавьте подписку и подключитесь — список приходит из панели.</string>
+    <string name="clod_no_servers_hint">Добавьте подписку и подключитесь — список серверов присылает провайдер.</string>
+    <string name="clod_no_servers_in_subscription">В подписке нет групп серверов.</string>
+    <string name="clod_no_servers_in_group">В этой группе нет серверов.</string>
     <string name="clod_action_connect">Подключиться</string>
     <string name="clod_action_disconnect">Отключиться</string>
     <string name="clod_refresh_profile">Обновить подписку</string>
@@ -420,7 +427,7 @@
     <string name="clod_geo_update_failed">Не удалось обновить данные маршрутизации</string>
     <string name="clod_geo_update_partial">Обновились не все списки маршрутизации</string>
     <string name="clod_geo_updated_reconnect">Списки скачаны, ядро возьмёт их после переподключения</string>
-    <string name="clod_geo_providers_failed">Списки обновлены, а провайдеры — нет</string>
+    <string name="clod_geo_providers_failed">Списки обновлены, а наборы — нет</string>
     <string name="clod_geo_after_reconnect">Ядро возьмёт новые списки после переподключения</string>
     <string name="clod_geo_missing">Не скачан</string>
     <string name="clod_group_index">Группа \u00b7 %1$d из %2$d</string>
@@ -436,7 +443,7 @@
     <string name="clod_servers_mobile_only">Серверы доступны только в мобильной сети</string>
     <string name="clod_select_mobile_only">Этот сервер доступен только в мобильной сети</string>
     <string name="clod_favorite_remove">Убрать из избранного</string>
-    <string name="clod_servers_direct">Включён «Прямой режим»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим показан во вкладке «Ещё» и переключается там, если его не задал ваш сервис.</string>
+    <string name="clod_servers_direct">Включён «Прямой режим»: трафик идёт мимо серверов, и выбор сервера ничего не меняет. Режим показан во вкладке «Ещё» и переключается там, если его не задал провайдер.</string>
     <string name="clod_servers_query_failed">Ядро не отдало список серверов</string>
     <string name="clod_one_per_line">По одному в строке</string>
     <string name="clod_key_value_per_line">По паре «ключ = значение» в строке</string>
@@ -458,15 +465,16 @@
     <string name="skip_dst_address">Пропускать адреса назначения</string>
     <string name="import_asn_file">Загрузить базу ASN</string>
     <string name="clod_hwid_title">Опознавать это устройство</string>
-    <string name="clod_hwid_summary">Панели, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
+    <string name="clod_hwid_summary">Провайдеры, ограничивающие число устройств, считают их по этому признаку. Идентификатор берётся из значения устройства и хешируется — само значение телефон не покидает.</string>
     <string name="clod_sub_notify_title">Напоминания о подписке</string>
-    <string name="clod_sub_notify_summary">Предупреждать, когда подписка заканчивается или трафик на исходе. Пороги задаёт ваш сервис.</string>
+    <string name="clod_sub_notify_summary">Предупреждать, когда подписка заканчивается или трафик на исходе. Пороги задаёт провайдер.</string>
     <string name="clod_profile_error_notify_title">Ошибки обновления подписки</string>
     <string name="clod_profile_error_notify_summary">Показывать уведомление, когда подписка не обновилась</string>
     <string name="clod_profile_update_notify_title">Успешные обновления подписки</string>
     <string name="clod_profile_update_notify_summary">Показывать уведомление, когда подписка обновилась</string>
     <string name="clod_update_notify_title">Уведомления об обновлениях</string>
     <string name="clod_update_notify_summary">Сообщать о новой версии, даже когда приложение закрыто</string>
+    <string name="clod_update_notify_needs_auto">Выключено вместе с «Проверять автоматически» в «О программе»</string>
     <string name="clod_update_notify_off_title">Выключить уведомления об обновлениях?</string>
     <string name="clod_update_notify_off_text">Без них можно пропустить важные исправления — тогда регулярно проверяйте обновления в «О программе».</string>
     <string name="clod_update_notify_off_action">Выключить</string>
@@ -527,7 +535,7 @@
     <string name="clod_no_servers_unidentified">Для этой подписки нужно опознание устройства. Включите «Опознавать это устройство» в настройках приложения.</string>
     <string name="clod_no_servers_expired_title">Подписка истекла</string>
     <string name="clod_no_servers_expired">Срок подписки закончился. Продлите её — серверы вернутся при следующем обновлении.</string>
-    <string name="clod_no_servers_expired_date">Срок подписки закончился %1$s. Продлите её — серверы вернутся при следующем обновлении.</string>
+    <string name="clod_no_servers_expired_date">Срок подписки закончился (%1$s). Продлите её — серверы вернутся при следующем обновлении.</string>
     <string name="clod_no_servers_traffic_title">Трафик закончился</string>
     <string name="clod_no_servers_traffic">Трафик израсходован. Докупите или дождитесь обновления.</string>
     <string name="clod_no_servers_traffic_date">Трафик израсходован. Обновится %1$s — или докупите сейчас.</string>
@@ -548,17 +556,18 @@
     <string name="clod_background">Фоновая работа</string>
     <string name="clod_keep_awake">Держать туннель активным при выключенном экране</string>
     <string name="clod_keep_awake_summary">Не даёт устройству уснуть: процессор не спит, сердцебиение и проверки серверов идут круглосуточно. Заметно расходует батарею. Нужно, если сервер рвёт простаивающие сессии и первый запрос после сна зависает.</string>
-    <string name="clod_secure_channel">Защищённое соединение</string>
+    <string name="clod_secure_channel">Защищённый канал провайдера</string>
     <string name="clod_secure_channel_on">Подписка загружается через защищённый канал провайдера</string>
-    <string name="clod_secure_channel_off">Выключено — подписка идёт открытым текстом. Это небезопасно</string>
+    <string name="clod_secure_channel_off">Выключено — подписка идёт обычным HTTPS, без дополнительной защиты провайдера</string>
+    <string name="clod_secure_channel_hint">Работает, если провайдер его поддерживает: это не обычный HTTPS, а дополнительное шифрование обмена с провайдером поверх него</string>
     <string name="clod_secure_channel_key">Отпечаток ключа провайдера: %1$s</string>
-    <string name="clod_secure_off_title">Выключить защищённое соединение?</string>
-    <string name="clod_secure_off_body">Без него адрес подписки, данные устройства и список серверов идут к провайдеру открытым текстом, и их видят посредники по пути. Выключайте, только если провайдер просит.</string>
+    <string name="clod_secure_off_title">Выключить защищённый канал?</string>
+    <string name="clod_secure_off_body">Без него адрес подписки, данные устройства и список серверов идут к провайдеру обычным HTTPS — без дополнительного шифрования, которое даёт канал. Выключайте, только если провайдер просит.</string>
     <string name="clod_secure_off_confirm">Выключить</string>
     <string name="clod_chan_stage_checking">Проверяем защищённый канал на стороне провайдера\u2026</string>
-    <string name="clod_chan_stage_retry">Нет ответа, пробуем ещё раз (%1$d из %2$d)\u2026</string>
+    <string name="clod_chan_stage_retry">Пробуем ещё раз (%1$d из %2$d)\u2026</string>
     <string name="clod_chan_stage_plain">У провайдера нет защищённого канала — загружаем обычным способом\u2026</string>
-    <string name="clod_chan_absent">Провайдер не поддерживает защищённое соединение</string>
+    <string name="clod_chan_absent">Провайдер не поддерживает защищённый канал</string>
     <string name="clod_sub_channel_on">Защищённый канал</string>
     <string name="clod_sub_channel_off">Без защищённого канала — провайдер его не поддерживает</string>
     <string name="clod_home_connected_to">Подключено к</string>
@@ -567,7 +576,7 @@
     <string name="clod_home_bypass">Напрямую</string>
     <string name="clod_home_blocked">Блокируется</string>
     <string name="clod_section_configuration">Конфигурация</string>
-    <string name="clod_data_title">Базы и провайдеры</string>
+    <string name="clod_data_title">Базы и наборы</string>
     <string name="clod_just_now">Только что</string>
     <plurals name="clod_minutes_ago">
         <item quantity="one">%d минуту назад</item>
@@ -603,6 +612,7 @@
     <string name="clod_reliability_always_on_enabled">Включено</string>
     <string name="clod_reliability_always_on_disabled">Не включено · в системе — «Постоянный VPN»</string>
     <string name="clod_reliability_always_on_unknown">Проверится после первого подключения</string>
+    <string name="clod_reliability_always_on_manual">Включите в настройках системы: «Постоянный VPN»</string>
     <string name="clod_reliability_later">Позже</string>
     <string name="clod_reliability_setup">Настроить</string>
     <string name="clod_reliability_open_settings">Открыть настройки</string>
@@ -613,6 +623,6 @@
     <string name="clod_reset_section">Сброс</string>
     <string name="clod_reset_title">Сбросить настройки</string>
     <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским, список на экране «Приложения» и переопределения конфига очистятся. Подписки и их собственные настройки останутся.</string>
-    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Список на экране «Приложения» очистится, а режим контроля доступа вернётся к «Разрешить выбранные приложения» — пока вы снова не отметите приложения, через туннель не пойдёт ни одно. Переопределения конфига тоже очистятся. Подписки и их собственные настройки останутся нетронутыми.</string>
+    <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Список на экране «Приложения» очистится, а режим контроля доступа вернётся к «Разрешить выбранные приложения» — пока вы снова не отметите приложения, действует список приложений подписки, а без него через туннель не пойдёт ни одно. Переопределения конфига тоже очистятся. Подписки и их собственные настройки останутся нетронутыми.</string>
     <string name="clod_reset_action">Сбросить</string>
 </resources>

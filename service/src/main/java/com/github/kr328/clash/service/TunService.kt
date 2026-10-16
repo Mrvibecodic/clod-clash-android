@@ -28,6 +28,8 @@ import com.github.kr328.clash.service.util.TunApps
 import com.github.kr328.clash.service.util.tunApps
 import com.github.kr328.clash.service.util.tunAppsChanged
 import com.github.kr328.clash.service.util.sendClashStarting
+import com.github.kr328.clash.service.util.sendClashStopped
+import com.github.kr328.clash.service.util.VpnTakeover
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.*
 import kotlinx.coroutines.selects.select
@@ -248,13 +250,22 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         ServiceLog.mark("TunService: revoked")
 
-        session.reason = getString(R.string.clod_tun_revoked)
-
         session.systemStarted = false
         session.unattendedStart = false
         session.wasReady = false
 
-        StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_tun_revoked), R.string.clod_stopped_title)
+        // Уведомление — только если разрешение забрал другой VPN; выключил сам —
+        // остановка как обычная
+        val context = applicationContext.withStoredLocale()
+
+        VpnTakeover.watch(context) {
+            val text = context.getString(R.string.clod_tun_revoked)
+
+            StaticNotificationModule.notifyStartFailed(context, text, R.string.clod_stopped_title)
+
+            // Открытый экран показывает причину сам и снимает уведомление
+            context.sendClashStopped(text)
+        }
 
         stopSelf()
     }

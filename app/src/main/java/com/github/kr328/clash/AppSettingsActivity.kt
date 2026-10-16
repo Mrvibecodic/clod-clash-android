@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.log.Log
@@ -54,6 +55,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             ::onHideIconChange,
             { clashActive },
             ::onReset,
+            AppStore(this).autoCheckUpdate,
         )
 
         setContentDesign(design)
@@ -272,7 +274,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         val plan = planRestore(candidates, known, ValidatorHttpUrl)
 
         val items = plan.load
-        val rejected = plan.rejected.map { "${it.name.ifBlank { "?" }}: ${getString(DesignR.string.invalid_url)}" }
+        val rejected = plan.rejected.map { "${it.name.ifBlank { "?" }}: ${getString(DesignR.string.accept_http_content)}" }
 
         if (items.isEmpty()) {
             design.showRestoreResult(ProfileImports.BatchState.Done(0, rejected.size, plan.present, rejected))
@@ -297,21 +299,18 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             else -> getString(DesignR.string.clod_backup_restored, done.restored, done.total)
         }
 
+        // Одна плашка: вторая заменила бы её раньше, чем её успели прочитать
+        val providers = done.failedProviders.takeIf { it.isNotEmpty() }?.let {
+            getString(DesignR.string.clod_providers_failed_plural) + ": " + it.joinToString(", ")
+        }
+        val failed = done.failures.isNotEmpty() || providers != null
+
         showToast(
             message,
             ToastDuration.Long,
-            detail = done.failures.joinToString("\n").ifEmpty { null },
-            kind = if (done.failures.isEmpty()) NoticeKind.Info else NoticeKind.Error,
+            detail = (done.failures + listOfNotNull(providers)).joinToString("\n").ifEmpty { null },
+            kind = if (failed) NoticeKind.Error else NoticeKind.Info,
         )
-
-        if (done.failedProviders.isNotEmpty()) {
-            showToast(
-                DesignR.string.clod_providers_failed_plural,
-                ToastDuration.Long,
-                detail = done.failedProviders.joinToString(", "),
-                kind = NoticeKind.Error,
-            )
-        }
     }
 
     override var autoRestart: Boolean
@@ -345,12 +344,21 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
     }
 
     private fun openNotificationSettings() {
-        val intents = listOf(
-            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
-            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                .setData(Uri.fromParts("package", packageName, null)),
-        )
+        val details = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.fromParts("package", packageName, null))
+
+        // До Android 8 экран уведомлений приложения ждёт другие ключи и без них
+        // молча закрывается с «Приложение не найдено» — там страница приложения,
+        // в ней есть пункт «Уведомления»
+        val intents = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            listOf(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+                details,
+            )
+        } else {
+            listOf(details)
+        }
 
         for (intent in intents) {
             try {

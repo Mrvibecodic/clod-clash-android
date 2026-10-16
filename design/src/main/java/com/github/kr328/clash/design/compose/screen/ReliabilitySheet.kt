@@ -1,5 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.rememberScrollState
@@ -93,11 +94,18 @@ private fun ReliabilityStep(
     }
 }
 
+// «Постоянный VPN» для сторонних приложений есть с Android 7, а узнать, включён
+// ли он, система даёт только с Android 10: до него шаг не проверяется и не
+// считается незавершённым
+private val alwaysOnExists = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+private val alwaysOnReadable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+
 @Composable
-private fun alwaysOnSubtitle(alwaysOn: Boolean?): String = when (alwaysOn) {
-    true -> stringResource(R.string.clod_reliability_always_on_enabled)
-    false -> stringResource(R.string.clod_reliability_always_on_disabled)
-    null -> stringResource(R.string.clod_reliability_always_on_unknown)
+private fun alwaysOnSubtitle(alwaysOn: Boolean?): String = when {
+    alwaysOn == true -> stringResource(R.string.clod_reliability_always_on_enabled)
+    alwaysOn == false -> stringResource(R.string.clod_reliability_always_on_disabled)
+    alwaysOnReadable -> stringResource(R.string.clod_reliability_always_on_unknown)
+    else -> stringResource(R.string.clod_reliability_always_on_manual)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -135,14 +143,16 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
                 done = state.batteryIgnored,
                 onClick = { onAction(MainAction.ReliabilityAllowBattery) },
             )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
-            ReliabilityStep(
-                title = stringResource(R.string.clod_reliability_always_on),
-                subtitle = stringResource(R.string.clod_reliability_always_on_why),
-                iconRes = R.drawable.ic_baseline_vpn_lock,
-                done = state.alwaysOn == true,
-                onClick = { onAction(MainAction.ReliabilityOpenVpnSettings) },
-            )
+            if (alwaysOnExists) {
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 18.dp))
+                ReliabilityStep(
+                    title = stringResource(R.string.clod_reliability_always_on),
+                    subtitle = stringResource(R.string.clod_reliability_always_on_why),
+                    iconRes = R.drawable.ic_baseline_vpn_lock,
+                    done = state.alwaysOn == true,
+                    onClick = { onAction(MainAction.ReliabilityOpenVpnSettings) },
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Row(
                 modifier = Modifier
@@ -161,7 +171,7 @@ fun ReliabilitySheet(state: ReliabilityState, onAction: (MainAction) -> Unit) {
                             Text(stringResource(R.string.clod_reliability_setup))
                         }
                     }
-                    state.alwaysOn != true -> {
+                    alwaysOnReadable && state.alwaysOn != true -> {
                         TextButton(onClick = { onAction(MainAction.ReliabilityDismiss) }) {
                             Text(stringResource(R.string.clod_reliability_later))
                         }
@@ -196,12 +206,14 @@ fun ReliabilityRows(state: ReliabilityState, onAction: (MainAction) -> Unit) {
         subtitleDone = state.batteryIgnored,
         onClick = { onAction(MainAction.ReliabilityAllowBattery) },
     )
-    ReliabilityStep(
-        title = stringResource(R.string.clod_reliability_always_on),
-        subtitle = alwaysOnSubtitle(state.alwaysOn),
-        iconRes = R.drawable.ic_baseline_vpn_lock,
-        done = state.alwaysOn == true,
-        subtitleDone = state.alwaysOn == true,
-        onClick = { onAction(MainAction.ReliabilityOpenVpnSettings) },
-    )
+    if (alwaysOnExists) {
+        ReliabilityStep(
+            title = stringResource(R.string.clod_reliability_always_on),
+            subtitle = alwaysOnSubtitle(state.alwaysOn),
+            iconRes = R.drawable.ic_baseline_vpn_lock,
+            done = state.alwaysOn == true,
+            subtitleDone = state.alwaysOn == true,
+            onClick = { onAction(MainAction.ReliabilityOpenVpnSettings) },
+        )
+    }
 }

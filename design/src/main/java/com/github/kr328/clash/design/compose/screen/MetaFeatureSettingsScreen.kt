@@ -114,6 +114,7 @@ fun MetaFeatureSettingsScreen(
             ActionRow(
                 title = stringResource(R.string.override),
                 subtitle = stringResource(R.string.clod_settings_override_subtitle),
+                subtitleMaxLines = Int.MAX_VALUE,
                 icon = painterResource(R.drawable.ic_baseline_extension),
                 onClick = { onAction(MetaFeatureSettingsAction.OpenOverride) },
             )

@@ -91,6 +91,14 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `only a failure on the way is a network cause, not an answer the server gave`() {
+        assertEquals(true, UpdateFailures.classify("clod-chan-silent: dial tcp: i/o timeout")?.cause?.transport)
+        assertEquals(true, UpdateFailures.classify("clod-chan-silent: Get \"https://sub.example.com/***\": EOF")?.cause?.transport)
+        assertEquals(false, UpdateFailures.classify("clod-chan-doubt: relay answered with status 403")?.cause?.transport)
+        assertEquals(false, UpdateFailures.classify("server answered with status 502")?.cause?.transport)
+    }
+
+    @Test
     fun `a connection the server closed unanswered is doubtful but keeps the connection text`() {
         val raw = "clod-chan-silent: clod-chan-dropped: Get \"https://sub.example.com/***\": EOF"
 

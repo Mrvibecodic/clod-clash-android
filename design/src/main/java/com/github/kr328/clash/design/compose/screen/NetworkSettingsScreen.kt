@@ -77,7 +77,7 @@ fun NetworkSettingsScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!state.editable) {
-                InfoNotice(stringResource(R.string.options_unavailable))
+                InfoNotice(stringResource(R.string.clod_setting_needs_stop))
             }
 
             // В режиме локального прокси приложения сами передают имя хоста, там подсказка ни к чему

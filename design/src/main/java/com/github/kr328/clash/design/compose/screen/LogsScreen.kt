@@ -32,6 +32,8 @@ data class LogsState(
     val files: List<LogFile> = emptyList(),
     val loaded: Boolean = false,
     val confirmingDelete: Boolean = false,
+    // Запись журнала уже идёт: пункт открывает её, а не начинает новую
+    val recording: Boolean = false,
 )
 
 sealed interface LogsAction {
@@ -71,7 +73,7 @@ fun LogsScreen(
                 Column {
                     ActionRow(
                         title = stringResource(R.string.clash_logcat),
-                        subtitle = stringResource(R.string.tap_to_start),
+                        subtitle = stringResource(if (state.recording) R.string.clod_logcat_recording else R.string.tap_to_start),
                         icon = painterResource(R.drawable.ic_baseline_adb),
                         onClick = { onAction(LogsAction.StartLogcat) },
                     )

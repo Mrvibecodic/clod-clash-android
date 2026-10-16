@@ -31,6 +31,7 @@ import com.github.kr328.clash.service.report.ClientReports
 import com.github.kr328.clash.service.util.sendProfileUpdateCompleted
 import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import com.github.kr328.clash.service.util.sendProfileUpdateStarted
+import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -40,7 +41,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
     CoroutineWorker(context, parameters) {
-    private val context: Context = applicationContext
+    // С языком приложения: до Android 13 контекст процесса знает только язык системы
+    private val context: Context = applicationContext.withStoredLocale()
 
     override suspend fun doWork(): Result {
         val uuid = inputData.getString(KEY_UUID)?.let(UUID::fromString) ?: return Result.failure()

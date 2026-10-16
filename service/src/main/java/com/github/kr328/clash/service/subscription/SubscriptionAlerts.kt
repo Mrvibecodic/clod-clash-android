@@ -2,9 +2,14 @@ package com.github.kr328.clash.service.subscription
 
 import java.util.concurrent.TimeUnit
 
+// Сколько целых суток осталось (0 — меньше суток): одно правило для экрана и напоминаний
+fun wholeDaysLeft(remainingMillis: Long): Int = (remainingMillis / TimeUnit.DAYS.toMillis(1)).toInt()
+
 sealed interface SubscriptionAlert {
     data object Expired : SubscriptionAlert
 
+    // days — сколько целых суток осталось на самом деле, как на экране (0 —
+    // меньше суток); порог, по которому оно сработало, — только ключ «сообщали»
     data class ExpiresIn(val days: Int) : SubscriptionAlert
 
     data class TrafficUsed(val percent: Int) : SubscriptionAlert
@@ -75,7 +80,7 @@ object SubscriptionAlerts {
             }
             for (days in snapshot.expireDays.sorted()) {
                 if (remaining > 0 && remaining <= days * DAY_MILLIS) {
-                    passed += expireKey(days) to SubscriptionAlert.ExpiresIn(days)
+                    passed += expireKey(days) to SubscriptionAlert.ExpiresIn(wholeDaysLeft(remaining))
                 } else if (remaining <= 0) {
                     passed += expireKey(days) to null
                 }

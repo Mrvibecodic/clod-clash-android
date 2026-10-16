@@ -77,6 +77,8 @@ data class AccessControlState(
     val mode: Int = 0,
     val includeFromProfile: Set<String> = emptySet(),
     val excludeFromProfile: Set<String> = emptySet(),
+    // Отмеченные, но удалённые с устройства: выбором не считаются, как и в туннеле
+    val notInstalled: Set<String> = emptySet(),
 )
 
 sealed interface AccessControlAction {
@@ -224,14 +226,15 @@ fun AccessControlScreen(
                             val included = (state.includeFromProfile - state.excludeFromProfile).size
 
                             Text(
-                                text = if (included > 0) {
-                                    pluralStringResource(
+                                text = when {
+                                    included > 0 -> pluralStringResource(
                                         R.plurals.clod_access_control_sub_include_hint,
                                         included,
                                         included,
                                     )
-                                } else {
-                                    stringResource(R.string.clod_access_control_all_hint)
+                                    state.excludeFromProfile.isNotEmpty() ->
+                                        stringResource(R.string.clod_access_control_all_sub_exclude_hint)
+                                    else -> stringResource(R.string.clod_access_control_all_hint)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -246,7 +249,7 @@ fun AccessControlScreen(
                         // Включения подписки помечены в списке сами
                         val subIncluded = (state.includeFromProfile - state.excludeFromProfile).isNotEmpty()
 
-                        if (state.mode == MODE_ACCEPT_SELECTED && state.selected.isEmpty() && !subIncluded) {
+                        if (state.mode == MODE_ACCEPT_SELECTED && (state.selected - state.notInstalled).isEmpty() && !subIncluded) {
                             val subExcludeOnly = state.excludeFromProfile.isNotEmpty()
 
                             Text(
@@ -269,6 +272,17 @@ fun AccessControlScreen(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
+                }
+            }
+
+            if (searching && visible.isEmpty()) {
+                item(key = "nothing") {
+                    Text(
+                        text = stringResource(R.string.clod_nothing_found),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                    )
                 }
             }
 

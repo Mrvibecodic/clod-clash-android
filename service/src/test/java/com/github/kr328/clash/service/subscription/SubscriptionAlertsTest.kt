@@ -68,7 +68,8 @@ class SubscriptionAlertsTest {
             now,
         )
 
-        assertEquals(listOf(SubscriptionAlert.ExpiresIn(7)), outcome.alerts)
+        // Сработал порог 7 дней, а в тексте — сколько осталось на деле
+        assertEquals(listOf(SubscriptionAlert.ExpiresIn(5)), outcome.alerts)
     }
 
     @Test
@@ -90,7 +91,7 @@ class SubscriptionAlertsTest {
             now + 3 * day,
         )
 
-        assertEquals(listOf(SubscriptionAlert.ExpiresIn(3)), second.alerts)
+        assertEquals(listOf(SubscriptionAlert.ExpiresIn(2)), second.alerts)
     }
 
     @Test
@@ -134,13 +135,13 @@ class SubscriptionAlertsTest {
             now + 24 * day,
         )
 
-        assertEquals(listOf(SubscriptionAlert.ExpiresIn(7)), again.alerts)
+        assertEquals(listOf(SubscriptionAlert.ExpiresIn(6)), again.alerts)
     }
 
     @Test
     fun `часы ушли назад — порог взводится обратно`() {
         val first = SubscriptionAlerts.evaluate(snapshot(expireAt = now + 5 * day), now)
-        assertEquals(listOf(SubscriptionAlert.ExpiresIn(7)), first.alerts)
+        assertEquals(listOf(SubscriptionAlert.ExpiresIn(5)), first.alerts)
 
         val back = SubscriptionAlerts.evaluate(
             snapshot(expireAt = now + 5 * day, notified = first.notified),
@@ -153,7 +154,7 @@ class SubscriptionAlertsTest {
             snapshot(expireAt = now + 5 * day, notified = back.notified),
             now,
         )
-        assertEquals(listOf(SubscriptionAlert.ExpiresIn(7)), later.alerts)
+        assertEquals(listOf(SubscriptionAlert.ExpiresIn(5)), later.alerts)
     }
 
     @Test
@@ -248,7 +249,7 @@ class SubscriptionAlertsTest {
         )
 
         assertEquals(
-            listOf(SubscriptionAlert.ExpiresIn(3), SubscriptionAlert.TrafficUsed(90)),
+            listOf(SubscriptionAlert.ExpiresIn(2), SubscriptionAlert.TrafficUsed(90)),
             outcome.alerts,
         )
     }

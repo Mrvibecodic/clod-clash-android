@@ -26,7 +26,7 @@ class LogsActivity : BaseActivity<LogsDesign>() {
                                 loadFiles()
                             }
 
-                            design.patchLogs(files)
+                            design.patchLogs(files, LogcatService.running)
                         }
                         else -> Unit
                     }

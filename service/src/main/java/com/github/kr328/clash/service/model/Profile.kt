@@ -31,6 +31,8 @@ data class Profile(
     val nameManual: Boolean = false,
     /** Последняя удачная загрузка подписки (mtime `config.yaml`); 0 — не загружалась. */
     val fetchedAt: Long = 0,
+    /** Канал у рабочей подписки, а не у черновика: включение канала проверяется от него. */
+    val importedSecure: Boolean = false,
 ) : Parcelable {
     enum class Type {
         File, Url, External

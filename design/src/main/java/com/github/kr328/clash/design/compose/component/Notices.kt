@@ -1,5 +1,7 @@
 package com.github.kr328.clash.design.compose.component
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -173,7 +175,7 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
         AlertDialog(
             onDismissRequest = { detail = null },
             title = { Text(stringResource(noticeDetailTitle(opened.kind))) },
-            text = { Text(text) },
+            text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
             confirmButton = {
                 TextButton(onClick = { detail = null }) { Text(stringResource(R.string.ok)) }
             },

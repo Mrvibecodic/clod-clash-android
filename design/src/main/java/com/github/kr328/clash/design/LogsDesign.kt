@@ -43,9 +43,9 @@ class LogsDesign(context: Context) : Design<LogsDesign.Request>(context) {
         }
     }
 
-    suspend fun patchLogs(logs: List<LogFile>) {
+    suspend fun patchLogs(logs: List<LogFile>, recording: Boolean) {
         withContext(Dispatchers.Main) {
-            state = state.copy(files = logs.sortedByDescending { it.date }, loaded = true)
+            state = state.copy(files = logs.sortedByDescending { it.date }, loaded = true, recording = recording)
         }
     }
 

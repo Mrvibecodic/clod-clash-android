@@ -82,39 +82,6 @@ fun delayMark(delay: Int, bounds: PingBounds): DelayMark = when {
 }
 
 @Composable
-fun PingBadge(
-    delay: Int,
-    on: Color,
-    marksOnly: Boolean = false,
-    bounds: PingBounds = PingBounds(),
-    modifier: Modifier = Modifier,
-) {
-    val mark = delayMark(delay, bounds)
-
-    val color = when {
-        mark == DelayMark.Untested -> ClodTheme.extraColors.statusStopped
-        mark == DelayMark.Dead -> MaterialTheme.colorScheme.error
-        marksOnly || mark == DelayMark.Fast -> ClodTheme.extraColors.statusConnected
-        mark == DelayMark.Medium -> ClodTheme.extraColors.statusConnecting
-        else -> MaterialTheme.colorScheme.error
-    }
-
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(color.statusContainer(on))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
-    ) {
-        Text(
-            text = delayLabel(mark, delay, marksOnly),
-            color = color.statusText(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-        )
-    }
-}
-
-@Composable
 private fun delayLabel(mark: DelayMark, delay: Int, marksOnly: Boolean): String = when {
     mark == DelayMark.Untested -> "—"
     mark == DelayMark.Dead -> if (marksOnly) "✕" else "—"
@@ -238,6 +205,11 @@ fun ProxyRow(
             Text(text = flag, fontSize = 20.sp)
             Spacer(Modifier.width(10.dp))
         }
+        val on = if (selected) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name.bidiIsolated(),
@@ -251,26 +223,27 @@ fun ProxyRow(
                 stringResource(R.string.clod_proxy_pinned).takeIf { pinned },
                 subtitle.takeIf { it.isNotBlank() }?.bidiIsolated(),
             ).joinToString(" · ")
-            if (caption.isNotEmpty()) {
-                Text(
-                    text = caption,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            // «Моб. сеть» — во второй строке: справа, рядом с пингом и
+            // звездой, она съедала имя сервера на узком экране
+            if (caption.isNotEmpty() || mobileOnly) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (mobileOnly) {
+                        MobilePill(on = on)
+                        if (caption.isNotEmpty()) Spacer(Modifier.width(6.dp))
+                    }
+                    if (caption.isNotEmpty()) {
+                        Text(
+                            text = caption,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
         Spacer(Modifier.width(10.dp))
-        val on = if (selected) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        }
-        if (mobileOnly) {
-            MobilePill(on = on)
-            Spacer(Modifier.width(6.dp))
-        }
         if (freeze) {
             // Без слова значок мал для пальца, а промах выбрал бы сервер под ним:
             // место под зону касания — как у звезды, высоту строки это не меняет
@@ -322,7 +295,7 @@ private fun MobilePill(on: Color) {
         modifier = Modifier
             .clip(RoundedCornerShape(50))
             .background(color.statusContainer(on))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+            .padding(horizontal = 7.dp, vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(

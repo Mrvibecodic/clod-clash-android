@@ -41,9 +41,10 @@ class FilesProvider : DocumentsProvider() {
     private val localized: Context
         get() = context!!.withStoredLocale()
 
-    private val picker: Picker by lazy {
-        Picker(context!!)
-    }
+    // Имена узлов видит и экран «Файлы» — на языке приложения, текущем
+    // на момент запроса
+    private val picker: Picker
+        get() = Picker(localized)
 
     override fun openDocument(
         documentId: String?,

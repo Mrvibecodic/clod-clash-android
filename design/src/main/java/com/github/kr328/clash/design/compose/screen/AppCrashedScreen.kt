@@ -20,6 +20,8 @@ import com.github.kr328.clash.design.compose.component.ActivityScaffold
 @Immutable
 data class AppCrashedState(
     val logs: String = "",
+    // Журнал системы уже прочитан (пустой — система его не отдала)
+    val loaded: Boolean = false,
 )
 
 sealed interface AppCrashedAction {
@@ -39,7 +41,7 @@ fun AppCrashedScreen(
     ) { padding ->
         SelectionContainer {
             Text(
-                text = state.logs,
+                text = state.logs.ifEmpty { if (state.loaded) stringResource(R.string.clod_system_log_unavailable) else "" },
                 style = MaterialTheme.typography.bodySmall,
                 fontFamily = FontFamily.Monospace,
                 lineHeight = 20.sp,

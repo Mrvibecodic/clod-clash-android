@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
@@ -70,28 +71,72 @@ object NetworkKey {
     // Мобильная ли сеть (SIM); null — сеть не названа
     fun cellular(seen: Seen?): Boolean? = seen?.let { it.transport == "cellular" }
 
-    // Мобильная ли сеть устройства сейчас — по сетям наружу, мимо любых VPN
-    // (своей и чужой): мобильная, только если кроме неё рабочей сети нет — иначе
-    // система идёт через Wi-Fi или кабель. Сетей нет — не мобильная.
+    // Сеть наружу и её место в очереди: первой идёт та, что выбрала бы служба
+    data class Outward(val transport: String, val rank: Int)
+
+    // Очередь сетей наружу, одна для службы и экрана: Wi-Fi, кабель, USB,
+    // Bluetooth, SIM, спутник; не проверенная системой — после проверенных
+    // (на ней бывает только окно входа), но остаётся сетью — при белых
+    // списках у оператора сеть SIM проверку не проходит, а работает
+    fun rankOf(transport: String, validated: Boolean): Int = when (transport) {
+        "wifi" -> 0
+        "ethernet" -> 1
+        "usb" -> 2
+        "bluetooth" -> 3
+        "cellular" -> 4
+        "satellite" -> 5
+        else -> 20
+    } + if (validated) 0 else 10
+
+    fun rank(capabilities: NetworkCapabilities): Int {
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return 90
+
+        val transport = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM &&
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_SATELLITE)
+        ) {
+            "satellite"
+        } else {
+            transportOf(capabilities)
+        }
+
+        return rankOf(transport, capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
+    }
+
+    // Сеть наружу: не VPN (свой туннель и чужие), с интернетом, без ограничений
+    // и не фоновая (с Android 9 SIM при основной Wi-Fi держится фоновой). Один
+    // набор для экрана и службы: иначе экран считал бы сеть мобильной по
+    // фоновой SIM, а служба — нет
+    private val OUTWARD_CAPABILITIES: List<Int> = listOfNotNull(
+        NetworkCapabilities.NET_CAPABILITY_NOT_VPN,
+        NetworkCapabilities.NET_CAPABILITY_INTERNET,
+        NetworkCapabilities.NET_CAPABILITY_FOREGROUND.takeIf { Build.VERSION.SDK_INT >= Build.VERSION_CODES.P },
+        NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED,
+    )
+
+    fun outwardRequest(): NetworkRequest =
+        NetworkRequest.Builder().apply { OUTWARD_CAPABILITIES.forEach { addCapability(it) } }.build()
+
+    fun outwardOf(capabilities: NetworkCapabilities): Outward? {
+        if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) ||
+            OUTWARD_CAPABILITIES.any { !capabilities.hasCapability(it) }
+        ) {
+            return null
+        }
+
+        return Outward(transportOf(capabilities), rank(capabilities))
+    }
+
+    // Мобильная, когда первая из сетей наружу — сеть SIM; сетей нет — не мобильная
+    fun cellularPreferred(networks: Collection<Outward>): Boolean =
+        networks.minByOrNull { it.rank }?.transport == "cellular"
+
+    // Мобильная ли сеть устройства сейчас — по тому же правилу, что у службы
     @Suppress("DEPRECATION")
     fun cellularNow(context: Context): Boolean {
         val connectivity = context.getSystemService<ConnectivityManager>() ?: return false
 
-        val working = connectivity.allNetworks.mapNotNull { connectivity.getNetworkCapabilities(it) }.filter(::working)
-
-        return cellularOnly(working.map(::transportOf))
+        return cellularPreferred(connectivity.allNetworks.mapNotNull { connectivity.getNetworkCapabilities(it)?.let(::outwardOf) })
     }
-
-    // Рабочая сеть наружу: не VPN, с интернетом, проверенная системой
-    fun working(capabilities: NetworkCapabilities): Boolean =
-        !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-
-    // Мобильная, когда из рабочих сетей есть только мобильные
-    fun cellularOnly(transports: Collection<String>): Boolean =
-        transports.isNotEmpty() && transports.all { it == "cellular" }
 
     // Транспорт сети: входит в ключ и в вид сети для отчёта — значения не менять
     fun transportOf(capabilities: NetworkCapabilities): String = when {

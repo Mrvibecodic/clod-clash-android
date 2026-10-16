@@ -50,6 +50,9 @@ data class AppSettingsState(
     val profileErrorNotifications: Boolean = true,
     val profileUpdateNotifications: Boolean = true,
     val appUpdateNotifications: Boolean = true,
+    // «Проверять автоматически» в «О программе»: без неё фоновая проверка не
+    // ходит в сеть, и уведомлениям о новой версии взяться неоткуда
+    val autoCheckUpdate: Boolean = true,
     val notificationsBlocked: Boolean = false,
     val resetEnabled: Boolean = true,
     val restore: RestoreDialog? = null,
@@ -92,7 +95,7 @@ fun AppSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     ActivityScaffold(
-        title = stringResource(R.string.app),
+        title = stringResource(R.string.clod_settings_app_title),
         onBack = { onAction(AppSettingsAction.Back) },
         modifier = modifier,
     ) { padding ->
@@ -187,7 +190,7 @@ fun AppSettingsScreen(
                 enabled = state.notificationEditable && !state.notificationsBlocked,
                 onCheckedChange = { onAction(AppSettingsAction.SetDynamicNotification(it)) },
             )
-            AppUpdateNotificationsRow(state.appUpdateNotifications, !state.notificationsBlocked, onAction)
+            AppUpdateNotificationsRow(state.appUpdateNotifications, !state.notificationsBlocked, state.autoCheckUpdate, onAction)
 
             SectionHeader(stringResource(R.string.clod_tab_subscriptions))
             SwitchRow(
@@ -225,7 +228,7 @@ fun AppSettingsScreen(
             ActionRow(
                 title = stringResource(R.string.clod_backup_export_title),
                 subtitle = stringResource(R.string.clod_backup_export_summary),
-                subtitleMaxLines = 2,
+                subtitleMaxLines = Int.MAX_VALUE,
                 icon = painterResource(R.drawable.ic_baseline_publish),
                 onClick = { onAction(AppSettingsAction.ExportProfiles) },
             )
@@ -293,15 +296,15 @@ private fun RestoreDialog(dialog: RestoreDialog, onAction: (AppSettingsAction) -
 }
 
 @Composable
-private fun AppUpdateNotificationsRow(checked: Boolean, enabled: Boolean, onAction: (AppSettingsAction) -> Unit) {
+private fun AppUpdateNotificationsRow(checked: Boolean, enabled: Boolean, autoCheck: Boolean, onAction: (AppSettingsAction) -> Unit) {
     var confirming by rememberSaveable { mutableStateOf(false) }
 
     SwitchRow(
         title = stringResource(R.string.clod_update_notify_title),
-        subtitle = stringResource(R.string.clod_update_notify_summary),
+        subtitle = stringResource(if (autoCheck) R.string.clod_update_notify_summary else R.string.clod_update_notify_needs_auto),
         icon = painterResource(R.drawable.ic_baseline_update),
-        checked = checked,
-        enabled = enabled,
+        checked = checked && autoCheck,
+        enabled = enabled && autoCheck,
         onCheckedChange = {
             if (it) onAction(AppSettingsAction.SetAppUpdateNotifications(true)) else confirming = true
         },
@@ -343,7 +346,7 @@ private fun ResetRow(enabled: Boolean, onAction: (AppSettingsAction) -> Unit) {
         } else {
             stringResource(R.string.clod_setting_needs_stop)
         },
-        subtitleMaxLines = 3,
+        subtitleMaxLines = Int.MAX_VALUE,
         icon = painterResource(R.drawable.ic_baseline_restore),
         enabled = enabled,
         onClick = { confirming = true },

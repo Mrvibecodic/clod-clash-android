@@ -86,6 +86,17 @@ class HomeRouteTest {
     }
 
     @Test
+    fun `заглушка панели на пути — блокировка, и в дополнительных строках её нет`() {
+        val hides: (String) -> Boolean = { it == germany }
+
+        assertEquals(HomeRoute.Blocked("Proxy"), homeRoute(Mode.Rule, template, "Proxy", readOnly = false, hides = hides))
+        assertEquals(
+            listOf<HomeRoute>(HomeRoute.Server("YouTube", netherlands, 95), HomeRoute.Bypass("Local")),
+            homeExtras(Mode.Rule, template, "Proxy", readOnly = false, hides = hides),
+        )
+    }
+
+    @Test
     fun `DIRECT показывается без пинга, REJECT отдельно`() {
         assertEquals(HomeRoute.Bypass("Local"), homeRoute(Mode.Rule, template, "Local", readOnly = false))
         assertEquals(HomeRoute.Blocked("Ads"), homeRoute(Mode.Rule, template, "Ads", readOnly = false))
@@ -99,6 +110,17 @@ class HomeRouteTest {
         )
 
         assertEquals(HomeRoute.Blocked("Proxy"), homeRoute(Mode.Rule, blocked, "Proxy", readOnly = false))
+    }
+
+    @Test
+    fun `все серверы только для мобильной сети вне неё — так и написано`() {
+        val wifi = listOf(
+            ProxyGroupState(name = "Proxy", now = "", selectable = true, proxies = emptyList(), allHidden = true),
+            group("YouTube", "Proxy", node("Proxy", isGroup = true)),
+        )
+
+        assertEquals(HomeRoute.MobileOnly("Proxy"), homeRoute(Mode.Rule, wifi, "Proxy", readOnly = false))
+        assertEquals(HomeRoute.MobileOnly("YouTube"), homeRoute(Mode.Rule, wifi, "YouTube", readOnly = false))
     }
 
     @Test

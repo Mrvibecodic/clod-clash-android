@@ -27,6 +27,9 @@ import com.github.kr328.clash.design.util.resolveThemedColor
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.service.R as ServiceR
+import com.github.kr328.clash.service.util.profileDisplayName
+import com.github.kr328.clash.util.queryPanelInfo
+import com.github.kr328.clash.util.withProfile
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
@@ -236,8 +239,22 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         val human = humanizeUpdateFailure(reason)
 
         launch {
+            // Какая подписка — как в уведомлении: при «Обновить все» иначе не понять
+            val name = uuid?.let { id ->
+                try {
+                    withProfile(retry = false) { queryByUUID(id) }?.let {
+                        profileDisplayName(queryPanelInfo(id), it.name, it.nameManual)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            val cause = human ?: getString(ServiceR.string.update_failure)
+
             design?.showToast(
-                message = human ?: getString(ServiceR.string.update_failure),
+                message = name?.let { getString(ServiceR.string.format_update_failure, it, cause) } ?: cause,
                 duration = ToastDuration.Long,
                 detail = UpdateFailures.detail(reason) ?: Redact.text(reason),
                 kind = NoticeKind.Error,

@@ -1,5 +1,6 @@
 package com.github.kr328.clash.util
 
+import com.github.kr328.clash.design.model.BUILTIN_OUTBOUNDS
 import com.github.kr328.clash.service.model.PanelGroup
 
 internal suspend fun loadRouteGroups(
@@ -30,8 +31,6 @@ internal fun offlineNow(type: String, saved: String?, proxies: List<String>): St
 // allHidden — в группе были серверы, и все они только для мобильной сети
 internal data class OfflineGroup(val now: String, val proxies: List<String>, val allHidden: Boolean = false)
 
-private val BUILTIN = setOf("DIRECT", "REJECT", "REJECT-DROP", "PASS", "COMPATIBLE")
-
 // Все серверы группы только для мобильной сети вне неё: у ядра она отказывает
 private fun PanelGroup.allGone(gone: (String) -> Boolean): Boolean = proxies.isNotEmpty() && proxies.all(gone)
 
@@ -55,11 +54,35 @@ internal fun offlineGroup(
     val now = when {
         // Автоматическая группа со скрытым закреплением выберет сама
         group.type != "select" -> if (hidden) "" else offlineNow(group.type, saved, left)
-        hidden -> left.firstOrNull { it !in BUILTIN && groupOf(it) == null }
+        hidden -> left.firstOrNull { it !in BUILTIN_OUTBOUNDS && groupOf(it) == null }
             ?: left.firstOrNull { groupOf(it)?.allGone(gone) == false }
             ?: ""
         else -> offlineNow(group.type, saved, left)
     }
 
     return OfflineGroup(now, left.filterNot(hides).distinct(), group.allGone(gone))
+}
+
+// Сервер, на котором вложенная группа name стоит без туннеля (по цепочке
+// вложенных групп): её строка в списке показывает его задержку — ту же, что
+// видна внутри группы. null — name не группа или сервера нет (url-test без
+// выбора, петля)
+internal fun offlineLeaf(
+    name: String,
+    groups: List<PanelGroup>,
+    saved: (String) -> String?,
+    gone: (String) -> Boolean = { false },
+    hides: (String) -> Boolean,
+): String? {
+    var current = groups.firstOrNull { it.name == name } ?: return null
+
+    repeat(16) {
+        val now = offlineGroup(current, saved(current.name)?.takeIf { it.isNotEmpty() }, gone, groups, hides).now
+
+        if (now.isEmpty()) return null
+
+        current = groups.firstOrNull { it.name == now } ?: return now
+    }
+
+    return null
 }

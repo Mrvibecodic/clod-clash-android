@@ -21,6 +21,7 @@ import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStopped
+import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -191,7 +192,7 @@ class SessionLifecycle(
     // остановке сессии — открыт экран или нет.
     private fun reportAlerts() {
         val uuid = ServiceStore(service).activeProfile ?: return
-        val context = service.applicationContext
+        val context = service.applicationContext.withStoredLocale()
 
         Global.launch {
             try {

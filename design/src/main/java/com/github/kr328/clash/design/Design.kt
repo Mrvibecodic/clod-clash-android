@@ -31,6 +31,12 @@ abstract class Design<R>(val context: Context) :
 
     val requests: Channel<R> = Channel(Channel.UNLIMITED)
 
+    // Нажатия, сделанные, пока был открыт дочерний экран (повторный тап, пульт
+    // ТВ), — не новые запросы: иначе после возврата экран открылся бы ещё раз
+    fun dropPendingRequests() {
+        while (requests.tryReceive().isSuccess) Unit
+    }
+
     val notices: NoticeState = NoticeState()
 
     private val designUiStore by lazy { UiStore(context) }

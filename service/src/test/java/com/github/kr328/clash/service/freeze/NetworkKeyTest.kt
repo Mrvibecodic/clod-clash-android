@@ -70,14 +70,22 @@ class NetworkKeyTest {
     }
 
     @Test
-    fun `мобильная — только когда кроме сети SIM рабочих сетей нет`() {
-        assertEquals(true, NetworkKey.cellularOnly(listOf("cellular")))
-        assertEquals(true, NetworkKey.cellularOnly(listOf("cellular", "cellular")))
+    fun `мобильная — когда первой наружу идёт сеть SIM, проверена она системой или нет`() {
+        fun net(transport: String, validated: Boolean = true) =
+            NetworkKey.Outward(transport, NetworkKey.rankOf(transport, validated))
+
+        assertEquals(true, NetworkKey.cellularPreferred(listOf(net("cellular"))))
+        // Белые списки у оператора: проверка системы не проходит, а сеть одна — SIM
+        assertEquals(true, NetworkKey.cellularPreferred(listOf(net("cellular", validated = false))))
         // Wi-Fi (и раздача с другого телефона), кабель, USB — не мобильная
-        assertEquals(false, NetworkKey.cellularOnly(listOf("wifi", "cellular")))
-        assertEquals(false, NetworkKey.cellularOnly(listOf("ethernet")))
-        assertEquals(false, NetworkKey.cellularOnly(listOf("usb")))
-        assertEquals(false, NetworkKey.cellularOnly(emptyList()))
+        assertEquals(false, NetworkKey.cellularPreferred(listOf(net("wifi"), net("cellular"))))
+        assertEquals(false, NetworkKey.cellularPreferred(listOf(net("ethernet"))))
+        assertEquals(false, NetworkKey.cellularPreferred(listOf(net("usb"))))
+        assertEquals(false, NetworkKey.cellularPreferred(emptyList()))
+        // Wi-Fi с окном входа при рабочей SIM — система идёт через SIM
+        assertEquals(true, NetworkKey.cellularPreferred(listOf(net("wifi", validated = false), net("cellular"))))
+        // Обе не проверены — первым Wi-Fi
+        assertEquals(false, NetworkKey.cellularPreferred(listOf(net("wifi", validated = false), net("cellular", validated = false))))
 
         assertEquals(true, NetworkKey.cellular(NetworkKey.Seen(transport = "cellular")))
         assertEquals(false, NetworkKey.cellular(NetworkKey.Seen(transport = "wifi")))

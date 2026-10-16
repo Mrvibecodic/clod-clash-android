@@ -106,6 +106,19 @@ fun LogcatScreen(
             }
         },
     ) { padding ->
+        // Файл журнала пуст (запись остановили сразу): так и сказать, а не
+        // показывать пустой экран; идущая запись ещё наполнится
+        if (!state.streaming && state.messages.isEmpty()) {
+            Text(
+                text = stringResource(R.string.clod_log_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(padding)
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+            )
+        }
+
         LazyColumn(state = listState, contentPadding = padding) {
             itemsIndexed(
                 state.messages,

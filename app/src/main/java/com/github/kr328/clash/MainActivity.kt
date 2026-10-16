@@ -16,13 +16,14 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.common.util.Redact
+import com.github.kr328.clash.service.util.humanizeUpdateFailure
+import com.github.kr328.clash.util.withAppLocale
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.net.Uri
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.core.Clash
@@ -36,9 +37,11 @@ import com.github.kr328.clash.service.model.PanelGroup
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.design.MainDesign
+import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.compose.screen.AboutState
 import com.github.kr328.clash.design.compose.screen.ProviderFileState
+import com.github.kr328.clash.design.model.BUILTIN_OUTBOUNDS
 import com.github.kr328.clash.design.model.globalRoutingBlocked
 import com.github.kr328.clash.design.model.mainGroupOf
 import com.github.kr328.clash.design.model.ToggleIntent
@@ -52,8 +55,10 @@ import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
 import com.github.kr328.clash.util.loadRouteGroups
 import com.github.kr328.clash.util.offlineGroup
+import com.github.kr328.clash.util.offlineLeaf
 import com.github.kr328.clash.util.OfflineDelays
 import com.github.kr328.clash.util.patchSubscriptionGroup
+import com.github.kr328.clash.util.ProfileImports
 import com.github.kr328.clash.util.ProfileUpdates
 import com.github.kr328.clash.service.util.profileLogoFile
 import com.github.kr328.clash.service.util.SessionClock
@@ -132,6 +137,12 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         setContentDesign(design)
 
+        // Открытый до пересоздания лист надёжности — сразу со своими данными,
+        // а не пустым, чтобы кнопки не перескакивали
+        if (restored?.getBoolean(KEY_RELIABILITY_PROMPT) == true) {
+            design.fetchReliability(prompt = true)
+        }
+
         // Выбор, не успевший уйти в ядро с прежнего экрана, досылается раньше,
         // чем этот экран что-либо прочитает или применит.
         selectionFlush?.join()
@@ -154,6 +165,14 @@ class MainActivity : BaseActivity<MainDesign>() {
             design.showExceptionToast(e)
 
             null
+        } finally {
+            design.markLoaded()
+        }
+
+        // Лист снежинки — после первого чтения, когда известна подписка и её
+        // ссылка поддержки
+        if (restored?.getBoolean(KEY_FREEZE_SHEET) == true) {
+            design.showFreezeSheet()
         }
 
         if (restored == null && !design.hasProfiles) {
@@ -164,6 +183,15 @@ class MainActivity : BaseActivity<MainDesign>() {
             SubScreen.About -> design.request(MainDesign.Request.LoadAbout)
             SubScreen.RoutingData -> design.request(MainDesign.Request.LoadRoutingData)
             null -> Unit
+        }
+
+        // Итог добавления подписки, которую добавляли, уйдя с экрана добавления
+        launch {
+            ProfileImports.state.collect {
+                val finished = it is ProfileImports.State.Done || it is ProfileImports.State.Failed
+
+                if (finished && activityStarted) design.showAddedProfile()
+            }
         }
 
         launch {
@@ -218,6 +246,17 @@ class MainActivity : BaseActivity<MainDesign>() {
         worker = launch {
             for (item in work) {
                 reportFailures("Main work") { item() }
+            }
+        }
+
+        // Сроки и пропуски обновлений на карточках идут, пока экран виден. Шаг —
+        // в общей очереди: после чтения, начатого возвратом на экран, а не
+        // посреди него — свежие часы при старых данных дали бы ложное «Не обновилась»
+        launch {
+            while (isActive) {
+                delay(CLOCK_TICK_MS)
+
+                if (activityStarted) work.trySend { design.tickClock() }
             }
         }
 
@@ -708,10 +747,14 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 Log.w("Load core version: $e", e)
                             }
                         }
-                        is MainDesign.Request.SetAutoCheckUpdate ->
+                        is MainDesign.Request.SetAutoCheckUpdate -> {
                             withContext(Dispatchers.IO) {
                                 AppStore(this@MainActivity).autoCheckUpdate = request.enabled
                             }
+
+                            // Без автопроверки и фоновой нет: висящий пуш о версии снимается
+                            if (!request.enabled) UpdateNotice.withdraw(this@MainActivity)
+                        }
 
                         is MainDesign.Request.SetPrerelease -> {
                             withContext(Dispatchers.IO) {
@@ -814,7 +857,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.showProfiles(profiles: List<Profile>) {
         val groups = querySubscriptionGroups()
-        val items = profiles.map {
+        val adding = ProfileImports.addingDraft
+        val items = profiles.filter { it.uuid != adding || it.imported }.map {
             val panel = queryPanelInfo(it.uuid)
 
             SubscriptionItem(it, panel, groups[it.uuid], profileLogoFile(it.uuid, panel))
@@ -888,9 +932,9 @@ class MainActivity : BaseActivity<MainDesign>() {
     private val offlineMarkChanges = Channel<Unit>(Channel.CONFLATED)
 
     // Сеть меняется, пока экран открыт: список без туннеля перечитывается сразу.
-    // Мобильная ли сеть — по рабочим сетям из самого наблюдения, без опроса системы
+    // Мобильная ли сеть — по сетям наружу из самого наблюдения, без опроса системы
     private val offlineNetworks = object : ConnectivityManager.NetworkCallback() {
-        private val working = ConcurrentHashMap<Network, String>()
+        private val working = ConcurrentHashMap<Network, NetworkKey.Outward>()
 
         // Ключ сети — тот же, что считает служба, — при прошлом оповещении:
         // пометки переспрашиваются, когда сменился он, а не любое свойство сети
@@ -918,8 +962,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         private fun seen(network: Network, capabilities: NetworkCapabilities) {
-            if (NetworkKey.working(capabilities)) {
-                working[network] = NetworkKey.transportOf(capabilities)
+            val outward = NetworkKey.outwardOf(capabilities)
+
+            if (outward != null) {
+                working[network] = outward
             } else {
                 working.remove(network)
             }
@@ -928,7 +974,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         private fun changed() {
-            if (offlineMobileOnly && NetworkKey.cellularOnly(working.values) != offlineCellular) {
+            if (offlineMobileOnly && NetworkKey.cellularPreferred(working.values) != offlineCellular) {
                 offlineNetworkChanges.trySend(Unit)
             }
 
@@ -968,13 +1014,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         if (want) {
             runCatching {
-                connectivity.registerNetworkCallback(
-                    NetworkRequest.Builder()
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
-                        .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        .build(),
-                    offlineNetworks,
-                )
+                connectivity.registerNetworkCallback(NetworkKey.outwardRequest(), offlineNetworks)
             }.onSuccess { offlineWatching = true }.onFailure { Log.w("Watch networks: $it", it) }
         } else {
             runCatching { connectivity.unregisterNetworkCallback(offlineNetworks) }
@@ -1323,7 +1363,11 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val active = withProfile { queryActive() } ?: return
 
-        val total = offlineGroups.flatMap { it.proxies }.filterNot { offlineHides(it) || offlineGone(it) }.distinct().size
+        // Как меряет ядро: только серверы, без групп и встроенных DIRECT/REJECT
+        val groupNames = offlineGroups.mapTo(HashSet()) { it.name }
+        val total = offlineGroups.flatMap { it.proxies }
+            .filterNot { offlineHides(it) || offlineGone(it) || it in groupNames || it in BUILTIN_OUTBOUNDS }
+            .distinct().size
 
         OfflineDelays.start(active.uuid, total)
     }
@@ -1460,12 +1504,21 @@ class MainActivity : BaseActivity<MainDesign>() {
             selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
             pinned = if (!readOnly && group.type in OFFLINE_PINNABLE_GROUPS) saved.orEmpty() else null,
             proxies = shown.proxies.map { name ->
+                // Вложенная группа — задержка сервера, выбранного в ней сейчас
+                val leaf = offlineLeaf(
+                    name,
+                    offlineGroups,
+                    saved = { pendingOf(it) ?: offlineSelections[it] },
+                    gone = offlineGone,
+                    hides = offlineHides,
+                )
+
                 Proxy(
                     name = name,
                     title = name,
                     subtitle = "",
                     type = "",
-                    delay = offlineDelays[name] ?: 0,
+                    delay = offlineDelays[leaf ?: name] ?: 0,
                     isGroup = false,
                 )
             },
@@ -1521,7 +1574,16 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.loadProxyGroup(index: Int): ProxyGroup? {
         val name = proxyGroupNames.getOrNull(index) ?: return null
-        val group = withClash { queryProxyGroup(name) }
+        val group = try {
+            withClash { queryProxyGroup(name) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Ошибку показывает вызывающий
+            markProxyGroupRead(name)
+
+            throw e
+        }
 
         if (name == GLOBAL_GROUP) {
             globalSelection = group.now
@@ -1556,6 +1618,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         private val HOME_ROUTE_REFRESH_MS = TimeUnit.SECONDS.toMillis(60)
 
+        private val CLOCK_TICK_MS = TimeUnit.MINUTES.toMillis(1)
+
         private val TICK_MS = TimeUnit.SECONDS.toMillis(1)
 
         private val UPDATES_ACTIVE_POLL_MS = TimeUnit.SECONDS.toMillis(3)
@@ -1589,6 +1653,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         private const val KEY_GROUP = "group"
 
         private const val KEY_SUB_GROUP = "sub_group"
+        private const val KEY_FREEZE_SHEET = "freeze_sheet"
+        private const val KEY_RELIABILITY_PROMPT = "reliability_prompt"
     }
 
     private var sessionStartedAt: Long = 0
@@ -1618,8 +1684,26 @@ class MainActivity : BaseActivity<MainDesign>() {
         )
     }
 
+    // Итог добавления: удачного и неудачного — из одного места, сюда его
+    // кладёт добавление, а забирает тот, кто показал
     private suspend fun MainDesign.showAddedProfile() {
         val store = AppStore(this@MainActivity)
+
+        val failed = store.addFailedMessage
+
+        if (failed.isNotEmpty()) {
+            val detail = store.addFailedDetail
+
+            store.addFailedMessage = ""
+            store.addFailedDetail = ""
+
+            showToast(
+                getString(DesignR.string.clod_sub_add_failed, failed),
+                ToastDuration.Long,
+                detail = detail.ifEmpty { null },
+                kind = NoticeKind.Error,
+            )
+        }
 
         val providers = store.profileProvidersFailed
 
@@ -2254,7 +2338,11 @@ class MainActivity : BaseActivity<MainDesign>() {
             } catch (e: Exception) {
                 Log.w("Update provider ${provider.name}: $e", e)
 
-                val reason = Redact.text(e.message?.takeIf { it.isNotBlank() } ?: e.javaClass.simpleName)
+                // Под названием провайдера — причина человеческими словами, как у
+                // подписки; сырой текст ядра — только в журнале
+                val context = Global.application.withAppLocale()
+                val reason = context.humanizeUpdateFailure(e.message.orEmpty())
+                    ?: context.getString(ServiceR.string.update_failure)
 
                 busy.remove(key)
 
@@ -2344,9 +2432,18 @@ class MainActivity : BaseActivity<MainDesign>() {
             prerelease = store.prereleaseChannel,
         )
 
-        val bundle = restored ?: return MainScreenState(about = about)
+        // Экран до первого чтения показывает уже известное о службе, а не
+        // «Отключено»: рассылки перечитаны на onStart, раньше main()
+        val status = when {
+            clashRunning -> ConnectionStatus.Connected
+            clashActive -> ConnectionStatus.Connecting
+            else -> ConnectionStatus.Disconnected
+        }
+
+        val bundle = restored ?: return MainScreenState(status = status, about = about)
 
         return MainScreenState(
+            status = status,
             selectedTab = bundle.getString(KEY_TAB)?.let { MainTab.valueOf(it) } ?: MainTab.Home,
             subScreen = bundle.getString(KEY_SUB_SCREEN)?.let { SubScreen.valueOf(it) },
             subscriptions = SubscriptionsState(selectedGroup = bundle.getString(KEY_SUB_GROUP)),
@@ -2363,6 +2460,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         outState.putString(KEY_SUB_SCREEN, design.subScreen?.name)
         outState.putString(KEY_GROUP, design.selectedGroupName)
         outState.putString(KEY_SUB_GROUP, design.selectedSubscriptionGroup)
+        outState.putBoolean(KEY_FREEZE_SHEET, design.freezeSheetOpen)
+        outState.putBoolean(KEY_RELIABILITY_PROMPT, design.reliabilityPromptOpen)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

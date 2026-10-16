@@ -18,6 +18,7 @@ class AddProfileDesign(
     context: Context,
     initialUrl: String = "",
     initialError: String? = null,
+    initialErrorDetail: String? = null,
 ) : Design<AddProfileDesign.Request>(context) {
     sealed interface Request {
         data class Submit(val url: String) : Request
@@ -25,7 +26,7 @@ class AddProfileDesign(
     }
 
     private var state by mutableStateOf(
-        AddProfileState(url = initialUrl, error = initialError),
+        AddProfileState(url = initialUrl, error = initialError, errorDetail = initialErrorDetail),
     )
 
     val url: String
@@ -34,13 +35,16 @@ class AddProfileDesign(
     val error: String?
         get() = state.error
 
+    val errorDetail: String?
+        get() = state.errorDetail
+
     override val root: View = composeRoot {
         AddProfileScreen(state = state, onAction = ::onAction)
     }
 
     private fun onAction(action: AddProfileAction) {
         when (action) {
-            is AddProfileAction.UrlChanged -> state = state.copy(url = action.url, error = null)
+            is AddProfileAction.UrlChanged -> state = state.copy(url = action.url, error = null, errorDetail = null)
             AddProfileAction.Submit -> requests.trySend(Request.Submit(state.url))
             AddProfileAction.OtherWays -> requests.trySend(Request.OtherWays)
         }
@@ -89,9 +93,9 @@ class AddProfileDesign(
         }
     }
 
-    suspend fun setError(message: String) {
+    suspend fun setError(message: String, detail: String? = null) {
         withContext(Dispatchers.Main) {
-            state = state.copy(step = AddProfileStep.Input, error = message, stageText = "")
+            state = state.copy(step = AddProfileStep.Input, error = message, errorDetail = detail, stageText = "")
         }
     }
 }

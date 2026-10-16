@@ -25,6 +25,11 @@ object UpdateFailures {
         Dns,
         Connection,
         Silent,
+        ;
+
+        // Причина в сети по дороге, а не в ответе сервера
+        val transport: Boolean
+            get() = this == Timeout || this == Tls || this == Dns || this == Connection
     }
 
     // Что сказал защищённый канал при добавлении подписки или его включении.

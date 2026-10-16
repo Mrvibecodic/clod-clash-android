@@ -152,7 +152,9 @@ class TileService : TileService() {
                     clashRunning = true
                     clashStarting = false
 
-                    currentProfile = ""
+                    // Имя подписки — у службы: «подписка загружена» приходит
+                    // раньше «запущено», и её имя тогда ещё не отдавалось
+                    refreshProfile(updateRunning = false)
                 }
                 Intents.ACTION_CLASH_STOPPED, Intents.ACTION_SERVICE_RECREATED -> {
                     clashRunning = false

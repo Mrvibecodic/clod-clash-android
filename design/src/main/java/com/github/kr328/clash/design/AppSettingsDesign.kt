@@ -36,6 +36,7 @@ class AppSettingsDesign(
     private val onHideIconChange: (hide: Boolean) -> Unit,
     private val isRunning: () -> Boolean,
     private val onReset: suspend () -> Unit,
+    autoCheckUpdate: Boolean,
 ) : Design<AppSettingsDesign.Request>(context) {
     sealed interface Request {
         data object ReCreateAllActivities : Request
@@ -52,7 +53,12 @@ class AppSettingsDesign(
 
     private val languageTags = listOf("", "en", "ru")
 
-    private val canHideAppIcon: Boolean = !context.isTelevision() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+    // С Android 10 система вместо скрытого значка показывает свой, ведущий в
+    // «О приложении», — скрыть нечего. Уже скрытый тумблер остаётся, чтобы его
+    // можно было вернуть
+    private val canHideAppIcon: Boolean = !context.isTelevision() &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+        (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || uiStore.hideAppIcon)
 
     private var state by mutableStateOf(
         AppSettingsState(
@@ -72,6 +78,7 @@ class AppSettingsDesign(
             profileErrorNotifications = prefs.profileErrorNotifications,
             profileUpdateNotifications = prefs.profileUpdateNotifications,
             appUpdateNotifications = prefs.appUpdateNotifications,
+            autoCheckUpdate = autoCheckUpdate,
             notificationsBlocked = notificationsBlocked(),
             resetEnabled = !running,
         ),
@@ -162,6 +169,7 @@ class AppSettingsDesign(
                         profileErrorNotifications = prefs.profileErrorNotifications,
                         profileUpdateNotifications = prefs.profileUpdateNotifications,
                         appUpdateNotifications = prefs.appUpdateNotifications,
+                        autoCheckUpdate = true,
                         notificationsBlocked = notificationsBlocked(),
                         resetEnabled = true,
                     )

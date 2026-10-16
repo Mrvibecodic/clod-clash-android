@@ -64,9 +64,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -111,7 +113,7 @@ import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.component.FreezePill
 import com.github.kr328.clash.design.compose.component.FreezeSheet
 import com.github.kr328.clash.design.compose.component.NoServersCard
-import com.github.kr328.clash.design.compose.component.PingBadge
+import com.github.kr328.clash.design.compose.component.DelayPill
 import com.github.kr328.clash.design.compose.component.PingBounds
 import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.PowerButton
@@ -170,6 +172,8 @@ data class ProxyGroupState(
     val pinned: String? = null,
     // Все серверы группы только для мобильной сети, а сеть не мобильная
     val allHidden: Boolean = false,
+    // Узлы группы уже прочитаны: пустой непрочитанной группе — ожидание, а не «серверов нет»
+    val read: Boolean = true,
 )
 
 @Immutable
@@ -240,6 +244,13 @@ data class MainScreenState(
     val dismissedPromo: String = "",
     // clod:freeze — открыта нижняя панель с объяснением значка
     val freezeSheet: Boolean = false,
+    // Часы экрана: срок, пропуски обновлений и прочее «сколько прошло»
+    // считаются от них, а не от момента, когда карточка нарисована впервые —
+    // иначе у свёрнутого экрана время стоит, пока не сменятся данные подписки
+    val clock: Long = System.currentTimeMillis(),
+    // Первое чтение экрана закончилось (удачно или нет): до этого «серверов
+    // нет» и «добавьте подписку» — неправда, данные просто ещё не пришли
+    val loaded: Boolean = false,
 ) {
     val mode: TunnelState.Mode
         get() = effectiveMode(profileMode)
@@ -333,39 +344,44 @@ fun MainScreen(
 ) {
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_LAYOUT_WIDTH_DP
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
-        bottomBar = {
-            if (!wide) {
-                MainBottomBar(state.selectedTab, onAction)
-            }
-        },
-    ) { padding ->
-        state.update?.let { UpdateDialog(it, onAction) }
+    CompositionLocalProvider(LocalClock provides state.clock) {
+        Scaffold(
+            modifier = modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
+            bottomBar = {
+                if (!wide) {
+                    MainBottomBar(state.selectedTab, onAction)
+                }
+            },
+        ) { padding ->
+            state.update?.let { UpdateDialog(it, onAction) }
 
-        if (state.notificationPrompt) {
-            NotificationPromptDialog(onAction)
-        }
-
-        if (state.reliability.prompt) {
-            ReliabilitySheet(state.reliability, onAction)
-        }
-
-        if (state.freezeSheet) {
-            FreezeSheet(supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
-        }
-
-        Row(modifier = Modifier.padding(padding)) {
-            if (wide) {
-                MainNavigationRail(state.selectedTab, onAction)
+            if (state.notificationPrompt) {
+                NotificationPromptDialog(onAction)
             }
 
-            MainContent(state, session, onAction)
+            if (state.reliability.prompt) {
+                ReliabilitySheet(state.reliability, onAction)
+            }
+
+            if (state.freezeSheet) {
+                FreezeSheet(supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
+            }
+
+            Row(modifier = Modifier.padding(padding)) {
+                if (wide) {
+                    MainNavigationRail(state.selectedTab, onAction)
+                }
+
+                MainContent(state, session, onAction)
+            }
         }
     }
 }
+
+// Часы экрана (MainScreenState.clock) для карточек подписок
+internal val LocalClock = compositionLocalOf { System.currentTimeMillis() }
 
 @Composable
 private fun MainContent(
@@ -404,9 +420,9 @@ private fun MainContent(
                 ) { tab ->
                     tabStates.SaveableStateProvider(tab.name) {
                         when (tab) {
-                            MainTab.Servers -> ServersTab(state.servers, state.active, onAction)
+                            MainTab.Servers -> ServersTab(state.servers, state.active, onAction, loaded = state.loaded)
                             MainTab.Subscriptions ->
-                                SubscriptionsTab(state.subscriptions, onAction)
+                                SubscriptionsTab(state.subscriptions, onAction, loaded = state.loaded)
                             MainTab.More -> MoreTab(state, onAction)
                             else -> HomeTab(state, session, onAction)
                         }
@@ -615,8 +631,16 @@ private fun HomeTab(
             }
         }
 
-        val route = remember(state.mode, state.servers) {
-            homeRoute(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly)
+        val panel = state.active?.panel
+        val hides: (String) -> Boolean = remember(panel) { { name -> panel?.hides(name) == true } }
+        val noServers = state.active?.let { noServersReason(it.profile, it.panel, it.panelNow()) } != null
+        val route = remember(state.mode, state.servers, panel, noServers) {
+            // Панель отобрала серверы (лимит устройств, истёкшая): выбранный
+            // узел — её заглушка или прежний сервер, трафик через него не идёт
+            when (val route = homeRoute(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly, hides)) {
+                is HomeRoute.Server -> if (noServers) HomeRoute.Blocked(route.group) else route
+                else -> route
+            }
         }
 
         // Пока туннель загружает другую подписку, её узел ещё не везёт трафик
@@ -638,8 +662,8 @@ private fun HomeTab(
         )
 
         if (state.servers.allOnHome) {
-            val extras = remember(state.mode, state.servers) {
-                homeExtras(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly)
+            val extras = remember(state.mode, state.servers, hides, noServers) {
+                if (noServers) emptyList() else homeExtras(state.mode, state.servers.groups, state.servers.main, state.servers.readOnly, hides)
             }
 
             extras.forEach { route ->
@@ -696,6 +720,7 @@ private fun HomeRouteRow(
         is HomeRoute.Server -> route.group
         is HomeRoute.Bypass -> route.group
         is HomeRoute.Blocked -> route.group
+        is HomeRoute.MobileOnly -> route.group
         HomeRoute.Direct, HomeRoute.None -> return
     }
 
@@ -707,6 +732,7 @@ private fun HomeRouteRow(
         value = when (route) {
             is HomeRoute.Server -> (route.title ?: stringResource(R.string.proxy)).bidiIsolated()
             is HomeRoute.Blocked -> stringResource(R.string.clod_home_blocked)
+            is HomeRoute.MobileOnly -> stringResource(R.string.clod_servers_mobile_only)
             else -> stringResource(R.string.clod_home_bypass)
         },
         leading = leading,
@@ -723,14 +749,17 @@ private fun HomeRouteRow(
             {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (mark != null) {
+                        // Зона касания как в списке: промах открыл бы «Серверы»
                         FreezePill(
                             on = MaterialTheme.colorScheme.surfaceContainerLow,
                             onClick = { onAction(MainAction.ShowFreeze) },
+                            modifier = Modifier.minimumInteractiveComponentSize(),
                         )
                         if (delay != null) Spacer(Modifier.width(6.dp))
                     }
                     if (delay != null) {
-                        PingBadge(
+                        // Та же пилюля, что в списке серверов: одна шкала, один вид
+                        DelayPill(
                             delay = delay,
                             on = MaterialTheme.colorScheme.surfaceContainerLow,
                             marksOnly = marksOnly,
@@ -793,7 +822,8 @@ private fun MainHeader(
             }
         }
         if (active != null && active.updatable) {
-            val stale = remember(active.profile) { active.missedUpdates(System.currentTimeMillis()) >= 2 }
+            val clock = LocalClock.current
+            val stale = remember(active.profile, clock) { active.missedUpdates(clock) >= 2 }
 
             SyncIconButton(
                 spinning = active.profile.uuid in updatingUuids,
@@ -810,7 +840,8 @@ private fun MainHeader(
 @Composable
 private fun SubscriptionSummary(item: SubscriptionItem) {
     val profile = item.profile
-    val now = remember(profile) { item.panelNow() }
+    val clock = LocalClock.current
+    val now = remember(profile, clock) { item.panelNow() }
     val status = subscriptionState(profile, now)
     val used = profile.usedTraffic()
 
@@ -967,7 +998,8 @@ private fun SessionTrafficRow(downloaded: String, uploaded: String) {
 @Composable
 private fun QuotaCards(item: SubscriptionItem) {
     val profile = item.profile
-    val now = remember(profile) { item.panelNow() }
+    val clock = LocalClock.current
+    val now = remember(profile, clock) { item.panelNow() }
 
     if (subscriptionState(profile, now) != SubscriptionState.Active) return
     if (profile.total <= 0L && profile.expire <= 0L) return
@@ -983,10 +1015,13 @@ private fun QuotaCards(item: SubscriptionItem) {
 
             QuotaCard(
                 label = stringResource(R.string.clod_quota_traffic),
-                value = used.toBytesString() + " / " + profile.total.toBytesString(),
+                // Крупно — потрачено, лимит и остаток — подписью: в половине
+                // ширины «1.23 GiB / 50.0 GiB» крупным шрифтом не помещается
+                value = used.toBytesString(),
                 progress = (used.toFloat() / profile.total).coerceIn(0f, 1f),
                 note = stringResource(
-                    R.string.clod_quota_left,
+                    R.string.clod_quota_of_left,
+                    profile.total.toBytesString(),
                     left.toBytesString(),
                 ),
                 modifier = Modifier
@@ -1053,7 +1088,7 @@ private fun QuotaCard(
                 text = note,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         }

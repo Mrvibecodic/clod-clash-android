@@ -118,6 +118,12 @@ object ProfileImports {
     @Synchronized
     fun isCommitting(uuid: UUID): Boolean = committing == uuid && job?.isActive == true
 
+    // Черновик подписки, которая сейчас добавляется: в списке его не показывать —
+    // открыть и закрыть его значило бы оборвать добавление
+    @Volatile
+    var addingDraft: UUID? = null
+        private set
+
     @Synchronized
     fun runningAddToken(): Long =
         (state_.value as? State.Running)?.token?.takeIf { committing == null } ?: 0
@@ -133,6 +139,12 @@ object ProfileImports {
 
         committing = null
 
+        // Неполученная причина прошлой неудачи к новому добавлению не относится
+        AppStore(Global.application).apply {
+            addFailedMessage = ""
+            addFailedDetail = ""
+        }
+
         state_.value = State.Running(token, null, ChannelStage.Checking)
 
         job = launchHoldingService {
@@ -147,6 +159,8 @@ object ProfileImports {
                 val draft = withProfile(retry = false) {
                     create(Profile.Type.Url, name, source, secure = true)
                 }
+
+                addingDraft = draft
 
                 val (profile, secure) = releasingOnFailure(draft) {
                     channelFirst(token, fallback = true) { secure, observer ->
@@ -182,7 +196,17 @@ object ProfileImports {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                state_.value = context.failed(token, e)
+                val failure = context.failed(token, e)
+
+                // Экран добавления, если он ещё открыт, покажет причину сам и стрёт её
+                AppStore(context).apply {
+                    addFailedMessage = failure.message
+                    addFailedDetail = failure.detail.orEmpty()
+                }
+
+                state_.value = failure
+            } finally {
+                addingDraft = null
             }
         }
 
@@ -432,15 +456,22 @@ object ProfileImports {
     private fun Context.failed(token: Long, e: Exception): State.Failed {
         when (e) {
             is ChannelSilent -> {
-                // Заголовок — молчание сервера, ниже — сетевая причина, если она узнана.
+                // Узнанная сетевая причина (нет интернета, имя не находится,
+                // таймаут) — заголовком, как в фоновом обновлении: «сервер
+                // провайдера не отвечает» при выключенном интернете — неправда.
+                // Без неё — молчание сервера
+                // В подробностях — понятная причина ответа (5xx, отказ посредника),
+                // сырой текст — для сетевой или неузнанной
                 val raw = e.message.orEmpty()
                 val cause = UpdateFailures.classify(raw)?.cause
+                val human = humanizeUpdateFailure(raw).takeIf { cause != null && cause != UpdateFailures.Cause.Silent }
+                val network = human.takeIf { cause?.transport == true }
+                val detail = human.takeIf { network == null } ?: Redact.text(raw.substringAfter(CHAN_SILENT_MARK)).ifBlank { null }
 
                 return State.Failed(
                     token,
-                    getString(ServiceR.string.clod_update_cause_silent),
-                    humanizeUpdateFailure(raw).takeIf { cause != null && cause != UpdateFailures.Cause.Silent }
-                        ?: Redact.text(raw.substringAfter(CHAN_SILENT_MARK)).ifBlank { null },
+                    network ?: getString(ServiceR.string.clod_update_cause_silent),
+                    detail,
                 )
             }
             is ChannelAbsent -> return State.Failed(token, getString(R.string.clod_chan_absent), null)

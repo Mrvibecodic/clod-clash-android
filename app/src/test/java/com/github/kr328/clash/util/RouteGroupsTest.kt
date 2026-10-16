@@ -139,4 +139,23 @@ class RouteGroupsTest {
         assertEquals(true, shown.allHidden)
         assertEquals(false, offlineGroup(group.copy(proxies = emptyList()), null, gone = { true }, hides = { false }).allHidden)
     }
+
+    @Test
+    fun `вложенная группа без туннеля ведёт к серверу, выбранному в ней`() {
+        val groups = listOf(
+            PanelGroup("Proxy", "select", listOf("Europe", "Auto", "DE")),
+            PanelGroup("Europe", "select", listOf("NL", "FR")),
+            PanelGroup("Auto", "url-test", listOf("DE", "NL")),
+            PanelGroup("Loop", "select", listOf("Loop")),
+        )
+        val saved = mapOf("Europe" to "FR")
+
+        assertEquals("FR", offlineLeaf("Europe", groups, saved = { saved[it] }, hides = { false }))
+        // Выбора нет — первый член select
+        assertEquals("NL", offlineLeaf("Europe", groups, saved = { null }, hides = { false }))
+        // url-test без туннеля выбора не делает
+        assertEquals(null, offlineLeaf("Auto", groups, saved = { null }, hides = { false }))
+        assertEquals(null, offlineLeaf("DE", groups, saved = { null }, hides = { false }))
+        assertEquals(null, offlineLeaf("Loop", groups, saved = { null }, hides = { false }))
+    }
 }

@@ -16,6 +16,10 @@ sealed interface HomeRoute {
     data class Bypass(val group: String) : HomeRoute
 
     data class Blocked(val group: String) : HomeRoute
+
+    // Все серверы на пути — только для мобильной сети, а сеть не мобильная:
+    // группа отказывает, как на вкладке «Серверы»
+    data class MobileOnly(val group: String) : HomeRoute
 }
 
 fun mainGroupOf(names: List<String>, main: String?): String? =
@@ -26,9 +30,10 @@ fun homeExtras(
     groups: List<ProxyGroupState>,
     main: String?,
     readOnly: Boolean,
+    hides: (String) -> Boolean = { false },
 ): List<HomeRoute> = groups
     .filter { it.name != main }
-    .map { homeRoute(mode, groups, it.name, readOnly) }
+    .map { homeRoute(mode, groups, it.name, readOnly, hides) }
     .filter { it is HomeRoute.Server || it is HomeRoute.Bypass }
 
 fun homeRoute(
@@ -36,12 +41,16 @@ fun homeRoute(
     groups: List<ProxyGroupState>,
     group: String?,
     readOnly: Boolean,
+    // Узел-заглушка панели (лимит устройств, истёкшая): трафик через него
+    // никуда не идёт — путь не «сервер», а блокировка
+    hides: (String) -> Boolean = { false },
 ): HomeRoute {
     if (mode == TunnelState.Mode.Direct || readOnly) return HomeRoute.Direct
 
     val byName = groups.associateBy { it.name }
     val root = byName[group] ?: return HomeRoute.None
 
+    if (root.allHidden) return HomeRoute.MobileOnly(root.name)
     if (root.now.isBlank()) return HomeRoute.Server(root.name, null, null)
 
     val seen = mutableSetOf(root.name)
@@ -55,7 +64,11 @@ fun homeRoute(
 
         val next = byName[now]
 
+        if (next?.allHidden == true) return HomeRoute.MobileOnly(root.name)
+
         if (next == null || next.now.isBlank() || !seen.add(now)) {
+            if (hides(now)) return HomeRoute.Blocked(root.name)
+
             val leaf = current.proxies.firstOrNull { it.name == now }
 
             return HomeRoute.Server(root.name, leaf?.title ?: now, leaf?.delay, now)

@@ -22,6 +22,7 @@ class AccessControlDesign(
     private val selected: MutableSet<String>,
     includeFromProfile: Set<String> = emptySet(),
     excludeFromProfile: Set<String> = emptySet(),
+    notInstalled: Set<String> = emptySet(),
 ) : Design<AccessControlDesign.Request>(context) {
     private val modes = AccessControlMode.entries
 
@@ -44,6 +45,7 @@ class AccessControlDesign(
             mode = modes.indexOf(mode).coerceAtLeast(0),
             includeFromProfile = includeFromProfile,
             excludeFromProfile = excludeFromProfile,
+            notInstalled = notInstalled,
         ),
     )
 
