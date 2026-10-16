@@ -73,7 +73,8 @@ func flushLocked(now int64) {
 	cacheHad = true
 }
 
-// Flush — накопленное в файл: сбор сменил подписку или остановлен.
+// Flush — накопленное в файл без выкидывания из памяти (forget ещё и забывает).
+// Сборщик её не зовёт: нужна тесту, которому forget обнулил бы кэш.
 func Flush() {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()

@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+
+	"cfa/native/common"
 )
 
 const (
@@ -435,10 +437,5 @@ func Save(path string, store *Store) error {
 		return err
 	}
 
-	fresh := path + ".new"
-	if err := os.WriteFile(fresh, raw, 0600); err != nil {
-		return err
-	}
-
-	return os.Rename(fresh, path)
+	return common.WriteFile(path, raw, false)
 }

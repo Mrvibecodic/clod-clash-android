@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"os"
 	"sync"
+
+	"cfa/native/common"
 )
 
 // Read отдаёт содержимое файла постоянных настроек. Нет файла — это заводские
@@ -26,40 +28,7 @@ func Read(path, factory string) (string, error) {
 // Write заменяет файл целиком через временный: оборванная запись не оставляет
 // половину настроек.
 func Write(path, content string) error {
-	tmp := path + ".tmp"
-
-	file, err := os.OpenFile(tmp, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0600)
-	if err != nil {
-		return err
-	}
-
-	if _, err := file.Write([]byte(content)); err != nil {
-		_ = file.Close()
-		_ = os.Remove(tmp)
-
-		return err
-	}
-
-	if err := file.Sync(); err != nil {
-		_ = file.Close()
-		_ = os.Remove(tmp)
-
-		return err
-	}
-
-	if err := file.Close(); err != nil {
-		_ = os.Remove(tmp)
-
-		return err
-	}
-
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-
-		return err
-	}
-
-	return nil
+	return common.WriteFile(path, []byte(content), true)
 }
 
 // Remove возвращает заводские настройки. Файла и так нет — это успех.

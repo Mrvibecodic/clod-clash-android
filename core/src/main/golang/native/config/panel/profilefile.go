@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"os"
 	P "path"
+
+	"cfa/native/common"
 )
 
 // staleSuffix совпадает с ProfileSwap.STALE_SUFFIX (service/.../util/ProfileSwap.kt).
@@ -90,13 +92,5 @@ func writeJSON(path string, value any) {
 		return
 	}
 
-	tmp := path + ".tmp"
-
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return
-	}
-
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-	}
+	_ = common.WriteFile(path, data, false)
 }

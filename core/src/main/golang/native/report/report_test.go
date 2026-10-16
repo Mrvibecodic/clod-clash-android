@@ -488,6 +488,26 @@ func TestSavedFreezeResultsOfThePreviousVersionAreDroppedOnce(t *testing.T) {
 	}
 }
 
+func TestAFailedSaveLeavesNoTempBehind(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "store.json")
+	if err := os.MkdirAll(filepath.Join(path, "busy"), 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Save(path, &Store{Nodes: map[string]NodeInfo{}}); err == nil {
+		t.Fatal("сохранение поверх непустого каталога прошло")
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("рядом с отчётом остался временный файл: %v", entries)
+	}
+}
+
 func TestConnectionsOpenedBeforeTheSubscriptionChangedAreNotCounted(t *testing.T) {
 	t.Cleanup(func() { SetNodes("", nil, nil) })
 
