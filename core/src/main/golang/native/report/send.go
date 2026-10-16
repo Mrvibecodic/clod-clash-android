@@ -141,20 +141,21 @@ func Due(path string, now int64) (int64, bool) {
 		return 0, false
 	}
 
-	collectMu.Lock()
+	work, closed := func() (ipWork, int64) {
+		collectMu.Lock()
+		defer collectMu.Unlock()
 
-	mu.Lock()
-	collecting := path == target
-	mu.Unlock()
+		mu.Lock()
+		collecting := path == target
+		mu.Unlock()
 
-	var work ipWork
-	if collecting {
-		work = collectLocked(nowMs() - lagMs)
-	}
+		var work ipWork
+		if collecting {
+			work = collectLocked(nowMs() - lagMs)
+		}
 
-	closed := closedBefore(path, now)
-
-	collectMu.Unlock()
+		return work, closedBefore(path, now)
+	}()
 
 	work.do()
 

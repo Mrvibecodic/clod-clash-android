@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"cfa/native/common/safego"
+
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel"
@@ -148,7 +150,7 @@ func SetTarget(path, owner string) {
 	}
 
 	if start {
-		go loop()
+		safego.Go("reportCollect", loop)
 	} else if changed && path == "" {
 		// Сбор выключен: цикл и чтение соединений кончаются сразу, а не после
 		// ожидания цикла (до пяти минут), и новый SetTarget запускает их заново
@@ -168,7 +170,18 @@ func loop() {
 	stop := make(chan struct{})
 	defer close(stop)
 
-	go trafficLoop(stop)
+	// Штатный выход сбрасывает running сам, под тем же mu, где видит пустую
+	// цель: безусловный сброс здесь снял бы признак уже запущенного нового цикла.
+	finished := false
+	defer func() {
+		if !finished {
+			mu.Lock()
+			running = false
+			mu.Unlock()
+		}
+	}()
+
+	safego.Go("reportTraffic", func() { trafficLoop(stop) })
 
 	for {
 		mu.Lock()
@@ -180,6 +193,8 @@ func loop() {
 		mu.Unlock()
 
 		if !on {
+			finished = true
+
 			return
 		}
 
@@ -307,11 +322,11 @@ func NetworkChanged(net, kind string, at int64) {
 		return
 	}
 
-	go func() {
+	safego.Go("reportNetworkChange", func() {
 		flushBeforeChange(at, before)
 
 		poke()
-	}()
+	})
 }
 
 // flushBeforeChange — намеренное до смены сети уходит в старое место; трафик
@@ -714,9 +729,12 @@ func (work ipWork) do() {
 }
 
 func tick() {
-	collectMu.Lock()
-	work := collectLocked(nowMs() - lagMs)
-	collectMu.Unlock()
+	work := func() ipWork {
+		collectMu.Lock()
+		defer collectMu.Unlock()
+
+		return collectLocked(nowMs() - lagMs)
+	}()
 
 	work.do()
 }

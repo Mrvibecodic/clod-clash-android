@@ -928,3 +928,60 @@ func TestANetworkChangeRightAfterAReadKeepsTheCollectorAlive(t *testing.T) {
 		t.Fatal("сбор встал на своём замке после смены сети вскоре после чтения")
 	}
 }
+
+// Паника в сборе не роняет процесс: цикл кончается, и следующий SetTarget
+// запускает его заново.
+func TestAPanicInTheCollectorEndsTheLoopAndTheNextTargetRestartsIt(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "s")
+	address := Address
+	Address = func() (string, string) { panic("synthetic") }
+	SetNodes("s", map[string]NodeInfo{"Узел": node()}, nil)
+
+	isRunning := func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+
+		return running
+	}
+	t.Cleanup(func() {
+		SetTarget("", "")
+		NetworkChanged("", "", time.Now().UnixMilli())
+		SetNodes("", nil, nil)
+		Address = address
+	})
+
+	SetTarget(path, "s")
+	NetworkChanged("net-a", "wifi", time.Now().UnixMilli())
+
+	for deadline := time.Now().Add(2 * time.Second); isRunning(); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("цикл сбора не кончился после паники")
+		}
+	}
+
+	Address = func() (string, string) { return "192.0.2.1", "" }
+	restarted := make(chan struct{})
+	go func() {
+		SetTarget(path, "s")
+		close(restarted)
+	}()
+	select {
+	case <-restarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("SetTarget встал на замке сборщика после паники")
+	}
+
+	NetworkChanged("net-b", "mobile", time.Now().UnixMilli())
+	known := func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+
+		return where != nil && where.place.Net == "net-b" && where.place.IP4 == "192.0.2.1"
+	}
+	for deadline := time.Now().Add(2 * time.Second); !known(); time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("сбор не ожил после нового SetTarget")
+		}
+	}
+}

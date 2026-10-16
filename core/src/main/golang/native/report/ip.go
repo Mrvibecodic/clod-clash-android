@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"cfa/native/common/safego"
+
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 )
@@ -86,8 +88,8 @@ var Address = func() (string, string) {
 	var wg sync.WaitGroup
 
 	wg.Add(2)
-	go func() { defer wg.Done(); ip4 = ask(ipv4URL, false) }()
-	go func() { defer wg.Done(); ip6 = ask(ipv6URL, true) }()
+	safego.Go("reportAddress", func() { defer wg.Done(); ip4 = ask(ipv4URL, false) })
+	safego.Go("reportAddress", func() { defer wg.Done(); ip6 = ask(ipv6URL, true) })
 	wg.Wait()
 
 	return ip4, ip6

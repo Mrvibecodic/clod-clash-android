@@ -4,7 +4,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -50,6 +52,67 @@ func TestEveryBridgeExportIsGuarded(t *testing.T) {
 
 	if exports < 30 {
 		t.Fatalf("found %d exports, the bridge has more: the test no longer sees the bridge", exports)
+	}
+}
+
+// Голые go — с причиной, по которой им можно без защиты.
+var bareGoroutines = map[string]string{
+	"common/safego": "сама защита",
+	"debug.go":      "только отладочная сборка",
+}
+
+// Паника в горутине без защиты убивает фоновый процесс вместе с туннелем:
+// guard экспорта ловит только свою горутину.
+func TestNoBareGoroutines(t *testing.T) {
+	root := "../.."
+	files := 0
+
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+
+		if _, skip := bareGoroutines[rel]; skip {
+			if entry.IsDir() {
+				return filepath.SkipDir
+			}
+
+			return nil
+		}
+
+		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			return err
+		}
+		files++
+
+		ast.Inspect(file, func(node ast.Node) bool {
+			if stmt, ok := node.(*ast.GoStmt); ok {
+				t.Errorf("%s: bare `go` statement, start it with safego.Go", fset.Position(stmt.Pos()))
+			}
+
+			return true
+		})
+
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if files < 30 {
+		t.Fatalf("found %d files, the bridge has more: the test no longer sees the bridge", files)
 	}
 }
 
