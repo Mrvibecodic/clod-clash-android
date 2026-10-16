@@ -200,3 +200,44 @@ func TestLastConfigurationStepCannotOverrunTheShare(t *testing.T) {
 		t.Fatalf("providers got %s instead of %s", got, ProviderShare)
 	}
 }
+
+// Отказ через туннель пришёл быстро, прямой путь глухой: после отказа прямой
+// повтор не дольше DirectReserve, и следующему обмену остаётся окно; после
+// обрыва прямой получает весь остаток, как раньше.
+func TestDirectRetryAfterARefusalLeavesARound(t *testing.T) {
+	b := New(start)
+	deadline := start.Add(60 * time.Second)
+	refusedAt := start.Add(time.Second)
+
+	for _, row := range []struct {
+		name    string
+		refused bool
+		window  time.Duration
+		next    bool
+	}{
+		{"refusal", true, DirectReserve, true},
+		{"drop", false, 59 * time.Second, false},
+	} {
+		limit, ok := b.DirectWindow(refusedAt, deadline, DirectReserve)
+		if !ok {
+			t.Fatalf("%s: no direct window", row.name)
+		}
+
+		window := Detour(limit, row.refused)
+		if window != row.window {
+			t.Fatalf("%s: direct window = %s, want %s", row.name, window, row.window)
+		}
+
+		next, ok := b.DirectWindow(refusedAt.Add(window), deadline, 0)
+		if ok != row.next {
+			t.Fatalf("%s: next round granted = %v (%s), want %v", row.name, ok, next, row.next)
+		}
+		if ok && TunnelShare(next) < MinAttempt {
+			t.Fatalf("%s: next round window %s is below the floor", row.name, TunnelShare(next))
+		}
+	}
+
+	if got := Detour(5*time.Second, true); got != 5*time.Second {
+		t.Fatalf("a short window is not stretched: %s", got)
+	}
+}

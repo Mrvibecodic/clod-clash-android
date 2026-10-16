@@ -61,8 +61,9 @@ var (
 	ErrBadURL = errors.New("clod-chan-bad-url")
 	// ErrDropped — сервер принял соединение (с TLS) и закрыл его, не ответив:
 	// так отвечает на незнакомый путь сервер, рвущий такие запросы (например,
-	// nginx с return 444). Для обновления это молчание; при добавлении
-	// подписки — повод считать, что канала нет, если так кончились все попытки.
+	// nginx с return 444). При закреплённом ключе — повод повторить без него;
+	// для обновления это молчание; при добавлении подписки — повод считать,
+	// что канала нет, если так кончились все попытки.
 	ErrDropped = errors.New("clod-chan-dropped")
 	// ErrNoPin — отчёт без закреплённого ключа прослойки не уходит.
 	ErrNoPin = errors.New("clod-chan-no-pin")
@@ -455,6 +456,24 @@ func Spoke(err error) bool {
 	return false
 }
 
+// Detour — повторить ли напрямую запрос, не удавшийся через туннель: сервер не
+// достигнут, оборвал соединение или отказал посредник — его ограничения могли
+// касаться только выхода туннеля.
+func Detour(err error, reached bool) bool {
+	return err != nil && (!reached || errors.Is(err, ErrDropped) || errors.Is(err, ErrDoubt))
+}
+
+// TakeDirect — брать ли исход прямого повтора вместо туннельного. После отказа
+// посредника в туннеле — только удачу или «канала нет»: прочее (5xx, молчание,
+// иной отказ) не яснее прежнего отказа. Иначе — всё, до чего прямой дошёл.
+func TakeDirect(tunnelErr, err error, reached bool) bool {
+	if errors.Is(tunnelErr, ErrDoubt) {
+		return err == nil || errors.Is(err, ErrBadAnswer)
+	}
+
+	return err == nil || reached
+}
+
 // Round — один обмен с прослойкой: ответ, время сервера из внешних заголовков
 // (0 — его нет) и ошибка; ErrNoRound — на обмен не осталось времени.
 type Round func(pin []byte, offset int64) (*Answer, int64, error)
@@ -462,9 +481,10 @@ type Round func(pin []byte, offset int64) (*Answer, int64, error)
 // Exchange — обмены одного обновления подписки. Не вышло — ещё раз по часам
 // прослойки, если часы устройства с ними разошлись. Без закрепления ключа
 // повторяется только ответ «запрос не узнан» — любой внешний код не из 2xx и
-// не 5xx (ErrBadAnswer, ErrDoubt) или страница вместо канала: так прослойка,
-// потерявшая ключ, отдаёт запрос обычному конвейеру, и сервер за ней отвечает
-// на неизвестный путь своим кодом. Молчание, сбой 5xx и ответ, который
+// не 5xx (ErrBadAnswer, ErrDoubt), страница вместо канала или обрыв после TLS
+// (ErrDropped): так прослойка, потерявшая ключ, отдаёт запрос обычному
+// конвейеру, и сервер за ней отвечает на неизвестный путь своим кодом или
+// рвёт соединение. Молчание, сбой 5xx и ответ, который
 // расшифровался, ключ не опровергают — снимать закрепление по ним нельзя.
 // Возвращает ответ и поправку часов, с которой он получен.
 func Exchange(pin []byte, offset int64, round Round, warn func(string, ...any)) (*Answer, int64, error) {
@@ -495,7 +515,7 @@ func Exchange(pin []byte, offset int64, round Round, warn func(string, ...any)) 
 		retry(pin, "with the relay time")
 	}
 
-	if err != nil && pin != nil && (errors.Is(err, ErrBadAnswer) || errors.Is(err, ErrDoubt)) {
+	if err != nil && pin != nil && (errors.Is(err, ErrBadAnswer) || errors.Is(err, ErrDoubt) || errors.Is(err, ErrDropped)) {
 		warn("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
 
 		retry(nil, "without the pin")

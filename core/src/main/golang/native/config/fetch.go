@@ -153,7 +153,7 @@ type directBudget struct {
 	cancels  []context.CancelFunc
 }
 
-func (b *directBudget) start() (context.Context, bool) {
+func (b *directBudget) start(refused bool) (context.Context, bool) {
 	minimum := time.Duration(0)
 	if !b.reserved {
 		minimum = budgets.DirectReserve
@@ -166,7 +166,7 @@ func (b *directBudget) start() (context.Context, bool) {
 
 	b.reserved = true
 
-	ctx, cancel := context.WithTimeout(context.Background(), limit)
+	ctx, cancel := context.WithTimeout(context.Background(), budgets.Detour(limit, refused))
 
 	b.cancels = append(b.cancels, cancel)
 
@@ -184,7 +184,7 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 	bypassed := false
 
 	if device && keptOutOfTunnel(url) {
-		if ctxDirect, ok := direct.start(); ok {
+		if ctxDirect, ok := direct.start(false); ok {
 			log.Infoln("The rules of the profile keep the subscription address out of the tunnel, requesting it directly")
 
 			ctx = ctxDirect
@@ -198,7 +198,7 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 	if err != nil && device && !bypassed && !refusedByRedirectPolicy(err) {
 		tunnelErr := err
 
-		direct, ok := direct.start()
+		direct, ok := direct.start(false)
 		if !ok {
 			log.Warnln("Subscription request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
 

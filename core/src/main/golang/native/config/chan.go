@@ -261,36 +261,37 @@ func chanSilence(err error) error {
 	return fmt.Errorf("%w: %w", ErrChanSilent, err)
 }
 
-// chanRound — один раунд: через туннель, а если он не донёс — напрямую.
+// chanRound — один раунд: через туннель, а если он не донёс или по дороге
+// отказали — напрямую (chanx.Detour).
 // Каждый запрос собирает свой конверт: у повтора своя метка, иначе прослойка,
 // получившая первый, отбросила бы второй как повтор.
 func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, direct *directBudget) (*chanx.Answer, int64, error) {
 	answer, served, reached, err := chanRequest(ctx, url, pin, clockOffset, false)
-	if err == nil || reached || refusedByChanRedirect(err) {
+	if !chanx.Detour(err, reached) || refusedByChanRedirect(err) {
 		return answer, served, err
 	}
 
-	tunnelErr := err
+	tunnelErr, tunnelServed := err, served
 
-	directCtx, ok := direct.start()
+	directCtx, ok := direct.start(errors.Is(tunnelErr, chanx.ErrDoubt))
 	if !ok {
 		log.Warnln("Secure channel: request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
 
-		return nil, 0, tunnelErr
+		return nil, tunnelServed, tunnelErr
 	}
 
 	log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
 
 	answer, served, reached, err = chanRequest(directCtx, url, pin, clockOffset, true)
-	if err != nil && !reached {
-		return nil, 0, tunnelErr
+	if !chanx.TakeDirect(tunnelErr, err, reached) {
+		return nil, tunnelServed, tunnelErr
 	}
 
 	return answer, served, err
 }
 
 // chanRequest — конверт, запрос и разбор ответа. reached — сервер ответил
-// (пусть и не тем): повторять напрямую незачем.
+// (пусть и не тем) или оборвал соединение после TLS.
 func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64, direct bool) (*chanx.Answer, int64, bool, error) {
 	secureURL, session, err := chanx.Build(url, pin, chanFields(), time.Now().Unix()+clockOffset)
 	if err != nil {
@@ -308,10 +309,8 @@ func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64,
 
 	response, err := chanClient(direct).Do(request)
 	if err != nil {
-		// TLS прошёл с самим сервером, и через туннель тоже; прямой повтор
-		// после туннеля всё равно пробуется (reached только у прямого)
 		if dropped := droppedBy(err); dropped != nil {
-			return nil, 0, direct, dropped
+			return nil, 0, true, dropped
 		}
 
 		return nil, 0, false, err

@@ -627,14 +627,15 @@ func TestExchangeDropsThePinOnlyWhenTheRequestIsNotRecognised(t *testing.T) {
 	warn := func(format string, args ...any) { warned = append(warned, fmt.Sprintf(format, args...)) }
 
 	// Прослойка, потерявшая ключ, отдаёт запрос обычному конвейеру: 404, 410,
-	// другой код не из 2xx и не 5xx или страница подписки с кодом 200 —
-	// повтор без закрепления.
+	// другой код не из 2xx и не 5xx, страница подписки с кодом 200 или обрыв
+	// после TLS (nginx с return 444) — повтор без закрепления.
 	for name, refusal := range map[string]error{
-		"404":  fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer),
-		"410":  fmt.Errorf("%w: relay answered with status 410", ErrBadAnswer),
-		"400":  fmt.Errorf("%w: relay answered with status 400", ErrDoubt),
-		"403":  fmt.Errorf("%w: relay answered with status 403", ErrDoubt),
-		"page": ErrBadAnswer,
+		"404":     fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer),
+		"410":     fmt.Errorf("%w: relay answered with status 410", ErrBadAnswer),
+		"400":     fmt.Errorf("%w: relay answered with status 400", ErrDoubt),
+		"403":     fmt.Errorf("%w: relay answered with status 403", ErrDoubt),
+		"page":    ErrBadAnswer,
+		"dropped": fmt.Errorf("%w: %w", ErrDropped, io.EOF),
 	} {
 		warned = nil
 		round, calls := rounds(fails(refusal, 0), answers(fresh))
@@ -686,6 +687,67 @@ func TestExchangeCorrectsTheClockBeforeDoubtingTheKey(t *testing.T) {
 	round, calls = rounds(fails(notFound, served))
 	if _, _, err := Exchange(pinned, 0, round, func(string, ...any) {}); !errors.Is(err, ErrBadAnswer) || len(*calls) != 3 {
 		t.Fatalf("без времени на повтор: %v %+v", err, *calls)
+	}
+}
+
+// Через туннель сервер ответил отказом посредника или оборвал соединение —
+// повтор напрямую: ограничение могло касаться только выхода туннеля.
+func TestDetourRetriesDirectlyWhatTheTunnelExitMayCause(t *testing.T) {
+	for _, row := range []struct {
+		name    string
+		err     error
+		reached bool
+		detour  bool
+	}{
+		{"answered", nil, true, false},
+		{"403", fmt.Errorf("%w: relay answered with status 403", ErrDoubt), true, true},
+		{"429", fmt.Errorf("%w: relay answered with status 429", ErrDoubt), true, true},
+		{"dropped", fmt.Errorf("%w: %w", ErrDropped, io.EOF), true, true},
+		{"network", errors.New("connection reset by peer"), false, true},
+		{"404", fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer), true, false},
+		{"5xx", errors.New("server answered with status 502"), true, false},
+		{"clock", ErrStale, true, false},
+		{"garbled", ErrMalformed, true, false},
+	} {
+		if got := Detour(row.err, row.reached); got != row.detour {
+			t.Fatalf("%s: Detour = %v, want %v", row.name, got, row.detour)
+		}
+	}
+}
+
+// После отказа посредника в туннеле прямой исход берётся, только если он
+// яснее: удача или «канала нет»; 5xx, молчание и прочее оставляют прежний
+// отказ. После обрыва и недоставки — всё, до чего прямой дошёл, как раньше.
+func TestTakeDirectKeepsTheTunnelRefusalUnlessDirectIsClearer(t *testing.T) {
+	doubt := fmt.Errorf("%w: relay answered with status 403", ErrDoubt)
+	dropped := fmt.Errorf("%w: %w", ErrDropped, io.EOF)
+	network := errors.New("connection reset by peer")
+	notFound := fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer)
+	failed := errors.New("server answered with status 502")
+
+	for _, row := range []struct {
+		name    string
+		tunnel  error
+		direct  error
+		reached bool
+		take    bool
+	}{
+		{"403, direct answered", doubt, nil, true, true},
+		{"403, direct 404", doubt, notFound, true, true},
+		{"403, direct 5xx", doubt, failed, true, false},
+		{"403, direct silent", doubt, network, false, false},
+		{"403, direct 403", doubt, doubt, true, false},
+		{"403, direct dropped", doubt, dropped, true, false},
+		{"403, direct clock", doubt, ErrStale, true, false},
+		{"dropped, direct 5xx", dropped, failed, true, true},
+		{"dropped, direct 403", dropped, doubt, true, true},
+		{"dropped, direct silent", dropped, network, false, false},
+		{"silent, direct 5xx", network, failed, true, true},
+		{"silent, direct silent", network, network, false, false},
+	} {
+		if got := TakeDirect(row.tunnel, row.direct, row.reached); got != row.take {
+			t.Fatalf("%s: TakeDirect = %v, want %v", row.name, got, row.take)
+		}
 	}
 }
 

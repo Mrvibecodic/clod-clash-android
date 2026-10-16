@@ -75,6 +75,17 @@ func TunnelShare(window time.Duration) time.Duration {
 	return window - DirectReserve
 }
 
+// Detour — окно прямого повтора. После отказа, полученного через туннель
+// (сервер достижим), — не больше DirectReserve: глухой прямой путь не должен
+// съедать время следующего обмена.
+func Detour(limit time.Duration, refused bool) time.Duration {
+	if refused && limit > DirectReserve {
+		return DirectReserve
+	}
+
+	return limit
+}
+
 func (b *Budget) DirectWindow(now time.Time, deadline time.Time, minimum time.Duration) (time.Duration, bool) {
 	limit := deadline.Sub(now)
 	if limit < minimum {
