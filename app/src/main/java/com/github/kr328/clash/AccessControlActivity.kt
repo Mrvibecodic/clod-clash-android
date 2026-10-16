@@ -47,14 +47,16 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
 
         defer { apply(selected) }
 
-        val tunPrefs = withContext(Dispatchers.IO) { activeTunPrefs() }
+        val (tunPrefs, included) = withContext(Dispatchers.IO) {
+            activeTunPrefs().let { it to it?.includePackages?.filter(::installed)?.toSet().orEmpty() }
+        }
 
         val design = AccessControlDesign(
             this,
             uiStore,
             mode,
             selected,
-            tunPrefs?.includePackages?.filter(::installed)?.toSet() ?: emptySet(),
+            included,
             tunPrefs?.excludePackages?.toSet() ?: emptySet(),
             withContext(Dispatchers.IO) { selected.filterNot(::installed).toSet() },
         )

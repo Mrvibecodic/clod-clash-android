@@ -3,6 +3,7 @@ package com.github.kr328.clash
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.os.BundleCompat
+import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
 import com.github.kr328.clash.common.util.uuid
@@ -14,6 +15,7 @@ import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.util.DraftGate
 import com.github.kr328.clash.util.ProfileImports
+import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.queryPanelInfo
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CancellationException
@@ -84,7 +86,15 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
         defer {
             canceled = true
 
-            withProfile(retry = false) { release(uuid) }
+            try {
+                withProfile(retry = false) { release(uuid) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ServiceUnavailableException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("Release draft: $e", e)
+            }
         }
 
         while (isActive) {
@@ -102,7 +112,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                                 committing = ProfileImports.isCommitting(profile.uuid),
                             )
 
-                            if (saves) {
+                            if (saves) reportFailures("Save draft") {
                                 withContext(NonCancellable) {
                                     withProfile(retry = false) {
                                         patch(

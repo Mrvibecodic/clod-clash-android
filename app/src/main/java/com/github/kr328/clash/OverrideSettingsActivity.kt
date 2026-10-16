@@ -25,7 +25,17 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
 
         this.draft = draft
 
-        val active = withProfile { queryActive() }
+        val active = try {
+            withProfile { queryActive() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ServiceUnavailableException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("Query active profile: $e", e)
+
+            null
+        }
         val panel = active?.let { queryPanelInfo(it.uuid) }
 
         // Режим здесь только для подсказок (замок, тень выбора): при сбое экран

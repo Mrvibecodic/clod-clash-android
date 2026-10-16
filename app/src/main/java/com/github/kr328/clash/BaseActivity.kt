@@ -1,10 +1,14 @@
 package com.github.kr328.clash
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
+import androidx.activity.result.contract.ActivityResultContracts.GetContent
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -36,12 +40,13 @@ import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
 import com.github.kr328.clash.util.ApplicationObserver
+import com.github.kr328.clash.util.ServiceUnavailableException
+import com.github.kr328.clash.util.appCompatLocalesLoaded
 import com.github.kr328.clash.util.applyHideFromRecents
 import com.github.kr328.clash.util.serviceUnavailableHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import com.github.kr328.clash.design.R
@@ -77,7 +82,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
 
     private var defer: suspend () -> Unit = {}
     private var deferRunning = false
-    private val nextRequestKey = AtomicInteger(0)
     private var dayNight: DayNight = DayNight.Day
 
     protected abstract suspend fun main()
@@ -90,14 +94,45 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         contracts: ActivityResultContract<I, O>,
         input: I,
     ): O = withContext(Dispatchers.Main) {
-        val requestKey = nextRequestKey.getAndIncrement().toString()
+        // Ключ свой у каждого запроса: реестр с занятыми ключами переживает
+        // пересоздание экрана, и повторённый ключ получил бы ответ чужого окна.
+        val requestKey = UUID.randomUUID().toString()
+        val contract: ActivityResultContract<I, O> = contracts
 
-        ActivityResultLifecycle().use { lifecycle, start ->
-            suspendCoroutine { c ->
-                activityResultRegistry.register(requestKey, lifecycle, contracts) {
-                    c.resume(it)
-                }.apply { start() }.launch(input)
+        try {
+            ActivityResultLifecycle().use { lifecycle, start ->
+                suspendCancellableCoroutine { c ->
+                    activityResultRegistry.register(requestKey, lifecycle, contracts) {
+                        c.resume(it)
+                    }.apply { start() }.launch(input)
+                }
             }
+        } catch (e: ActivityNotFoundException) {
+            if (contracts !is GetContent && contracts !is CreateDocument) throw e
+
+            design?.showToast(R.string.clod_no_file_picker, ToastDuration.Long, kind = NoticeKind.Error)
+
+            contract.parseResult(Activity.RESULT_CANCELED, null)
+        }
+    }
+
+    // Отказ службы приходит через binder любым из разрешённых Parcel типов
+    // (IllegalArgument, IllegalState, Security, NullPointer…): экран показывает
+    // причину и живёт дальше, а не падает — обработчик области активности
+    // пропускает только ServiceUnavailableException.
+    protected suspend fun reportFailures(where: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ServiceUnavailableException) {
+            Log.w("$where: $e")
+
+            design?.showExceptionToast(e)
+        } catch (e: Exception) {
+            Log.w("$where: $e", e)
+
+            design?.showExceptionToast(e)
         }
     }
 
@@ -351,9 +386,9 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     private fun syncAppLocale() {
         AppLocale.current = AppCompatDelegate.getApplicationLocales()[0]
 
-        if (appLocaleSynced) return
+        if (appCompatLocalesLoaded) return
 
-        appLocaleSynced = true
+        appCompatLocalesLoaded = true
 
         val tag = AppCompatDelegate.getApplicationLocales()[0]?.toLanguageTag().orEmpty()
 
@@ -368,5 +403,3 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         }
     }
 }
-
-private var appLocaleSynced = false

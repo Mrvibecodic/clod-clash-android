@@ -18,7 +18,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +61,23 @@ internal fun powerFaceCenter(accent: Color, dark: Boolean): Color =
     lerp(accent, if (dark) Color.White else Color.Black, FACE_HIGHLIGHT)
 
 @Composable
+private fun powerGlow(animated: Boolean): State<Float> {
+    if (!animated) return remember { mutableFloatStateOf(0f) }
+
+    val infinite = rememberInfiniteTransition(label = "powerGlow")
+
+    return infinite.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 0.55f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "powerGlowAlpha",
+    )
+}
+
+@Composable
 fun PowerButton(
     status: ConnectionStatus,
     intent: ToggleIntent,
@@ -78,22 +97,7 @@ fun PowerButton(
     }
     val animatedAccent by animateColorAsState(accent, label = "powerAccent")
 
-    val animated = status != ConnectionStatus.Disconnected
-    val glow = if (animated) {
-        val infinite = rememberInfiniteTransition(label = "powerGlow")
-
-        infinite.animateFloat(
-            initialValue = 0.25f,
-            targetValue = 0.55f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "powerGlowAlpha",
-        ).value
-    } else {
-        0f
-    }
+    val glow = powerGlow(status != ConnectionStatus.Disconnected)
 
     val faceBrush = remember(animatedAccent, extra.dark) {
         Brush.radialGradient(
@@ -108,11 +112,12 @@ fun PowerButton(
         modifier = modifier
             .size(POWER_DIAMETER)
             .drawBehind {
-                if (glow <= 0f) return@drawBehind
+                val alpha = glow.value
+                if (alpha <= 0f) return@drawBehind
                 val radius = size.minDimension / 2f * 1.45f
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(animatedAccent.copy(alpha = glow), Color.Transparent),
+                        colors = listOf(animatedAccent.copy(alpha = alpha), Color.Transparent),
                         center = Offset(size.width / 2f, size.height / 2f),
                         radius = radius,
                     ),

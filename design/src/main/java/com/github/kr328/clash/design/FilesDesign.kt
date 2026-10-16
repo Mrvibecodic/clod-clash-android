@@ -58,6 +58,7 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
             is FilesAction.Export -> pick(Request.ExportFile(action.file))
             is FilesAction.Rename -> pick(Request.RenameFile(action.file))
             is FilesAction.Delete -> pick(Request.DeleteFile(action.file))
+            is FilesAction.NameChange -> namingText = action.text
             is FilesAction.NameConfirm -> resumeNaming(action.name)
             FilesAction.NameCancel -> resumeNaming(null)
         }
@@ -89,15 +90,20 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
 
     private var namingId = 0L
 
-    suspend fun requestFileName(name: String): String? {
+    var namingText: String? = null
+        private set
+
+    suspend fun requestFileName(name: String, restored: Boolean = false): String? {
         return withContext(Dispatchers.Main) {
             suspendCancellableCoroutine { continuation ->
                 naming = continuation
+                namingText = name
 
-                state = state.copy(naming = FileNaming(++namingId, name))
+                state = state.copy(naming = FileNaming(++namingId, name, selectAll = !restored))
 
                 continuation.invokeOnCancellation {
                     naming = null
+                    namingText = null
 
                     state = state.copy(naming = null)
                 }
@@ -107,6 +113,7 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
 
     private fun resumeNaming(name: String?) {
         state = state.copy(naming = null)
+        namingText = null
 
         val continuation = naming ?: return
 

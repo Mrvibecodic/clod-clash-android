@@ -89,6 +89,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
         }
 
         while (isActive) {
+            reportFailures("App settings") {
             select<Unit> {
                 events.onReceive {
                     when (it) {
@@ -136,6 +137,7 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
                         AppSettingsDesign.Request.Back -> finish()
                     }
                 }
+            }
             }
         }
     }

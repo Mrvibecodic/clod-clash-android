@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.os.BundleCompat
+import androidx.core.os.bundleOf
 import com.github.kr328.clash.common.util.grantPermissions
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.common.util.uuid
@@ -24,6 +26,7 @@ import java.util.concurrent.TimeUnit
 
 class FilesActivity : BaseActivity<FilesDesign>() {
     private var stack: Stack<String>? = null
+    private var namingTarget: Bundle? = null
 
     override suspend fun main() {
         val uuid = intent.uuid ?: return finish()
@@ -46,6 +49,28 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         var fresh = design.refresh(client, stack, root) && visible
 
         setContentDesign(design)
+
+        restored?.getBundle(KEY_NAMING)?.let { target ->
+            val typed = target.getString(KEY_TEXT).orEmpty()
+            val file = target.getString(KEY_FILE)
+
+            try {
+                if (file != null) {
+                    design.renameFile(client, file, target.getString(KEY_NAME).orEmpty(), typed)
+                } else {
+                    val folder = target.getString(KEY_FOLDER)
+                    val uri = BundleCompat.getParcelable(target, KEY_URI, Uri::class.java)
+
+                    if (folder != null && uri != null) design.importFile(client, folder, uri, typed, restored = true)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                design.showExceptionToast(e)
+            }
+
+            design.refresh(client, stack, root)
+        }
 
         val ticker = ticker(TimeUnit.MINUTES.toMillis(1))
 
@@ -88,11 +113,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                                 client.deleteDocument(it.file.id)
                             }
                             is FilesDesign.Request.RenameFile -> {
-                                val newName = design.requestFileName(it.file.name)
-
-                                if (newName != null && newName != it.file.name) {
-                                    client.renameDocument(it.file.id, newName)
-                                }
+                                design.renameFile(client, it.file.id, it.file.name)
                             }
                             is FilesDesign.Request.ImportFile -> {
                                 val uri: Uri? = startActivityForResult(
@@ -102,11 +123,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
 
                                 if (uri != null) {
                                     if (it.file == null) {
-                                        val name = design.requestFileName(uri.displayName(contentResolver) ?: getString(R.string.file))
-
-                                        if (name != null) {
-                                            client.importDocument(stack.last(), uri, name)
-                                        }
+                                        design.importFile(client, stack.last(), uri, uri.displayName(contentResolver) ?: getString(R.string.file))
                                     } else {
                                         client.copyDocument(it.file!!.id, uri)
                                     }
@@ -142,10 +159,40 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         super.onSaveInstanceState(outState)
 
         stack?.let { outState.putStringArrayList("stack", ArrayList(it)) }
+
+        val text = design?.namingText ?: return
+
+        namingTarget?.let { outState.putBundle(KEY_NAMING, Bundle(it).apply { putString(KEY_TEXT, text) }) }
     }
 
     override fun onBackPressed() {
         design?.requests?.trySend(FilesDesign.Request.PopStack)
+    }
+
+    private suspend fun FilesDesign.renameFile(client: FilesClient, id: String, name: String, typed: String? = null) {
+        val newName = askName(bundleOf(KEY_FILE to id, KEY_NAME to name), typed ?: name, typed != null)
+
+        if (newName != null && newName != name) {
+            client.renameDocument(id, newName)
+        }
+    }
+
+    private suspend fun FilesDesign.importFile(client: FilesClient, folder: String, uri: Uri, name: String, restored: Boolean = false) {
+        val newName = askName(bundleOf(KEY_FOLDER to folder, KEY_URI to uri), name, restored)
+
+        if (newName != null) {
+            client.importDocument(folder, uri, newName)
+        }
+    }
+
+    private suspend fun FilesDesign.askName(target: Bundle, name: String, restored: Boolean): String? {
+        namingTarget = target
+
+        return try {
+            requestFileName(name, restored)
+        } finally {
+            namingTarget = null
+        }
     }
 
     private suspend fun FilesDesign.refresh(client: FilesClient, stack: Stack<String>, root: String): Boolean =
@@ -173,5 +220,14 @@ class FilesActivity : BaseActivity<FilesDesign>() {
         }
 
         swapFiles(files, stack.empty())
+    }
+
+    private companion object {
+        const val KEY_NAMING = "naming"
+        const val KEY_TEXT = "text"
+        const val KEY_FILE = "file"
+        const val KEY_NAME = "name"
+        const val KEY_FOLDER = "folder"
+        const val KEY_URI = "uri"
     }
 }

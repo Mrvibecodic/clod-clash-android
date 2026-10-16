@@ -510,6 +510,7 @@
     <string name="clod_backup_import_summary">Добавить подписки из сохранённого файла</string>
     <string name="clod_backup_saved">Копия сохранена</string>
     <string name="clod_export_failed">Не удалось сохранить файл</string>
+    <string name="clod_no_file_picker">На устройстве нет выбора файлов</string>
     <string name="clod_backup_empty">Нет подписок со ссылкой</string>
     <string name="clod_backup_invalid">Это не файл с копией подписок</string>
     <string name="clod_backup_restored">Восстановлено %1$d из %2$d</string>

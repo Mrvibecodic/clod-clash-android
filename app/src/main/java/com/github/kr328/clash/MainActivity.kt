@@ -1287,7 +1287,19 @@ class MainActivity : BaseActivity<MainDesign>() {
         lastHealthCheckAt = SystemClock.elapsedRealtime()
 
         if (route == HealthCheckRoute.Offline) {
-            startOfflineHealthCheck()
+            try {
+                startOfflineHealthCheck()
+            } catch (e: CancellationException) {
+                lastHealthCheckAt = 0
+
+                throw e
+            } catch (e: Exception) {
+                Log.w("Offline health check: $e", e)
+
+                lastHealthCheckAt = 0
+
+                showExceptionToast(e, DesignR.string.clod_delay_failed)
+            }
 
             return
         }
@@ -1381,6 +1393,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             is OfflineDelays.State.Idle -> Unit
             is OfflineDelays.State.Running -> setProxyTesting(true, update.total)
             is OfflineDelays.State.Done -> {
+                reportFailures("Offline delays") {
                 if (withProfile { queryActive() }?.uuid == update.profile) {
                     offlineProfile = update.profile
                     offlineDelays = update.delays
@@ -1392,6 +1405,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                     } else {
                         notifyDelaysUnavailable(update.delays.values.toList())
                     }
+                }
                 }
 
                 setProxyTesting(false)
@@ -1890,26 +1904,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         Remote.broadcasts.apply(null, epoch)
 
         return true
-    }
-
-    // Отказ службы приходит через binder любым из разрешённых Parcel типов
-    // (IllegalArgument, IllegalState, Security, NullPointer…): экран показывает
-    // причину и живёт дальше, а не падает — обработчик области активности
-    // пропускает только ServiceUnavailableException.
-    private suspend fun reportFailures(where: String, block: suspend () -> Unit) {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: ServiceUnavailableException) {
-            Log.w("$where: $e")
-
-            design?.showExceptionToast(e)
-        } catch (e: Exception) {
-            Log.w("$where: $e", e)
-
-            design?.showExceptionToast(e)
-        }
     }
 
     // Узел уже отмечен на экране в момент нажатия. Здесь выбор уходит в ядро (или

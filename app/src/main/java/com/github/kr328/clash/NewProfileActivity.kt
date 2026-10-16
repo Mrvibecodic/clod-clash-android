@@ -45,7 +45,7 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                         }
 
                         is NewProfileDesign.Request.Create -> {
-                            withProfile(retry = false) {
+                            reportFailures("Create profile") { withProfile(retry = false) {
                                 val name = getString(R.string.new_profile)
 
                                 val uuid = when (it.provider) {
@@ -57,7 +57,7 @@ class NewProfileActivity : BaseActivity<NewProfileDesign>() {
                                 }
 
                                 launchProperties(uuid)
-                            }
+                            } }
 
                             design.dropPendingRequests()
                         }

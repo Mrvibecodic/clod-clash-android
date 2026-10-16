@@ -74,6 +74,7 @@ data class FilesState(
 data class FileNaming(
     val id: Long,
     val initial: String,
+    val selectAll: Boolean = true,
 )
 
 sealed interface FilesAction {
@@ -87,6 +88,7 @@ sealed interface FilesAction {
     data class Export(val file: File) : FilesAction
     data class Rename(val file: File) : FilesAction
     data class Delete(val file: File) : FilesAction
+    data class NameChange(val text: String) : FilesAction
     data class NameConfirm(val name: String) : FilesAction
     data object NameCancel : FilesAction
 }
@@ -214,6 +216,8 @@ fun FilesScreen(
         key(naming.id) {
             FileNameDialog(
                 initial = naming.initial,
+                selectAll = naming.selectAll,
+                onValueChange = { onAction(FilesAction.NameChange(it)) },
                 onConfirm = { onAction(FilesAction.NameConfirm(it)) },
                 onDismiss = { onAction(FilesAction.NameCancel) },
             )
@@ -224,11 +228,13 @@ fun FilesScreen(
 @Composable
 private fun FileNameDialog(
     initial: String,
+    selectAll: Boolean,
+    onValueChange: (String) -> Unit,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var value by remember {
-        mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length)))
+        mutableStateOf(TextFieldValue(initial, TextRange(if (selectAll) 0 else initial.length, initial.length)))
     }
 
     val focusRequester = remember { FocusRequester() }
@@ -251,7 +257,11 @@ private fun FileNameDialog(
 
             OutlinedTextField(
                 value = value,
-                onValueChange = { value = it },
+                onValueChange = {
+                    value = it
+
+                    onValueChange(it.text)
+                },
                 singleLine = true,
                 isError = !valid,
                 label = { Text(stringResource(R.string.file_name)) },
