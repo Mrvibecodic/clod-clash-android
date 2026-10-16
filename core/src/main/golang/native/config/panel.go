@@ -9,10 +9,7 @@ import (
 	"cfa/native/config/panel"
 )
 
-type (
-	PanelInfo  = panel.Info
-	PanelGroup = panel.Group
-)
+type PanelInfo = panel.Info
 
 type ModeState struct {
 	Mode      string           `json:"mode,omitempty"`
@@ -107,34 +104,7 @@ func applyGroups(info *PanelInfo, cfg *config.RawConfig, template tunnel.TunnelM
 
 	info.Protocols = panel.Protocols(cfg.Proxy)
 
-	groups := make([]PanelGroup, 0, len(cfg.ProxyGroup))
-	for _, raw := range cfg.ProxyGroup {
-		name, _ := raw["name"].(string)
-		if name == "" {
-			continue
-		}
-
-		if panel.Hidden(raw["hidden"]) {
-			continue
-		}
-
-		kind, _ := raw["type"].(string)
-
-		var proxies []string
-		if list, ok := raw["proxies"].([]any); ok {
-			for _, item := range list {
-				if value, ok := item.(string); ok && value != "" {
-					proxies = append(proxies, value)
-				}
-			}
-		}
-
-		if len(proxies) == 0 {
-			proxies = all
-		}
-
-		groups = append(groups, PanelGroup{Name: name, Type: kind, Proxies: proxies})
-	}
+	groups := panel.GroupsOf(cfg.ProxyGroup, all)
 
 	info.Groups = groups
 	info.Main = panel.MainGroup(groups, cfg.Rule)

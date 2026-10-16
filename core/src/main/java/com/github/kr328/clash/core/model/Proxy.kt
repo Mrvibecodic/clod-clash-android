@@ -13,6 +13,12 @@ data class Proxy(
     val type: String,
     val delay: Int,
     val isGroup: Boolean,
+    // У группы — сервер, на котором она стоит сейчас (по цепочке вложенных
+    // групп), его заголовок и группа, где он выбран; пусто — сервер не выбран
+    // или не известен
+    val current: String = "",
+    val currentTitle: String = "",
+    val currentGroup: String = "",
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         Parcelizer.encodeToParcel(serializer(), parcel, this)

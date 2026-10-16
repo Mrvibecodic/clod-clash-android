@@ -71,4 +71,14 @@ class ProxySubtitleTest {
     fun `скрытие подписи не трогает тип группы`() {
         assertEquals("Selector", proxySubtitle(proxy("Selector", type = "Selector", isGroup = true), null, null, hideBadges = true))
     }
+
+    @Test
+    fun `у группы вместо типа — сервер, на котором она стоит, описание провайдера главнее`() {
+        val group = proxy("URLTest", type = "URLTest", isGroup = true)
+
+        assertEquals("Now: NL", proxySubtitle(group, null, null, current = "Now: NL"))
+        assertEquals("Now: NL", proxySubtitle(group, null, null, hideBadges = true, current = "Now: NL"))
+        assertEquals("Быстрый", proxySubtitle(group, "Быстрый", null, current = "Now: NL"))
+        assertEquals("URLTest", proxySubtitle(group, null, null, current = null))
+    }
 }

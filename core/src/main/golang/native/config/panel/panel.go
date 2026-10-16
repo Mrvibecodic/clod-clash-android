@@ -101,11 +101,49 @@ type Group struct {
 	Name    string   `json:"name"`
 	Type    string   `json:"type"`
 	Proxies []string `json:"proxies,omitempty"`
+	// Hidden — группа скрыта в шаблоне (hidden: true): в списке групп её нет,
+	// но выбор видимой группы может вести через неё
+	Hidden bool `json:"hidden,omitempty"`
+}
+
+// GroupsOf — группы шаблона для панели, со скрытыми (с пометкой). all —
+// серверы подписки: ими ядро заполняет группу без своего списка
+func GroupsOf(raw []map[string]any, all []string) []Group {
+	list := make([]Group, 0, len(raw))
+	for _, group := range raw {
+		name, _ := group["name"].(string)
+		if name == "" {
+			continue
+		}
+
+		kind, _ := group["type"].(string)
+
+		var proxies []string
+		if items, ok := group["proxies"].([]any); ok {
+			for _, item := range items {
+				if value, ok := item.(string); ok && value != "" {
+					proxies = append(proxies, value)
+				}
+			}
+		}
+
+		if len(proxies) == 0 {
+			proxies = all
+		}
+
+		list = append(list, Group{Name: name, Type: kind, Proxies: proxies, Hidden: Hidden(group["hidden"])})
+	}
+
+	return list
 }
 
 func MainGroup(list []Group, rules []string) string {
 	candidates := make([]groups.Candidate, 0, len(list))
 	for _, group := range list {
+		if group.Hidden {
+			continue
+		}
+
 		candidates = append(candidates, groups.Candidate{Name: group.Name, Selectable: groups.SelectableType(group.Type)})
 	}
 

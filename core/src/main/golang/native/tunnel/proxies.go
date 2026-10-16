@@ -25,6 +25,13 @@ type Proxy struct {
 	Type     string `json:"type"`
 	Delay    int    `json:"delay"`
 	IsGroup  bool   `json:"isGroup"`
+	// Current — у группы: сервер, на котором она стоит (по цепочке вложенных
+	// групп, без нового выбора); пусто — такого нет (см. shownNode). Так экран
+	// видит сервер и за группой, которой нет в списке групп (скрытой в шаблоне).
+	// CurrentGroup — группа, в которой этот сервер выбран
+	Current      string `json:"current,omitempty"`
+	CurrentTitle string `json:"currentTitle,omitempty"`
+	CurrentGroup string `json:"currentGroup,omitempty"`
 }
 
 type ProxyGroup struct {
@@ -379,6 +386,23 @@ func httpsIcon(raw string) string {
 	return parsed.String()
 }
 
+// splitSubtitle — имя сервера по ui-subtitle-pattern: совпадение уходит из
+// заголовка в подпись. ok=false — шаблона нет или он не совпал
+func splitSubtitle(name string, pattern *regexp2.Regexp) (title, subtitle string, ok bool) {
+	if pattern == nil {
+		return "", "", false
+	}
+
+	runes := []rune(name)
+	match, err := pattern.FindRunesMatch(runes)
+	if err != nil || match == nil {
+		return "", "", false
+	}
+
+	return string(runes[:match.Index]) + string(runes[match.Index+match.Length:]),
+		string(runes[match.Index : match.Index+match.Length]), true
+}
+
 // nodeDelays — список select: сам он членов не проверяет, и вложенная группа
 // в нём без ручной проверки осталась бы без цифры
 func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string, nodeDelays bool) []*Proxy {
@@ -403,14 +427,9 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 			}
 		}
 
-		if uiSubtitlePattern != nil {
-			if _, ok := p.Adapter().(outboundgroup.ProxyGroup); !ok {
-				runes := []rune(name)
-				match, err := uiSubtitlePattern.FindRunesMatch(runes)
-				if err == nil && match != nil {
-					title = string(runes[:match.Index]) + string(runes[match.Index+match.Length:])
-					subtitle = string(runes[match.Index : match.Index+match.Length])
-				}
+		if _, ok := p.Adapter().(outboundgroup.ProxyGroup); !ok {
+			if cut, matched, ok := splitSubtitle(name, uiSubtitlePattern); ok {
+				title, subtitle = cut, matched
 			}
 		}
 
@@ -423,21 +442,33 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 
 		group, isGroup := p.Adapter().(outboundgroup.ProxyGroup)
 
-		// Вложенная группа показывает задержку узла, на котором стоит сейчас, —
-		// ту же цифру, что видна внутри неё
-		if nodeDelays && isGroup {
+		current, currentTitle, currentGroup := "", "", ""
+
+		if isGroup {
 			if node, owner := shownNode(group); node != nil {
-				delay = shownDelay(node, GroupTestURL(owner))
+				current, currentTitle, currentGroup = node.Name(), node.Name(), owner.Name()
+				if cut, _, ok := splitSubtitle(current, uiSubtitlePattern); ok {
+					currentTitle = cut
+				}
+
+				// Вложенная группа показывает задержку узла, на котором стоит
+				// сейчас, — ту же цифру, что видна внутри неё
+				if nodeDelays {
+					delay = shownDelay(node, GroupTestURL(owner))
+				}
 			}
 		}
 
 		result = append(result, &Proxy{
-			Name:     name,
-			Title:    strings.TrimSpace(title),
-			Subtitle: strings.TrimSpace(subtitle),
-			Type:     p.Type().String(),
-			Delay:    delay,
-			IsGroup:  isGroup,
+			Name:         name,
+			Title:        strings.TrimSpace(title),
+			Subtitle:     strings.TrimSpace(subtitle),
+			Type:         p.Type().String(),
+			Delay:        delay,
+			IsGroup:      isGroup,
+			Current:      current,
+			CurrentTitle: strings.TrimSpace(currentTitle),
+			CurrentGroup: currentGroup,
 		})
 	}
 	return result

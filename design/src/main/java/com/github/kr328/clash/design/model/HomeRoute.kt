@@ -10,8 +10,15 @@ sealed interface HomeRoute {
 
     data object Direct : HomeRoute
 
-    // name — имя конечного узла, как его знает ядро: по нему ищутся пометки
-    data class Server(val group: String, val title: String?, val delay: Int?, val name: String? = title) : HomeRoute
+    // name — имя конечного узла, как его знает ядро: по нему ищутся пометки;
+    // via — группа, которая выбрала этот сервер, если это не сама группа строки
+    data class Server(
+        val group: String,
+        val title: String?,
+        val delay: Int?,
+        val name: String? = title,
+        val via: String? = null,
+    ) : HomeRoute
 
     data class Bypass(val group: String) : HomeRoute
 
@@ -67,11 +74,30 @@ fun homeRoute(
         if (next?.allHidden == true) return HomeRoute.MobileOnly(root.name)
 
         if (next == null || next.now.isBlank() || !seen.add(now)) {
+            val leaf = current.proxies.firstOrNull { it.name == now }
+            // Группа, чей выбор дальше не виден (скрыта в шаблоне или ещё не
+            // загружена), — сервер, на котором она стоит, если он известен
+            val inner = leaf?.current?.takeIf { it.isNotEmpty() }
+
+            if (inner != null) {
+                if (inner in BLOCKING_SELECTIONS || hides(inner)) return HomeRoute.Blocked(root.name)
+                if (inner == DIRECT_SELECTION) return HomeRoute.Bypass(root.name)
+
+                return HomeRoute.Server(
+                    root.name,
+                    leaf.currentTitle.ifEmpty { inner },
+                    leaf.delay,
+                    inner,
+                    via = leaf.currentGroup.ifEmpty { now },
+                )
+            }
+
             if (hides(now)) return HomeRoute.Blocked(root.name)
 
-            val leaf = current.proxies.firstOrNull { it.name == now }
+            // Строка — группа без известного сервера: показывается она сама, без «через»
+            val via = current.name.takeIf { next == null && current !== root && leaf?.isGroup != true }
 
-            return HomeRoute.Server(root.name, leaf?.title ?: now, leaf?.delay, now)
+            return HomeRoute.Server(root.name, leaf?.title ?: now, leaf?.delay, now, via)
         }
 
         current = next

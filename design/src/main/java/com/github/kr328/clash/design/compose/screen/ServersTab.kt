@@ -215,7 +215,15 @@ fun ServersTab(
                 items(items = proxies) { proxy ->
                     ProxyRow(
                         title = proxy.title,
-                        subtitle = proxySubtitle(proxy, descriptions[proxy.name], protocols[proxy.name], hideBadges),
+                        subtitle = proxySubtitle(
+                            proxy,
+                            descriptions[proxy.name],
+                            protocols[proxy.name],
+                            hideBadges,
+                            // Заглушки панели в списке нет — и в подписи группы тоже
+                            current = proxy.current.takeIf { it.isNotEmpty() && active?.panel?.hides(it) != true }
+                                ?.let { stringResource(R.string.clod_proxy_now, proxy.currentTitle.ifEmpty { it }.bidiIsolated()) },
+                        ),
                         delay = proxy.delay,
                         marksOnly = active?.panel?.disablePing == true,
                         pingBounds = active?.panel.pingBounds(),

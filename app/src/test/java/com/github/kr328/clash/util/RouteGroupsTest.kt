@@ -150,12 +150,35 @@ class RouteGroupsTest {
         )
         val saved = mapOf("Europe" to "FR")
 
-        assertEquals("FR", offlineLeaf("Europe", groups, saved = { saved[it] }, hides = { false }))
+        assertEquals(OfflineLeaf("FR", "Europe"), offlineLeaf("Europe", groups, saved = { saved[it] }, hides = { false }))
         // Выбора нет — первый член select
-        assertEquals("NL", offlineLeaf("Europe", groups, saved = { null }, hides = { false }))
+        assertEquals(OfflineLeaf("NL", "Europe"), offlineLeaf("Europe", groups, saved = { null }, hides = { false }))
         // url-test без туннеля выбора не делает
         assertEquals(null, offlineLeaf("Auto", groups, saved = { null }, hides = { false }))
         assertEquals(null, offlineLeaf("DE", groups, saved = { null }, hides = { false }))
         assertEquals(null, offlineLeaf("Loop", groups, saved = { null }, hides = { false }))
+    }
+
+    @Test
+    fun `без туннеля путь идёт через скрытые группы до группы, где выбран сервер`() {
+        val groups = listOf(
+            PanelGroup("Proxy", "select", listOf("Outer", "DE")),
+            PanelGroup("Outer", "select", listOf("Inner"), hidden = true),
+            PanelGroup("Inner", "select", listOf("NL", "FR"), hidden = true),
+        )
+
+        assertEquals(OfflineLeaf("NL", "Inner"), offlineLeaf("Outer", groups, saved = { null }, hides = { false }))
+    }
+
+    @Test
+    fun `скрытый выбор не заменяется скрытой группой, как будто это сервер`() {
+        val groups = listOf(
+            PanelGroup("Proxy", "select", listOf("Gone", "Hidden", "DE")),
+            PanelGroup("Hidden", "select", listOf("NL"), hidden = true),
+        )
+
+        val shown = offlineGroup(groups[0], "Gone", gone = { it == "Gone" }, groups = groups, hides = { false })
+
+        assertEquals("DE", shown.now)
     }
 }

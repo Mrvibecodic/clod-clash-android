@@ -88,4 +88,7 @@ data class PanelGroup(
     val name: String = "",
     val type: String = "",
     val proxies: List<String> = emptyList(),
+    // Скрыта в шаблоне: в списке групп её нет, но выбор видимой группы может
+    // вести через неё
+    val hidden: Boolean = false,
 )

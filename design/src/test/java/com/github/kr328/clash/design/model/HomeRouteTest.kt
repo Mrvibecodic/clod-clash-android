@@ -10,6 +10,13 @@ class HomeRouteTest {
     private fun node(name: String, delay: Int = 0, isGroup: Boolean = false) =
         Proxy(name = name, title = name, subtitle = "", type = "", delay = delay, isGroup = isGroup)
 
+    // Группа, которой нет в списке групп (скрыта в шаблоне): ядро отдаёт её сервер
+    private fun hidden(name: String, delay: Int, current: String, currentTitle: String = current, currentGroup: String = "") =
+        Proxy(
+            name = name, title = name, subtitle = "", type = "", delay = delay, isGroup = true,
+            current = current, currentTitle = currentTitle, currentGroup = currentGroup,
+        )
+
     private fun group(name: String, now: String, vararg proxies: Proxy) =
         ProxyGroupState(name = name, now = now, selectable = true, proxies = proxies.toList())
 
@@ -35,7 +42,7 @@ class HomeRouteTest {
     @Test
     fun `выбор внутри группы разворачивается до конечного сервера`() {
         assertEquals(
-            HomeRoute.Server("Proxy", germany, 80),
+            HomeRoute.Server("Proxy", germany, 80, via = "Auto"),
             homeRoute(Mode.Rule, template, "Proxy", readOnly = false),
         )
         assertEquals(
@@ -50,7 +57,7 @@ class HomeRouteTest {
 
         assertEquals("Proxy", mainGroupOf(names, "Proxy"))
         assertEquals(
-            HomeRoute.Server("Proxy", germany, 80),
+            HomeRoute.Server("Proxy", germany, 80, via = "Auto"),
             homeRoute(Mode.Rule, template, mainGroupOf(names, "Proxy"), readOnly = false),
         )
     }
@@ -68,6 +75,65 @@ class HomeRouteTest {
 
         assertEquals(
             HomeRoute.Server("GLOBAL", "Proxy", 120),
+            homeRoute(Mode.Global, global, "GLOBAL", readOnly = false),
+        )
+    }
+
+    @Test
+    fun `группа не из списка показывает сервер, на котором стоит, и себя подписью`() {
+        val routes = listOf(group("Proxy", "Hidden", hidden("Hidden", 80, germany, "Germany"), node(netherlands, 95)))
+
+        assertEquals(
+            HomeRoute.Server("Proxy", "Germany", 80, name = germany, via = "Hidden"),
+            homeRoute(Mode.Rule, routes, "Proxy", readOnly = false),
+        )
+        // Пометки ищутся по серверу, заглушка панели внутри группы — блокировка
+        assertEquals(
+            HomeRoute.Blocked("Proxy"),
+            homeRoute(Mode.Rule, routes, "Proxy", readOnly = false, hides = { it == germany }),
+        )
+    }
+
+    @Test
+    fun `через — группа, в которой выбран сервер, а не первая скрытая на пути`() {
+        val routes = listOf(group("Proxy", "Outer", hidden("Outer", 80, germany, currentGroup = "Inner")))
+
+        assertEquals(
+            HomeRoute.Server("Proxy", germany, 80, via = "Inner"),
+            homeRoute(Mode.Rule, routes, "Proxy", readOnly = false),
+        )
+    }
+
+    @Test
+    fun `группа не из списка без выбранного сервера показывается собой`() {
+        val routes = listOf(group("Proxy", "Hidden", hidden("Hidden", 0, current = "")))
+
+        assertEquals(HomeRoute.Server("Proxy", "Hidden", 0), homeRoute(Mode.Rule, routes, "Proxy", readOnly = false))
+
+        // И глубже на пути: «через» относится к серверу, у группы её нет
+        val deeper = listOf(
+            group("Proxy", "Europe", node("Europe", 0, isGroup = true)),
+            group("Europe", "Hidden", hidden("Hidden", 0, current = "")),
+        )
+
+        assertEquals(HomeRoute.Server("Proxy", "Hidden", 0), homeRoute(Mode.Rule, deeper, "Proxy", readOnly = false))
+    }
+
+    @Test
+    fun `группа не из списка, стоящая на DIRECT или REJECT, — напрямую или блокировка`() {
+        val direct = listOf(group("Proxy", "Hidden", hidden("Hidden", 0, "DIRECT")))
+        val reject = listOf(group("Proxy", "Hidden", hidden("Hidden", 0, "REJECT")))
+
+        assertEquals(HomeRoute.Bypass("Proxy"), homeRoute(Mode.Rule, direct, "Proxy", readOnly = false))
+        assertEquals(HomeRoute.Blocked("Proxy"), homeRoute(Mode.Rule, reject, "Proxy", readOnly = false))
+    }
+
+    @Test
+    fun `в глобальном режиме член GLOBAL разворачивается до сервера, который отдало ядро`() {
+        val global = listOf(group("GLOBAL", "Proxy", hidden("Proxy", 120, germany), node("DIRECT")))
+
+        assertEquals(
+            HomeRoute.Server("GLOBAL", germany, 120, via = "Proxy"),
             homeRoute(Mode.Global, global, "GLOBAL", readOnly = false),
         )
     }

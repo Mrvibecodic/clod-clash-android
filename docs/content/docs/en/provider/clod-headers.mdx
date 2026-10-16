@@ -125,8 +125,9 @@ clod-hide-badges: true
 ```
 
 Everything else stays: the server's name and flag, latency, the “mobile network” mark, the
-snowflake, “Pinned”, and the type of groups in the list (with the tunnel on; without
-it groups have no caption anyway). The built-in “Direct” and “Reject” inside groups lose their
+snowflake, “Pinned”, and for groups in the list — “Now:” and the server the group uses, or the
+group type while that server is unknown (with the tunnel on; without it such a group has no
+caption). The built-in “Direct” and “Reject” inside groups lose their
 caption too. Captions the provider sets itself stay: the server description (the node's
 `serverDescription` field in the template) and the part of the name cut out by
 `ui-subtitle-pattern` with the tunnel on. The pattern is a regular expression in the subscription

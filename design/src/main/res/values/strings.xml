@@ -466,6 +466,7 @@
     </plurals>
     <string name="clod_favorite_add">Add to favorites</string>
     <string name="clod_proxy_pinned">Pinned</string>
+    <string name="clod_proxy_now">Now: %1$s</string>
     <string name="clod_proxy_mobile_only">mobile network</string>
     <string name="clod_servers_mobile_only">Servers are available only on a mobile network</string>
     <string name="clod_select_mobile_only">This server is available only on a mobile network</string>
@@ -573,6 +574,7 @@
     <string name="clod_sub_channel_on">Secure channel</string>
     <string name="clod_sub_channel_off">Without the secure channel — the provider does not support it</string>
     <string name="clod_home_connected_to">Connected to</string>
+    <string name="clod_home_via">via %1$s</string>
     <string name="clod_home_selected_server">Selected server</string>
     <string name="clod_home_direct">Direct, no servers</string>
     <string name="clod_home_bypass">Direct</string>

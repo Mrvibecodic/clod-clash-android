@@ -911,6 +911,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var offlineGroups: List<PanelGroup> = emptyList()
 
+    // Все группы подписки, со скрытыми в шаблоне: по ним идёт путь выбора
+    private var offlineRouteGroups: List<PanelGroup> = emptyList()
+
     private var offlineHides: (String) -> Boolean = { false }
 
     // Без туннеля: серверы только для мобильной сети вне неё (их нет и у ядра)
@@ -1222,6 +1225,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         proxyGroupNames = names
         offlineGroups = emptyList()
+        offlineRouteGroups = emptyList()
         watchOfflineNetworks(false)
         serversReadOnly = false
         serversLoading = false
@@ -1364,8 +1368,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         val active = withProfile { queryActive() } ?: return
 
         // Как меряет ядро: только серверы, без групп и встроенных DIRECT/REJECT
-        val groupNames = offlineGroups.mapTo(HashSet()) { it.name }
-        val total = offlineGroups.flatMap { it.proxies }
+        val groupNames = offlineRouteGroups.mapTo(HashSet()) { it.name }
+        val total = offlineRouteGroups.flatMap { it.proxies }
             .filterNot { offlineHides(it) || offlineGone(it) || it in groupNames || it in BUILTIN_OUTBOUNDS }
             .distinct().size
 
@@ -1419,6 +1423,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         if (offlineGroups.isNotEmpty() || groupsShownFor != loadedProfile()) {
             offlineGroups = emptyList()
+            offlineRouteGroups = emptyList()
             watchOfflineNetworks(false)
             proxyGroupNames = emptyList()
             mainGroup = null
@@ -1438,7 +1443,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         // Панель той подписки, что показана активной, — без повторного чтения
         val active = favoritesProfile
         val panel = shownActive?.panel
-        offlineGroups = panel?.groups.orEmpty().distinctBy { it.name }
+        offlineRouteGroups = panel?.groups.orEmpty().distinctBy { it.name }
+        offlineGroups = offlineRouteGroups.filterNot { it.hidden }
         offlineHides = { panel?.hides(it) == true }
         // Без туннеля сеть спрашивается у системы: вне сети SIM серверов
         // «только для мобильной сети» нет и в списке. Нет таких — не спрашивается
@@ -1464,7 +1470,8 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         val saved = if (proxyGroupNames.isEmpty()) emptyMap() else withClash { querySelections() }
 
-        proxyGroupNames.forEach { group ->
+        // И скрытых в шаблоне: путь Главной и подпись «Сейчас:» идут и через них
+        offlineRouteGroups.map { it.name }.forEach { group ->
             val selected = saved[group]
 
             if (selected != null) {
@@ -1495,7 +1502,7 @@ class MainActivity : BaseActivity<MainDesign>() {
             saved?.takeIf { it.isNotEmpty() },
             gone = offlineGone,
             hides = offlineHides,
-            groups = offlineGroups,
+            groups = offlineRouteGroups,
         )
 
         setProxyGroup(
@@ -1504,10 +1511,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             selectable = !readOnly && group.type in OFFLINE_SELECTABLE_GROUPS,
             pinned = if (!readOnly && group.type in OFFLINE_PINNABLE_GROUPS) saved.orEmpty() else null,
             proxies = shown.proxies.map { name ->
-                // Вложенная группа — задержка сервера, выбранного в ней сейчас
+                // Вложенная группа — сервер, на котором она стоит, и его задержка
                 val leaf = offlineLeaf(
                     name,
-                    offlineGroups,
+                    offlineRouteGroups,
                     saved = { pendingOf(it) ?: offlineSelections[it] },
                     gone = offlineGone,
                     hides = offlineHides,
@@ -1518,8 +1525,10 @@ class MainActivity : BaseActivity<MainDesign>() {
                     title = name,
                     subtitle = "",
                     type = "",
-                    delay = offlineDelays[leaf ?: name] ?: 0,
-                    isGroup = false,
+                    delay = offlineDelays[leaf?.server ?: name] ?: 0,
+                    isGroup = offlineRouteGroups.any { it.name == name },
+                    current = leaf?.server.orEmpty(),
+                    currentGroup = leaf?.group.orEmpty(),
                 )
             },
             allHidden = shown.allHidden,

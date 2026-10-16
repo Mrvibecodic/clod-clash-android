@@ -91,7 +91,9 @@ private const val TROJAN = "Trojan RAW (TCP) · TLS"
 
 private fun node(name: String, protocol: String, delay: Int) = Proxy(name, name, protocol, "Vless", delay, false)
 
-private fun group(name: String, type: String, delay: Int) = Proxy(name, name, type, type, delay, true)
+// current — сервер, на котором группа стоит: так её строку отдаёт ядро
+private fun group(name: String, type: String, delay: Int, current: String = "") =
+    Proxy(name, name, type, type, delay, true, current = current, currentTitle = current)
 
 private val nodes = listOf(
     node(GERMANY, REALITY, 48),
@@ -111,7 +113,7 @@ private val groups = listOf(
         name = MAIN,
         now = GERMANY,
         selectable = true,
-        proxies = listOf(group(AUTO, "URLTest", 39)) + nodes,
+        proxies = listOf(group(AUTO, "URLTest", 39, FINLAND)) + nodes,
     ),
     ProxyGroupState(
         name = AUTO,
@@ -124,19 +126,19 @@ private val groups = listOf(
         name = "YouTube",
         now = NETHERLANDS,
         selectable = true,
-        proxies = listOf(group(MAIN, "Selector", 48)) + nodes.take(5) + group("DIRECT", "Direct", 0),
+        proxies = listOf(group(MAIN, "Selector", 48, GERMANY)) + nodes.take(5) + group("DIRECT", "Direct", 0),
     ),
     ProxyGroupState(
         name = "Нейросети",
         now = USA,
         selectable = true,
-        proxies = listOf(group(MAIN, "Selector", 48)) + nodes,
+        proxies = listOf(group(MAIN, "Selector", 48, GERMANY)) + nodes,
     ),
     ProxyGroupState(
         name = "Российские сайты",
         now = "DIRECT",
         selectable = true,
-        proxies = listOf(group("DIRECT", "Direct", 0), group(MAIN, "Selector", 48)),
+        proxies = listOf(group("DIRECT", "Direct", 0), group(MAIN, "Selector", 48, GERMANY)),
     ),
 )
 
@@ -363,7 +365,12 @@ class Screenshots {
 
     @Test
     fun serversOffline() = shoot("servers-offline") {
-        MainScreen(state = state(tab = MainTab.Servers, servers = servers.copy(offline = true)), onAction = {})
+        // Без туннеля автовыбор сервера не выбирает: у его строки ни сервера, ни задержки
+        val offline = groups.map { group ->
+            group.copy(proxies = group.proxies.map { if (it.name == AUTO) it.copy(subtitle = "", type = "", delay = 0, current = "", currentTitle = "") else it })
+        }
+
+        MainScreen(state = state(tab = MainTab.Servers, servers = servers.copy(groups = offline, offline = true)), onAction = {})
     }
 
     @Test

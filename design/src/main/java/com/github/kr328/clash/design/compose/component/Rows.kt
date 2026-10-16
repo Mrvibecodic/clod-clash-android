@@ -32,6 +32,8 @@ fun SelectorRow(
     modifier: Modifier = Modifier,
     leading: Painter? = null,
     trailing: @Composable (() -> Unit)? = null,
+    // Мелкая строка под значением; каждая строка обрезается сама
+    caption: String? = null,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -70,6 +72,15 @@ fun SelectorRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (caption != null) {
+                    Text(
+                        text = caption,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             if (trailing != null) {
                 Spacer(Modifier.width(8.dp))

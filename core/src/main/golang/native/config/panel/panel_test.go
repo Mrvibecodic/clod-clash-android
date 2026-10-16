@@ -1227,6 +1227,34 @@ func TestMainGroupFollowsMatchRule(t *testing.T) {
 	}
 }
 
+func TestGroupsOfKeepsHiddenGroupsMarked(t *testing.T) {
+	raw := []map[string]any{
+		{"name": "Proxy", "type": "select", "proxies": []any{"Auto", "DE"}},
+		{"name": "Auto", "type": "url-test", "hidden": true},
+		{"name": "Off", "type": "select", "hidden": "false", "proxies": []any{"", "NL"}},
+		{"type": "select"},
+	}
+
+	got := GroupsOf(raw, []string{"DE", "NL"})
+	want := []Group{
+		{Name: "Proxy", Type: "select", Proxies: []string{"Auto", "DE"}},
+		{Name: "Auto", Type: "url-test", Proxies: []string{"DE", "NL"}, Hidden: true},
+		{Name: "Off", Type: "select", Proxies: []string{"NL"}},
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("GroupsOf = %+v, want %+v", got, want)
+	}
+}
+
+func TestMainGroupSkipsHiddenGroups(t *testing.T) {
+	list := []Group{{Name: "Auto", Hidden: true}, {Name: "Proxy"}}
+
+	if got := MainGroup(list, []string{"MATCH,Auto"}); got != "Proxy" {
+		t.Fatalf("скрытая группа не главная, получено %q", got)
+	}
+}
+
 func TestMainGroupSkipsGroupsWithoutChoice(t *testing.T) {
 	list := []Group{
 		{Name: "Balance", Type: "load-balance"},

@@ -736,6 +736,7 @@ private fun HomeRouteRow(
             else -> stringResource(R.string.clod_home_bypass)
         },
         leading = leading,
+        caption = (route as? HomeRoute.Server)?.via?.let { stringResource(R.string.clod_home_via, it.bidiIsolated()) },
         onClick = {
             val index = groups.indexOfFirst { it.name == group }
 

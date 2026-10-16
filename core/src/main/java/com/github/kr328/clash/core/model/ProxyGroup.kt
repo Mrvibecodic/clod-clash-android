@@ -28,7 +28,7 @@ data class ProxyGroup(
         }
 
         companion object CREATOR : Parcelable.Creator<SliceProxyList> {
-            // Узел — шесть коротких полей. Сотня штук это десятки килобайт при пределе
+            // Узел — десяток коротких полей. Сотня штук это десятки килобайт при пределе
             // межпроцессной посылки около мегабайта: запас держим и на длинные имена.
             private const val PROXY_SLICE = 100
 

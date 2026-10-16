@@ -63,17 +63,20 @@ internal fun offlineGroup(
     return OfflineGroup(now, left.filterNot(hides).distinct(), group.allGone(gone))
 }
 
+// server — сервер, выбранный в группе group
+internal data class OfflineLeaf(val server: String, val group: String)
+
 // Сервер, на котором вложенная группа name стоит без туннеля (по цепочке
-// вложенных групп): её строка в списке показывает его задержку — ту же, что
-// видна внутри группы. null — name не группа или сервера нет (url-test без
-// выбора, петля)
+// вложенных групп, и через скрытые в шаблоне): её строка в списке показывает
+// его и его задержку — ту же, что видна внутри группы. null — name не группа
+// или сервера нет (url-test без выбора, петля)
 internal fun offlineLeaf(
     name: String,
     groups: List<PanelGroup>,
     saved: (String) -> String?,
     gone: (String) -> Boolean = { false },
     hides: (String) -> Boolean,
-): String? {
+): OfflineLeaf? {
     var current = groups.firstOrNull { it.name == name } ?: return null
 
     repeat(16) {
@@ -81,7 +84,7 @@ internal fun offlineLeaf(
 
         if (now.isEmpty()) return null
 
-        current = groups.firstOrNull { it.name == now } ?: return now
+        current = groups.firstOrNull { it.name == now } ?: return OfflineLeaf(now, current.name)
     }
 
     return null
