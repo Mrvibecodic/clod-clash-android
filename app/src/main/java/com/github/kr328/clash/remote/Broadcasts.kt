@@ -63,6 +63,7 @@ class Broadcasts(private val context: Application) {
 
     // Рассылку стопа слышит только уже поднятая сессия: стоп, нажатый раньше,
     // ждёт, пока служба подтвердит сессию
+    @Volatile
     private var stopHeld = false
 
     fun requestStop() {

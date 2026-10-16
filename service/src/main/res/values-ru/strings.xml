@@ -1,5 +1,4 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="PluralsCandidate">
-
     <string name="clash_service_status_channel">Состояние туннеля</string>
     <string name="clod_stop_channel">Остановка и сбои туннеля</string>
     <string name="clod_tun_start_failed">Не удалось поднять туннель. Попробуйте подключиться ещё раз</string>

@@ -1303,7 +1303,9 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                 lastHealthCheckAt = 0
 
-                showExceptionToast(e, DesignR.string.clod_delay_failed)
+                if (manual) {
+                    showExceptionToast(e, DesignR.string.clod_delay_failed)
+                }
             }
 
             return
@@ -2109,8 +2111,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
-        // Новое нажатие отменяет стоп, отложенный от прежнего
+        // Новое нажатие отменяет стоп, отложенный от прежнего, и его окно ожидания
         Remote.broadcasts.takeHeldStop()
+
+        stopRequestedAt = null
 
         setConnecting()
 
@@ -2122,6 +2126,8 @@ class MainActivity : BaseActivity<MainDesign>() {
             ServiceSettings.access { }
 
             if (Remote.broadcasts.takeHeldStop()) {
+                stopRequestedAt = null
+
                 setClashRunning(clashRunning)
 
                 return
@@ -2136,6 +2142,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                 )
 
                 if (Remote.broadcasts.takeHeldStop()) {
+                    stopRequestedAt = null
+
                     setClashRunning(clashRunning)
                 } else if (result.resultCode == RESULT_OK) {
                     startClashService()
@@ -2146,6 +2154,11 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            // Старт не состоялся — отложенному стопу ждать больше нечего
+            Remote.broadcasts.takeHeldStop()
+
+            stopRequestedAt = null
+
             setClashRunning(clashRunning)
             design?.showToast(DesignR.string.unable_to_start_vpn, ToastDuration.Long)
         }
