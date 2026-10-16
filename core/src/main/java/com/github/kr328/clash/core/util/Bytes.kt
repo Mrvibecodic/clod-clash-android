@@ -5,7 +5,7 @@ import com.github.kr328.clash.common.util.AppLocale
 private val UNITS = arrayOf("KiB", "MiB", "GiB", "TiB", "PiB", "EiB")
 
 fun Long.toBytesString(): String {
-    if (this < 1024) return "$this Bytes"
+    if (this < 1024) return "$this B"
 
     var value = this.toDouble() / 1024
     var unit = 0

@@ -31,8 +31,8 @@ class TrafficFormatTest {
     fun `байты показываются без дробной части`() {
         val traffic = packed(upload = scaled(0, 512), download = scaled(0, 0))
 
-        assertEquals("512 Bytes", traffic.trafficUpload())
-        assertEquals("0 Bytes", traffic.trafficDownload())
+        assertEquals("512 B", traffic.trafficUpload())
+        assertEquals("0 B", traffic.trafficDownload())
     }
 
     @Test
@@ -74,7 +74,7 @@ class TrafficFormatTest {
     fun `старший бит приёма не уезжает в отдачу`() {
         val traffic = packed(upload = scaled(0, 1), download = scaled(3, 1000))
 
-        assertEquals("1 Bytes", traffic.trafficUpload())
+        assertEquals("1 B", traffic.trafficUpload())
         assertEquals("10.0 GiB", traffic.trafficDownload())
     }
 

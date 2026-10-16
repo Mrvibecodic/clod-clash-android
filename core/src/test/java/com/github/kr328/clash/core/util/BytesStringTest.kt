@@ -28,9 +28,9 @@ class BytesStringTest {
 
     @Test
     fun `мелочь показывается байтами`() {
-        assertEquals("0 Bytes", 0L.toBytesString())
-        assertEquals("512 Bytes", 512L.toBytesString())
-        assertEquals("1023 Bytes", 1023L.toBytesString())
+        assertEquals("0 B", 0L.toBytesString())
+        assertEquals("512 B", 512L.toBytesString())
+        assertEquals("1023 B", 1023L.toBytesString())
     }
 
     @Test
@@ -84,7 +84,7 @@ class BytesStringTest {
     fun `локаль не добавляет разделитель там, где его нет`() {
         Locale.setDefault(Locale("ru", "RU"))
 
-        assertEquals("512 Bytes", 512L.toBytesString())
+        assertEquals("512 B", 512L.toBytesString())
         assertEquals("212 MiB", (212L * 1024 * 1024).toBytesString())
         assertEquals("12,3 GiB", (12L * 1024 * 1024 * 1024 + 322122547).toBytesString())
     }
