@@ -16,6 +16,8 @@ import (
 // reportRequest — что служба просит у сборщика отчёта прослойке.
 type reportRequest struct {
 	Op string `json:"op"`
+	// Соль ключа сети установки: Net приходит без неё и солится здесь.
+	Salt string `json:"salt"`
 	// Файл накопленного подписки; пусто — сбор выключен.
 	Store string `json:"store"`
 	Net   string `json:"net"`
@@ -45,6 +47,12 @@ func clientReport(request C.c_string) {
 
 		return
 	}
+
+	if req.Salt != "" {
+		report.SetSalt(req.Salt)
+	}
+
+	req.Net = report.NetKey(req.Net)
 
 	switch req.Op {
 	case "target":

@@ -1005,3 +1005,60 @@ func TestAPanicInTheCollectorEndsTheLoopAndTheNextTargetRestartsIt(t *testing.T)
 		}
 	}
 }
+
+func TestNetKeyIsSaltedAndKeepsTheLength(t *testing.T) {
+	t.Cleanup(func() { SetSalt("") })
+
+	if NetKey("0123456789abcdef") != "" {
+		t.Fatal("без соли ключ сети ушёл как есть")
+	}
+
+	SetSalt("salt-a")
+	if got := NetKey("0123456789abcdef"); got != "98f05d6976a1cde9" {
+		t.Fatalf("ключ с солью = %q", got)
+	}
+	if NetKey("") != "" {
+		t.Fatal("пустой ключ сети получил значение")
+	}
+
+	SetSalt("salt-b")
+	if NetKey("0123456789abcdef") == "98f05d6976a1cde9" {
+		t.Fatal("у разных установок один ключ")
+	}
+}
+
+func TestNetworksOfThePreviousVersionGetSaltedKeysAndKeepTheirMeasurements(t *testing.T) {
+	t.Cleanup(func() { SetSalt("") })
+
+	path := filepath.Join(t.TempDir(), "store.json")
+	old := `{"version":2,"last_try":5,"nodes":{},"networks":{` +
+		`"abcd":{"kind":"mobile","hours":[{"h":3600,"ping":{"k":{"n":1,"fail":0,"b":[1,0,0,0,0,0]}}}]},` +
+		`"":{"kind":"","hours":[{"h":3600,"ping":{"k":{"n":3,"fail":0,"b":[3,0,0,0,0,0]}}}]}}}`
+	if err := os.WriteFile(path, []byte(old), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Без соли ключи не трогаются: ни одна сеть не теряется и не солится наугад.
+	if store := Load(path); store.Version != 2 || store.Networks["abcd"] == nil {
+		t.Fatalf("без соли накопленное изменилось: %+v", store)
+	}
+
+	SetSalt("s")
+	store := Load(path)
+	if store.Version != storeVersion || store.Networks["abcd"] != nil {
+		t.Fatalf("ключ без соли остался: %+v", store.Networks)
+	}
+	if salted := store.Networks["514e"]; salted == nil || salted.Hours[0].Ping["k"].N != 1 {
+		t.Fatalf("замеры сети не перешли под ключ с солью: %+v", store.Networks)
+	}
+	if store.Networks[""] == nil || store.LastTry != 5 {
+		t.Fatalf("замеры без сети или время отказа пропали: %+v", store)
+	}
+
+	if err := Save(path, store); err != nil {
+		t.Fatal(err)
+	}
+	if again := Load(path); again.Networks["514e"] == nil || again.Version != storeVersion {
+		t.Fatalf("сохранённое перечитывается не как есть: %+v", again.Networks)
+	}
+}

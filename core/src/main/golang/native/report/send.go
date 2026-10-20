@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"cfa/native/common"
+
 	"github.com/metacubex/mihomo/log"
 )
 
@@ -57,7 +59,7 @@ func deviceID(dir string) string {
 	text := hex.EncodeToString(id)
 
 	_ = os.MkdirAll(dir, 0700)
-	if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+	if err := common.WriteFile(path, []byte(text), true); err != nil {
 		log.Warnln("[Report] the device mark was not saved: %s", err.Error())
 	}
 

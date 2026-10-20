@@ -61,13 +61,6 @@ class ServiceStore(context: Context) {
         defaultValue = "",
     )
 
-    // Подписки, у которых отправки между обновлениями сняло упавшее обновление:
-    // ждут удачного, подключение их не заводит
-    var reportBetweenHeld: Set<String> by store.stringSet(
-        key = "report_between_held",
-        defaultValue = emptySet(),
-    )
-
     var hwid: String by store.string(
         key = "hwid",
         defaultValue = "",

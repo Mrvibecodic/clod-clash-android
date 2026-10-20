@@ -34,7 +34,6 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 import java.io.File
-import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -84,9 +83,8 @@ object ClientReports {
     private fun collected(uuid: UUID, secure: Boolean): Boolean =
         secure && context.readPanelInfo(uuid)?.report == true
 
-    // Ключ сети для отчёта: хеш признаков сети с солью установки. Без соли ключ
-    // мобильной сети — хеш кода оператора, и перебором по паре тысяч кодов он
-    // выдаёт оператора и страну. Для проверки 16–20 на устройстве ключ прежний
+    // Соль ключа сети установки: солит ключ ядро (report.NetKey), и прежнее
+    // накопленное тоже. Для проверки 16–20 на устройстве ключ прежний
     private val salt: String by lazy {
         val store = ServiceStore(context)
 
@@ -97,12 +95,11 @@ object ClientReports {
         }
     }
 
-    private fun salted(key: String): String = if (key.isEmpty()) "" else saltedKey(salt, key)
-
     private fun call(op: String, fill: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit): Boolean {
         return try {
             Clash.clientReport(buildJsonObject {
                 put("op", op)
+                put("salt", salt)
                 fill()
             }.toString())
 
@@ -169,20 +166,18 @@ object ClientReports {
         val kind = if (raw.isEmpty()) "" else NetworkKey.kindOf(seen)
         val at = System.currentTimeMillis()
 
+        // Соль при первом обращении читает хранилище — не на потоке сторожа
         serial.execute {
-            // Соль при первом обращении читает хранилище — не на потоке сторожа
-            val key = salted(raw)
-
-            if (named == key to kind) return@execute
+            if (named == raw to kind) return@execute
 
             // Несостоявшийся вызов не запоминается: следующее событие повторит
             val sent = call("network") {
-                put("net", key)
+                put("net", raw)
                 put("kind", kind)
                 put("at", at)
             }
 
-            if (sent) named = key to kind
+            if (sent) named = raw to kind
         }
     }
 
@@ -202,7 +197,7 @@ object ClientReports {
                     put("store", storeFile(context, uuid).absolutePath)
                     put("uuid", uuid.toString())
                     put("path", path?.absolutePath.orEmpty())
-                    put("net", salted(key))
+                    put("net", key)
                     put("kind", kind)
                     putJsonObject("verdicts") {
                         for ((name, outcome) in verdicts) {
@@ -257,21 +252,35 @@ object ClientReports {
 
     // Обновление подписки не удалось (любое): отправки между обновлениями
     // ждут следующего удачного
-    fun updateFailed(context: Context, uuid: UUID) {
-        hold(uuid, true)
+    suspend fun updateFailed(context: Context, uuid: UUID) {
+        // Подписку удалили, пока шло обновление: отметка ушла вместе с ней.
+        // Под тем же замком, что и стирание накопленного
+        storeLock.withLock {
+            if (ImportedDao().exists(uuid)) hold(uuid, true)
+        }
 
         stopBetween(context, uuid)
     }
 
-    private fun held(uuid: UUID): Boolean = uuid.toString() in ServiceStore(context).reportBetweenHeld
+    // У каждой подписки своя, уходит вместе с её накопленным
+    private fun heldFile(uuid: UUID): File =
+        context.filesDir.resolve("report").resolve("$uuid.held")
+
+    private fun held(uuid: UUID): Boolean = heldFile(uuid).exists()
 
     @Synchronized
     private fun hold(uuid: UUID, held: Boolean) {
-        val store = ServiceStore(context)
-        val key = uuid.toString()
+        val file = heldFile(uuid)
 
-        if ((key in store.reportBetweenHeld) != held) {
-            store.reportBetweenHeld = if (held) store.reportBetweenHeld + key else store.reportBetweenHeld - key
+        try {
+            if (held) {
+                file.parentFile?.mkdirs()
+                file.createNewFile()
+            } else {
+                file.delete()
+            }
+        } catch (e: Exception) {
+            Log.w("Client report hold mark: $e", e)
         }
     }
 
@@ -372,9 +381,3 @@ class ClientReportWorker(context: Context, parameters: WorkerParameters) : Corou
         return Result.success()
     }
 }
-
-// Ключ сети с солью — та же длина, что у ключа без неё
-internal fun saltedKey(salt: String, key: String): String =
-    MessageDigest.getInstance("SHA-256").digest("$salt;$key".toByteArray())
-        .joinToString("") { "%02x".format(it) }
-        .take(key.length)

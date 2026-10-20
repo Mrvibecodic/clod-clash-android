@@ -391,15 +391,14 @@ func (s *Store) DropSent(now, until int64) {
 
 // Load — накопленное из файла; нет файла или он испорчен — пустое.
 func Load(path string) *Store {
-	store := &Store{}
-
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		return store
+		return &Store{Version: storeVersion}
 	}
 
+	store := &Store{}
 	if json.Unmarshal(raw, store) != nil {
-		return &Store{}
+		return &Store{Version: storeVersion}
 	}
 
 	store.upgrade()
@@ -407,26 +406,44 @@ func Load(path string) *Store {
 	return store
 }
 
-// storeVersion — версия файла. Прежние копили итоги 16–20 по прежним правилам
-// (в том числе «не отвечает»): при чтении они выбрасываются, замеры остаются.
-const storeVersion = 2
+// storeVersion — версия файла. До второй итоги 16–20 копились по прежним
+// правилам (в том числе «не отвечает»): при чтении они выбрасываются, замеры
+// остаются. До третьей сети лежали под ключами без соли: при чтении ключи
+// солятся (NetKey), замеры остаются.
+const storeVersion = 3
 
 func (s *Store) upgrade() {
-	if s.Version >= storeVersion {
-		return
-	}
-
-	for _, network := range s.Networks {
-		for i := range network.Hours {
-			network.Hours[i].Freeze = nil
+	if s.Version < 2 {
+		for _, network := range s.Networks {
+			for i := range network.Hours {
+				network.Hours[i].Freeze = nil
+			}
 		}
+
+		s.Version = 2
 	}
 
-	s.Version = storeVersion
+	if s.Version < 3 && saltOf() != "" {
+		networks := make(map[string]*Network, len(s.Networks))
+
+		for raw, network := range s.Networks {
+			key := raw
+			if raw != "" {
+				key = NetKey(raw)
+			}
+
+			networks[key] = network
+		}
+
+		s.Networks = networks
+		s.Version = 3
+	}
 }
 
 func Save(path string, store *Store) error {
-	store.Version = storeVersion
+	if store.Version == 0 {
+		store.Version = storeVersion
+	}
 
 	raw, err := json.Marshal(store)
 	if err != nil {
