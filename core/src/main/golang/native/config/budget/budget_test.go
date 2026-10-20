@@ -42,6 +42,9 @@ func TestDirectRetryStaysInsideAddressWindow(t *testing.T) {
 		{"overall budget exhausted", 175 * time.Second, 190 * time.Second, true, DirectReserve, 0, false},
 		{"configuration share exhausted", 115 * time.Second, 190 * time.Second, false, DirectReserve, 0, false},
 		{"second retry without the reserve", 30 * time.Second, 30 * time.Second, false, 0, 0, false},
+		// Окно упёрлось в долю конфигурации (переезд, 40 с): туннель взял свои
+		// 30 с, прямой пришёл на миллисекунды позже — запас остаётся
+		{"reserve right after the tunnel share", 110*time.Second + 5*time.Millisecond, 120 * time.Second, false, DirectReserve, 10*time.Second - 5*time.Millisecond, true},
 	} {
 		b := New(start)
 		if row.provider {

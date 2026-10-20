@@ -80,19 +80,31 @@ func SendReport(store, url, profileDir string, device map[string]string) {
 	}
 }
 
-// Одна попытка: через туннель, а если он не донёс — напрямую. Каждый запрос
+// Одна попытка — chanx.Over с правилом обхода chanx.Detour. Каждый запрос
 // собирает свой конверт: у повтора своя метка, иначе прослойка, получившая
 // первый, отбросила бы второй как повтор.
 func reportAttempt(url string, pin []byte, offset int64, device map[string]string, gz []byte) (int, error) {
-	status, reached, err := reportSend(url, pin, offset, device, gz, false)
-	if err != nil && !reached {
-		status, _, err = reportSend(url, pin, offset, device, gz, true)
+	var statuses [2]int
+
+	viaDirect, err := chanx.Over(func(direct bool) (bool, error) {
+		status, reached, err := reportSend(url, pin, offset, device, gz, direct)
+		if direct {
+			statuses[1] = status
+		} else {
+			statuses[0] = status
+		}
+
+		return reached, err
+	}, chanx.Detour, log.Warnln)
+
+	if viaDirect {
+		return statuses[1], err
 	}
 
-	return status, err
+	return statuses[0], err
 }
 
-// reached — прослойка (или кто-то вместо неё) ответила: повторять напрямую незачем.
+// reached — сервер ответил (пусть и не тем) или оборвал соединение после TLS.
 func reportSend(url string, pin []byte, offset int64, device map[string]string, gz []byte, direct bool) (int, bool, error) {
 	secureURL, session, err := chanx.BuildReport(url, pin, fieldsOf(device), time.Now().Unix()+offset)
 	if err != nil {
@@ -107,6 +119,8 @@ func reportSend(url string, pin []byte, offset int64, device map[string]string, 
 	ctx, cancel := context.WithTimeout(context.Background(), reportRound)
 	defer cancel()
 
+	ctx, droppedBy := chanx.Track(ctx)
+
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, secureURL, strings.NewReader(body))
 	if err != nil {
 		return 0, true, err
@@ -117,7 +131,11 @@ func reportSend(url string, pin []byte, offset int64, device map[string]string, 
 
 	response, err := chanClient(direct).Do(request)
 	if err != nil {
-		return 0, refusedByChanRedirect(err), err
+		if dropped := droppedBy(err); dropped != nil {
+			return 0, true, dropped
+		}
+
+		return 0, false, err
 	}
 	defer response.Body.Close()
 

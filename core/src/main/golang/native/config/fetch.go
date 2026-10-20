@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"cfa/native/app"
+	"cfa/native/chanx"
 	"cfa/native/common/safego"
 	budgets "cfa/native/config/budget"
 	"cfa/native/config/delivery"
@@ -153,6 +154,8 @@ type directBudget struct {
 	cancels  []context.CancelFunc
 }
 
+// refused — через туннель сервер достижим, но отказали или оборвали: глухой
+// прямой путь не должен съедать время следующего обмена (budgets.Detour).
 func (b *directBudget) start(refused bool) (context.Context, bool) {
 	minimum := time.Duration(0)
 	if !b.reserved {
@@ -268,7 +271,7 @@ func fetchConfig(url *U.URL, file string, secure bool, budget *budgets.Budget, l
 
 	window, ok := openAddressWindow(budget, limit, true)
 	if !ok {
-		return fetchHeader{}, chanSilence(errFetchBudget)
+		return fetchHeader{}, chanx.Silence(errFetchBudget)
 	}
 
 	rounds := &roundBudget{budget: budget, deadline: window.deadline}
@@ -470,7 +473,7 @@ func fetchFromSpare(
 
 	log.Warnln("Subscription address failed (%s), trying the spare address %s from the provider", cause.Error(), parsed.Host)
 
-	if budget.Remaining(time.Now()) < budgets.MinAttempt {
+	if _, ok := budget.Window(time.Now(), budgets.MinAttempt); !ok {
 		log.Warnln("Spare address %s skipped: %s", parsed.Host, errFetchBudget.Error())
 
 		return fetchHeader{}, cause

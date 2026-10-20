@@ -2,6 +2,7 @@ package chanx
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
@@ -11,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"context"
 	"net/http/httptrace"
 	"strconv"
 	"strings"
@@ -65,6 +65,11 @@ var (
 	// для обновления это молчание; при добавлении подписки — повод считать,
 	// что канала нет, если так кончились все попытки.
 	ErrDropped = errors.New("clod-chan-dropped")
+	// ErrFailed — 5xx: сбой по дороге или у сервера. Так же отвечает
+	// прослойка, переславшая неузнанный запрос на панель за nginx с 444, и
+	// Cloudflare перед таким сервером: при закреплённом ключе — повод
+	// повторить без него.
+	ErrFailed = errors.New("clod-chan-failed")
 	// ErrNoPin — отчёт без закреплённого ключа прослойки не уходит.
 	ErrNoPin = errors.New("clod-chan-no-pin")
 	// ErrNoRound — на обмен не осталось времени; Exchange оставляет прежний исход.
@@ -247,7 +252,7 @@ func (s *Session) SealReport(gz []byte) (string, error) {
 func (s *Session) Receive(status int, body io.Reader, now int64) (*Answer, error) {
 	switch {
 	case status >= 500:
-		return nil, fmt.Errorf("server answered with status %d", status)
+		return nil, fmt.Errorf("%w: server answered with status %d", ErrFailed, status)
 	case status == 404 || status == 410:
 		return nil, fmt.Errorf("%w: relay answered with status %d", ErrBadAnswer, status)
 	case status < 200 || status >= 300:
@@ -463,15 +468,20 @@ func Detour(err error, reached bool) bool {
 	return err != nil && (!reached || errors.Is(err, ErrDropped) || errors.Is(err, ErrDoubt))
 }
 
-// TakeDirect — брать ли исход прямого повтора вместо туннельного. После отказа
-// посредника в туннеле — только удачу или «канала нет»: прочее (5xx, молчание,
-// иной отказ) не яснее прежнего отказа. Иначе — всё, до чего прямой дошёл.
-func TakeDirect(tunnelErr, err error, reached bool) bool {
-	if errors.Is(tunnelErr, ErrDoubt) {
-		return err == nil || errors.Is(err, ErrBadAnswer)
-	}
+// KeyRefused — ответ, после которого обмен повторяется без закреплённого ключа
+// (Exchange): сервер ответил, но не каналом. Повтор без ключа ничего не
+// теряет — новый ключ закрепляется, только если обмен без него удался.
+func KeyRefused(pin []byte, err error) bool {
+	return pin != nil && (errors.Is(err, ErrBadAnswer) || errors.Is(err, ErrDoubt) || errors.Is(err, ErrDropped) || errors.Is(err, ErrFailed))
+}
 
-	return err == nil || reached
+// GoDirect — идти ли напрямую после попытки через туннель в обмене подписки.
+// Сервер через туннель ответил не каналом (404, 5xx, обрыв), а ключ закреплён —
+// ключ сменился: повтор без ключа идёт тем же путём, прямой тут не нужен.
+// Иной 4xx бывает и от посредника на выходе туннеля: прямой пробуется с тем же
+// ключом, а повтор без ключа (Exchange) снова начинается с туннеля.
+func GoDirect(pin []byte, err error, reached bool) bool {
+	return Detour(err, reached) && (errors.Is(err, ErrDoubt) || !KeyRefused(pin, err))
 }
 
 // Round — один обмен с прослойкой: ответ, время сервера из внешних заголовков
@@ -479,13 +489,11 @@ func TakeDirect(tunnelErr, err error, reached bool) bool {
 type Round func(pin []byte, offset int64) (*Answer, int64, error)
 
 // Exchange — обмены одного обновления подписки. Не вышло — ещё раз по часам
-// прослойки, если часы устройства с ними разошлись. Без закрепления ключа
-// повторяется только ответ «запрос не узнан» — любой внешний код не из 2xx и
-// не 5xx (ErrBadAnswer, ErrDoubt), страница вместо канала или обрыв после TLS
-// (ErrDropped): так прослойка, потерявшая ключ, отдаёт запрос обычному
-// конвейеру, и сервер за ней отвечает на неизвестный путь своим кодом или
-// рвёт соединение. Молчание, сбой 5xx и ответ, который
-// расшифровался, ключ не опровергают — снимать закрепление по ним нельзя.
+// прослойки, если часы устройства с ними разошлись. Сервер ответил не каналом
+// при закреплённом ключе (KeyRefused) — повтор без закрепления: так прослойка,
+// сменившая ключ, отдаёт запрос обычному конвейеру, и сервер за ней отвечает
+// своим кодом, 5xx или рвёт соединение. Молчание сети и ответ, который
+// расшифровался, ключ не опровергают.
 // Возвращает ответ и поправку часов, с которой он получен.
 func Exchange(pin []byte, offset int64, round Round, warn func(string, ...any)) (*Answer, int64, error) {
 	answer, served, err := round(pin, offset)
@@ -515,7 +523,7 @@ func Exchange(pin []byte, offset int64, round Round, warn func(string, ...any)) 
 		retry(pin, "with the relay time")
 	}
 
-	if err != nil && pin != nil && (errors.Is(err, ErrBadAnswer) || errors.Is(err, ErrDoubt) || errors.Is(err, ErrDropped)) {
+	if KeyRefused(pin, err) {
 		warn("Secure channel: pinned relay key refused (%v), retrying without the pin", err)
 
 		retry(nil, "without the pin")

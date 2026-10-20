@@ -411,7 +411,7 @@ object ProfileImports {
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                val channel = UpdateFailures.channel(e.message.orEmpty())
+                val channel = UpdateFailures.channel(e.message.orEmpty(), adding = fallback)
 
                 when (val verdict = UpdateFailures.channelVerdict(channel, n, CHANNEL_ATTEMPTS, alwaysDoubted)) {
                     UpdateFailures.Channel.Answered -> throw e

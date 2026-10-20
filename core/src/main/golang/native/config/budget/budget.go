@@ -54,9 +54,14 @@ func (b *Budget) EnterProviderPhase() {
 	b.phase = b.deadline
 }
 
+// attemptSlack — допуск порога попытки: отложенный под прямой путь запас
+// (DirectReserve = MinAttempt) доходит до него на миллисекунды позже срока
+// туннеля и иначе пропадал бы целиком.
+const attemptSlack = 100 * time.Millisecond
+
 func (b *Budget) Window(now time.Time, limit time.Duration) (time.Duration, bool) {
 	remaining := b.Remaining(now)
-	if remaining < MinAttempt {
+	if remaining < MinAttempt-attemptSlack {
 		return 0, false
 	}
 
@@ -75,8 +80,8 @@ func TunnelShare(window time.Duration) time.Duration {
 	return window - DirectReserve
 }
 
-// Detour — окно прямого повтора. После отказа, полученного через туннель
-// (сервер достижим), — не больше DirectReserve: глухой прямой путь не должен
+// Detour — окно прямого повтора. После отказа или обрыва, полученного через
+// туннель (сервер достижим), — не больше DirectReserve: глухой прямой путь не должен
 // съедать время следующего обмена.
 func Detour(limit time.Duration, refused bool) time.Duration {
 	if refused && limit > DirectReserve {

@@ -16,6 +16,7 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/chanx"
+	"cfa/native/common"
 	"cfa/native/config/delivery"
 	"cfa/native/config/panel"
 
@@ -29,14 +30,6 @@ import (
 var errChanFingerprint = errors.New("clod-chan: chrome fingerprint is not available in the core")
 
 var errChanAlpn = errors.New("clod-chan: relay negotiated a protocol other than http/1.1")
-
-var errChanRedirects = errors.New("clod-chan: stopped after 10 redirects")
-
-var errChanDowngrade = errors.New("clod-chan: refused redirect from https to plain http")
-
-func refusedByChanRedirect(err error) bool {
-	return errors.Is(err, errChanDowngrade) || errors.Is(err, errChanRedirects)
-}
 
 var chanBrowserHeaders = [][2]string{
 	{"sec-ch-ua", `"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"`},
@@ -130,18 +123,8 @@ func chanClient(direct bool) *http.Client {
 	}
 
 	return &http.Client{
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return errChanRedirects
-			}
-
-			if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
-				return errChanDowngrade
-			}
-
-			return nil
-		},
+		Transport:     transport,
+		CheckRedirect: chanx.CheckRedirect,
 	}
 }
 
@@ -169,7 +152,7 @@ func writeChanPin(dir string, pin []byte) {
 	}
 
 	_ = os.MkdirAll(dir, 0700)
-	_ = os.WriteFile(chanPinFile(dir), []byte(base64.RawURLEncoding.EncodeToString(pin)), 0600)
+	_ = common.WriteFile(chanPinFile(dir), []byte(base64.RawURLEncoding.EncodeToString(pin)), true)
 }
 
 func chanSkewFile(dir string) string {
@@ -197,23 +180,27 @@ func storeChanSkew(dir string, offset int64) {
 		return
 	}
 
-	_ = os.WriteFile(chanSkewFile(dir), []byte(strconv.FormatInt(offset, 10)), 0600)
+	_ = common.WriteFile(chanSkewFile(dir), []byte(strconv.FormatInt(offset, 10)), false)
 }
 
 func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBudget) (io.ReadCloser, fetchHeader, error) {
-	answer, offset, err := chanx.Exchange(readChanPin(dir), readChanSkew(dir), func(pin []byte, offset int64) (*chanx.Answer, int64, error) {
+	tunnel := func(bool) (*http.Client, context.Context, bool) {
 		ctx, ok := rounds.start()
-		if !ok {
-			return nil, 0, chanx.ErrNoRound
-		}
 
-		return chanRound(ctx, url, pin, offset, direct)
-	}, log.Warnln)
+		return chanClient(false), ctx, ok
+	}
+	directly := func(refused bool) (*http.Client, context.Context, bool) {
+		ctx, ok := direct.start(refused)
+
+		return chanClient(true), ctx, ok
+	}
+
+	answer, offset, err := chanx.Fetch(url, readChanPin(dir), readChanSkew(dir), chanFields(), chanHeaders(), tunnel, directly, log.Warnln)
 	if errors.Is(err, chanx.ErrNoRound) {
 		err = errFetchBudget
 	}
 	if err != nil {
-		return nil, fetchHeader{}, chanSilence(err)
+		return nil, fetchHeader{}, chanx.Silence(err)
 	}
 
 	writeChanPin(dir, answer.SP)
@@ -244,85 +231,6 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 	}
 
 	return io.NopCloser(strings.NewReader(answer.Body)), header, nil
-}
-
-// ErrChanSilent помечает раунд, на который канал не ответил: сеть, таймаут,
-// сбой 5xx по дороге. Добавление подписки в этом случае пробует канал заново,
-// а не уходит на обычный путь, — молчание ещё не значит, что канала нет.
-var ErrChanSilent = errors.New("clod-chan-silent")
-
-// chanSilence оставляет как есть то, что сказал сам ответ (chanx.Spoke) и
-// отказ редиректа, и помечает молчанием всё остальное.
-func chanSilence(err error) error {
-	if chanx.Spoke(err) || refusedByChanRedirect(err) {
-		return err
-	}
-
-	return fmt.Errorf("%w: %w", ErrChanSilent, err)
-}
-
-// chanRound — один раунд: через туннель, а если он не донёс или по дороге
-// отказали — напрямую (chanx.Detour).
-// Каждый запрос собирает свой конверт: у повтора своя метка, иначе прослойка,
-// получившая первый, отбросила бы второй как повтор.
-func chanRound(ctx context.Context, url string, pin []byte, clockOffset int64, direct *directBudget) (*chanx.Answer, int64, error) {
-	answer, served, reached, err := chanRequest(ctx, url, pin, clockOffset, false)
-	if !chanx.Detour(err, reached) || refusedByChanRedirect(err) {
-		return answer, served, err
-	}
-
-	tunnelErr, tunnelServed := err, served
-
-	directCtx, ok := direct.start(errors.Is(tunnelErr, chanx.ErrDoubt))
-	if !ok {
-		log.Warnln("Secure channel: request failed through the tunnel (%s), no time left for a direct retry", tunnelErr.Error())
-
-		return nil, tunnelServed, tunnelErr
-	}
-
-	log.Warnln("Secure channel: request failed through the tunnel (%s), retrying directly", tunnelErr.Error())
-
-	answer, served, reached, err = chanRequest(directCtx, url, pin, clockOffset, true)
-	if !chanx.TakeDirect(tunnelErr, err, reached) {
-		return nil, tunnelServed, tunnelErr
-	}
-
-	return answer, served, err
-}
-
-// chanRequest — конверт, запрос и разбор ответа. reached — сервер ответил
-// (пусть и не тем) или оборвал соединение после TLS.
-func chanRequest(ctx context.Context, url string, pin []byte, clockOffset int64, direct bool) (*chanx.Answer, int64, bool, error) {
-	secureURL, session, err := chanx.Build(url, pin, chanFields(), time.Now().Unix()+clockOffset)
-	if err != nil {
-		return nil, 0, true, err
-	}
-
-	ctx, droppedBy := chanx.Track(ctx)
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, secureURL, nil)
-	if err != nil {
-		return nil, 0, true, err
-	}
-
-	request.Header = chanHeaders()
-
-	response, err := chanClient(direct).Do(request)
-	if err != nil {
-		if dropped := droppedBy(err); dropped != nil {
-			return nil, 0, true, dropped
-		}
-
-		return nil, 0, false, err
-	}
-
-	defer response.Body.Close()
-
-	served := panel.ServerTime(response.Header)
-
-	answer, err := session.Receive(response.StatusCode, response.Body, time.Now().Unix()+clockOffset)
-
-	return answer, served, true, err
 }
 
 func chanFields() chanx.Fields {

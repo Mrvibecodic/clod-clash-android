@@ -48,6 +48,38 @@ class UpdateFailuresTest {
         assertEquals(Reason(Cause.Silent), UpdateFailures.classify("clod-chan-silent: something odd"))
     }
 
+    // Исходы ядра (chanx) при добавлении подписки, как их пишет Silence: без
+    // прослойки и с выключенным каналом — обычный путь после всех попыток,
+    // без ответа — ошибка
+    @Test
+    fun `adding decides by what the core said`() {
+        val absent = "clod-chan-bad-answer: relay answered with status 404"
+        val dropped = "clod-chan-silent: clod-chan-dropped: Get \"https://p/c1/x\": EOF"
+        val failed = "clod-chan-silent: clod-chan-failed: server answered with status 502"
+        val doubt = "clod-chan-doubt: relay answered with status 403"
+        val silent = "clod-chan-silent: dial tcp: i/o timeout"
+
+        assertEquals(UpdateFailures.Channel.Absent, UpdateFailures.channel(absent))
+
+        for (raw in listOf(dropped, failed, doubt)) {
+            val channel = UpdateFailures.channel(raw)
+
+            assertEquals(raw, UpdateFailures.Channel.Doubtful, channel)
+            assertEquals(raw, null, UpdateFailures.channelVerdict(channel, 1, 3, alwaysDoubted = true))
+            assertEquals(raw, UpdateFailures.Channel.Absent, UpdateFailures.channelVerdict(channel, 3, 3, alwaysDoubted = true))
+        }
+
+        assertEquals(Reason(Cause.ServerError, 502), UpdateFailures.classify(failed))
+        // Включение канала у добавленной подписки: 5xx — сбой сервера, не «канала нет»
+        assertEquals(UpdateFailures.Channel.Silent, UpdateFailures.channel(failed, adding = false))
+        assertEquals(UpdateFailures.Channel.Doubtful, UpdateFailures.channel(dropped, adding = false))
+        assertEquals(UpdateFailures.Channel.Silent, UpdateFailures.channel(silent))
+        assertEquals(
+            UpdateFailures.Channel.Silent,
+            UpdateFailures.channelVerdict(UpdateFailures.Channel.Doubtful, 3, 3, alwaysDoubted = false),
+        )
+    }
+
     @Test
     fun `the channel is told absent, silent or answered`() {
         assertEquals(

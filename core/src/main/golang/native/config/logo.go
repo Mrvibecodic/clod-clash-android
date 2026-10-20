@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"cfa/native/common"
 	budgets "cfa/native/config/budget"
 
 	clashHttp "github.com/metacubex/mihomo/component/http"
@@ -78,7 +79,7 @@ func fetchLogo(dir string, rawURL string, budget *budgets.Budget) string {
 	removeLogos(dir)
 
 	name := logoBaseName + extension
-	if err := os.WriteFile(P.Join(dir, name), body, 0o600); err != nil {
+	if err := common.WriteFile(P.Join(dir, name), body, false); err != nil {
 		return ""
 	}
 

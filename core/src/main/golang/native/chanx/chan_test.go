@@ -558,7 +558,7 @@ func TestReceiveClassifiesTheOuterAnswer(t *testing.T) {
 		{502, strings.NewReader("bad gateway"), false, false, false},
 	} {
 		_, err := sess.Receive(row.status, row.body, 1786500000)
-		if errors.Is(err, ErrBadAnswer) != row.absent || errors.Is(err, ErrDoubt) != row.doubt || Spoke(err) != row.spoke {
+		if errors.Is(err, ErrBadAnswer) != row.absent || errors.Is(err, ErrDoubt) != row.doubt || Spoke(err) != row.spoke || errors.Is(err, ErrFailed) != (row.status >= 500) {
 			t.Fatalf("%d: %v", row.status, err)
 		}
 	}
@@ -636,6 +636,7 @@ func TestExchangeDropsThePinOnlyWhenTheRequestIsNotRecognised(t *testing.T) {
 		"403":     fmt.Errorf("%w: relay answered with status 403", ErrDoubt),
 		"page":    ErrBadAnswer,
 		"dropped": fmt.Errorf("%w: %w", ErrDropped, io.EOF),
+		"5xx":     fmt.Errorf("%w: server answered with status 502", ErrFailed),
 	} {
 		warned = nil
 		round, calls := rounds(fails(refusal, 0), answers(fresh))
@@ -652,7 +653,6 @@ func TestExchangeDropsThePinOnlyWhenTheRequestIsNotRecognised(t *testing.T) {
 		"garbled":   ErrMalformed,
 		"too large": ErrTooLarge,
 		"network":   errors.New("connection reset by peer"),
-		"5xx":       errors.New("server answered with status 502"),
 		"clock":     ErrStale,
 		"foreign":   ErrMismatch,
 	} {
@@ -705,7 +705,7 @@ func TestDetourRetriesDirectlyWhatTheTunnelExitMayCause(t *testing.T) {
 		{"dropped", fmt.Errorf("%w: %w", ErrDropped, io.EOF), true, true},
 		{"network", errors.New("connection reset by peer"), false, true},
 		{"404", fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer), true, false},
-		{"5xx", errors.New("server answered with status 502"), true, false},
+		{"5xx", fmt.Errorf("%w: server answered with status 502", ErrFailed), true, false},
 		{"clock", ErrStale, true, false},
 		{"garbled", ErrMalformed, true, false},
 	} {
@@ -715,38 +715,69 @@ func TestDetourRetriesDirectlyWhatTheTunnelExitMayCause(t *testing.T) {
 	}
 }
 
-// После отказа посредника в туннеле прямой исход берётся, только если он
-// яснее: удача или «канала нет»; 5xx, молчание и прочее оставляют прежний
-// отказ. После обрыва и недоставки — всё, до чего прямой дошёл, как раньше.
-func TestTakeDirectKeepsTheTunnelRefusalUnlessDirectIsClearer(t *testing.T) {
-	doubt := fmt.Errorf("%w: relay answered with status 403", ErrDoubt)
-	dropped := fmt.Errorf("%w: %w", ErrDropped, io.EOF)
+// Закреплённый ключ не узнан, но сервер через туннель ответил — повтор без
+// ключа идёт тем же путём, напрямую — только то, что туннель не донёс, и
+// отказ посредника (с тем же ключом). Без ключа — как Detour.
+func TestGoDirectKeepsTheRetryWithoutTheKeyOnTheTunnel(t *testing.T) {
+	pinned := key(1)
 	network := errors.New("connection reset by peer")
-	notFound := fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer)
-	failed := errors.New("server answered with status 502")
 
 	for _, row := range []struct {
-		name    string
-		tunnel  error
-		direct  error
-		reached bool
-		take    bool
+		name   string
+		pin    []byte
+		err    error
+		reach  bool
+		direct bool
 	}{
-		{"403, direct answered", doubt, nil, true, true},
-		{"403, direct 404", doubt, notFound, true, true},
-		{"403, direct 5xx", doubt, failed, true, false},
-		{"403, direct silent", doubt, network, false, false},
-		{"403, direct 403", doubt, doubt, true, false},
-		{"403, direct dropped", doubt, dropped, true, false},
-		{"403, direct clock", doubt, ErrStale, true, false},
-		{"dropped, direct 5xx", dropped, failed, true, true},
-		{"dropped, direct 403", dropped, doubt, true, true},
-		{"dropped, direct silent", dropped, network, false, false},
-		{"silent, direct 5xx", network, failed, true, true},
-		{"silent, direct silent", network, network, false, false},
+		{"pinned, dropped", pinned, fmt.Errorf("%w: %w", ErrDropped, io.EOF), true, false},
+		{"pinned, 403", pinned, fmt.Errorf("%w: relay answered with status 403", ErrDoubt), true, true},
+		{"pinned, 502", pinned, fmt.Errorf("%w: server answered with status 502", ErrFailed), true, false},
+		{"pinned, not reached", pinned, network, false, true},
+		{"no pin, dropped", nil, fmt.Errorf("%w: %w", ErrDropped, io.EOF), true, true},
+		{"no pin, 403", nil, fmt.Errorf("%w: relay answered with status 403", ErrDoubt), true, true},
+		{"no pin, 502", nil, fmt.Errorf("%w: server answered with status 502", ErrFailed), true, false},
 	} {
-		if got := TakeDirect(row.tunnel, row.direct, row.reached); got != row.take {
-			t.Fatalf("%s: TakeDirect = %v, want %v", row.name, got, row.take)
+		if got := GoDirect(row.pin, row.err, row.reach); got != row.direct {
+			t.Fatalf("%s: GoDirect = %v, want %v", row.name, got, row.direct)
+		}
+	}
+}
+
+// Прослойка сменила ключ, VPN включён, прямой путь глухой: обмен сам берёт
+// новый ключ через туннель, не дожидаясь прямого пути.
+func TestNewRelayKeyIsTakenThroughTheTunnelWhenDirectIsDead(t *testing.T) {
+	stale, fresh := key(1), key(2)
+
+	for name, refusal := range map[string]error{
+		"dropped": fmt.Errorf("%w: %w", ErrDropped, io.EOF),
+		"404":     fmt.Errorf("%w: relay answered with status 404", ErrBadAnswer),
+		"502":     fmt.Errorf("%w: server answered with status 502", ErrFailed),
+	} {
+		spent := false
+		round := func(pin []byte, offset int64) (*Answer, int64, error) {
+			if spent {
+				return nil, 0, ErrNoRound
+			}
+
+			var err error
+			if pin != nil {
+				err = refusal
+			}
+			if err == nil {
+				return &Answer{Status: 200, SP: fresh}, 0, nil
+			}
+
+			// Глухой прямой путь съедает всё время обновления.
+			if GoDirect(pin, err, true) {
+				spent = true
+			}
+
+			return nil, 0, err
+		}
+
+		answer, _, err := Exchange(stale, 0, round, func(string, ...any) {})
+		if err != nil || string(answer.SP) != string(fresh) {
+			t.Fatalf("%s: новый ключ не взят: %v", name, err)
 		}
 	}
 }

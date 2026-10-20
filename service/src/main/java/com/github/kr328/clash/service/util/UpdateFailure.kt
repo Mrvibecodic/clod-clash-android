@@ -37,17 +37,23 @@ object UpdateFailures {
     enum class Channel {
         // Сервер на месте, а канала у него нет: можно загружать обычным путём.
         Absent,
-        // Отказал посредник по дороге (не 404 и не 5xx) или сервер закрыл
-        // соединение, не ответив: канал мог и быть, пробовать снова.
+        // Отказал посредник по дороге (не 404), сервер закрыл соединение, не
+        // ответив, или ответил 5xx (так отвечает прослойка с выключенным каналом
+        // старых версий и Cloudflare перед nginx с 444): канал мог и быть,
+        // пробовать снова; так все попытки — канала нет.
         Doubtful,
-        // Канал не ответил (сеть, таймаут, 5xx по дороге): пробовать его снова.
+        // Канал не ответил (сеть, таймаут): пробовать его снова.
         Silent,
         // Канал ответил — отказом панели, сбитыми часами, чужим ответом: это и показать.
         Answered,
     }
 
-    fun channel(raw: String): Channel = when {
-        raw.contains(CHAN_DROPPED) -> Channel.Doubtful
+    // adding — добавление подписки: 5xx там — «канал мог быть», и после всех
+    // попыток подписка добавляется обычным путём. При включении канала у
+    // добавленной 5xx — сбой сервера, а не «канала нет»
+    fun channel(raw: String, adding: Boolean = true): Channel = when {
+        raw.contains(CHAN_FAILED) && !adding -> Channel.Silent
+        raw.contains(CHAN_DROPPED) || raw.contains(CHAN_FAILED) -> Channel.Doubtful
         raw.contains(CHAN_SILENT) -> Channel.Silent
         raw.contains(CHAN_BAD_ANSWER) || raw.contains(CHAN_BAD_URL) -> Channel.Absent
         raw.contains(CHAN_DOUBT) -> Channel.Doubtful
@@ -154,7 +160,10 @@ object UpdateFailures {
     // Ядро (chanx): сервер закрыл соединение, не ответив.
     private const val CHAN_DROPPED = "clod-chan-dropped"
 
-    // Ядро (config/chan.go): канал не ответил, под меткой — сетевая причина.
+    // Ядро (chanx): по адресу канала ответили 5xx.
+    private const val CHAN_FAILED = "clod-chan-failed"
+
+    // Ядро (chanx): канал не ответил, под меткой — сетевая причина.
     private const val CHAN_SILENT = "clod-chan-silent"
 
     private const val NOT_DELIVERED = "clod-not-delivered"
