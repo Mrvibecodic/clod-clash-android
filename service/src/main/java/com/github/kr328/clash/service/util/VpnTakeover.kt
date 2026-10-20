@@ -17,30 +17,35 @@ import kotlinx.coroutines.launch
 // VPN-сеть: другое приложение получает разрешение и сразу создаёт свой туннель.
 // Сам выключил — остановка тихая, без уведомления.
 object VpnTakeover {
-    private const val WATCH_MS = 10_000L
+    private const val WATCH_MS = 30_000L
     private const val POLL_MS = 500L
 
-    fun watch(context: Context, onTakeover: () -> Unit) {
-        val before = vpnNetworks(context)
+    // ownGone — своей VPN-сети уже нет (её пропажу заметил сторож): любая
+    // VPN-сеть, поднятая сейчас или в окне, — чужая
+    fun watch(context: Context, ownGone: Boolean = false, onTakeover: () -> Unit) {
+        val before = if (ownGone) emptySet() else vpnNetworks(context)
 
         Global.launch {
             var waited = 0L
+            var stopped = !StatusProvider.serviceRunning
 
             while (waited < WATCH_MS) {
                 delay(POLL_MS)
                 waited += POLL_MS
 
-                // Человек снова включил VPN у нас: служба отмечает себя
-                // запущенной раньше, чем поднимает туннель, так что новая
-                // VPN-сеть здесь никогда не своя
-                if (StatusProvider.serviceRunning) return@launch
+                val running = StatusProvider.serviceRunning
+                stopped = stopped || !running
 
-                if (tookOver(before, vpnNetworks(context))) {
-                    Log.i("VPN permission taken by another app")
+                when (poll(stopped, running, before, vpnNetworks(context))) {
+                    Poll.Restarted -> return@launch
+                    Poll.TookOver -> {
+                        Log.i("VPN permission taken by another app")
 
-                    onTakeover()
+                        onTakeover()
 
-                    return@launch
+                        return@launch
+                    }
+                    Poll.Wait -> Unit
                 }
             }
 
@@ -48,8 +53,16 @@ object VpnTakeover {
         }
     }
 
-    // Сеть VPN, которой не было в момент отзыва (своя к нему уже была), — чужая
-    fun tookOver(before: Set<Network>, now: Set<Network>): Boolean = (now - before).isNotEmpty()
+    enum class Poll { Wait, Restarted, TookOver }
+
+    // Один опрос. Служба остановилась и запущена снова — человек включил VPN у
+    // нас: она отмечает себя запущенной раньше, чем поднимает туннель, так что
+    // новая VPN-сеть тогда не чужая. Иначе VPN-сеть, которой не было в начале, — чужая
+    fun <T> poll(stopped: Boolean, running: Boolean, before: Set<T>, now: Set<T>): Poll = when {
+        stopped && running -> Poll.Restarted
+        (now - before).isNotEmpty() -> Poll.TookOver
+        else -> Poll.Wait
+    }
 
     @Suppress("DEPRECATION")
     private fun vpnNetworks(context: Context): Set<Network> {

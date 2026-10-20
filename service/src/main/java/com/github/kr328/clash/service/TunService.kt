@@ -152,13 +152,17 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                                 ServiceLog.mark("tun: lost, reopening")
 
                                 // Отказ — разрешение на VPN ушло к другому приложению
-                                // или снято, а отзыв до нас не дошёл. Спросить через
-                                // VpnService.prepare нельзя: он забрал бы VPN у
-                                // другого приложения
+                                // или снято, а отзыв до нас не дошёл: то же, что отзыв.
+                                // Спросить через VpnService.prepare нельзя: он забрал
+                                // бы VPN у другого приложения
                                 try {
                                     tun.open(it)
                                 } catch (e: EstablishRejected) {
-                                    throw IllegalStateException(getString(R.string.clod_tun_revoked), e)
+                                    Log.w("TunService: establish rejected, the permission is gone", e)
+
+                                    revoked(ownGone = true)
+
+                                    return@onEvent true
                                 }
 
                                 openedAt = SystemClock.elapsedRealtime()
@@ -252,15 +256,21 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         ServiceLog.mark("TunService: revoked")
 
+        revoked()
+
+        stopSelf()
+    }
+
+    // Разрешение на VPN ушло: уведомление — только если его забрал другой VPN;
+    // выключил сам — остановка как обычная
+    private fun revoked(ownGone: Boolean = false) {
         session.systemStarted = false
         session.unattendedStart = false
         session.wasReady = false
 
-        // Уведомление — только если разрешение забрал другой VPN; выключил сам —
-        // остановка как обычная
         val context = applicationContext.withStoredLocale()
 
-        VpnTakeover.watch(context) {
+        VpnTakeover.watch(context, ownGone) {
             val text = context.getString(R.string.clod_tun_revoked)
 
             StaticNotificationModule.notifyStartFailed(context, text, R.string.clod_stopped_title)
@@ -268,8 +278,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             // Открытый экран показывает причину сам и снимает уведомление
             context.sendClashStopped(text)
         }
-
-        stopSelf()
     }
 
     override fun onDestroy() {

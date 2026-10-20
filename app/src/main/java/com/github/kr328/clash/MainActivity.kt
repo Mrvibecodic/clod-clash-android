@@ -427,7 +427,6 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         Event.ServiceRecreated -> {
-                            stopRequestedAt = null
                             startRequestedAt = null
 
                             requestFetch()
@@ -1740,7 +1739,12 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private var sessionStartedAt: Long = 0
     private var sessionStartedElapsed: Long = 0
-    private var stopRequestedAt: Long? = null
+    // Общий у процесса: переживает пересоздание экрана и виден, откуда бы стоп ни пришёл
+    private var stopRequestedAt: Long?
+        get() = Remote.broadcasts.stopRequestedAt?.takeIf { SystemClock.elapsedRealtime() - it < STOP_FEEDBACK_TIMEOUT_MS }
+        set(value) {
+            Remote.broadcasts.stopRequestedAt = value
+        }
     private var startRequestedAt: Long? = null
     private var runningProbeAt: Long = 0
     private var runningProbeMisses: Int = 0
@@ -1907,18 +1911,16 @@ class MainActivity : BaseActivity<MainDesign>() {
                 return
         }
 
-        stopRequestedAt = now
-
         startRequestedAt = null
 
-        Remote.broadcasts.requestStop()
+        Remote.broadcasts.requestStop(now)
 
         launch {
             target.setDisconnecting()
 
             delay(STOP_FEEDBACK_TIMEOUT_MS)
 
-            if (stopRequestedAt != now)
+            if (Remote.broadcasts.stopRequestedAt != now)
                 return@launch
 
             stopRequestedAt = null
@@ -2162,14 +2164,15 @@ class MainActivity : BaseActivity<MainDesign>() {
             return
         }
 
-        // Новое нажатие отменяет стоп, отложенный от прежнего, и его окно ожидания
-        Remote.broadcasts.takeHeldStop()
-
-        stopRequestedAt = null
+        // Новое нажатие отменяет стоп, отложенный от прежнего; стоп, нажатый
+        // до ответа окна VPN, ждёт этот старт
+        Remote.broadcasts.startRequested()
 
         setConnecting()
 
         watchStart()
+
+        var handedOver = false
 
         try {
             // Служба при старте читает настройки сама: записи с экранов настроек
@@ -2177,8 +2180,6 @@ class MainActivity : BaseActivity<MainDesign>() {
             ServiceSettings.access { }
 
             if (Remote.broadcasts.takeHeldStop()) {
-                stopRequestedAt = null
-
                 setClashRunning(clashRunning)
 
                 return
@@ -2186,18 +2187,18 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             val vpnRequest = startClashService()
 
-            if (vpnRequest != null) {
+            if (vpnRequest == null) {
+                handedOver = true
+            } else {
                 val result = startActivityForResult(
                     ActivityResultContracts.StartActivityForResult(),
                     vpnRequest
                 )
 
                 if (Remote.broadcasts.takeHeldStop()) {
-                    stopRequestedAt = null
-
                     setClashRunning(clashRunning)
                 } else if (result.resultCode == RESULT_OK) {
-                    startClashService()
+                    handedOver = startClashService() == null
                 } else {
                     setClashRunning(clashRunning)
                 }
@@ -2205,13 +2206,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Старт не состоялся — отложенному стопу ждать больше нечего
-            Remote.broadcasts.takeHeldStop()
-
-            stopRequestedAt = null
-
             setClashRunning(clashRunning)
             design?.showToast(DesignR.string.unable_to_start_vpn, ToastDuration.Long)
+        } finally {
+            if (!handedOver) Remote.broadcasts.startAbandoned()
         }
     }
 

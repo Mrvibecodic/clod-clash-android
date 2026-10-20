@@ -10,15 +10,9 @@ import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.ClashService
 import com.github.kr328.clash.service.TunService
-import com.github.kr328.clash.service.util.sendControlBroadcastSelf
 
 fun Context.startClashService(unattended: Boolean = false): Intent? {
-    // Новый старт с любого входа отменяет стоп, отложенный от прежнего
-    Remote.broadcasts.takeHeldStop()
-
-    val startTun = UiStore(this).enableVpn
-
-    if (startTun) {
+    if (UiStore(this).enableVpn) {
         val vpnRequest = VpnService.prepare(this)
         if (vpnRequest != null)
             return vpnRequest
@@ -28,9 +22,8 @@ fun Context.startClashService(unattended: Boolean = false): Intent? {
         startForegroundServiceCompat(ClashService::class.intent.putExtra(Intents.EXTRA_UNATTENDED, unattended))
     }
 
-    return null
-}
+    // Новый старт с любого входа отменяет стоп, отложенный от прежнего
+    Remote.broadcasts.startRequested()
 
-fun Context.stopClashService() {
-    sendControlBroadcastSelf(Intent(Intents.ACTION_CLASH_REQUEST_STOP))
+    return null
 }

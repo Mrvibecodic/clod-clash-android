@@ -12,12 +12,12 @@ import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
+import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -160,9 +160,9 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
         Toast.makeText(this, R.string.clod_external_control_refused, Toast.LENGTH_LONG).show()
     }
 
-    private suspend fun isClashRunning(): Boolean = withContext(Dispatchers.IO) {
-        StatusClient(this@ExternalControlActivity).isActive()
-    }
+    private suspend fun isClashRunning(): Boolean = Remote.broadcasts.activeOrStarting(
+        withContext(Dispatchers.IO) { StatusClient(this@ExternalControlActivity).isActive() },
+    )
 
     private fun startClash() {
         if (isFinishing || isDestroyed) return
@@ -180,7 +180,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
         if (isFinishing || isDestroyed) return
 
         ToggleWidgetProvider.notifyWait(this)
-        stopClashService()
+        Remote.broadcasts.requestStop()
         Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()
     }
 

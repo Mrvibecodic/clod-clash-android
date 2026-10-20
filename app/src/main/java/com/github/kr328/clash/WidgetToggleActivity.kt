@@ -6,9 +6,9 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import com.github.kr328.clash.common.constants.Intents
+import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.util.withAppLocale
 import kotlinx.coroutines.CoroutineScope
@@ -29,9 +29,9 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
         overridePendingTransition(0, 0)
 
         launch {
-            val running = withContext(Dispatchers.IO) {
-                StatusClient(this@WidgetToggleActivity).isActive()
-            }
+            val running = Remote.broadcasts.activeOrStarting(
+                withContext(Dispatchers.IO) { StatusClient(this@WidgetToggleActivity).isActive() },
+            )
 
             if (isFinishing || isDestroyed) {
                 return@launch finish()
@@ -77,7 +77,7 @@ class WidgetToggleActivity : Activity(), CoroutineScope by MainScope() {
 
     private fun stop() {
         ToggleWidgetProvider.notifyWait(this)
-        stopClashService()
+        Remote.broadcasts.requestStop()
         Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_SHORT).show()
     }
 

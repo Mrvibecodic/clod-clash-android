@@ -6,12 +6,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.SystemClock
 import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.util.stopClashService
+import com.github.kr328.clash.service.util.sendControlBroadcastSelf
 import java.util.*
 
 class Broadcasts(private val context: Application) {
@@ -62,25 +63,64 @@ class Broadcasts(private val context: Application) {
         releaseHeldStop()
     }
 
-    // Рассылку стопа слышит только уже поднятая сессия: стоп, нажатый раньше,
-    // ждёт, пока служба подтвердит сессию
+    // Рассылку стопа слышит только поднятая сессия: стоп сразу после своего
+    // старта ждёт её, но не дольше HOLD_MS — иначе погасил бы позже чужой
+    // старт (постоянный VPN)
     @Volatile
-    private var stopHeld = false
+    var stopRequestedAt: Long? = null
 
-    fun requestStop() {
-        if (clashActive) context.stopClashService() else stopHeld = true
+    @Volatile
+    private var stopHeldAt: Long? = null
+
+    @Volatile
+    private var startRequestedAt: Long? = null
+
+    fun startRequested() {
+        listen()
+
+        stopHeldAt = null
+        stopRequestedAt = null
+        startRequestedAt = SystemClock.elapsedRealtime()
+    }
+
+    fun startAbandoned() {
+        stopHeldAt = null
+        stopRequestedAt = null
+        startRequestedAt = null
+    }
+
+    fun activeOrStarting(running: Boolean): Boolean = running || clashActive || fresh(startRequestedAt)
+
+    fun requestStop(at: Long = SystemClock.elapsedRealtime()) {
+        stopRequestedAt = at
+
+        if (holdStop(clashActive, fresh(startRequestedAt), registered)) {
+            stopHeldAt = at
+        } else {
+            sendStop()
+        }
+
+        startRequestedAt = null
     }
 
     fun takeHeldStop(): Boolean {
-        val held = stopHeld
+        val held = fresh(stopHeldAt)
 
-        stopHeld = false
+        stopHeldAt = null
 
         return held
     }
 
+    private fun fresh(at: Long?): Boolean = at != null && SystemClock.elapsedRealtime() - at < HOLD_MS
+
     private fun releaseHeldStop() {
-        if (clashActive && takeHeldStop()) context.stopClashService()
+        if (clashActive) startRequestedAt = null
+
+        if (clashActive && takeHeldStop()) sendStop()
+    }
+
+    private fun sendStop() {
+        context.sendControlBroadcastSelf(Intent(Intents.ACTION_CLASH_REQUEST_STOP))
     }
 
     private var registered = false
@@ -121,7 +161,8 @@ class Broadcasts(private val context: Application) {
                     }
                 }
                 Intents.ACTION_CLASH_STOPPED -> {
-                    stopHeld = false
+                    stopHeldAt = null
+                    startRequestedAt = null
 
                     refreshRunning()
 
@@ -195,6 +236,14 @@ class Broadcasts(private val context: Application) {
     }
 
     fun register() {
+        listen()
+
+        refreshRunning()
+    }
+
+    // Только приёмник, без вопроса службе: процесс без окна (плитка, автозапуск)
+    // запросил старт и должен услышать, что сессия поднялась
+    private fun listen() {
         if (!registered) {
             try {
                 context.registerReceiverCompat(broadcastReceiver, IntentFilter().apply {
@@ -218,8 +267,6 @@ class Broadcasts(private val context: Application) {
                 Log.w("Register global receiver: $e", e)
             }
         }
-
-        refreshRunning()
     }
 
     // Туннель живёт только в процессе :background. Нет процесса — ответ известен
@@ -240,5 +287,11 @@ class Broadcasts(private val context: Application) {
 
     private companion object {
         const val BACKGROUND_PROCESS = ":background"
+        const val HOLD_MS = 30_000L
     }
 }
+
+// Стоп откладывается, только пока сессия не поднята, этот процесс сам её
+// только что запросил и услышит, что она поднялась: иначе стоп нужен сразу
+internal fun holdStop(sessionActive: Boolean, ownStartPending: Boolean, listening: Boolean): Boolean =
+    !sessionActive && ownStartPending && listening

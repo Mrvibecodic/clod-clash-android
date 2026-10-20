@@ -18,13 +18,13 @@ import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.toAppInfo
+import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeTunPrefs
 import com.github.kr328.clash.util.SelectionOps
 import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -204,7 +204,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             val app = applicationContext
 
             Global.launch(Dispatchers.IO) {
-                app.stopClashService()
+                Remote.broadcasts.requestStop()
                 withTimeoutOrNull(10_000) {
                     while (StatusClient(app).isActive()) {
                         delay(200)

@@ -14,9 +14,9 @@ import com.github.kr328.clash.common.compat.registerReceiverCompat
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.constants.Permissions
 import com.github.kr328.clash.common.util.intent
+import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.util.startClashService
-import com.github.kr328.clash.util.stopClashService
 import com.github.kr328.clash.service.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -60,7 +60,7 @@ class TileService : TileService() {
                 }
             }
             Tile.STATE_ACTIVE -> {
-                stopClashService()
+                Remote.broadcasts.requestStop()
 
                 tile.state = Tile.STATE_UNAVAILABLE
 
