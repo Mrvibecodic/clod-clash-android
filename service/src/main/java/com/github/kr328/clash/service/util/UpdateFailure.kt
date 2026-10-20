@@ -119,6 +119,9 @@ object UpdateFailures {
 
     fun noSpace(raw: String): Boolean = raw.lowercase().let { text -> STORAGE.any(text::contains) }
 
+    // Нехватка места — и в причине исключения: запись часто заворачивают
+    fun noSpace(e: Throwable): Boolean = generateSequence(e) { it.cause }.take(8).any { noSpace(it.message.orEmpty()) }
+
     // Причины, у которых общая фраза без подробности бесполезна: строка YAML или
     // сертификата нужна человеку, чтобы понять, что именно не так.
     fun detail(raw: String): String? {

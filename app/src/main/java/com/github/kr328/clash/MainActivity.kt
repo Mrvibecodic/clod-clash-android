@@ -2351,6 +2351,13 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
 
         when {
+            geo.noSpace && geo.failed.isNotEmpty() -> showToast(
+                getString(ServiceR.string.clod_update_cause_storage),
+                ToastDuration.Long,
+                detail = listOfNotNull(geo.failed.joinToString(", "), reconnect.takeIf { geo.updated.isNotEmpty() })
+                    .joinToString(" · "),
+                kind = NoticeKind.Error,
+            )
             geo.updated.isEmpty() -> showToast(
                 DesignR.string.clod_geo_update_failed,
                 ToastDuration.Long,

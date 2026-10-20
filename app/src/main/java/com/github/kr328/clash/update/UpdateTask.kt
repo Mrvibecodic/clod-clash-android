@@ -3,6 +3,7 @@ package com.github.kr328.clash.update
 import android.content.Context
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -37,6 +38,7 @@ object UpdateTask {
         data object Installed : InstallOutcome
         data object Returned : InstallOutcome
         data class Refused(val detail: String?) : InstallOutcome
+        data object NoSpace : InstallOutcome
     }
 
     internal fun afterInstall(state: State, outcome: InstallOutcome): State {
@@ -46,6 +48,7 @@ object UpdateTask {
             InstallOutcome.Installed -> State.Idle
             InstallOutcome.Returned -> State.Available(state.available)
             is InstallOutcome.Refused -> State.Failed(null, outcome.detail)
+            InstallOutcome.NoSpace -> State.Failed(Updater.UpdateException.Kind.Storage, null)
         }
     }
 
@@ -138,7 +141,11 @@ object UpdateTask {
                     } catch (e: Exception) {
                         Log.w("Install update: $e", e)
 
-                        current.value = State.Failed(null, e.message ?: e.toString())
+                        current.value = if (UpdateFailures.noSpace(e)) {
+                            State.Failed(Updater.UpdateException.Kind.Storage, null)
+                        } else {
+                            State.Failed(null, e.message ?: e.toString())
+                        }
                     }
                 },
                 onFailure = {

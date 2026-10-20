@@ -383,4 +383,11 @@ class UpdateFailuresTest {
 
         assertFalse(UpdateFailures.noSpace("Get \"https://example.com/s\": dial tcp: i/o timeout"))
     }
+
+    @Test
+    fun `no space is found in the cause of an exception`() {
+        assertEquals(true, UpdateFailures.noSpace(java.io.IOException("write failed: ENOSPC (No space left on device)")))
+        assertEquals(true, UpdateFailures.noSpace(IllegalStateException("copy", java.io.IOException("No space left on device"))))
+        assertEquals(false, UpdateFailures.noSpace(java.io.IOException("Broken pipe")))
+    }
 }

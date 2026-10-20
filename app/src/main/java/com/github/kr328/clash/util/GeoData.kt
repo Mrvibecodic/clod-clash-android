@@ -7,6 +7,7 @@ import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.clashDir
 import com.github.kr328.clash.design.compose.screen.GeoFileState
+import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -45,6 +46,7 @@ object GeoData {
     data class UpdateResult(
         val updated: List<String>,
         val failed: List<String>,
+        val noSpace: Boolean = false,
     )
 
     suspend fun query(context: Context): List<GeoFileState> = withContext(Dispatchers.IO) {
@@ -68,6 +70,7 @@ object GeoData {
     ): UpdateResult {
         val updated = mutableListOf<String>()
         val failed = mutableListOf<String>()
+        var noSpace = false
 
         runCatching {
             withContext(Dispatchers.IO) {
@@ -82,11 +85,12 @@ object GeoData {
                 FILES.forEach { (name, url) ->
                     val temp = File(context.clashDir, "$name.download")
 
+                    val onFull = { noSpace = true }
                     val received = SystemClock.elapsedRealtime() < deadline && (
                         if (port != null) {
-                            download(url, port, temp, name) || download(url, null, temp, name)
+                            download(url, port, temp, name, onFull) || download(url, null, temp, name, onFull)
                         } else {
-                            download(url, null, temp, name)
+                            download(url, null, temp, name, onFull)
                         }
                         )
 
@@ -118,6 +122,8 @@ object GeoData {
         }.onFailure { error ->
             Log.w("$TAG: $error", error)
 
+            if (UpdateFailures.noSpace(error)) noSpace = true
+
             FILES.keys.forEach { name ->
                 if (name !in updated && name !in failed) {
                     failed += name
@@ -125,7 +131,7 @@ object GeoData {
             }
         }
 
-        return UpdateResult(updated = updated.toList(), failed = failed.toList())
+        return UpdateResult(updated = updated.toList(), failed = failed.toList(), noSpace = noSpace)
     }
 
     private fun sweep(dir: File) {
@@ -138,7 +144,7 @@ object GeoData {
         }
     }
 
-    private fun download(url: String, mixedPort: Int?, target: File, name: String): Boolean {
+    private fun download(url: String, mixedPort: Int?, target: File, name: String, onFull: () -> Unit): Boolean {
         return try {
             val proxy = mixedPort?.let {
                 Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", it))
@@ -210,6 +216,8 @@ object GeoData {
             }
         } catch (e: Exception) {
             Log.w("$TAG: $url: $e", e)
+
+            if (UpdateFailures.noSpace(e)) onFull()
 
             false
         }

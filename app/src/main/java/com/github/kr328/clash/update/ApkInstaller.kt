@@ -225,6 +225,13 @@ object ApkInstaller {
                     UpdateTask.installFinished(UpdateTask.InstallOutcome.Returned)
                 }
 
+                PackageInstaller.STATUS_FAILURE_STORAGE -> {
+                    Log.w("$TAG: установка не удалась, нет места")
+                    finish(context)
+
+                    UpdateTask.installFinished(UpdateTask.InstallOutcome.NoSpace)
+                }
+
                 else -> {
                     val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
                     Log.w("$TAG: установка не удалась, status=$status, $message")

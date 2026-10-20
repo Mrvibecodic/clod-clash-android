@@ -33,6 +33,14 @@ class UpdateTaskTest {
     }
 
     @Test
+    fun noSpaceOnInstallIsNamed() {
+        assertEquals(
+            State.Failed(Updater.UpdateException.Kind.Storage, null),
+            UpdateTask.afterInstall(ready, InstallOutcome.NoSpace),
+        )
+    }
+
+    @Test
     fun installResultOutsideReadyIsIgnored() {
         val states = listOf(State.Idle, State.Available(available), State.Downloading(available, 0.5f))
 

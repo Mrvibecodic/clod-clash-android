@@ -6,6 +6,8 @@ import com.github.kr328.clash.design.Design
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.service.util.UpdateFailures
+import com.github.kr328.clash.service.R as ServiceR
 
 suspend fun Design<*>.showExceptionToast(message: CharSequence) {
     val safe = Redact.text(message.toString())
@@ -15,6 +17,7 @@ suspend fun Design<*>.showExceptionToast(message: CharSequence) {
 
 suspend fun Design<*>.showExceptionToast(exception: Exception, headline: Int = R.string.clod_action_failed) {
     val human = humanText(exception)
+        ?: context.getString(ServiceR.string.clod_update_cause_storage).takeIf { UpdateFailures.noSpace(exception) }
 
     if (human != null) {
         showToast(human, ToastDuration.Long, kind = NoticeKind.Error)

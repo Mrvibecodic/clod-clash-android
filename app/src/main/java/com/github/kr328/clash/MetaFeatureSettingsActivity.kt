@@ -11,6 +11,7 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.design.MetaFeatureSettingsDesign
 import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.ui.ToastDuration
+import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.common.util.clashDir
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
@@ -19,6 +20,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.service.R as ServiceR
 
 class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
     private var reload = false
@@ -182,6 +184,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             return
         }
 
+        var noSpace = false
+
         val imported = GeoAssets.writeGuarded(this) {
             val destination = File(clashDir, target.fileName)
             val temp = File(clashDir, "${target.fileName}.importing")
@@ -207,6 +211,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
             } catch (e: Exception) {
                 Log.w("Import geo file: $e", e)
 
+                noSpace = UpdateFailures.noSpace(e)
+
                 false
             } finally {
                 temp.delete()
@@ -219,6 +225,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                 ToastDuration.Long,
                 detail = if (clashActive) getString(R.string.geofile_after_reconnect) else null,
             )
+        } else if (noSpace) {
+            design?.showToast(getString(ServiceR.string.clod_update_cause_storage), ToastDuration.Long, kind = NoticeKind.Error)
         } else {
             design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
         }

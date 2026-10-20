@@ -331,7 +331,7 @@ object Updater {
                     output.flush()
                 }
             } catch (e: IOException) {
-                throw if (UpdateFailures.noSpace(e.message.orEmpty())) UpdateException(UpdateException.Kind.Storage, e.message.orEmpty()) else e
+                throw if (UpdateFailures.noSpace(e)) UpdateException(UpdateException.Kind.Storage, e.message.orEmpty()) else e
             }
         }
 
