@@ -439,6 +439,7 @@
     <string name="clod_notice_collapse">Collapse</string>
     <string name="clod_no_servers_hint">Add a subscription and connect — the provider sends the server list.</string>
     <string name="clod_no_servers_in_subscription">The subscription has no server groups.</string>
+    <string name="clod_no_servers_query_failed">The core did not return the server list. The connection works — open the tab again.</string>
     <string name="clod_no_servers_in_group">This group has no servers.</string>
     <string name="clod_action_connect">Connect</string>
     <string name="clod_action_disconnect">Disconnect</string>

@@ -89,6 +89,19 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `a set failure is told by its own words`() {
+        assertEquals(Reason(Cause.Status, 404), UpdateFailures.setReason("404 Not Found"))
+        assertEquals(Reason(Cause.Status, 502), UpdateFailures.setReason("server answered with status 502"))
+        assertEquals(
+            Reason(Cause.Timeout),
+            UpdateFailures.setReason("Get \"https://raw.example/set.yaml\": context deadline exceeded"),
+        )
+        assertEquals(Reason(Cause.Dns), UpdateFailures.setReason("dial tcp: lookup raw.example: no such host"))
+        assertEquals(null, UpdateFailures.setReason("yaml: line 3: mapping values are not allowed"))
+        assertEquals(null, UpdateFailures.setReason("clod-chan-stale"))
+    }
+
+    @Test
     fun `the channel is told absent, silent or answered`() {
         assertEquals(
             UpdateFailures.Channel.Absent,

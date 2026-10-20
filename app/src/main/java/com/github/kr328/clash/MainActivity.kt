@@ -16,7 +16,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.common.util.Redact
-import com.github.kr328.clash.service.util.humanizeUpdateFailure
+import com.github.kr328.clash.service.util.humanizeSetFailure
 import com.github.kr328.clash.util.withAppLocale
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
@@ -1501,6 +1501,8 @@ class MainActivity : BaseActivity<MainDesign>() {
             setProxyGroupNames(emptyList(), main = null)
         }
 
+        markServersFailed()
+
         showExceptionToast(e, DesignR.string.clod_servers_query_failed)
 
         null
@@ -2440,10 +2442,10 @@ class MainActivity : BaseActivity<MainDesign>() {
             } catch (e: Exception) {
                 Log.w("Update provider ${provider.name}: $e", e)
 
-                // Под названием провайдера — причина человеческими словами, как у
-                // подписки; сырой текст ядра — только в журнале
+                // Под названием набора — причина человеческими словами; сырой
+                // текст ядра — только в журнале
                 val context = Global.application.withAppLocale()
-                val reason = context.humanizeUpdateFailure(e.message.orEmpty())
+                val reason = context.humanizeSetFailure(e.message.orEmpty())
                     ?: context.getString(ServiceR.string.update_failure)
 
                 busy.remove(key)

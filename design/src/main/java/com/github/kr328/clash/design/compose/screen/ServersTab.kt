@@ -150,7 +150,13 @@ fun ServersTab(
 
         if (state.groups.isEmpty()) {
             if (loaded) {
-                EmptyServers(if (active != null) R.string.clod_no_servers_in_subscription else R.string.clod_no_servers_hint)
+                EmptyServers(
+                    when {
+                        state.failed -> R.string.clod_no_servers_query_failed
+                        active != null -> R.string.clod_no_servers_in_subscription
+                        else -> R.string.clod_no_servers_hint
+                    },
+                )
             } else {
                 Waiting()
             }

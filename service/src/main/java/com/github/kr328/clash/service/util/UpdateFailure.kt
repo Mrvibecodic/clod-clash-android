@@ -117,6 +117,22 @@ object UpdateFailures {
         }
     }
 
+    // Причина сбоя набора: код ответа (ядро пишет строку статуса — «404 Not
+    // Found») или сетевая причина; прочее — null
+    fun setReason(raw: String): Reason? {
+        SET_STATUS.find(raw.trim())?.let { return Reason(Cause.Status, it.groupValues[1].toInt()) }
+
+        val reason = classify(raw) ?: return null
+
+        return when (reason.cause) {
+            Cause.Unauthorized, Cause.NotFound, Cause.ServerError, Cause.Status -> Reason(Cause.Status, reason.status)
+            Cause.Timeout, Cause.Dns, Cause.Connection, Cause.Tls, Cause.Storage -> reason
+            else -> null
+        }
+    }
+
+    private val SET_STATUS = Regex("^([1-5][0-9]{2}) [A-Za-z]")
+
     fun noSpace(raw: String): Boolean = raw.lowercase().let { text -> STORAGE.any(text::contains) }
 
     // Нехватка места — и в причине исключения: запись часто заворачивают
@@ -250,5 +266,20 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
         UpdateFailures.Cause.Dns -> getString(R.string.clod_update_cause_dns)
         UpdateFailures.Cause.Connection -> getString(R.string.clod_update_cause_connection)
         UpdateFailures.Cause.Silent -> getString(R.string.clod_update_cause_silent)
+    }
+}
+
+// Набор бывает и не у провайдера: причины — словами о наборе
+fun Context.humanizeSetFailure(raw: String): String? {
+    val reason = UpdateFailures.setReason(raw) ?: return null
+
+    return when (reason.cause) {
+        UpdateFailures.Cause.Status -> getString(R.string.clod_set_cause_status, reason.status)
+        UpdateFailures.Cause.Timeout -> getString(R.string.clod_set_cause_timeout)
+        UpdateFailures.Cause.Dns -> getString(R.string.clod_set_cause_dns)
+        UpdateFailures.Cause.Connection -> getString(R.string.clod_set_cause_connection)
+        UpdateFailures.Cause.Tls -> getString(R.string.clod_set_cause_tls)
+        UpdateFailures.Cause.Storage -> getString(R.string.clod_update_cause_storage)
+        else -> null
     }
 }

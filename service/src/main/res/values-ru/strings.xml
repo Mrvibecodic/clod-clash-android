@@ -63,4 +63,9 @@
     <string name="clod_update_cause_already_added">Эта подписка уже добавлена</string>
     <string name="clod_update_cause_storage">Недостаточно места на устройстве</string>
     <string name="clod_update_cause_connection">Не удалось подключиться к серверу подписки: нет интернета или сервер недоступен. Попробуйте позже</string>
+    <string name="clod_set_cause_timeout">Сервер набора не ответил вовремя. Проверьте интернет и попробуйте ещё раз</string>
+    <string name="clod_set_cause_dns">Не удалось найти сервер набора по имени. Проверьте интернет</string>
+    <string name="clod_set_cause_connection">Не удалось подключиться к серверу набора: нет интернета или сервер недоступен. Попробуйте позже</string>
+    <string name="clod_set_cause_tls">Сертификат сервера набора не прошёл проверку, соединение не установлено. Проверьте дату и время на устройстве</string>
+    <string name="clod_set_cause_status">Сервер набора ответил кодом %1$d</string>
 </resources>

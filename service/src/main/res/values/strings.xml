@@ -64,4 +64,9 @@
     <string name="clod_update_cause_already_added">This subscription is already added</string>
     <string name="clod_update_cause_storage">Not enough storage on the device</string>
     <string name="clod_update_cause_connection">Could not connect to the subscription server: no internet, or the server is unreachable. Try again later</string>
+    <string name="clod_set_cause_timeout">The set server did not answer in time. Check the internet connection and try again</string>
+    <string name="clod_set_cause_dns">The set server name could not be resolved. Check the internet connection</string>
+    <string name="clod_set_cause_connection">Could not connect to the set server: no internet, or the server is unreachable. Try again later</string>
+    <string name="clod_set_cause_tls">The set server certificate failed the check, so no connection was made. Make sure the date and time on the device are correct</string>
+    <string name="clod_set_cause_status">The set server answered with code %1$d</string>
 </resources>

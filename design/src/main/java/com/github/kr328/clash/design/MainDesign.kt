@@ -379,10 +379,17 @@ class MainDesign(
                     offline = offline,
                     loading = loading,
                     readOnly = readOnly,
+                    failed = false,
                 ),
             )
 
             if (names.isNotEmpty()) restoredGroup = null
+        }
+    }
+
+    suspend fun markServersFailed() {
+        withContext(Dispatchers.Main) {
+            state = state.copy(servers = state.servers.copy(failed = true))
         }
     }
 

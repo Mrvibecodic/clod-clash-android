@@ -192,6 +192,8 @@ data class ServersState(
     val favorites: Set<String> = emptySet(),
     // clod:freeze — имя узла → frozen в текущей сети
     val freeze: Map<String, String> = emptyMap(),
+    // Ядро не отдало список групп: пусто не потому, что их нет в подписке
+    val failed: Boolean = false,
 )
 
 @Immutable

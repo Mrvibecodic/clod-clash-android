@@ -409,6 +409,7 @@
     <string name="clod_notice_collapse">Свернуть</string>
     <string name="clod_no_servers_hint">Добавьте подписку и подключитесь — список серверов присылает провайдер.</string>
     <string name="clod_no_servers_in_subscription">В подписке нет групп серверов.</string>
+    <string name="clod_no_servers_query_failed">Ядро не отдало список серверов. Подключение работает — откройте вкладку ещё раз.</string>
     <string name="clod_no_servers_in_group">В этой группе нет серверов.</string>
     <string name="clod_action_connect">Подключиться</string>
     <string name="clod_action_disconnect">Отключиться</string>
