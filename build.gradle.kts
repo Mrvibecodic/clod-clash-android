@@ -72,8 +72,8 @@ subprojects {
             minSdk = 23
             targetSdk = 35
 
-            versionName = "0.1.24"
-            versionCode = 12499
+            versionName = "0.1.25-alpha.1"
+            versionCode = 12501
 
             ndk {
                 abiFilters += abiList
