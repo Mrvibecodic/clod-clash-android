@@ -177,7 +177,7 @@
     <string name="sources">Исходный код</string>
     <string name="clash_meta_core">Ядро Clod Core</string>
 
-    <string name="service">Уведомления</string>
+    <string name="clod_section_notifications">Уведомления</string>
 
     <string name="dark_mode">Тёмный режим</string>
 
@@ -349,7 +349,7 @@
     <string name="clod_section_settings">Приложение</string>
     <string name="clod_section_support">Помощь</string>
     <string name="clod_settings_app_title">Внешний вид и поведение</string>
-    <string name="clod_settings_app_subtitle">Тема, автозапуск, значок</string>
+    <string name="clod_settings_app_subtitle">Тема и автозапуск</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, системный прокси</string>
     <string name="clod_settings_override_subtitle">Применяется поверх конфигурации любой подписки</string>
     <string name="clod_settings_meta_subtitle">Переопределение, перехват доменов, гео-базы</string>
@@ -357,7 +357,7 @@
     <string name="clod_apps_subtitle">Какие приложения идут через туннель</string>
     <string name="clod_access_control_all_hint">Через туннель идут все приложения — отметки ниже ни на что не влияют, пока не выбран другой режим. Если подписка пришлёт свой список приложений, в этом режиме через туннель пойдут только они.</string>
     <string name="clod_access_control_all_sub_exclude_hint">Через туннель идут все приложения, кроме помеченных «Мимо VPN» — так задала подписка. Отметки ниже ни на что не влияют, пока не выбран другой режим.</string>
-    <string name="clod_access_control_selected_empty_hint">Ничего не отмечено — через туннель не идёт ни одно приложение. Отметьте те, которым нужен VPN.</string>
+    <string name="clod_access_control_selected_empty_hint">Ничего не отмечено — через туннель не идёт ни одно приложение. Отметьте приложения, которым нужен VPN.</string>
     <string name="clod_access_control_selected_sub_hint">Пока ничего не отмечено, действует список подписки: через туннель идут все приложения, кроме помеченных «Мимо VPN». Отметьте приложения, чтобы через туннель шли только они.</string>
     <plurals name="clod_access_control_sub_include_hint">
         <item quantity="one">Подписка ограничила туннель %d приложением: «все приложения» здесь значит «все из списка подписки», оно помечено ниже. Отметки ни на что не влияют, пока не выбран другой режим.</item>

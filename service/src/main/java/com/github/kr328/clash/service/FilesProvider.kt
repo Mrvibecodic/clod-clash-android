@@ -1,13 +1,16 @@
 package com.github.kr328.clash.service
 
 import android.content.Context
+import android.content.res.Configuration
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.database.sqlite.SQLiteException
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
+import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
+import com.github.kr328.clash.common.constants.Authorities
 import com.github.kr328.clash.common.util.PatternFileName
 import com.github.kr328.clash.service.document.*
 import com.github.kr328.clash.service.util.withStoredLocale
@@ -154,6 +157,13 @@ class FilesProvider : DocumentsProvider() {
         }
     }
 
+    // Язык меняют и в системе (Android 13+): корень, закэшированный проводником, — заново
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+
+        context?.contentResolver?.notifyChange(DocumentsContract.buildRootsUri(Authorities.FILES_PROVIDER), null)
+    }
+
     override fun onCreate(): Boolean {
         return true
     }
@@ -166,8 +176,8 @@ class FilesProvider : DocumentsProvider() {
                 add(Root.COLUMN_ROOT_ID, DEFAULT_ROOT_ID)
                 add(Root.COLUMN_FLAGS, flags)
                 add(Root.COLUMN_ICON, R.drawable.ic_logo_service)
-                add(Root.COLUMN_TITLE, context!!.getString(R.string.launch_name))
-                add(Root.COLUMN_SUMMARY, context!!.getString(R.string.profiles_and_providers))
+                add(Root.COLUMN_TITLE, localized.getString(R.string.launch_name))
+                add(Root.COLUMN_SUMMARY, localized.getString(R.string.profiles_and_providers))
                 add(Root.COLUMN_DOCUMENT_ID, "/")
                 add(Root.COLUMN_MIME_TYPES, "*/*")
             }

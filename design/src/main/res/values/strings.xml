@@ -193,7 +193,7 @@
     <string name="meta_github_url" translatable="false">https://github.com/Mrvibecodic/clod-clash-android</string>
     <string name="clash_meta_core_url" translatable="false">https://github.com/Mrvibecodic/clod-core</string>
 
-    <string name="service">Notifications</string>
+    <string name="clod_section_notifications">Notifications</string>
 
     <string name="dark_mode">Dark mode</string>
 
@@ -381,7 +381,7 @@
     <string name="clod_section_settings">App</string>
     <string name="clod_section_support">Help</string>
     <string name="clod_settings_app_title">Look and behavior</string>
-    <string name="clod_settings_app_subtitle">Theme, auto restart, icon</string>
+    <string name="clod_settings_app_subtitle">Theme and auto restart</string>
     <string name="clod_settings_network_subtitle">VPN, DNS, system proxy</string>
     <string name="clod_settings_override_subtitle">Applied on top of any subscription config</string>
     <string name="clod_settings_meta_subtitle">Override, sniffer, geo databases</string>
@@ -389,7 +389,7 @@
     <string name="clod_apps_subtitle">Which apps go through the tunnel</string>
     <string name="clod_access_control_all_hint">All apps go through the tunnel — the checkboxes below change nothing until you pick another mode. If the subscription sends its own app list, only those apps go through the tunnel in this mode.</string>
     <string name="clod_access_control_all_sub_exclude_hint">All apps go through the tunnel except those marked “Bypasses VPN” — the subscription set this. The checkboxes below change nothing until you pick another mode.</string>
-    <string name="clod_access_control_selected_empty_hint">Nothing is checked — no app goes through the tunnel. Check the apps that need VPN.</string>
+    <string name="clod_access_control_selected_empty_hint">Nothing is checked — no app goes through the tunnel. Check the apps that need the VPN.</string>
     <string name="clod_access_control_selected_sub_hint">Until you check anything, the subscription list applies: all apps go through the tunnel except those marked “Bypasses VPN”. Check apps to send only them through the tunnel.</string>
     <plurals name="clod_access_control_sub_include_hint">
         <item quantity="one">The subscription limited the tunnel to %d app: “all apps” here means “all apps from the subscription list”, it is marked below. The checkboxes change nothing until you pick another mode.</item>

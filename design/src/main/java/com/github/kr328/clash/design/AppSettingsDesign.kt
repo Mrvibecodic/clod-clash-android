@@ -2,8 +2,10 @@ package com.github.kr328.clash.design
 
 import android.content.Context
 import android.os.Build
+import android.provider.DocumentsContract
 import android.view.View
 import androidx.appcompat.app.AppCompatDelegate
+import com.github.kr328.clash.common.constants.Authorities
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.os.LocaleListCompat
 import androidx.compose.runtime.getValue
@@ -212,6 +214,9 @@ class AppSettingsDesign(
                 LocaleListCompat.forLanguageTags(tag)
             },
         )
+
+        // Корень в системном проводнике подписан языком приложения и закэширован системой
+        context.contentResolver.notifyChange(DocumentsContract.buildRootsUri(Authorities.FILES_PROVIDER), null)
     }
 
     // До Android 13 разрешения нет: уведомления запрещены только в системных

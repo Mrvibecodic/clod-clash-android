@@ -174,7 +174,7 @@ fun AppSettingsScreen(
                 onCheckedChange = { onAction(AppSettingsAction.SetAllowExternalControl(it)) },
             )
 
-            SectionHeader(stringResource(R.string.service))
+            SectionHeader(stringResource(R.string.clod_section_notifications))
             if (state.notificationsBlocked) {
                 BlockedNotice(onAction)
             }

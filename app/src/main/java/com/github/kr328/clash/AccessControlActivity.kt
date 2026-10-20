@@ -110,7 +110,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                                 text.lineSequence()
                                     .map { line -> line.trim() }
                                     .filter { line -> line.isNotEmpty() }
-                                    .filter { line -> runCatching { packageManager.getApplicationInfo(line, 0) }.isSuccess }
+                                    .filter { line -> installed(line) }
                                     .toSet()
                             }
 

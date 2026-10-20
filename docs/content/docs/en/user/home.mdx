@@ -53,11 +53,12 @@ that lead to a block are not listed.
 ## Apps are not going through the VPN
 
 If **More → Apps** is set to “Allow selected apps”, nothing is checked and the subscription did not
-send its own app list, only Clod Clash itself goes through the tunnel — other apps go directly. Then
+send its own app list (or sent an “only these apps” list and none of them is installed), only Clod Clash itself goes
+through the tunnel — other apps go directly. Then
 a banner “Apps are not going through the VPN” sits under the connect button, and while the VPN is on,
 a sheet with the **Choose apps** button slides up every time Home opens. “Later” closes it until next
-time. As soon as at least one app is checked or the subscription sends its own list, the sheet and
-the banner go away by themselves.
+time. As soon as at least one app is checked or an app from the subscription list goes through the
+tunnel, the sheet and the banner go away by themselves.
 
 ## If there are no servers
 

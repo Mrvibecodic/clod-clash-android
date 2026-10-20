@@ -60,7 +60,7 @@ function formatSize(bytes: number | undefined, locale: string): string {
   const value = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
     bytes / 1024 / 1024,
   );
-  return `${value} MB`;
+  return `${value} MiB`;
 }
 
 function formatDate(value: string, locale: string): string {

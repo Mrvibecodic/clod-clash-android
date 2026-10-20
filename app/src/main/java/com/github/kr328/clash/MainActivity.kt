@@ -1352,9 +1352,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                 lastHealthCheckAt = 0
 
-                if (manual) {
-                    showExceptionToast(e, DesignR.string.clod_delay_failed)
-                }
+                showExceptionToast(e, DesignR.string.clod_delay_failed)
             }
 
             return
