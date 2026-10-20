@@ -188,13 +188,14 @@ class ProfileManager(private val context: Context) : IProfileManager,
         val imported = ImportedDao().queryAll().associateBy { it.uuid }
         val pending = PendingDao().queryAll().associateBy { it.uuid }
 
-        return (imported.keys + pending.keys).mapNotNull { resolveProfile(it, imported[it], pending[it]) }
+        return (imported.keys + pending.keys).mapNotNull { resolveProfile(it, imported[it], pending[it], draft = false) }
     }
 
     override suspend fun queryActive(): Profile? {
         val active = store.activeProfile ?: return null
 
-        return resolveProfile(active)?.takeIf { it.imported }
+        return resolveProfile(active, ImportedDao().queryByUUID(active), PendingDao().queryByUUID(active), draft = false)
+            ?.takeIf { it.imported }
     }
 
     override suspend fun setActive(profile: Profile) {
@@ -202,18 +203,21 @@ class ProfileManager(private val context: Context) : IProfileManager,
     }
 
     private suspend fun resolveProfile(uuid: UUID): Profile? =
-        resolveProfile(uuid, ImportedDao().queryByUUID(uuid), PendingDao().queryByUUID(uuid))
+        resolveProfile(uuid, ImportedDao().queryByUUID(uuid), PendingDao().queryByUUID(uuid), draft = true)
 
-    private fun resolveProfile(uuid: UUID, imported: Imported?, pending: Pending?): Profile? {
+    // draft — поля черновика поверх рабочей подписки (экран правки). Списки и
+    // активная подписка — то, что работает: несохранённая правка в них не видна
+    private fun resolveProfile(uuid: UUID, imported: Imported?, pending: Pending?, draft: Boolean): Profile? {
         val active = store.activeProfile
-        val name = pending?.name ?: imported?.name ?: return null
-        val type = pending?.type ?: imported?.type ?: return null
-        val source = pending?.source ?: imported?.source ?: return null
-        val interval = pending?.interval ?: imported?.interval ?: return null
-        val upload = imported?.upload ?: pending?.upload ?: return null
-        val download = imported?.download ?: pending?.download ?: return null
-        val total = imported?.total ?: pending?.total ?: return null
-        val expire = imported?.expire ?: pending?.expire ?: return null
+        val edit = pending?.takeIf { draft || imported == null }
+        val name = edit?.name ?: imported?.name ?: return null
+        val type = edit?.type ?: imported?.type ?: return null
+        val source = edit?.source ?: imported?.source ?: return null
+        val interval = edit?.interval ?: imported?.interval ?: return null
+        val upload = imported?.upload ?: edit?.upload ?: return null
+        val download = imported?.download ?: edit?.download ?: return null
+        val total = imported?.total ?: edit?.total ?: return null
+        val expire = imported?.expire ?: edit?.expire ?: return null
         val fetchedAt = if (imported != null) context.fetchedAt(uuid) else 0
 
         return Profile(
@@ -229,10 +233,10 @@ class ProfileManager(private val context: Context) : IProfileManager,
             expire = expire,
             imported = imported != null,
             pending = pending != null,
-            secure = if (pending != null) pending.secure else imported?.secure ?: false,
-            intervalManual = pending?.intervalManual ?: imported?.intervalManual ?: false,
+            secure = if (edit != null) edit.secure else imported?.secure ?: false,
+            intervalManual = edit?.intervalManual ?: imported?.intervalManual ?: false,
             quota = imported?.quota ?: false,
-            nameManual = pending?.nameManual ?: imported?.nameManual ?: false,
+            nameManual = edit?.nameManual ?: imported?.nameManual ?: false,
             fetchedAt = fetchedAt,
             importedSecure = imported?.secure ?: false,
         )

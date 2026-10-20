@@ -282,7 +282,6 @@
     <string name="clod_sub_fetching">Загружаем подписку\u2026</string>
     <string name="clod_sub_added">Подписка успешно добавлена</string>
     <string name="clod_sub_added_named">Подписка «%1$s» добавлена</string>
-    <string name="clod_sub_already_added">Эта подписка уже добавлена</string>
     <string name="clod_sub_add_failed">Подписка не добавлена: %1$s</string>
     <string name="clod_sub_added_partial">Подписка добавлена, но часть наборов не скачалась</string>
     <string name="clod_providers_failed_plural">Часть наборов не скачалась</string>

@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class ProfileFieldsTest {
@@ -97,5 +98,21 @@ class ProfileFieldsTest {
     @Test
     fun `an unparsable address is only trimmed`() {
         assertEquals("https://example.com/a b", ProfileFields.sourceKey(" https://example.com/a b "))
+    }
+
+    @Test
+    fun `адрес другой подписки — дубль, свой прежний адрес — нет`() {
+        val a = UUID.randomUUID()
+        val b = UUID.randomUUID()
+        val subs = listOf(a to "https://p.example/sub/A", b to "https://p.example/sub/B")
+
+        // Правка адреса A на адрес B (и переезд A туда же) — это B
+        assertEquals(b, ProfileFields.duplicateOf(a, "https://P.example:443/sub/B/", subs))
+        // Новый черновик с адресом A — это A
+        assertEquals(a, ProfileFields.duplicateOf(UUID.randomUUID(), "https://p.example/sub/A", subs))
+        // Правка имени подписки, у которой уже есть прежний дубль, не запрещена
+        val withOldDuplicate = subs + (UUID.randomUUID() to "https://p.example/sub/A")
+        assertNull(ProfileFields.duplicateOf(a, "https://p.example/sub/A", withOldDuplicate))
+        assertNull(ProfileFields.duplicateOf(a, "https://p.example/sub/C", subs))
     }
 }

@@ -81,6 +81,14 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `an edit onto another subscription address is told plainly`() {
+        assertEquals(
+            Reason(Cause.AlreadyAdded),
+            UpdateFailures.classify("java.lang.IllegalArgumentException: ${UpdateFailures.ALREADY_ADDED}"),
+        )
+    }
+
+    @Test
     fun `the channel is told absent, silent or answered`() {
         assertEquals(
             UpdateFailures.Channel.Absent,

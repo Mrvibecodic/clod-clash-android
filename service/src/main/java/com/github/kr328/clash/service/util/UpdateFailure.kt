@@ -20,6 +20,7 @@ object UpdateFailures {
         Status,
         Rejected,
         DraftChanged,
+        AlreadyAdded,
         Storage,
         Timeout,
         Tls,
@@ -100,6 +101,8 @@ object UpdateFailures {
 
         if (text.contains(DRAFT_CHANGED)) return Reason(Cause.DraftChanged)
 
+        if (text.contains(ALREADY_ADDED)) return Reason(Cause.AlreadyAdded)
+
         if (noSpace(text)) return Reason(Cause.Storage)
 
         val status = statusOf(text)
@@ -165,6 +168,9 @@ object UpdateFailures {
 
     // Ядро (chanx): канал не ответил, под меткой — сетевая причина.
     private const val CHAN_SILENT = "clod-chan-silent"
+
+    // Служба: адрес правки уже у другой подписки.
+    const val ALREADY_ADDED = "clod-already-added"
 
     private const val NOT_DELIVERED = "clod-not-delivered"
 
@@ -234,6 +240,7 @@ fun Context.humanizeUpdateFailure(raw: String): String? {
             getString(R.string.clod_update_cause_status, reason.status)
         UpdateFailures.Cause.Rejected -> getString(R.string.clod_update_cause_rejected)
         UpdateFailures.Cause.DraftChanged -> getString(R.string.clod_draft_changed)
+        UpdateFailures.Cause.AlreadyAdded -> getString(R.string.clod_update_cause_already_added)
         UpdateFailures.Cause.Storage -> getString(R.string.clod_update_cause_storage)
         UpdateFailures.Cause.Timeout -> getString(R.string.clod_update_cause_timeout)
         UpdateFailures.Cause.Tls -> getString(R.string.clod_update_cause_tls)

@@ -271,7 +271,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
             // Какая подписка — как в уведомлении: при «Обновить все» иначе не понять
             val name = uuid?.let { id ->
                 try {
-                    withProfile(retry = false) { queryByUUID(id) }?.let {
+                    withProfile(retry = false) { queryAll().firstOrNull { it.uuid == id } }?.let {
                         profileDisplayName(queryPanelInfo(id), it.name, it.nameManual)
                     }
                 } catch (e: CancellationException) {

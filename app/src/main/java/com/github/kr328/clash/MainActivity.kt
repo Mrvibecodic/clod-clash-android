@@ -1795,7 +1795,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             selectTab(MainTab.Home)
 
-            showToast(DesignR.string.clod_sub_already_added, ToastDuration.Long, detail = name.ifBlank { null })
+            showToast(ServiceR.string.clod_update_cause_already_added, ToastDuration.Long, detail = name.ifBlank { null })
 
             return
         }

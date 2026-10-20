@@ -83,6 +83,10 @@ object ProfileProcessor {
 
                         val existing = pending.addedAlready()
 
+                        if (existing != null && ImportedDao().exists(uuid)) {
+                            throw IllegalArgumentException(UpdateFailures.ALREADY_ADDED)
+                        }
+
                         if (existing != null) {
                             PendingDao().remove(uuid)
 
@@ -291,6 +295,13 @@ object ProfileProcessor {
             return emptyList()
         }
 
+        // Запасной адрес уже у другой подписки — это она же: второй такой не заводится
+        if (spareTaken(uuid, target)) {
+            Log.w("Spare address of $uuid belongs to another subscription, keeping the current one")
+
+            return emptyList()
+        }
+
         val profileDir = context.importedDir.resolve(uuid.toString())
         val probe = context.processingDir
 
@@ -318,6 +329,8 @@ object ProfileProcessor {
             // Адрес для перевода построен от того основного, с которого шло обновление; сменили
             // его за это время — перевод к подписке уже не относится.
             if (imported.source != current) return@withLock false
+
+            if (spareTaken(uuid, target)) return@withLock false
 
             ProfileSwap.replace(profileDir, probe, warn = { Log.w(it) })
 
@@ -540,13 +553,13 @@ object ProfileProcessor {
         }
     }
 
-    private suspend fun Pending.addedAlready(): UUID? {
-        if (type != Profile.Type.Url || ImportedDao().exists(uuid)) return null
+    private suspend fun sources(): List<Pair<UUID, String>> = ImportedDao().queryAll().map { it.uuid to it.source }
 
-        val key = ProfileFields.sourceKey(source)
+    private suspend fun spareTaken(uuid: UUID, target: String): Boolean =
+        ProfileFields.duplicateOf(uuid, target, sources()) != null
 
-        return ImportedDao().queryAll().firstOrNull { it.uuid != uuid && ProfileFields.sourceKey(it.source) == key }?.uuid
-    }
+    private suspend fun Pending.addedAlready(): UUID? =
+        if (type == Profile.Type.Url) ProfileFields.duplicateOf(uuid, source, sources()) else null
 
     private fun Pending.enforceFieldValid() {
         val scheme = Uri.parse(source)?.scheme?.lowercase(Locale.getDefault())

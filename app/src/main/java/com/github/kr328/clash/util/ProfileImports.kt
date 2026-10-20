@@ -242,7 +242,13 @@ object ProfileImports {
             val failures = confirm.rejected.toMutableList()
             val failed = AtomicReference(emptyList<String>())
 
-            for ((index, item) in items.withIndex()) {
+            // Отмеченная активной — первой: не загрузилась — активной станет
+            // следующая загруженная, а не никакая
+            val order = items.indices.sortedByDescending { items[it].active }
+
+            for ((done, index) in order.withIndex()) {
+                val item = items[index]
+
                 try {
                     val uuid = withProfile(retry = false) {
                         create(
@@ -257,7 +263,7 @@ object ProfileImports {
                     }
 
                     releasingOnFailure(uuid) {
-                        import(uuid, item.active) { status ->
+                        import(uuid, true) { status ->
                             FailedProviders.accumulate(failed, status)
                         }
                     }
@@ -271,7 +277,7 @@ object ProfileImports {
                     failures += "${confirm.entries.getOrElse(index) { item.name }}: ${context.failureMessage(e)}"
                 }
 
-                batch_.update { (it as? BatchState.Running)?.copy(processed = index + 1) ?: it }
+                batch_.update { (it as? BatchState.Running)?.copy(processed = done + 1) ?: it }
             }
 
             batch_.value = BatchState.Done(restored, total + confirm.rejected.size, confirm.present, failures, failed.get())
@@ -341,7 +347,7 @@ object ProfileImports {
                 }
 
                 val existing = saved != profile.uuid
-                val shown = if (existing) withProfile { queryByUUID(saved) } ?: profile else profile
+                val shown = if (existing) withProfile { queryAll().firstOrNull { it.uuid == saved } } ?: profile else profile
 
                 AppStore(context).apply {
                     if (!profile.imported) {
@@ -508,7 +514,7 @@ object ProfileImports {
             commit(uuid, activate, observer)
         }
 
-        return withProfile { queryByUUID(saved) }
+        return withProfile { queryAll().firstOrNull { it.uuid == saved } }
             ?: throw IllegalStateException(Global.application.withAppLocale().getString(R.string.invalid_url))
     }
 

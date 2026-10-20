@@ -3,6 +3,7 @@ package com.github.kr328.clash.service.util
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.Locale
+import java.util.UUID
 
 object ProfileFields {
     const val NAME_MAX = 1024
@@ -38,6 +39,16 @@ object ProfileFields {
         interval != 0L && interval < UpdateSchedule.MIN_INTERVAL -> Violation.ShortInterval
 
         else -> null
+    }
+
+    // Подписка (не uuid) с тем же адресом; у самой uuid этот адрес — null:
+    // прежние дубли правке не мешают
+    fun duplicateOf(uuid: UUID, source: String, subscriptions: List<Pair<UUID, String>>): UUID? {
+        val key = sourceKey(source)
+
+        if (subscriptions.any { (id, other) -> id == uuid && sourceKey(other) == key }) return null
+
+        return subscriptions.firstOrNull { (id, other) -> id != uuid && sourceKey(other) == key }?.first
     }
 
     // Регистр пути не трогается: в нём токен подписки, и у панелей он регистрозависим.

@@ -60,6 +60,7 @@
     <string name="clod_update_cause_timeout">Сервер подписки не ответил вовремя. Проверьте интернет и попробуйте ещё раз</string>
     <string name="clod_update_cause_tls">Сертификат сервера подписки не прошёл проверку, соединение не установлено. Проверьте дату и время на устройстве; если они верны — спросите провайдера</string>
     <string name="clod_update_cause_dns">Не удалось найти сервер подписки по имени. Проверьте интернет; если повторяется — адрес мог смениться</string>
+    <string name="clod_update_cause_already_added">Эта подписка уже добавлена</string>
     <string name="clod_update_cause_storage">Недостаточно места на устройстве</string>
     <string name="clod_update_cause_connection">Не удалось подключиться к серверу подписки: нет интернета или сервер недоступен. Попробуйте позже</string>
 </resources>
