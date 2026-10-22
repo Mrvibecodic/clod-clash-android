@@ -3,6 +3,8 @@ package com.github.kr328.clash.service.util
 import android.content.pm.PackageManager
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.TunPrefs
+import com.github.kr328.clash.service.model.accessControlFingerprint
+import com.github.kr328.clash.service.model.effective
 
 // Какие приложения идут через туннель: пакет → UID на момент расчёта. Android
 // применяет состав только при establish() и сопоставляет его приложениям по UID,
@@ -18,13 +20,14 @@ fun tunApps(
     exclude: Set<String>,
     self: String,
     uidOf: (String) -> Int?,
+    providerAllApps: Boolean = false,
 ): TunApps {
     fun Set<String>.installed(): Map<String, Int> =
         mapNotNull { name -> uidOf(name)?.let { name to it } }.toMap()
 
     val includes = include - exclude
 
-    return when (mode) {
+    return when (mode.effective(selected.installed().isEmpty(), providerAllApps)) {
         AccessControlMode.AcceptAll -> if (includes.installed().isNotEmpty()) {
             TunApps((includes + self).installed(), emptyMap())
         } else {
@@ -48,7 +51,12 @@ fun tunApps(
     prefs: TunPrefs,
     self: String,
     uidOf: (String) -> Int?,
-): TunApps = tunApps(mode, selected, prefs.includePackages.toSet(), prefs.excludePackages.toSet(), self, uidOf)
+): TunApps = tunApps(mode, selected, prefs.includePackages.toSet(), prefs.excludePackages.toSet(), self, uidOf, prefs.allApps)
+
+// Отпечаток настроек доступа по режиму, который действует на деле: смена
+// режима, после которой состав туннеля тот же, перезапуска не требует.
+fun tunAccessFingerprint(mode: AccessControlMode, selected: Set<String>, prefs: TunPrefs, uidOf: (String) -> Int?): String =
+    accessControlFingerprint(mode.effective(selected.none { uidOf(it) != null }, prefs.allApps), selected)
 
 // Через туннель идёт только само приложение. allowed — белый список, принятый
 // системой: пустой означает «все приложения», а не «никто».

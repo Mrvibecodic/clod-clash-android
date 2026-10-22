@@ -702,6 +702,34 @@ func TestApplyHeadersHideBadges(t *testing.T) {
 	}
 }
 
+func TestApplyHeadersAppMode(t *testing.T) {
+	for _, raw := range []string{"all", "ALL", " All "} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-App-Mode": []string{raw}}, "https://panel.example/sub")
+
+		if !info.AllApps {
+			t.Fatalf("%q должно включать режим «Все приложения»", raw)
+		}
+	}
+
+	for _, raw := range []string{"", "allow", "deny", "true", "1", "all apps", "мусор"} {
+		info := Info{}
+		ApplyHeaders(&info, http.Header{"Clod-App-Mode": []string{raw}}, "https://panel.example/sub")
+
+		if info.AllApps {
+			t.Fatalf("%q не должно включать режим «Все приложения»", raw)
+		}
+	}
+
+	// Заголовок пропал при обновлении — режим провайдера снят
+	info := Info{AllApps: true}
+	ApplyHeaders(&info, http.Header{"Profile-Title": []string{"Панель"}}, "https://panel.example/sub")
+
+	if info.AllApps {
+		t.Fatal("без заголовка режим провайдера должен сняться")
+	}
+}
+
 // Флаг читает Kotlin (PanelInfo) по ключу "hideBadges" — переименование
 // json-тега молча потеряло бы его на стороне клиента
 func TestHideBadgesSurvivesPanelFile(t *testing.T) {

@@ -253,11 +253,8 @@ func applyOwnDns(cfg *config.RawConfig, override string) {
 	}
 }
 
-func patchTun(cfg *config.RawConfig, profileDir string, _ panel.Info) error {
-	prefs := panel.TunPrefs{
-		IncludePackages: panel.SanitizePackages(cfg.Tun.IncludePackage),
-		ExcludePackages: panel.SanitizePackages(cfg.Tun.ExcludePackage),
-	}
+func patchTun(cfg *config.RawConfig, profileDir string, info panel.Info) error {
+	prefs := panel.TunPrefsOf(cfg.Tun.IncludePackage, cfg.Tun.ExcludePackage, info)
 
 	if cfg.Tun.Enable {
 		prefs.Stack = panel.NormalizeTunStack(cfg.Tun.Stack.String())

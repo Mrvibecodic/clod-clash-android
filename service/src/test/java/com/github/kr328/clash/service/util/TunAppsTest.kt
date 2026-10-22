@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.util
 
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.TunPrefs
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -194,5 +195,99 @@ class TunAppsTest {
             tunApps(AccessControlMode.AcceptSelected, emptySet(), setOf("chat"), setOf("bank"), self, now),
             tunApps(AccessControlMode.AcceptSelected, emptySet(), prefs, self, now),
         )
+    }
+
+    @Test
+    fun `режим провайдера — разрешить выбранные без отметок и без списков пускают все приложения`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, emptySet(), emptySet(), emptySet(), self, uids("browser" to 12), providerAllApps = true)
+
+        assertEquals(TunApps(emptyMap(), emptyMap()), apps)
+        assertFalse(onlySelf(apps))
+    }
+
+    @Test
+    fun `режим провайдера — отмечены лишь удалённые приложения, режим действует`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, setOf("gone"), emptySet(), emptySet(), self, uids("browser" to 12), providerAllApps = true)
+
+        assertEquals(TunApps(emptyMap(), emptyMap()), apps)
+    }
+
+    @Test
+    fun `режим провайдера — отмечено установленное приложение, режим не действует`() {
+        val apps = tunApps(AccessControlMode.AcceptSelected, setOf("browser"), emptySet(), emptySet(), self, uids("browser" to 12), providerAllApps = true)
+
+        assertEquals(TunApps(mapOf("browser" to 12, self to 1), emptyMap()), apps)
+    }
+
+    @Test
+    fun `режим провайдера — списки подписки работают как в режиме все приложения`() {
+        val now = uids("chat" to 11, "bank" to 10)
+        val lists = listOf(
+            emptySet<String>() to emptySet(),
+            setOf("chat") to setOf("bank"),
+            emptySet<String>() to setOf("bank"),
+            setOf("absent") to emptySet(),
+            setOf("absent") to setOf("bank"),
+        )
+
+        for ((include, exclude) in lists) {
+            for (selected in listOf(emptySet(), setOf("gone"))) {
+                assertEquals(
+                    "$include / $exclude / $selected",
+                    tunApps(AccessControlMode.AcceptAll, emptySet(), include, exclude, self, now),
+                    tunApps(AccessControlMode.AcceptSelected, selected, include, exclude, self, now, providerAllApps = true),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `режим провайдера — режимы, выбранные человеком, не трогает`() {
+        val now = uids("game" to 13, "bank" to 10)
+
+        for (mode in listOf(AccessControlMode.AcceptAll, AccessControlMode.DenySelected)) {
+            for (selected in listOf(emptySet(), setOf("game"))) {
+                assertEquals(
+                    tunApps(mode, selected, emptySet(), setOf("bank"), self, now),
+                    tunApps(mode, selected, emptySet(), setOf("bank"), self, now, providerAllApps = true),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `режим провайдера берётся из настроек туннеля подписки`() {
+        val now = uids("browser" to 12)
+
+        assertEquals(
+            TunApps(emptyMap(), emptyMap()),
+            tunApps(AccessControlMode.AcceptSelected, emptySet(), TunPrefs(allApps = true), self, now),
+        )
+        assertEquals(
+            TunApps(mapOf(self to 1), emptyMap()),
+            tunApps(AccessControlMode.AcceptSelected, emptySet(), TunPrefs(), self, now),
+        )
+    }
+
+    @Test
+    fun `отпечаток доступа — по действующему режиму`() {
+        val now = uids("browser" to 12)
+        val provider = TunPrefs(allApps = true)
+
+        assertEquals(
+            tunAccessFingerprint(AccessControlMode.AcceptAll, emptySet(), provider, now),
+            tunAccessFingerprint(AccessControlMode.AcceptSelected, setOf("gone"), provider, now),
+        )
+        assertEquals("AcceptSelected:browser", tunAccessFingerprint(AccessControlMode.AcceptSelected, setOf("browser"), provider, now))
+        assertEquals("AcceptSelected:", tunAccessFingerprint(AccessControlMode.AcceptSelected, emptySet(), TunPrefs(), now))
+        assertEquals("DenySelected:", tunAccessFingerprint(AccessControlMode.DenySelected, emptySet(), provider, now))
+    }
+
+    @Test
+    fun `режим провайдера читается тем именем, что пишет ядро, а у старого файла его нет`() {
+        val json = Json { ignoreUnknownKeys = true }
+
+        assertTrue(json.decodeFromString(TunPrefs.serializer(), """{"allApps":true}""").allApps)
+        assertFalse(json.decodeFromString(TunPrefs.serializer(), """{"excludePackages":["bank"]}""").allApps)
     }
 }

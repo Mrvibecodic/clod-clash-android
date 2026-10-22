@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -88,6 +89,60 @@ func TestTunPrefsWriteEmptyRemoves(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, tunFileName)); !os.IsNotExist(err) {
 		t.Fatalf("tun.json expected to be removed, got %v", err)
+	}
+}
+
+// Kotlin (TunPrefs) читает режим провайдера по ключу "allApps"; без списков и
+// стека tun.json не должен удаляться, иначе режим потеряется.
+func TestTunPrefsAllAppsAlone(t *testing.T) {
+	dir := t.TempDir()
+
+	WriteTunPrefs(dir, TunPrefs{AllApps: true})
+
+	written, err := os.ReadFile(filepath.Join(dir, tunFileName))
+	if err != nil {
+		t.Fatalf("tun.json expected to exist: %v", err)
+	}
+
+	if !strings.Contains(string(written), `"allApps":true`) {
+		t.Fatalf("режим должен лежать ключом allApps: %s", written)
+	}
+
+	if !ReadTunPrefs(dir).AllApps {
+		t.Fatal("режим не пережил запись tun.json")
+	}
+
+	WriteTunPrefs(dir, TunPrefs{})
+
+	if _, err := os.Stat(filepath.Join(dir, tunFileName)); !os.IsNotExist(err) {
+		t.Fatalf("tun.json expected to be removed, got %v", err)
+	}
+}
+
+// Загрузка без скачивания берёт режим провайдера из panel.json: он должен
+// пережить запись и попасть в настройки туннеля.
+func TestAllAppsFromPanelFile(t *testing.T) {
+	dir := t.TempDir()
+
+	Write(dir, Info{AllApps: true})
+
+	written, err := os.ReadFile(panelPath(dir))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(written), `"allApps":true`) {
+		t.Fatalf("в panel.json режим должен лежать ключом allApps: %s", written)
+	}
+
+	prefs := TunPrefsOf([]string{" com.a ", "com.a"}, nil, Read(dir))
+
+	if !prefs.AllApps || !reflect.DeepEqual(prefs.IncludePackages, []string{"com.a"}) || prefs.ExcludePackages != nil {
+		t.Fatalf("TunPrefsOf = %+v", prefs)
+	}
+
+	if TunPrefsOf(nil, nil, Info{}).AllApps {
+		t.Fatal("без заголовка режим провайдера не должен включаться")
 	}
 }
 

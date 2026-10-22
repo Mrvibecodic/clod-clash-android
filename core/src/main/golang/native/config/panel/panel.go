@@ -87,6 +87,10 @@ type Info struct {
 	// защиты (clod-hide-badges: true).
 	HideBadges bool `json:"hideBadges,omitempty"`
 
+	// AllApps — clod-app-mode: all, режим «Все приложения», пока в «Разрешить
+	// выбранные» ничего не отмечено. Клиент берёт его из tun.json.
+	AllApps bool `json:"allApps,omitempty"`
+
 	PingFast   int `json:"pingFast,omitempty"`
 	PingMedium int `json:"pingMedium,omitempty"`
 
@@ -249,6 +253,8 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	}
 
 	info.HideBadges = strings.EqualFold(headerValue(header, "clod-hide-badges"), "true")
+
+	info.AllApps = strings.EqualFold(headerValue(header, "clod-app-mode"), "all")
 
 	info.PingFast, info.PingMedium = pingBounds(headerValue(header, "clod-ping"))
 

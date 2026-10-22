@@ -17,7 +17,6 @@ import com.github.kr328.clash.service.clash.ClashRuntime
 import com.github.kr328.clash.service.clash.clashRuntime
 import com.github.kr328.clash.service.clash.restartBudget
 import com.github.kr328.clash.service.clash.module.*
-import com.github.kr328.clash.service.model.accessControlFingerprint
 import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.cancelAndJoinBlocking
@@ -25,6 +24,7 @@ import com.github.kr328.clash.service.util.parseCIDR
 import com.github.kr328.clash.service.util.readTunPrefs
 import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.TunApps
+import com.github.kr328.clash.service.util.tunAccessFingerprint
 import com.github.kr328.clash.service.util.tunApps
 import com.github.kr328.clash.service.util.tunAppsChanged
 import com.github.kr328.clash.service.util.onlySelfThroughTunnel
@@ -323,7 +323,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val apps = tunApps(mode, packages, prefs, packageName, uidOf)
 
-        return TunPlan(apps, accessControlFingerprint(mode, packages), resolveTunStack(store.tunStackMode, prefs.stack))
+        return TunPlan(apps, tunAccessFingerprint(mode, packages, prefs, uidOf), resolveTunStack(store.tunStackMode, prefs.stack))
     }
 
     // Состав приложений или стек из подписки разошлись с применёнными — например,
@@ -333,11 +333,15 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     private fun TunModule.reopenIfChanged(profile: UUID): Boolean {
         val applied = applied ?: return false
         val uidOf = packageManager.uidLookup()
-        val wanted = plan(ServiceStore(self), readTunPrefs(profile) ?: TunPrefs(), uidOf)
+        val store = ServiceStore(self)
+        val wanted = plan(store, readTunPrefs(profile) ?: TunPrefs(), uidOf)
 
         if (!tunAppsChanged(applied.apps, wanted.apps, uidOf) && wanted.stack == applied.stack) {
             // Удалённое приложение пересборки не требует, но из пущенных выбывает
             publishOnlySelf(appliedAllowed.filter { uidOf(it) != null })
+
+            // Состав тот же, а действующий режим мог смениться вместе с подпиской
+            store.accessControlApplied = wanted.access
 
             return false
         }

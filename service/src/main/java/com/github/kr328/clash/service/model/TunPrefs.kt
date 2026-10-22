@@ -7,4 +7,5 @@ data class TunPrefs(
     val stack: String = "",
     val includePackages: List<String> = emptyList(),
     val excludePackages: List<String> = emptyList(),
+    val allApps: Boolean = false,
 )

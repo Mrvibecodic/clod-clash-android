@@ -11,6 +11,7 @@ type TunPrefs struct {
 	Stack           string   `json:"stack,omitempty"`
 	IncludePackages []string `json:"includePackages,omitempty"`
 	ExcludePackages []string `json:"excludePackages,omitempty"`
+	AllApps         bool     `json:"allApps,omitempty"`
 }
 
 const tunFileName = "tun.json"
@@ -20,7 +21,7 @@ func tunPath(dir string) string {
 }
 
 func (t TunPrefs) IsEmpty() bool {
-	return t.Stack == "" && len(t.IncludePackages) == 0 && len(t.ExcludePackages) == 0
+	return t.Stack == "" && len(t.IncludePackages) == 0 && len(t.ExcludePackages) == 0 && !t.AllApps
 }
 
 func NormalizeTunStack(stack string) string {
@@ -69,6 +70,16 @@ func SanitizePackages(packages []string) []string {
 
 func MergePackages(base []string, extra []string) []string {
 	return SanitizePackages(append(append([]string(nil), base...), extra...))
+}
+
+// TunPrefsOf — списки приложений из секции tun конфига и режим провайдера из
+// заголовков той же подписки.
+func TunPrefsOf(include, exclude []string, info Info) TunPrefs {
+	return TunPrefs{
+		IncludePackages: SanitizePackages(include),
+		ExcludePackages: SanitizePackages(exclude),
+		AllApps:         info.AllApps,
+	}
 }
 
 func ReadTunPrefs(dir string) TunPrefs {
