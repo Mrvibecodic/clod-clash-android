@@ -158,6 +158,28 @@ func TestHeaderValue(t *testing.T) {
 	}
 }
 
+func TestHeaderValuePriority(t *testing.T) {
+	cases := []struct {
+		header map[string][]string
+		name   string
+		want   string
+	}{
+		{map[string][]string{"Ab-Clod-App-Mode": {"all"}, "Clod-App-Mode": {"off"}}, "clod-app-mode", "off"},
+		{map[string][]string{"A-Announce": {"чужой"}, "Announce": {"панель"}}, "announce", "панель"},
+		{map[string][]string{"Profile-Title": {"панель"}, "Clod-Profile-Title": {"наш"}}, "profile-title", "наш"},
+		{map[string][]string{"A-Support-Url": {"чужой"}, "Clod-Support-Url": {"наш"}, "Support-Url": {"панель"}}, "support-url", "наш"},
+		{map[string][]string{"Ab-Clod-App-Mode": {"all"}, "Clod-App-Mode": {" "}}, "clod-app-mode", "all"},
+	}
+
+	for _, c := range cases {
+		for i := 0; i < 20; i++ {
+			if got := headerValue(c.header, c.name); got != c.want {
+				t.Fatalf("%v / %s: получено %q, нужно %q", c.header, c.name, got, c.want)
+			}
+		}
+	}
+}
+
 func TestApplyHeadersClodAnnounceWins(t *testing.T) {
 	for _, order := range [][2]string{{"Announce", "Clod-Announce"}, {"Clod-Announce", "Announce"}} {
 		header := http.Header{}

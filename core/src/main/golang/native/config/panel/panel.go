@@ -362,20 +362,39 @@ func lockMode(header map[string][]string) (*bool, bool) {
 	return nil, false
 }
 
+// headerValue — первое непустое значение: clod-<имя> важнее самого имени, имя
+// важнее него же с чужой приставкой.
 func headerValue(header map[string][]string, name string) string {
-	keys := make([]string, 0, len(header))
-	for key := range header {
-		keys = append(keys, key)
-	}
-
-	sort.Strings(keys)
-
-	for _, key := range keys {
-		lower := strings.ToLower(key)
-		if lower != name && !strings.HasSuffix(lower, "-"+name) {
-			continue
+	rank := func(lower string) int {
+		switch {
+		case !strings.HasPrefix(name, "clod-") && lower == "clod-"+name:
+			return 0
+		case lower == name:
+			return 1
+		case strings.HasSuffix(lower, "-"+name):
+			return 2
 		}
 
+		return -1
+	}
+
+	keys := make([]string, 0, len(header))
+	for key := range header {
+		if rank(strings.ToLower(key)) >= 0 {
+			keys = append(keys, key)
+		}
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		ri, rj := rank(strings.ToLower(keys[i])), rank(strings.ToLower(keys[j]))
+		if ri != rj {
+			return ri < rj
+		}
+
+		return keys[i] < keys[j]
+	})
+
+	for _, key := range keys {
 		for _, value := range header[key] {
 			if decoded := decodeHeaderValue(value); decoded != "" {
 				return decoded
