@@ -20,9 +20,11 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
-import com.github.kr328.clash.service.model.accessControlFingerprint
+import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeTunPrefs
+import com.github.kr328.clash.service.util.tunAccessFingerprint
+import com.github.kr328.clash.service.util.uidLookup
 import com.github.kr328.clash.util.SelectionOps
 import com.github.kr328.clash.util.startClashService
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +39,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 class AccessControlActivity : BaseActivity<AccessControlDesign>() {
     private var current: MutableSet<String>? = null
+    private var tunPrefs: TunPrefs? = null
 
     override suspend fun main() {
         val (stored, mode) = ServiceSettings.access { accessControlPackages to accessControlMode }
@@ -51,6 +54,8 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             activeTunPrefs().let { it to it?.includePackages?.filter(::installed)?.toSet().orEmpty() }
         }
 
+        this.tunPrefs = tunPrefs
+
         val design = AccessControlDesign(
             this,
             uiStore,
@@ -59,6 +64,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
             included,
             tunPrefs?.excludePackages?.toSet() ?: emptySet(),
             withContext(Dispatchers.IO) { selected.filterNot(::installed).toSet() },
+            tunPrefs?.allApps == true,
         )
 
         setContentDesign(design)
@@ -190,7 +196,8 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         val wanted = ServiceSettings.access {
             accessControlPackages = selected.toSet()
 
-            accessControlFingerprint(accessControlMode, selected).takeIf { it != accessControlApplied }
+            tunAccessFingerprint(accessControlMode, selected, this@AccessControlActivity.tunPrefs ?: TunPrefs(), packageManager.uidLookup())
+                .takeIf { it != accessControlApplied }
         }
 
         if (wanted == null || wanted == restartedFor) return@withLock

@@ -23,6 +23,7 @@ class AccessControlDesign(
     includeFromProfile: Set<String> = emptySet(),
     excludeFromProfile: Set<String> = emptySet(),
     notInstalled: Set<String> = emptySet(),
+    providerAllApps: Boolean = false,
 ) : Design<AccessControlDesign.Request>(context) {
     private val modes = AccessControlMode.entries
 
@@ -46,6 +47,7 @@ class AccessControlDesign(
             includeFromProfile = includeFromProfile,
             excludeFromProfile = excludeFromProfile,
             notInstalled = notInstalled,
+            providerAllApps = providerAllApps,
         ),
     )
 

@@ -64,6 +64,8 @@ import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.rememberDrawablePainter
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.model.AppInfoSort
+import com.github.kr328.clash.design.model.SelectedModeHint
+import com.github.kr328.clash.design.model.selectedModeHint
 import java.util.Locale
 
 @Immutable
@@ -79,6 +81,7 @@ data class AccessControlState(
     val excludeFromProfile: Set<String> = emptySet(),
     // Отмеченные, но удалённые с устройства: выбором не считаются, как и в туннеле
     val notInstalled: Set<String> = emptySet(),
+    val providerAllApps: Boolean = false,
 )
 
 sealed interface AccessControlAction {
@@ -246,18 +249,20 @@ fun AccessControlScreen(
                             )
                         }
 
-                        // Включения подписки помечены в списке сами
-                        val subIncluded = (state.includeFromProfile - state.excludeFromProfile).isNotEmpty()
+                        val hint = selectedModeHint(
+                            nothingSelected = (state.selected - state.notInstalled).isEmpty(),
+                            subIncluded = (state.includeFromProfile - state.excludeFromProfile).isNotEmpty(),
+                            subExcluded = state.excludeFromProfile.isNotEmpty(),
+                            providerAllApps = state.providerAllApps,
+                        )
 
-                        if (state.mode == MODE_ACCEPT_SELECTED && (state.selected - state.notInstalled).isEmpty() && !subIncluded) {
-                            val subExcludeOnly = state.excludeFromProfile.isNotEmpty()
-
+                        if (state.mode == MODE_ACCEPT_SELECTED && hint != null) {
                             Text(
                                 text = stringResource(
-                                    if (subExcludeOnly) {
-                                        R.string.clod_access_control_selected_sub_hint
-                                    } else {
-                                        R.string.clod_access_control_selected_empty_hint
+                                    when (hint) {
+                                        SelectedModeHint.SubscriptionExclude -> R.string.clod_access_control_selected_sub_hint
+                                        SelectedModeHint.ProviderAll -> R.string.clod_access_control_selected_provider_all_hint
+                                        SelectedModeHint.Empty -> R.string.clod_access_control_selected_empty_hint
                                     }
                                 ),
                                 style = MaterialTheme.typography.bodySmall,
