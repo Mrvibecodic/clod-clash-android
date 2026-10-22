@@ -6,9 +6,9 @@ description: "The connection drops, sites do not open, the VPN does not work in 
 ## The VPN is on, but apps go without it
 
 Check **More → Apps**. Right after installation it says “Allow selected apps” with an empty list —
-unless the subscription sent its own app list, no app goes through the tunnel, and Home shows the
-warning “Apps are not going through the VPN”. Check the ones that need the VPN. Details in
-[Basic setup](/en/docs/user/setup#which-apps-go-through-the-vpn).
+unless the subscription sent its own app list or the provider turned on the “Allow all apps” mode,
+no app goes through the tunnel, and Home shows the warning “Apps are not going through the VPN”.
+Check the ones that need the VPN. Details in [Basic setup](/en/docs/user/setup#which-apps-go-through-the-vpn).
 
 ## The connection drops while the phone is in a pocket
 
@@ -54,7 +54,9 @@ device is not identified or the provider sent no servers. What to do — in
 ## A site or an app does not work through the VPN
 
 - Try another server.
-- Banking apps and some government services may refuse a VPN — uncheck them in **More → Apps**.
+- Banking apps and some government services may refuse a VPN — uncheck them in **More → Apps**. If
+  nothing is checked there but all apps go through the tunnel (your provider set it so), pick “Deny
+  selected apps” and check them.
 - If devices on your home network (router, printer, TV) do not open, turn on **More → Network →
   Bypass private network** (on by default).
 

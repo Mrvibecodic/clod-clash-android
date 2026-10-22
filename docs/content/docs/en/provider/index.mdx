@@ -73,7 +73,9 @@ Screenshots show the Russian interface; the English one has the same layout.
   deep link). `http://` links are not accepted.
 - By default no app goes through the tunnel until the user checks it — unless the subscription sent
   its own app list (`tun.include-package` / `tun.exclude-package`). Warn users in your guide or send
-  an exclusion list: then all apps except the listed ones go through the tunnel.
+  an exclusion list: then all apps except the listed ones go through the tunnel. The old “all apps”
+  can be brought back with the
+  [`clod-app-mode: all`](/en/docs/provider/clod-headers#apps-mode-clod-app-mode) header.
 - The network stack, mode and other parameters come from the MIHOMO template. What the app overwrites
   and what it keeps — in [Panel setup](/en/docs/provider/panel) and [Clod Core](/en/docs/provider/core).
 - The errors users see when a subscription fails are listed in

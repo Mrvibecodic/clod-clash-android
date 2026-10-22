@@ -23,6 +23,7 @@ subscription.
 | `clod-disable-ping` | `true` only | a check mark or cross instead of milliseconds |
 | `clod-show-0hosts` | `true` or `false` | show the panel's placeholder nodes as they are |
 | `clod-mobile-only` | server names separated by `\|` | servers for the mobile network only: off the SIM network they are not shown |
+| `clod-app-mode` | `all` only | the “Allow all apps” mode while the user has not checked a single app |
 | `clod-hide-badges` | `true` only | hide the protocol, transport and security caption under servers — “VLESS RAW (TCP) · Reality” |
 | `clod-16-20-check` | `true` only | the 16–20 check: whether a download through a server is cut off on the user's network; the snowflake mark |
 | `clod-new-sub` | a domain, for example `backup.example.com` | spare subscription address (domain) — in case the main one does not answer |
@@ -113,6 +114,32 @@ servers a set gets on a later update.
 
 Send names with Cyrillic letters or flags as base64 of the whole value: `🇷🇺 Москва LTE|МТС Питер`
 is `base64:8J+Ht/Cfh7og0JzQvtGB0LrQstCwIExURXzQnNCi0KEg0J/QuNGC0LXRgA==`.
+
+## Apps mode: `clod-app-mode`
+
+There is one value — `all` (case does not matter); any other value counts as no header.
+
+Right after installation **More → Apps** is set to “Allow selected apps” with an empty list: unless
+the subscription sent its own app list, only Clod Clash itself goes through the tunnel. With
+`clod-app-mode: all`, while the user has checked nothing, the “Allow all apps” mode applies instead —
+together with the subscription's `tun.include-package` and `tun.exclude-package` as they are. If the
+subscription has no lists of its own, the screen says under the mode: *Until you check anything, the
+provider’s mode applies — “Allow all apps”.*
+
+- The user checked at least one app — the header does not apply, the checked apps go through the
+  tunnel. Checks on apps removed from the phone do not count. Unchecked them all — it applies again.
+- The user picked “Allow all apps” or “Deny selected apps” themselves — the header changes nothing.
+- The header writes nothing into the user's settings: stop sending it, and after the subscription
+  updates the app's default applies again.
+- Which of the traffic sent into the tunnel goes directly is still decided by the template rules.
+
+```
+clod-app-mode: all
+```
+
+The “Allow all apps” mode is not recommended. Better send `tun.exclude-package` with the apps the VPN
+gets in the way of (banks, government services): then all apps except the listed ones go through the
+tunnel even without this header.
 
 ## Protocol caption under servers: `clod-hide-badges`
 
