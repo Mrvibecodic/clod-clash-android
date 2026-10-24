@@ -24,6 +24,7 @@ import com.github.kr328.clash.service.util.parseCIDR
 import com.github.kr328.clash.service.util.readTunPrefs
 import com.github.kr328.clash.service.util.resolveTunStack
 import com.github.kr328.clash.service.util.TunApps
+import com.github.kr328.clash.service.util.TunInputs
 import com.github.kr328.clash.service.util.tunAccessFingerprint
 import com.github.kr328.clash.service.util.tunApps
 import com.github.kr328.clash.service.util.tunAppsChanged
@@ -87,8 +88,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
             }
         }
 
-        fun reopenTun(uuid: UUID) {
-            if (tun.reopenIfChanged(uuid)) {
+        fun reopenTun(uuid: UUID, packagesChanged: Boolean = false, installed: Map<String, Int>? = null) {
+            if (tun.reopenIfChanged(uuid, packagesChanged, installed)) {
                 openedAt = SystemClock.elapsedRealtime()
 
                 restoreUnderlying()
@@ -131,8 +132,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                             }
                         }
                     }
-                    apps.onEvent {
-                        profile?.takeIf { opened }?.let { reopenTun(it) }
+                    apps.onEvent { installed ->
+                        profile?.takeIf { opened }?.let { reopenTun(it, packagesChanged = true, installed = installed) }
 
                         false
                     }
@@ -313,28 +314,40 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
     // Что туннель пропускает и на каком стеке. access — отпечаток настроек
     // доступа, из которых посчитан apps: экран доступа сверяет с ним свой выбор.
-    private class TunPlan(val apps: TunApps, val access: String, val stack: String)
+    private class TunPlan(val inputs: TunInputs, val apps: TunApps, val access: String, val stack: String)
 
     private var applied: TunPlan? = null
 
-    private fun plan(store: ServiceStore, prefs: TunPrefs, uidOf: (String) -> Int?): TunPlan {
-        val mode = store.accessControlMode
-        val packages = store.accessControlPackages
+    private fun inputs(store: ServiceStore, prefs: TunPrefs): TunInputs =
+        TunInputs(store.accessControlMode, store.accessControlPackages, prefs, store.tunStackMode)
 
-        val apps = tunApps(mode, packages, prefs, packageName, uidOf)
+    private fun plan(inputs: TunInputs, uidOf: (String) -> Int?): TunPlan {
+        val apps = tunApps(inputs.mode, inputs.packages, inputs.prefs, packageName, uidOf)
 
-        return TunPlan(apps, tunAccessFingerprint(mode, packages, prefs, uidOf), resolveTunStack(store.tunStackMode, prefs.stack))
+        return TunPlan(
+            inputs,
+            apps,
+            tunAccessFingerprint(inputs.mode, inputs.packages, inputs.prefs, uidOf),
+            resolveTunStack(inputs.stackMode, inputs.prefs.stack),
+        )
     }
 
     // Состав приложений или стек из подписки разошлись с применёнными — например,
     // поставили приложение из списка или пришла подписка с другим tun.json.
     // Android применяет их только при establish(), поэтому туннель пересобирается;
     // ядро меняет устройство на новое само (startTun). true — пересобран.
-    private fun TunModule.reopenIfChanged(profile: UUID): Boolean {
+    // packagesChanged — приложения ставились или удалялись: сверка по UID нужна и
+    // при тех же настройках, у переустановленного приложения UID новый; installed —
+    // их карта пакет → UID, без неё UID спрашиваются у системы по одному.
+    private fun TunModule.reopenIfChanged(profile: UUID, packagesChanged: Boolean, installed: Map<String, Int>?): Boolean {
         val applied = applied ?: return false
-        val uidOf = packageManager.uidLookup()
         val store = ServiceStore(self)
-        val wanted = plan(store, readTunPrefs(profile) ?: TunPrefs(), uidOf)
+        val inputs = inputs(store, readTunPrefs(profile) ?: TunPrefs())
+
+        if (!packagesChanged && inputs == applied.inputs) return false
+
+        val uidOf: (String) -> Int? = installed?.let { map -> { name -> map[name] } } ?: packageManager.uidLookup()
+        val wanted = plan(inputs, uidOf)
 
         if (!tunAppsChanged(applied.apps, wanted.apps, uidOf) && wanted.stack == applied.stack) {
             // Удалённое приложение пересборки не требует, но из пущенных выбывает
@@ -342,6 +355,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
             // Состав тот же, а действующий режим мог смениться вместе с подпиской
             store.accessControlApplied = wanted.access
+
+            this@TunService.applied = wanted
 
             return false
         }
@@ -354,10 +369,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
     }
 
     private fun TunModule.open(profile: UUID) {
-        val store = ServiceStore(self)
-        val prefs = readTunPrefs(profile) ?: TunPrefs()
-
-        open(plan(store, prefs, packageManager.uidLookup()))
+        open(plan(inputs(ServiceStore(self), readTunPrefs(profile) ?: TunPrefs()), packageManager.uidLookup()))
     }
 
     private fun TunModule.open(plan: TunPlan) {

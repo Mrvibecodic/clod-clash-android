@@ -13,6 +13,10 @@ import com.github.kr328.clash.service.model.effective
 // удаления приложений. uidOf — null для неустановленного пакета.
 data class TunApps(val allowed: Map<String, Int>, val disallowed: Map<String, Int>)
 
+// Настройки, из которых считается состав: пока они те же и приложения не
+// ставились и не удалялись, состав тот же — без похода за UID.
+data class TunInputs(val mode: AccessControlMode, val packages: Set<String>, val prefs: TunPrefs, val stackMode: String)
+
 fun tunApps(
     mode: AccessControlMode,
     selected: Set<String>,

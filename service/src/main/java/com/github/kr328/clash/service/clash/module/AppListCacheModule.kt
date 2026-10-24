@@ -9,15 +9,18 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
-// notifyChanges: после каждой установки или удаления приложений — событие, по
-// которому туннельная служба сверяет состав приложений VPN.
-class AppListCacheModule(service: Service, private val notifyChanges: Boolean = false) : Module<Unit>(service) {
+// notifyChanges: после каждой установки или удаления приложений — событие с
+// картой пакет → UID, по которой туннельная служба сверяет состав приложений VPN;
+// null — список прочитать не удалось, карта службе неизвестна.
+class AppListCacheModule(service: Service, private val notifyChanges: Boolean = false) : Module<Map<String, Int>?>(service) {
     private fun PackageInfo.uniqueUidName(): String =
         if (sharedUserId?.isNotBlank() == true) sharedUserId!! else packageName
 
-    private fun reload() {
-        val packages = service.packageManager.getInstalledPackages(0)
+    private fun reload(): Map<String, Int> {
+        val all = service.packageManager.getInstalledPackages(0)
             .filter { it.applicationInfo != null }
+
+        val packages = all
             .groupBy { it.uniqueUidName() }
             .map { (_, v) ->
                 val info = v[0]
@@ -33,6 +36,8 @@ class AppListCacheModule(service: Service, private val notifyChanges: Boolean = 
         Clash.notifyInstalledAppsChanged(packages)
 
         Log.d("Installed ${packages.size} packages cached")
+
+        return all.associate { it.packageName to it.applicationInfo!!.uid }
     }
 
     override suspend fun run() {
@@ -51,13 +56,15 @@ class AppListCacheModule(service: Service, private val notifyChanges: Boolean = 
 
             // Диспетчер пакетов отказывает на больших списках и при своём
             // перезапуске: ядро остаётся с прежним списком
-            try {
+            val installed = try {
                 reload()
             } catch (e: Exception) {
                 Log.w("Query installed packages: $e", e)
+
+                null
             }
 
-            if (notifyChanges) enqueueEvent(Unit)
+            if (notifyChanges) enqueueEvent(installed)
         }
     }
 }
