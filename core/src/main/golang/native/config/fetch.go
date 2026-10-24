@@ -22,6 +22,7 @@ import (
 	"cfa/native/common/safego"
 	budgets "cfa/native/config/budget"
 	"cfa/native/config/delivery"
+	"cfa/native/config/localproviders"
 	"cfa/native/config/panel"
 	"cfa/native/config/sentinel"
 
@@ -663,7 +664,13 @@ func verifyProfile(path string, panelInfo PanelInfo, budget *budgets.Budget, rep
 		return fmt.Errorf("%s: %w", configRejected, err)
 	}
 
+	err = localproviders.Initial(cfg)
+
 	DestroyProviders(cfg)
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", configRejected, err)
+	}
 
 	return nil
 }
