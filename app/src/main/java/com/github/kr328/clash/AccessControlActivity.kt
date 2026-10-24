@@ -20,6 +20,7 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.util.toAppInfo
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.remote.StatusClient
+import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.model.TunPrefs
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.activeTunPrefs
@@ -42,13 +43,13 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
     private var tunPrefs: TunPrefs? = null
 
     override suspend fun main() {
-        val (stored, mode) = ServiceSettings.access { accessControlPackages to accessControlMode }
+        val (stored, storedMode) = ServiceSettings.access { accessControlPackages to accessControlMode }
 
         val selected = restored?.getStringArray("selected")?.toMutableSet() ?: stored.toMutableSet()
+        val mode = restored?.getString("mode")?.let { name -> AccessControlMode.entries.firstOrNull { it.name == name } }
+            ?: storedMode
 
         this.current = selected
-
-        defer { apply(selected) }
 
         val (tunPrefs, included) = withContext(Dispatchers.IO) {
             activeTunPrefs().let { it to it?.includePackages?.filter(::installed)?.toSet().orEmpty() }
@@ -69,6 +70,10 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
 
         setContentDesign(design)
 
+        // Режим и выбор уходят в настройки службы разом, когда с экрана ушли:
+        // туннель пересобирается по законченной правке, а не по каждой галочке
+        defer { apply(selected, design.mode) }
+
         design.requests.send(AccessControlDesign.Request.ReloadApps)
 
         while (isActive) {
@@ -77,7 +82,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
                     // Ушли с экрана, не закрыв его («Домой», другое приложение):
                     // выбор действует сразу, а не когда экран закроют
                     if (it == Event.ActivityStop && !isChangingConfigurations && !isFinishing) {
-                        apply(selected)
+                        apply(selected, design.mode)
                     }
                 }
                 design.requests.onReceive {
@@ -159,6 +164,7 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
         super.onSaveInstanceState(outState)
 
         current?.let { outState.putStringArray("selected", it.toTypedArray()) }
+        design?.let { outState.putString("mode", it.mode.name) }
     }
 
     private suspend fun applySelection(
@@ -190,13 +196,12 @@ class AccessControlActivity : BaseActivity<AccessControlDesign>() {
     // видит уже отправленный перезапуск
     private val applying = Mutex()
 
-    private suspend fun apply(selected: Set<String>) = applying.withLock {
-        // Через очередь настроек: отпечаток считается по режиму и списку уже
-        // после всех записей, сделанных на экране.
+    private suspend fun apply(selected: Set<String>, mode: AccessControlMode) = applying.withLock {
         val wanted = ServiceSettings.access {
+            accessControlMode = mode
             accessControlPackages = selected.toSet()
 
-            tunAccessFingerprint(accessControlMode, selected, this@AccessControlActivity.tunPrefs ?: TunPrefs(), packageManager.uidLookup())
+            tunAccessFingerprint(mode, selected, this@AccessControlActivity.tunPrefs ?: TunPrefs(), packageManager.uidLookup())
                 .takeIf { it != accessControlApplied }
         }
 

@@ -11,7 +11,6 @@ import com.github.kr328.clash.design.compose.screen.AccessControlState
 import com.github.kr328.clash.design.model.AppInfo
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.model.AccessControlMode
-import com.github.kr328.clash.service.store.ServiceSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -54,6 +53,9 @@ class AccessControlDesign(
     val apps: List<AppInfo>
         get() = state.apps
 
+    val mode: AccessControlMode
+        get() = modes[state.mode]
+
     override val root: View = composeRoot {
         AccessControlScreen(state = state, onAction = ::onAction)
     }
@@ -74,9 +76,7 @@ class AccessControlDesign(
                 syncSelected()
             }
             is AccessControlAction.Mode -> {
-                val mode = modes.getOrNull(action.index) ?: return
-
-                ServiceSettings.write { accessControlMode = mode }
+                if (action.index !in modes.indices) return
 
                 state = state.copy(mode = action.index)
             }
@@ -114,11 +114,7 @@ class AccessControlDesign(
     }
 
     private fun syncSelected() {
-        val snapshot = selected.toSet()
-
-        state = state.copy(selected = snapshot)
-
-        ServiceSettings.write { accessControlPackages = snapshot }
+        state = state.copy(selected = selected.toSet())
     }
 
     fun request(request: Request) {
