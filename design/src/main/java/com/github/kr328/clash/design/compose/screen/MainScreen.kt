@@ -1,5 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -264,6 +265,9 @@ data class MainScreenState(
     val appsSheetShown: Boolean
         get() = appsPrompt && selectedTab == MainTab.Home && subScreen == null && update == null &&
             !notificationPrompt && !reliability.prompt && !freezeSheet
+
+    val backGoesHome: Boolean
+        get() = selectedTab != MainTab.Home && subScreen == null
 }
 
 @Immutable
@@ -367,6 +371,10 @@ fun MainScreen(
                 }
             },
         ) { padding ->
+            BackHandler(enabled = state.backGoesHome) {
+                onAction(MainAction.SelectTab(MainTab.Home))
+            }
+
             state.update?.let { UpdateDialog(it, onAction) }
 
             if (state.notificationPrompt) {
