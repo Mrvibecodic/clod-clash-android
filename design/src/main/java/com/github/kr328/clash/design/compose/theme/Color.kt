@@ -83,13 +83,13 @@ internal val DarkStatusStopped = Color(0xFF9CA3AF)
 internal val LightOnStatus = Color(0xFFFFFFFF)
 internal val DarkOnStatus = Color(0xFF0E0E12)
 
-internal val BrandGradientStart = Color(0xFF4F46E5)
+internal val BrandGradientStart = LightPrimary
 internal val BrandGradientEnd = Color(0xFF7C3AED)
 
-internal val LightDelayFast = Color(0xFF16A34A)
-internal val DarkDelayFast = Color(0xFF4ADE80)
-internal val LightDelayMedium = Color(0xFFD97706)
-internal val DarkDelayMedium = Color(0xFFFBBF24)
+internal val LightDelayFast = LightStatusConnected
+internal val DarkDelayFast = DarkStatusConnected
+internal val LightDelayMedium = LightStatusConnecting
+internal val DarkDelayMedium = DarkStatusConnecting
 internal val LightDelaySlow = Color(0xFFDC2626)
 internal val DarkDelaySlow = Color(0xFFF87171)
 
