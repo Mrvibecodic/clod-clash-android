@@ -1,6 +1,7 @@
 package com.github.kr328.clash.service.util
 
 import android.content.Context
+import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.service.R
 
@@ -235,6 +236,14 @@ object UpdateFailures {
         "unexpected eof",
         "tls:",
     )
+}
+
+// Причина отказа словами человека: узнанная сетевая/панельная — переводом,
+// иначе текст исключения, если оно само рассчитано на показ
+fun Context.humanizeFailure(e: Exception): String? {
+    val raw = e.message.orEmpty()
+
+    return humanizeUpdateFailure(raw) ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
 }
 
 fun Context.humanizeUpdateFailure(raw: String): String? {

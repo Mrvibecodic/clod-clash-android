@@ -3,34 +3,31 @@ package com.github.kr328.clash
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.common.util.setUUID
-import com.github.kr328.clash.remote.Remote
-import com.github.kr328.clash.remote.StatusClient
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.ProfileFields
-import com.github.kr328.clash.service.util.humanizeUpdateFailure
-import com.github.kr328.clash.util.startClashService
+import com.github.kr328.clash.service.util.humanizeFailure
+import com.github.kr328.clash.util.isClashActiveOrStarting
+import com.github.kr328.clash.util.quickStartClash
+import com.github.kr328.clash.util.quickStopClash
 import com.github.kr328.clash.util.withProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.plus
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.*
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.store.UiStore
+import com.github.kr328.clash.util.subscriptionSourceOf
 import com.github.kr328.clash.util.withAppLocale
 import com.github.kr328.clash.util.serviceUnavailableHandler
 
@@ -48,11 +45,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
 
         if (intent.action == Intent.ACTION_VIEW) {
             val uri = intent.data ?: return finish()
-            val url = uri.getQueryParameter("url") ?: return finish()
-
-            if (Uri.parse(url).scheme?.lowercase(Locale.ROOT) != "https") {
-                return finish()
-            }
+            val url = subscriptionSourceOf(uri.toString()) ?: return finish()
 
             if (url.length > ProfileFields.SOURCE_MAX) {
                 return finish()
@@ -91,10 +84,7 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
                 } catch (e: Exception) {
                     Log.w("Add subscription from a link: $e", e)
 
-                    val raw = e.message.orEmpty()
-                    val reason = humanizeUpdateFailure(raw)
-                        ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
-                        ?: Redact.text(raw).ifBlank { e.javaClass.name }
+                    val reason = humanizeFailure(e) ?: Redact.text(e.message.orEmpty()).ifBlank { e.javaClass.name }
 
                     Toast.makeText(applicationContext, getString(R.string.clod_sub_add_failed, reason), Toast.LENGTH_LONG).show()
                 } finally {
@@ -160,28 +150,21 @@ open class ExternalControlActivity : Activity(), CoroutineScope by (MainScope() 
         Toast.makeText(this, R.string.clod_external_control_refused, Toast.LENGTH_LONG).show()
     }
 
-    private suspend fun isClashRunning(): Boolean = Remote.broadcasts.activeOrStarting(
-        withContext(Dispatchers.IO) { StatusClient(this@ExternalControlActivity).isActive() },
-    )
+    private suspend fun isClashRunning(): Boolean = isClashActiveOrStarting()
 
     private fun startClash() {
         if (isFinishing || isDestroyed) return
 
         // Нет разрешения на VPN — то же окно разрешения, что у плитки и виджета
-        if (startClashService(unattended = true) != null) {
+        if (quickStartClash(Toast.LENGTH_LONG) != null) {
             startActivity(WidgetToggleActivity::class.intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            return
         }
-        ToggleWidgetProvider.notifyWait(this)
-        Toast.makeText(this, R.string.clod_status_connecting, Toast.LENGTH_LONG).show()
     }
 
     private fun stopClash() {
         if (isFinishing || isDestroyed) return
 
-        ToggleWidgetProvider.notifyWait(this)
-        Remote.broadcasts.requestStop()
-        Toast.makeText(this, R.string.external_control_stopped, Toast.LENGTH_LONG).show()
+        quickStopClash(Toast.LENGTH_LONG)
     }
 
     override fun finish() {

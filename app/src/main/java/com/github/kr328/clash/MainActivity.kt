@@ -86,8 +86,6 @@ import com.github.kr328.clash.util.startClashService
 import com.github.kr328.clash.util.launchHoldingService
 import com.github.kr328.clash.util.withClash
 import com.github.kr328.clash.util.withProfile
-import com.github.kr328.clash.util.showNoAppForLink
-import com.github.kr328.clash.util.startExternal
 import com.github.kr328.clash.core.bridge.*
 import com.github.kr328.clash.service.model.Profile
 import kotlinx.coroutines.Dispatchers
@@ -597,7 +595,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                                 if (clashRunning) design.reloadProxyGroups()
                             }
                         }
-                        is MainDesign.Request.OpenUrl -> openExternalUrl(request.url)
+                        is MainDesign.Request.OpenUrl -> openProviderUrl(request.url)
                         MainDesign.Request.CheckUpdate ->
                             if (UpdateTask.state.value is UpdateTask.State.Checking) {
                                 UpdateTask.cancel()
@@ -2285,22 +2283,15 @@ class MainActivity : BaseActivity<MainDesign>() {
         }
     }
 
-    private fun openExternalUrl(url: String) {
-        val uri = Uri.parse(url)
-
-        if (uri.scheme?.lowercase() !in listOf("https", "tg", "mailto")) {
+    // Ссылки провайдера — только безопасных схем
+    private fun openProviderUrl(url: String) {
+        if (Uri.parse(url).scheme?.lowercase() !in listOf("https", "tg", "mailto")) {
             launch { design?.showToast(DesignR.string.invalid_url, ToastDuration.Long) }
 
             return
         }
 
-        try {
-            if (!startExternal(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
-                launch { design?.showNoAppForLink(url) }
-            }
-        } catch (e: Exception) {
-            launch { design?.showExceptionToast(e) }
-        }
+        openExternalUrl(url)
     }
 
     private suspend fun MainDesign.loadVersionName() {

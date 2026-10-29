@@ -1,7 +1,6 @@
 package com.github.kr328.clash
 
 import android.app.Activity
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.util.intent
@@ -10,6 +9,7 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.service.util.ProfileFields
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.ProfileImports
+import com.github.kr328.clash.util.subscriptionSourceOf
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
@@ -120,7 +120,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
     }
 
     private suspend fun AddProfileDesign.addProfile(input: String) {
-        val source = normalizeSource(input)
+        val source = subscriptionSourceOf(input)
 
         if (source == null) {
             setError(getString(R.string.accept_http_content))
@@ -140,25 +140,6 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
             token = started
         } else if (ProfileImports.state.value.token != token) {
             setError(getString(R.string.clod_sub_import_busy))
-        }
-    }
-
-    private fun normalizeSource(input: String, unwrap: Boolean = true): String? {
-        val trimmed = input.trim()
-
-        if (trimmed.isEmpty()) return null
-
-        val uri = runCatching { Uri.parse(trimmed) }.getOrNull() ?: return null
-
-        return when (uri.scheme?.lowercase()) {
-            "https" -> trimmed
-            "clash", "clashmeta", "clodclash" -> if (unwrap) {
-                uri.getQueryParameter("url")?.let { normalizeSource(it, unwrap = false) }
-            } else {
-                null
-            }
-
-            else -> null
         }
     }
 

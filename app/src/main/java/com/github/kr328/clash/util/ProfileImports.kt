@@ -3,7 +3,6 @@ package com.github.kr328.clash.util
 import android.content.Context
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.common.util.HumanMessage
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.core.model.FetchStatus
 import com.github.kr328.clash.design.R
@@ -12,6 +11,7 @@ import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.R as ServiceR
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.util.UpdateFailures
+import com.github.kr328.clash.service.util.humanizeFailure
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.store.AppStore
@@ -41,13 +41,7 @@ object ProfileImports {
             val status: FetchStatus?,
             val stage: ChannelStage? = null,
         ) : State
-        data class Done(
-            override val token: Long,
-            val uuid: UUID,
-            val name: String,
-            val failedProviders: List<String>,
-            val secure: Boolean = false,
-        ) : State
+        data class Done(override val token: Long) : State
         // channelOff — канал включали, а он не ответил: переключатель вернуть в «выкл».
         data class Failed(
             override val token: Long,
@@ -172,7 +166,7 @@ object ProfileImports {
                             }
                         }
 
-                        import(draft, true) { status ->
+                        import(draft) { status ->
                             runCatching { FailedProviders.accumulate(failed, status) }
                                 .onFailure { Log.w("Report import status: $it", it) }
 
@@ -197,7 +191,7 @@ object ProfileImports {
                     }
                 }
 
-                state_.value = State.Done(token, uuid, title, failed.get(), secure)
+                state_.value = State.Done(token)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -263,7 +257,7 @@ object ProfileImports {
                     }
 
                     releasingOnFailure(uuid) {
-                        import(uuid, true) { status ->
+                        import(uuid) { status ->
                             FailedProviders.accumulate(failed, status)
                         }
                     }
@@ -365,7 +359,7 @@ object ProfileImports {
                     if (!existing) profileProvidersFailed = FailedProviders.merge(profileProvidersFailed, failed.get())
                 }
 
-                state_.value = State.Done(token, saved, shown.name, failed.get(), secure)
+                state_.value = State.Done(token)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -454,14 +448,8 @@ object ProfileImports {
         }
     }
 
-    private fun Context.humanFailure(e: Exception): String? {
-        val raw = e.message.orEmpty()
-
-        return humanizeUpdateFailure(raw) ?: raw.takeIf { e is HumanMessage && it.isNotBlank() }
-    }
-
     private fun Context.failureMessage(e: Exception): String =
-        humanFailure(e) ?: getString(R.string.clod_sub_fetch_failed)
+        humanizeFailure(e) ?: getString(R.string.clod_sub_fetch_failed)
 
     private fun Context.failed(token: Long, e: Exception): State.Failed {
         when (e) {
@@ -488,7 +476,7 @@ object ProfileImports {
         }
 
         val raw = e.message.orEmpty()
-        val human = humanFailure(e)
+        val human = humanizeFailure(e)
 
         return State.Failed(
             token,
@@ -507,11 +495,10 @@ object ProfileImports {
 
     private suspend fun import(
         uuid: UUID,
-        activate: Boolean,
         observer: IFetchObserver?,
     ): Profile {
         val saved = withProfile(retry = false) {
-            commit(uuid, activate, observer)
+            commit(uuid, true, observer)
         }
 
         return withProfile { queryAll().firstOrNull { it.uuid == saved } }

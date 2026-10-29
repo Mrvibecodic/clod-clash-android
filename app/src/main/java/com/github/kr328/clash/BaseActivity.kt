@@ -2,10 +2,11 @@ package com.github.kr328.clash
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
-import android.view.View
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.result.contract.ActivityResultContracts.GetContent
@@ -39,6 +40,8 @@ import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.service.util.humanizeUpdateFailure
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.util.ActivityResultLifecycle
+import com.github.kr328.clash.util.showNoAppForLink
+import com.github.kr328.clash.util.startExternal
 import com.github.kr328.clash.util.ApplicationObserver
 import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.appCompatLocalesLoaded
@@ -73,11 +76,7 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
     protected var design: D? = null
         set(value) {
             field = value
-            if (value != null) {
-                setContentView(value.root)
-            } else {
-                setContentView(View(this))
-            }
+            if (value != null) setContentView(value.root)
         }
 
     private var defer: suspend () -> Unit = {}
@@ -97,6 +96,8 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         // Ключ свой у каждого запроса: реестр с занятыми ключами переживает
         // пересоздание экрана, и повторённый ключ получил бы ответ чужого окна.
         val requestKey = UUID.randomUUID().toString()
+        // Отдельная ссылка: после проверки `!is GetContent` тип contracts сужается
+        // смарт-кастом, и parseResult перестаёт возвращать O
         val contract: ActivityResultContract<I, O> = contracts
 
         try {
@@ -125,12 +126,9 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
             block()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: ServiceUnavailableException) {
-            Log.w("$where: $e")
-
-            design?.showExceptionToast(e)
         } catch (e: Exception) {
-            Log.w("$where: $e", e)
+            // Отказ службы — ожидаемый, без стека
+            Log.w("$where: $e", e.takeUnless { it is ServiceUnavailableException })
 
             design?.showExceptionToast(e)
         }
@@ -150,6 +148,17 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         }
 
         return true
+    }
+
+    // Ссылка во внешнее приложение; нет подходящего — говорим, какая
+    protected fun openExternalUrl(url: String) {
+        try {
+            if (!startExternal(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))) {
+                launch { design?.showNoAppForLink(url) }
+            }
+        } catch (e: Exception) {
+            launch { design?.showExceptionToast(e) }
+        }
     }
 
     suspend fun setContentDesign(design: D) {
