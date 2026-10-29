@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.compose.theme.ClodRowCorner
@@ -59,8 +60,6 @@ fun splitFlag(title: String): Pair<String?, String> {
     return flag.toString() to rest
 }
 
-private const val DELAY_UNKNOWN = 0xffff
-
 @Immutable
 data class PingBounds(val fast: Int = 200, val medium: Int = 400)
 
@@ -73,7 +72,7 @@ enum class DelayMark { Untested, Dead, Fast, Medium, Slow }
 // 0xffff — мерили и он не ответил, тайм-аут или ошибка (красный, как на ПК).
 fun delayMark(delay: Int, bounds: PingBounds): DelayMark = when {
     delay <= 0 -> DelayMark.Untested
-    delay >= DELAY_UNKNOWN -> DelayMark.Dead
+    delay >= Proxy.DELAY_UNKNOWN -> DelayMark.Dead
     delay < bounds.fast -> DelayMark.Fast
     delay < bounds.medium -> DelayMark.Medium
     else -> DelayMark.Slow

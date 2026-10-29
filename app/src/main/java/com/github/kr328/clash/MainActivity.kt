@@ -1607,7 +1607,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
     private suspend fun MainDesign.notifyDelaysUnavailable(delays: List<Int>) {
         // 0 — узел не промерен: судить можно только по промеренным
-        if (delays.none { it >= DELAY_UNKNOWN } || delays.any { it in 1 until DELAY_UNKNOWN }) return
+        if (delays.none { it >= Proxy.DELAY_UNKNOWN } || delays.any { it in 1 until Proxy.DELAY_UNKNOWN }) return
 
         showToast(DesignR.string.clod_delay_unavailable, ToastDuration.Long)
     }
@@ -1690,8 +1690,6 @@ class MainActivity : BaseActivity<MainDesign>() {
         private var selectionFlush: Job? = null
 
         private val SELECTION_HANDOFF_MS = TimeUnit.SECONDS.toMillis(60)
-
-        private const val DELAY_UNKNOWN = 0xffff
 
         private val HOME_ROUTE_REFRESH_MS = TimeUnit.SECONDS.toMillis(60)
 

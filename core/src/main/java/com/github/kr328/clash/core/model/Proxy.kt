@@ -29,6 +29,10 @@ data class Proxy(
     }
 
     companion object CREATOR : Parcelable.Creator<Proxy> {
+        // Так ядро отдаёт задержку узла, который мерили и он не ответил
+        // (delayUnknown в мосту); больше — тоже «не ответил»
+        const val DELAY_UNKNOWN = 0xffff
+
         override fun createFromParcel(parcel: Parcel): Proxy {
             return Parcelizer.decodeFromParcel(serializer(), parcel)
         }
