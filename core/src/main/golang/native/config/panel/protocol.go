@@ -118,8 +118,10 @@ func decodeProxy(proxy map[string]any) proxyOption {
 
 // TransportOf — то же, что ядро запоминает у узла при разборе (adapter.nodeOf).
 func TransportOf(proxy map[string]any) Transport {
-	opt := decodeProxy(proxy)
+	return decodeProxy(proxy).transport()
+}
 
+func (opt proxyOption) transport() Transport {
 	return Transport{
 		Network:      opt.Network,
 		TLS:          opt.TLS,
@@ -138,9 +140,9 @@ func Protocols(own []map[string]any) map[string]string {
 	for _, proxy := range own {
 		// Тип ядро читает точно по ключу «type» (adapter.ParseProxy)
 		kind, _ := proxy["type"].(string)
-		name := decodeProxy(proxy).Name
-		if label := Label(kind, TransportOf(proxy)); name != "" && label != "" {
-			out[name] = label
+		opt := decodeProxy(proxy)
+		if label := Label(kind, opt.transport()); opt.Name != "" && label != "" {
+			out[opt.Name] = label
 		}
 	}
 
