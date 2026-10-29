@@ -263,8 +263,8 @@ func patchTun(cfg *config.RawConfig, profileDir string, info panel.Info) error {
 			continue
 		}
 
-		prefs.IncludePackages = panel.MergePackages(prefs.IncludePackages, panel.StringsFromAny(mapping["include-package"]))
-		prefs.ExcludePackages = panel.MergePackages(prefs.ExcludePackages, panel.StringsFromAny(mapping["exclude-package"]))
+		prefs.IncludePackages = panel.MergePackages(prefs.IncludePackages, groups.Strings(mapping["include-package"]))
+		prefs.ExcludePackages = panel.MergePackages(prefs.ExcludePackages, groups.Strings(mapping["exclude-package"]))
 
 		if prefs.Stack == "" {
 			if stack, ok := mapping["stack"].(string); ok {

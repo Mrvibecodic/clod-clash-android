@@ -90,20 +90,3 @@ func WriteTunPrefs(dir string, prefs TunPrefs) {
 
 	writeJSON(tunPath(dir), &prefs)
 }
-
-func StringsFromAny(value any) []string {
-	items, ok := value.([]any)
-	if !ok {
-		return nil
-	}
-
-	result := make([]string, 0, len(items))
-
-	for _, item := range items {
-		if s, ok := item.(string); ok {
-			result = append(result, s)
-		}
-	}
-
-	return result
-}

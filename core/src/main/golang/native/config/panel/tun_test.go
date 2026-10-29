@@ -202,15 +202,3 @@ func TestTunPrefsReadInvalid(t *testing.T) {
 		t.Errorf("expected empty prefs, got %+v", got)
 	}
 }
-
-func TestStringsFromAny(t *testing.T) {
-	got := StringsFromAny([]any{"com.a", 1, "com.b"})
-
-	if !reflect.DeepEqual(got, []string{"com.a", "com.b"}) {
-		t.Errorf("StringsFromAny = %v", got)
-	}
-
-	if StringsFromAny("not a list") != nil {
-		t.Error("StringsFromAny(non-list) expected nil")
-	}
-}

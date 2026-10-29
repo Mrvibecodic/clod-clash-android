@@ -122,11 +122,9 @@ func GroupsOf(raw []map[string]any, all []string) []Group {
 		kind, _ := group["type"].(string)
 
 		var proxies []string
-		if items, ok := group["proxies"].([]any); ok {
-			for _, item := range items {
-				if value, ok := item.(string); ok && value != "" {
-					proxies = append(proxies, value)
-				}
+		for _, value := range groups.Strings(group["proxies"]) {
+			if value != "" {
+				proxies = append(proxies, value)
 			}
 		}
 
