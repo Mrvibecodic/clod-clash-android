@@ -10,8 +10,8 @@ import android.os.Build
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import androidx.core.content.getSystemService
+import com.github.kr328.clash.common.util.sha256Hex
 import java.net.Inet4Address
-import java.security.MessageDigest
 
 // clod:freeze — по чему итоги проверки 16–20 привязываются к сети.
 //
@@ -37,9 +37,7 @@ object NetworkKey {
     fun keyOf(seen: Seen?): String? {
         val parts = partsOf(seen ?: return null) ?: return null
 
-        val digest = MessageDigest.getInstance("SHA-256").digest(parts.toByteArray())
-
-        return digest.joinToString("") { "%02x".format(it) }.take(KEY_HEX_LEN)
+        return sha256Hex(parts).take(KEY_HEX_LEN)
     }
 
     private fun partsOf(seen: Seen): String? = when (seen.transport) {

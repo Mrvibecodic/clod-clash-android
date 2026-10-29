@@ -5,9 +5,9 @@ import android.content.Context
 import android.os.Build
 import android.provider.Settings
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.sha256Hex
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.store.ServiceStore
-import java.security.MessageDigest
 import java.util.UUID
 
 private const val HWID_SALT = "clod-clash"
@@ -67,16 +67,8 @@ fun isValidHwid(value: String): Boolean {
     return value.length in 10..64 && value.all { it.isLetterOrDigit() && it.code < 128 || it == '=' || it == '-' }
 }
 
-private fun digest(raw: String): String {
-    val hash = MessageDigest.getInstance("SHA-256")
-        .apply {
-            update(raw.toByteArray())
-            update(HWID_SALT.toByteArray())
-        }
-        .digest()
-
-    return hash.joinToString("") { "%02x".format(it) }.take(HWID_HEX_LEN)
-}
+private fun digest(raw: String): String =
+    sha256Hex(raw.toByteArray() + HWID_SALT.toByteArray()).take(HWID_HEX_LEN)
 
 class DeviceCard(val hwid: String, val os: String, val osVersion: String, val model: String)
 

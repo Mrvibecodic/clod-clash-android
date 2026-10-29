@@ -6,10 +6,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.net.Redirects
+import com.github.kr328.clash.common.util.sha256Hex
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
@@ -122,10 +122,7 @@ object GroupIcons {
     }
 
     private fun cacheFile(context: Context, url: String): File {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(url.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(32)
+        val digest = sha256Hex(url).take(32)
 
         return File(File(context.cacheDir, DIRECTORY).apply { mkdirs() }, digest)
     }
