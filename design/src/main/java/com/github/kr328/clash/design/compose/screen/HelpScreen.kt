@@ -1,20 +1,11 @@
 package com.github.kr328.clash.design.compose.screen
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -23,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.InfoCard
 import com.github.kr328.clash.design.compose.component.SectionHeader
 
 sealed interface HelpAction {
@@ -45,7 +37,10 @@ fun HelpScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            Notice()
+            InfoCard(
+                text = stringResource(R.string.clod_help_notice),
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+            )
 
             SectionHeader(stringResource(R.string.document))
             LinkRow(
@@ -80,31 +75,4 @@ private fun LinkRow(title: String, url: String, onAction: (HelpAction) -> Unit) 
         icon = painterResource(R.drawable.ic_outline_article),
         onClick = { onAction(HelpAction.OpenUrl(url)) },
     )
-}
-
-@Composable
-private fun Notice() {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 8.dp),
-    ) {
-        Row(modifier = Modifier.padding(14.dp)) {
-            Icon(
-                painter = painterResource(R.drawable.ic_outline_info),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = stringResource(R.string.clod_help_notice),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }

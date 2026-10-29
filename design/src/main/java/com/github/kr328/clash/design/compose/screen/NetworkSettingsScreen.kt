@@ -1,18 +1,12 @@
 package com.github.kr328.clash.design.compose.screen
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.InfoCard
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.SwitchRow
@@ -77,13 +72,19 @@ fun NetworkSettingsScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             if (!state.editable) {
-                InfoNotice(stringResource(R.string.clod_setting_needs_stop))
+                InfoCard(
+                    text = stringResource(R.string.clod_setting_needs_stop),
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+                )
             }
 
             // В режиме локального прокси приложения сами передают имя хоста, там подсказка ни к чему
             if (state.enableVpn) {
                 state.privateDnsHost?.let {
-                    InfoNotice(stringResource(R.string.clod_private_dns_strict, it))
+                    InfoCard(
+                        text = stringResource(R.string.clod_private_dns_strict, it),
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+                    )
                 }
             }
 
@@ -210,32 +211,5 @@ private fun ReadOnlyRow(title: String, value: String, enabled: Boolean) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f),
         )
-    }
-}
-
-@Composable
-private fun InfoNotice(text: String) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 8.dp),
-    ) {
-        Row(modifier = Modifier.padding(14.dp)) {
-            Icon(
-                painter = painterResource(R.drawable.ic_outline_info),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }

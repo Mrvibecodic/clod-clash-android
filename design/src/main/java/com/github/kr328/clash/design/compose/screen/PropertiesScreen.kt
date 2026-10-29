@@ -13,8 +13,6 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -38,6 +36,7 @@ import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.ConfirmDialog
+import com.github.kr328.clash.design.compose.component.InfoCard
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.model.Profile
@@ -327,50 +326,25 @@ private fun SecureChannelRow(on: Boolean, chanKey: String, enabled: Boolean, onC
 
 @Composable
 private fun Tip(type: Profile.Type) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    InfoCard(
+        title = stringResource(
+            R.string.clod_properties_type,
+            stringResource(
+                when (type) {
+                    Profile.Type.Url -> R.string.clod_profile_type_url
+                    Profile.Type.External -> R.string.clod_profile_type_external
+                    Profile.Type.File -> R.string.clod_profile_type_file
+                },
+            ),
         ),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(modifier = Modifier.padding(14.dp)) {
-            Icon(
-                painter = painterResource(R.drawable.ic_outline_info),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text(
-                    text = stringResource(
-                        R.string.clod_properties_type,
-                        stringResource(
-                            when (type) {
-                                Profile.Type.Url -> R.string.clod_profile_type_url
-                                Profile.Type.External -> R.string.clod_profile_type_external
-                                Profile.Type.File -> R.string.clod_profile_type_file
-                            },
-                        ),
-                    ),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(
-                        when (type) {
-                            Profile.Type.Url -> R.string.clod_properties_tip
-                            Profile.Type.External -> R.string.clod_properties_tip_source
-                            Profile.Type.File -> R.string.clod_properties_tip_file
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
+        text = stringResource(
+            when (type) {
+                Profile.Type.Url -> R.string.clod_properties_tip
+                Profile.Type.External -> R.string.clod_properties_tip_source
+                Profile.Type.File -> R.string.clod_properties_tip_file
+            },
+        ),
+    )
 }
 
 @Composable
