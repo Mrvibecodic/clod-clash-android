@@ -112,9 +112,3 @@ void log_debug(char *msg) {
 
     free(msg);
 }
-
-void log_verbose(char *msg) {
-    __android_log_write(ANDROID_LOG_VERBOSE, TAG, msg);
-
-    free(msg);
-}

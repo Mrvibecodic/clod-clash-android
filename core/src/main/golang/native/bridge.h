@@ -48,5 +48,3 @@ extern void log_error(char *msg);
 extern void log_warn(char *msg);
 
 extern void log_debug(char *msg);
-
-extern void log_verbose(char *msg);

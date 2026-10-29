@@ -42,8 +42,6 @@ func init() {
 				C.log_warn(cPayload)
 			case log.DEBUG:
 				C.log_debug(cPayload)
-			case log.SILENT:
-				C.log_verbose(cPayload)
 			}
 		}
 	})

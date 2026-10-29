@@ -15,7 +15,7 @@ func Passes(payload string, level log.LogLevel, subscribed log.LogLevel) bool {
 		return true
 	}
 
-	if level >= minAlwaysLevel && level != log.SILENT {
+	if level >= minAlwaysLevel {
 		return true
 	}
 
