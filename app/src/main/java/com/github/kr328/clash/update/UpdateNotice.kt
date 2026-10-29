@@ -23,7 +23,6 @@ import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.service.util.withStoredLocale
 import com.github.kr328.clash.store.AppStore
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CancellationException
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.service.R as ServiceR
 
@@ -171,15 +170,7 @@ object UpdateNotice {
 
             if (!canPost(NotificationManagerCompat.from(context))) return Result.success()
 
-            val checked = try {
-                Updater.check(context, app.prereleaseChannel, context.activeLocalProxyPort())
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                kotlin.Result.failure(e)
-            }
-
-            val available = checked.getOrElse {
+            val available = Updater.check(context, app.prereleaseChannel, context.activeLocalProxyPort()).getOrElse {
                 if ((it as? Updater.UpdateException)?.kind != Updater.UpdateException.Kind.NoBuild) {
                     Log.w("UpdateNotice: проверка не удалась", it)
 

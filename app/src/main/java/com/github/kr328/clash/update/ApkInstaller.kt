@@ -149,7 +149,7 @@ object ApkInstaller {
     private fun finish(context: Context) {
         NotificationManagerCompat.from(context).cancel(CONFIRM_NOTIFICATION_ID)
 
-        File(context.cacheDir, "update.apk").delete()
+        Updater.apkFile(context).delete()
     }
 
     private fun abandon(context: Context, intent: Intent) {

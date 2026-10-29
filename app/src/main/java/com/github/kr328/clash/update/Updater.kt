@@ -29,6 +29,8 @@ import com.github.kr328.clash.service.R as ServiceR
 object Updater {
     private const val TAG = "Updater"
 
+    fun apkFile(context: Context): File = File(context.cacheDir, "update.apk")
+
     private const val MANIFEST_RELEASE =
         "https://github.com/Mrvibecodic/clod-clash-android/releases/download/updater/latest.json"
     private const val MANIFEST_PRERELEASE =
@@ -57,37 +59,45 @@ object Updater {
         val platform: UpdateManifest.Platform,
     )
 
+    // Любой сбой проверки — неудача, не исключение: вызывающие (экран и фоновая
+    // проверка) разбирают только Result
     suspend fun check(context: Context, prerelease: Boolean, mixedPort: Int?): Result<Available?> =
         withContext(Dispatchers.IO) {
-            // Канал пре-релизов — только свой манифест: релиз кладёт туда любую свежую
-            // сборку, обычную тоже. Запасной обычный манифест при сбое этого подсунул бы
-            // старую версию — «обновлений нет» вместо ошибки.
-            val manifest = load(if (prerelease) MANIFEST_PRERELEASE else MANIFEST_RELEASE, mixedPort)
-                .getOrElse { return@withContext Result.failure(it) }
-            val current = currentVersionCode(context)
-
-            if (manifest.versionCode <= current) {
-                return@withContext Result.success(null)
+            try {
+                checkManifest(context, prerelease, mixedPort)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Result.failure(e)
             }
-
-            val platform = manifest.platformFor(Build.SUPPORTED_ABIS.toList())
-            if (platform == null) {
-                return@withContext Result.failure(
-                    UpdateException(
-                        UpdateException.Kind.NoBuild,
-                        "в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}",
-                    ),
-                )
-            }
-
-            if (!isHttps(platform.url)) {
-                return@withContext Result.failure(
-                    UpdateException(UpdateException.Kind.Rejected, "адрес обновления не https"),
-                )
-            }
-
-            Result.success(Available(manifest, platform))
         }
+
+    private suspend fun checkManifest(context: Context, prerelease: Boolean, mixedPort: Int?): Result<Available?> {
+        // Канал пре-релизов — только свой манифест: релиз кладёт туда любую свежую
+        // сборку, обычную тоже. Запасной обычный манифест при сбое этого подсунул бы
+        // старую версию — «обновлений нет» вместо ошибки.
+        val manifest = load(if (prerelease) MANIFEST_PRERELEASE else MANIFEST_RELEASE, mixedPort)
+            .getOrElse { return Result.failure(it) }
+        val current = currentVersionCode(context)
+
+        if (manifest.versionCode <= current) {
+            return Result.success(null)
+        }
+
+        val platform = manifest.platformFor(Build.SUPPORTED_ABIS.toList())
+            ?: return Result.failure(
+                UpdateException(
+                    UpdateException.Kind.NoBuild,
+                    "в манифесте нет файла под ${Build.SUPPORTED_ABIS.joinToString()}",
+                ),
+            )
+
+        if (!isHttps(platform.url)) {
+            return Result.failure(UpdateException(UpdateException.Kind.Rejected, "адрес обновления не https"))
+        }
+
+        return Result.success(Available(manifest, platform))
+    }
 
     private fun isHttps(url: String): Boolean =
         runCatching { URL(url).protocol.equals("https", ignoreCase = true) }.getOrDefault(false)
@@ -113,9 +123,9 @@ object Updater {
         context: Context,
         available: Available,
         mixedPort: Int?,
-        onProgress: (received: Long, total: Long) -> Unit = { _, _ -> },
+        onProgress: (received: Long, total: Long) -> Unit,
     ): Result<File> = withContext(Dispatchers.IO) {
-        val target = File(context.cacheDir, "update.apk")
+        val target = apkFile(context)
 
         runCatching {
             target.delete()

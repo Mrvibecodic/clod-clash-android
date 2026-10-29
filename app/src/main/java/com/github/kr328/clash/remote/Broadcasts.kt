@@ -27,9 +27,9 @@ class Broadcasts(private val context: Application) {
         fun onProfileUpdateFailed(uuid: UUID?, reason: String?)
         fun onProfileLoaded()
         fun onProfileLoadFailed(uuid: UUID?, reason: String?)
-        fun onFreezeMarksChanged(uuid: UUID?) {}
-        fun onHiddenServersChanged() {}
-        fun onTunnelAppsChanged() {}
+        fun onFreezeMarksChanged(uuid: UUID?)
+        fun onHiddenServersChanged()
+        fun onTunnelAppsChanged()
     }
 
     @Volatile

@@ -4,7 +4,6 @@ import android.content.Context
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.store.AppStore
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.CancellationException
 
 object UpdatePrompt {
     private val CHECK_INTERVAL = TimeUnit.HOURS.toMillis(24)
@@ -31,15 +30,7 @@ object UpdatePrompt {
     suspend fun check(context: Context, manual: Boolean, mixedPort: Int?): Outcome {
         val store = AppStore(context)
 
-        val checked = try {
-            Updater.check(context, store.prereleaseChannel, mixedPort)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-
-        val result = checked.onFailure { Log.w("UpdatePrompt: проверка не удалась", it) }
+        val result = Updater.check(context, store.prereleaseChannel, mixedPort).onFailure { Log.w("UpdatePrompt: проверка не удалась", it) }
 
         val kind = (result.exceptionOrNull() as? Updater.UpdateException)?.kind
 

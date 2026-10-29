@@ -14,16 +14,17 @@ import com.github.kr328.clash.util.verifyApk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.reflect.KClass
 
 object Remote {
     val broadcasts: Broadcasts = Broadcasts(Global.application)
-    val service: Service = Service(Global.application) {
+    val service: Service = Service(Global.application) { showFatal(AppCrashedActivity::class) }
+
+    // Закрыть все экраны и показать один аварийный
+    private fun showFatal(screen: KClass<*>) {
         ApplicationObserver.createdActivities.forEach { if (it is BaseActivity<*>) it.finishAnyway() else it.finish() }
 
-        val intent = AppCrashedActivity::class.intent
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-        Global.application.startActivity(intent)
+        Global.application.startActivity(screen.intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     fun launch() {
@@ -57,14 +58,7 @@ object Remote {
 
         if (store.updatedAt != updatedAt) {
             if (!context.verifyApk()) {
-                return withContext(Dispatchers.Main) {
-                    ApplicationObserver.createdActivities.forEach { if (it is BaseActivity<*>) it.finishAnyway() else it.finish() }
-
-                    val intent = ApkBrokenActivity::class.intent
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-                    context.startActivity(intent)
-                }
+                return withContext(Dispatchers.Main) { showFatal(ApkBrokenActivity::class) }
             } else {
                 store.updatedAt = updatedAt
             }

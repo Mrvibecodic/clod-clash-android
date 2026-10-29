@@ -14,7 +14,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.github.kr328.clash.design.R as DesignR
 
-private val SHORTCUT_IDS = listOf("toggle_clash", "start_clash", "stop_clash")
+private const val SHORTCUT_TOGGLE = "toggle_clash"
+private const val SHORTCUT_START = "start_clash"
+private const val SHORTCUT_STOP = "stop_clash"
+
+private val SHORTCUT_IDS = listOf(SHORTCUT_TOGGLE, SHORTCUT_START, SHORTCUT_STOP)
 
 private val shortcutsQueue = Dispatchers.IO.limitedParallelism(1)
 
@@ -57,7 +61,7 @@ private fun Context.applyDynamicShortcuts(hide: Boolean) {
         Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
         Intent.FLAG_ACTIVITY_NO_ANIMATION
 
-    val toggle = ShortcutInfoCompat.Builder(this, "toggle_clash")
+    val toggle = ShortcutInfoCompat.Builder(this, SHORTCUT_TOGGLE)
         .setShortLabel(getString(DesignR.string.shortcut_toggle_short))
         .setLongLabel(getString(DesignR.string.shortcut_toggle_long))
         .setIcon(IconCompat.createWithResource(this, R.drawable.ic_toggle_all))
@@ -69,7 +73,7 @@ private fun Context.applyDynamicShortcuts(hide: Boolean) {
         .setRank(0)
         .build()
 
-    val start = ShortcutInfoCompat.Builder(this, "start_clash")
+    val start = ShortcutInfoCompat.Builder(this, SHORTCUT_START)
         .setShortLabel(getString(DesignR.string.shortcut_start_short))
         .setLongLabel(getString(DesignR.string.shortcut_start_long))
         .setIcon(IconCompat.createWithResource(this, R.drawable.ic_toggle_on))
@@ -81,7 +85,7 @@ private fun Context.applyDynamicShortcuts(hide: Boolean) {
         .setRank(1)
         .build()
 
-    val stop = ShortcutInfoCompat.Builder(this, "stop_clash")
+    val stop = ShortcutInfoCompat.Builder(this, SHORTCUT_STOP)
         .setShortLabel(getString(DesignR.string.shortcut_stop_short))
         .setLongLabel(getString(DesignR.string.shortcut_stop_long))
         .setIcon(IconCompat.createWithResource(this, R.drawable.ic_toggle_off))
