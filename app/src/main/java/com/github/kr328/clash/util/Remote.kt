@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
-import kotlin.coroutines.CoroutineContext
 
 class ServiceUnavailableException(message: String) : IOException(message), HumanMessage
 
@@ -53,7 +52,6 @@ private suspend fun awaitRemote(): RemoteHandle {
 }
 
 private suspend fun <R, T> withRemote(
-    context: CoroutineContext,
     retry: Boolean,
     select: (RemoteHandle) -> R,
     block: suspend R.() -> T,
@@ -64,7 +62,7 @@ private suspend fun <R, T> withRemote(
         Remote.service.beginOperation()
 
         try {
-            return withContext(context) { select(remote).block() }
+            return withContext(Dispatchers.IO) { select(remote).block() }
         } catch (e: DeadObjectException) {
             Log.w("Remote services panic")
 
@@ -84,16 +82,14 @@ private suspend fun <R, T> withRemote(
 }
 
 suspend fun <T> withClash(
-    context: CoroutineContext = Dispatchers.IO,
     retry: Boolean = true,
     block: suspend IClashManager.() -> T
-): T = withRemote(context, retry, { it.clash }, block)
+): T = withRemote(retry, { it.clash }, block)
 
 suspend fun <T> withProfile(
-    context: CoroutineContext = Dispatchers.IO,
     retry: Boolean = true,
     block: suspend IProfileManager.() -> T
-): T = withRemote(context, retry, { it.profile }, block)
+): T = withRemote(retry, { it.profile }, block)
 
 // Работа из нескольких вызовов держит службу целиком, а не каждый вызов по
 // отдельности: иначе привязка, отпущенная между вызовами (приложение ушло с

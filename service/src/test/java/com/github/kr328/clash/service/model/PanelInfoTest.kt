@@ -17,7 +17,6 @@ class PanelInfoTest {
     fun `пустой объект читается как пустая подписка`() {
         val info = decode("{}")
 
-        assertTrue(info.isEmpty)
         assertEquals("", info.title)
         assertFalse(info.noServers)
     }
@@ -168,19 +167,6 @@ class PanelInfoTest {
         val info = PanelInfo(clockSkew = 120, clockSkewAt = nowSeconds() + TimeUnit.DAYS.toSeconds(2))
 
         assertEquals(0L, info.clockSkewMillis())
-    }
-
-    @Test
-    fun `одного логотипа хватает, чтобы подписка перестала быть пустой`() {
-        assertFalse(PanelInfo(logoFile = "logo.png").isEmpty)
-        assertFalse(PanelInfo(title = "Провайдер").isEmpty)
-        assertFalse(PanelInfo(portalUrl = "https://example.org").isEmpty)
-        assertFalse(PanelInfo(groups = listOf(PanelGroup(name = "Все"))).isEmpty)
-    }
-
-    @Test
-    fun `служебные поля пустоту не отменяют`() {
-        assertTrue(PanelInfo(refillDate = 1_700_000_000, hwidState = "limit").isEmpty)
     }
 
     @Test

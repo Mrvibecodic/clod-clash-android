@@ -243,11 +243,6 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         }
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        this.onBackPressed()
-        return true
-    }
-
     override fun onProfileChanged(uuid: UUID?) {
         events.trySend(Event.ProfileChanged(uuid))
     }

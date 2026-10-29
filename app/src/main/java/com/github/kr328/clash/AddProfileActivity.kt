@@ -1,11 +1,9 @@
 package com.github.kr328.clash
 
 import android.app.Activity
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
-import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.util.intent
 import com.github.kr328.clash.design.AddProfileDesign
 import com.github.kr328.clash.design.R
@@ -49,10 +47,7 @@ class AddProfileActivity : BaseActivity<AddProfileDesign>() {
                     is ProfileImports.State.Done -> {
                         ProfileImports.consume(token)
 
-                        setResult(
-                            Activity.RESULT_OK,
-                            Intent().putExtra(Intents.EXTRA_NAME, state.name),
-                        )
+                        setResult(Activity.RESULT_OK)
 
                         finish()
                     }

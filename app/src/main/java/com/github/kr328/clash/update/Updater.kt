@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.annotation.StringRes
 import com.github.kr328.clash.BuildConfig
+import com.github.kr328.clash.common.compat.versionCodeCompat
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.service.util.UpdateFailures
@@ -152,26 +153,13 @@ object Updater {
         }
     }
 
-    fun currentVersionCode(context: Context): Long {
-        val info = context.packageManager.getPackageInfo(context.packageName, 0)
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            info.longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            info.versionCode.toLong()
-        }
-    }
+    fun currentVersionCode(context: Context): Long =
+        context.packageManager.getPackageInfo(context.packageName, 0).versionCodeCompat
 
     private fun matchesManifest(context: Context, apk: File, manifest: UpdateManifest): Boolean {
         val info = context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0) ?: return false
-        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            info.longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            info.versionCode.toLong()
-        }
 
-        return info.packageName == context.packageName && versionCode == manifest.versionCode
+        return info.packageName == context.packageName && info.versionCodeCompat == manifest.versionCode
     }
 
     private fun hasSameSignature(context: Context, apk: File): Boolean {

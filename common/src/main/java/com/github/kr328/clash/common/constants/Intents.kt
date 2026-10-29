@@ -7,7 +7,6 @@ object Intents {
     val ACTION_STOP_CLASH = "$packageName.action.STOP_CLASH"
     val ACTION_TOGGLE_CLASH = "$packageName.action.TOGGLE_CLASH"
 
-    const val EXTRA_NAME = "name"
 
     val ACTION_SERVICE_RECREATED = "$packageName.intent.action.CLASH_RECREATED"
     val ACTION_CLASH_STARTING = "$packageName.intent.action.CLASH_STARTING"

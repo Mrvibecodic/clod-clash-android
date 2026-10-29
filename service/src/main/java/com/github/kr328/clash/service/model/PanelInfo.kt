@@ -75,10 +75,6 @@ data class PanelInfo(
 
     // Сервер только для мобильной сети, а сеть не мобильная: его не видно
     fun hidesOffMobile(name: String, cellular: Boolean): Boolean = !cellular && name in mobileOnly
-
-    val isEmpty: Boolean
-        get() = title.isBlank() && announce.isBlank() && promo.isBlank() &&
-            portalUrl.isBlank() && logoFile.isBlank() && groups.isEmpty()
 }
 
 private const val MAX_CLOCK_SKEW_AGE_SECONDS = 30L * 24 * 60 * 60
