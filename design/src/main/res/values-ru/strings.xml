@@ -288,6 +288,7 @@
     <string name="clod_sub_draft">Не загружена</string>
     <string name="clod_sub_draft_activate">Подписка ещё не загружена. Сохраните её, чтобы выбрать</string>
     <string name="clod_sub_active">Активна</string>
+    <string name="clod_sub_in_use">Используется сейчас</string>
     <string name="clod_sub_expiring">Истекает</string>
     <string name="clod_sub_exhausted">Трафик закончился</string>
     <string name="clod_sub_expired">Истекла</string>

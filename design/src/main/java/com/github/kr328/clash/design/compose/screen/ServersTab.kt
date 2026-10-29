@@ -244,6 +244,7 @@ fun ServersTab(
                         freeze = proxy.name in state.freeze,
                         onFreezeClick = { onAction(MainAction.ShowFreeze) },
                         mobileOnly = proxy.name in mobileOnly,
+                        group = proxy.isGroup,
                     )
                 }
             }

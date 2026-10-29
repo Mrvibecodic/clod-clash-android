@@ -335,6 +335,7 @@
     <string name="clod_sub_draft">Not loaded</string>
     <string name="clod_sub_draft_activate">This subscription isn’t loaded yet. Save it to select it</string>
     <string name="clod_sub_active">Active</string>
+    <string name="clod_sub_in_use">In use now</string>
     <string name="clod_sub_expiring">Expiring</string>
     <string name="clod_sub_exhausted">Out of traffic</string>
     <string name="clod_sub_expired">Expired</string>

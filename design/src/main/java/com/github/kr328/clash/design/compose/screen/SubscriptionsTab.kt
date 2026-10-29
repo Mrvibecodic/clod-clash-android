@@ -6,11 +6,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +34,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -298,30 +297,15 @@ private fun SubscriptionCard(
         border = if (missed >= 2) BorderStroke(2.dp, warn) else null,
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .selectable(selected = profile.active, role = Role.RadioButton) {
                 onAction(MainAction.ActivateProfile(profile))
             },
     ) {
         Row {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 14.dp)
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
-                    .background(
-                        if (profile.active) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            Color.Transparent
-                        },
-                    ),
-            )
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(start = 10.dp, top = 14.dp, end = 14.dp, bottom = 14.dp),
+                    .padding(14.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -335,11 +319,7 @@ private fun SubscriptionCard(
                     StatusBadge(
                         text = status.label(),
                         color = status.color(),
-                        on = if (profile.active) {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.surfaceContainerLow
-                        },
+                        on = MaterialTheme.colorScheme.surfaceContainerLow,
                     )
                     Box(
                         modifier = Modifier
@@ -399,6 +379,14 @@ private fun SubscriptionCard(
                     }
                 }
 
+                if (profile.active) {
+                    Text(
+                        text = stringResource(R.string.clod_sub_in_use),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+
                 val traffic = trafficText(profile, used)
 
                 if (traffic != null || profile.expire > 0) {
@@ -431,7 +419,12 @@ private fun SubscriptionCard(
                     Spacer(Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
-                        color = status.color(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = if (profile.active) {
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                        } else {
+                            ProgressIndicatorDefaults.linearTrackColor
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp)
@@ -563,7 +556,7 @@ fun ActiveSubscriptionCard(
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
-                    color = status.color(),
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)

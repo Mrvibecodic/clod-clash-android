@@ -4,17 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -160,6 +158,7 @@ fun ProxyRow(
     onFreezeClick: () -> Unit = {},
     // Сервер только для мобильной сети (clod-mobile-only); виден он только в ней
     mobileOnly: Boolean = false,
+    group: Boolean = false,
 ) {
     val (flag, name) = remember(title) { splitFlag(title) }
 
@@ -168,7 +167,6 @@ fun ProxyRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(ClodRowCorner))
             .background(
                 if (selected) {
@@ -182,26 +180,27 @@ fun ProxyRow(
 
                 onClick()
             }
-            .padding(end = 12.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .padding(vertical = 2.dp)
-                .width(4.dp)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
-                .background(
-                    if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        Color.Transparent
-                    },
-                ),
-        )
-        Spacer(Modifier.width(8.dp))
         if (flag != null) {
             Text(text = flag, fontSize = 20.sp)
+            Spacer(Modifier.width(10.dp))
+        } else if (group) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_baseline_flash_on),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
             Spacer(Modifier.width(10.dp))
         }
         val on = if (selected) {
