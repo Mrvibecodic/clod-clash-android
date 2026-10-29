@@ -1,5 +1,6 @@
 package com.github.kr328.clash.design.compose.component
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.AnimatedVisibility
@@ -172,13 +173,18 @@ fun NoticeHost(state: NoticeState, modifier: Modifier = Modifier, bottomInset: D
     detail?.let { opened ->
         val text = opened.detail ?: return@let
 
-        AlertDialog(
-            onDismissRequest = { detail = null },
-            title = { Text(stringResource(noticeDetailTitle(opened.kind))) },
-            text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
-            confirmButton = {
-                TextButton(onClick = { detail = null }) { Text(stringResource(R.string.ok)) }
-            },
-        )
+        DetailDialog(title = noticeDetailTitle(opened.kind), text = text, onDismiss = { detail = null })
     }
+}
+
+@Composable
+internal fun DetailDialog(@StringRes title: Int, text: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(title)) },
+        text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
+        },
+    )
 }

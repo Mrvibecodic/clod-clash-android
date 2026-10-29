@@ -14,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -36,6 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.DetailDialog
 
 enum class AddProfileStep {
     Input,
@@ -117,14 +117,7 @@ private fun InputStep(state: AddProfileState, onAction: (AddProfileAction) -> Un
         }
 
         if (open) {
-            AlertDialog(
-                onDismissRequest = { open = false },
-                title = { Text(stringResource(R.string.error)) },
-                text = { Text(detail, Modifier.verticalScroll(rememberScrollState())) },
-                confirmButton = {
-                    TextButton(onClick = { open = false }) { Text(stringResource(R.string.ok)) }
-                },
-            )
+            DetailDialog(title = R.string.error, text = detail, onDismiss = { open = false })
         }
     }
     Spacer(Modifier.height(8.dp))
