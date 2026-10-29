@@ -4,19 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import java.util.*
 
-fun Intent.grantPermissions(read: Boolean = true, write: Boolean = true): Intent {
-    var flags = 0
-
-    if (read)
-        flags = flags or Intent.FLAG_GRANT_READ_URI_PERMISSION
-
-    if (write)
-        flags = flags or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-
-    addFlags(flags)
-
-    return this
-}
+fun Intent.grantReadPermission(): Intent = addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
 var Intent.fileName: String?
     get() {

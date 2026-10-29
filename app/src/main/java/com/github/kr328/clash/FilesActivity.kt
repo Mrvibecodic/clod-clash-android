@@ -8,7 +8,7 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.os.BundleCompat
 import androidx.core.os.bundleOf
-import com.github.kr328.clash.common.util.grantPermissions
+import com.github.kr328.clash.common.util.grantReadPermission
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.common.util.uuid
 import com.github.kr328.clash.design.FilesDesign
@@ -106,7 +106,7 @@ class FilesActivity : BaseActivity<FilesDesign>() {
                                     Intent(Intent.ACTION_VIEW).setDataAndType(
                                         client.buildDocumentUri(it.file.id),
                                         "text/plain"
-                                    ).grantPermissions(write = false)
+                                    ).grantReadPermission()
                                 )
                             }
                             is FilesDesign.Request.DeleteFile -> {
