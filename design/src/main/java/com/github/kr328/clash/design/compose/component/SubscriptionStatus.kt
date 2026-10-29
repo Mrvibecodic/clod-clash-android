@@ -43,6 +43,11 @@ fun Profile.usedTraffic(): Long {
     return if (sum < 0) Long.MAX_VALUE else sum
 }
 
+// expire == 0 — срока у подписки нет
+fun Profile.expiredAt(now: Long): Boolean = expire in 1 until now
+
+fun Profile.exhausted(used: Long): Boolean = total > 0 && used >= total
+
 sealed interface TrafficLimit {
     data class Limited(val total: Long) : TrafficLimit
     data object Unlimited : TrafficLimit
@@ -64,11 +69,9 @@ fun noServersReason(profile: Profile?, panel: PanelInfo?, now: Long): NoServersR
     if (panel?.noServers != true) return null
 
     if (profile != null) {
-        if (profile.expire in 1 until now) return NoServersReason.Expired
+        if (profile.expiredAt(now)) return NoServersReason.Expired
 
-        val used = profile.usedTraffic()
-
-        if (profile.total > 0 && used >= profile.total) return NoServersReason.Traffic
+        if (profile.exhausted(profile.usedTraffic())) return NoServersReason.Traffic
     }
 
     return NoServersReason.Provider

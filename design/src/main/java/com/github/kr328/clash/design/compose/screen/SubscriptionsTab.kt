@@ -66,6 +66,8 @@ import com.github.kr328.clash.design.compose.component.RadioOption
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.TrafficLimit
+import com.github.kr328.clash.design.compose.component.exhausted
+import com.github.kr328.clash.design.compose.component.expiredAt
 import com.github.kr328.clash.design.compose.component.trafficLimit
 import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
@@ -91,8 +93,8 @@ internal fun subscriptionState(profile: Profile, now: Long): SubscriptionState {
     val used = profile.usedTraffic()
     return when {
         !profile.imported -> SubscriptionState.Draft
-        profile.expire in 1 until now -> SubscriptionState.Expired
-        profile.total > 0 && used >= profile.total -> SubscriptionState.Exhausted
+        profile.expiredAt(now) -> SubscriptionState.Expired
+        profile.exhausted(used) -> SubscriptionState.Exhausted
         profile.expire > 0 &&
             profile.expire - now <= TimeUnit.DAYS.toMillis(3) -> SubscriptionState.Expiring
 
@@ -133,9 +135,9 @@ internal fun expiryLeft(expire: Long, now: Long): String? {
 }
 
 @Composable
-internal fun expiryDate(expire: Long, now: Long): String = stringResource(
-    if (expire in 1 until now) R.string.clod_sub_expired_at else R.string.clod_sub_until,
-    formatDate(expire),
+internal fun expiryDate(profile: Profile, now: Long): String = stringResource(
+    if (profile.expiredAt(now)) R.string.clod_sub_expired_at else R.string.clod_sub_until,
+    formatDate(profile.expire),
 )
 
 @Composable
@@ -383,7 +385,7 @@ private fun SubscriptionCard(
                     profile = profile,
                     used = used,
                     expiry = if (profile.expire > 0) {
-                        expiryLeft(profile.expire, now) ?: expiryDate(profile.expire, now)
+                        expiryLeft(profile.expire, now) ?: expiryDate(profile, now)
                     } else {
                         null
                     },
@@ -500,7 +502,7 @@ fun ActiveSubscriptionCard(
             UsageBlock(
                 profile = profile,
                 used = used,
-                expiry = if (profile.expire > 0) expiryDate(profile.expire, now) else null,
+                expiry = if (profile.expire > 0) expiryDate(profile, now) else null,
                 expiryStyle = MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),

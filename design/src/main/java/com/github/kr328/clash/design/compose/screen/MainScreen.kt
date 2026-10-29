@@ -1054,7 +1054,7 @@ private fun QuotaCards(item: SubscriptionItem) {
                 label = stringResource(R.string.clod_quota_expiry),
                 value = expiryLeft(profile.expire, now).orEmpty(),
                 progress = null,
-                note = expiryDate(profile.expire, now),
+                note = expiryDate(profile, now),
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
