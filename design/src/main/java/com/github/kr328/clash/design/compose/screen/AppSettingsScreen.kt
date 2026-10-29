@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.SwitchRow
@@ -311,26 +312,17 @@ private fun AppUpdateNotificationsRow(checked: Boolean, enabled: Boolean, autoCh
     )
 
     if (confirming) {
-        AlertDialog(
-            onDismissRequest = { confirming = false },
-            title = { Text(stringResource(R.string.clod_update_notify_off_title)) },
-            text = { Text(stringResource(R.string.clod_update_notify_off_text)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirming = false
+        ConfirmDialog(
+            title = stringResource(R.string.clod_update_notify_off_title),
+            text = stringResource(R.string.clod_update_notify_off_text),
+            confirm = stringResource(R.string.clod_update_notify_off_action),
+            onConfirm = {
+                confirming = false
 
-                        onAction(AppSettingsAction.SetAppUpdateNotifications(false))
-                    },
-                ) {
-                    Text(stringResource(R.string.clod_update_notify_off_action))
-                }
+                onAction(AppSettingsAction.SetAppUpdateNotifications(false))
             },
-            dismissButton = {
-                TextButton(onClick = { confirming = false }) {
-                    Text(stringResource(R.string.clod_update_notify_keep))
-                }
-            },
+            onDismiss = { confirming = false },
+            dismiss = stringResource(R.string.clod_update_notify_keep),
         )
     }
 }
@@ -353,26 +345,16 @@ private fun ResetRow(enabled: Boolean, onAction: (AppSettingsAction) -> Unit) {
     )
 
     if (confirming) {
-        AlertDialog(
-            onDismissRequest = { confirming = false },
-            title = { Text(stringResource(R.string.clod_reset_title)) },
-            text = { Text(stringResource(R.string.clod_reset_confirm)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirming = false
+        ConfirmDialog(
+            title = stringResource(R.string.clod_reset_title),
+            text = stringResource(R.string.clod_reset_confirm),
+            confirm = stringResource(R.string.clod_reset_action),
+            onConfirm = {
+                confirming = false
 
-                        onAction(AppSettingsAction.ResetSettings)
-                    },
-                ) {
-                    Text(stringResource(R.string.clod_reset_action))
-                }
+                onAction(AppSettingsAction.ResetSettings)
             },
-            dismissButton = {
-                TextButton(onClick = { confirming = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+            onDismiss = { confirming = false },
         )
     }
 }

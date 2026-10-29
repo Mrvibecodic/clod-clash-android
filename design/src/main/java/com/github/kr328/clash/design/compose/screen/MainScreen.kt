@@ -109,6 +109,7 @@ import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
+import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.compose.component.ConnectionStatus
 import com.github.kr328.clash.design.compose.component.FreezePill
 import com.github.kr328.clash.design.compose.component.FreezeSheet
@@ -333,20 +334,14 @@ private val CONTENT_MAX_WIDTH = 640.dp
 
 @Composable
 private fun NotificationPromptDialog(onAction: (MainAction) -> Unit) {
-    AlertDialog(
+    ConfirmDialog(
+        title = stringResource(R.string.clod_notify_ask_title),
+        text = stringResource(R.string.clod_notify_ask_text),
+        confirm = stringResource(R.string.clod_notify_ask_allow),
+        onConfirm = { onAction(MainAction.AllowNotifications) },
+        onDismiss = { onAction(MainAction.SkipNotifications) },
+        dismiss = stringResource(R.string.clod_notify_ask_later),
         onDismissRequest = { onAction(MainAction.DismissNotifications) },
-        title = { Text(stringResource(R.string.clod_notify_ask_title)) },
-        text = { Text(stringResource(R.string.clod_notify_ask_text)) },
-        confirmButton = {
-            TextButton(onClick = { onAction(MainAction.AllowNotifications) }) {
-                Text(stringResource(R.string.clod_notify_ask_allow))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onAction(MainAction.SkipNotifications) }) {
-                Text(stringResource(R.string.clod_notify_ask_later))
-            }
-        },
     )
 }
 

@@ -5,13 +5,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
@@ -23,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.model.LogFile
 import com.github.kr328.clash.design.util.format
@@ -111,20 +110,12 @@ fun LogsScreen(
     }
 
     if (state.confirmingDelete) {
-        AlertDialog(
-            onDismissRequest = { onAction(LogsAction.CancelDeleteAll) },
-            title = { Text(stringResource(R.string.delete_all_logs)) },
-            text = { Text(stringResource(R.string.delete_all_logs_warn)) },
-            confirmButton = {
-                TextButton(onClick = { onAction(LogsAction.ConfirmDeleteAll) }) {
-                    Text(stringResource(R.string.delete))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onAction(LogsAction.CancelDeleteAll) }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.delete_all_logs),
+            text = stringResource(R.string.delete_all_logs_warn),
+            confirm = stringResource(R.string.delete),
+            onConfirm = { onAction(LogsAction.ConfirmDeleteAll) },
+            onDismiss = { onAction(LogsAction.CancelDeleteAll) },
         )
     }
 }

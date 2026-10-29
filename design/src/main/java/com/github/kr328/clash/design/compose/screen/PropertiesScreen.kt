@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.model.Profile
@@ -262,38 +263,22 @@ fun PropertiesScreen(
     state.processing?.let { ProgressDialog(it) }
 
     if (state.confirmingSecureOff) {
-        AlertDialog(
-            onDismissRequest = { onAction(PropertiesAction.CancelSecureOff) },
-            title = { Text(stringResource(R.string.clod_secure_off_title)) },
-            text = { Text(stringResource(R.string.clod_secure_off_body)) },
-            confirmButton = {
-                TextButton(onClick = { onAction(PropertiesAction.ConfirmSecureOff) }) {
-                    Text(stringResource(R.string.clod_secure_off_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onAction(PropertiesAction.CancelSecureOff) }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.clod_secure_off_title),
+            text = stringResource(R.string.clod_secure_off_body),
+            confirm = stringResource(R.string.clod_secure_off_confirm),
+            onConfirm = { onAction(PropertiesAction.ConfirmSecureOff) },
+            onDismiss = { onAction(PropertiesAction.CancelSecureOff) },
         )
     }
 
     if (state.confirmingExit) {
-        AlertDialog(
-            onDismissRequest = { onAction(PropertiesAction.CancelExit) },
-            title = { Text(stringResource(R.string.exit_without_save)) },
-            text = { Text(stringResource(R.string.exit_without_save_warning)) },
-            confirmButton = {
-                TextButton(onClick = { onAction(PropertiesAction.ConfirmExit) }) {
-                    Text(stringResource(R.string.clod_exit_discard))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { onAction(PropertiesAction.CancelExit) }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+        ConfirmDialog(
+            title = stringResource(R.string.exit_without_save),
+            text = stringResource(R.string.exit_without_save_warning),
+            confirm = stringResource(R.string.clod_exit_discard),
+            onConfirm = { onAction(PropertiesAction.ConfirmExit) },
+            onDismiss = { onAction(PropertiesAction.CancelExit) },
         )
     }
 }

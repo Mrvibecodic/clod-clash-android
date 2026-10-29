@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
+import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.TrafficLimit
@@ -252,25 +253,15 @@ private fun SubscriptionCard(
     var deleting by rememberSaveable { mutableStateOf(false) }
 
     if (deleting) {
-        AlertDialog(
-            onDismissRequest = { deleting = false },
-            title = { Text(stringResource(R.string.delete)) },
-            text = { Text(stringResource(R.string.clod_sub_delete_message, item.title.bidiIsolated())) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleting = false
-                        onAction(MainAction.DeleteProfile(profile))
-                    },
-                ) {
-                    Text(stringResource(R.string.delete))
-                }
+        ConfirmDialog(
+            title = stringResource(R.string.delete),
+            text = stringResource(R.string.clod_sub_delete_message, item.title.bidiIsolated()),
+            confirm = stringResource(R.string.delete),
+            onConfirm = {
+                deleting = false
+                onAction(MainAction.DeleteProfile(profile))
             },
-            dismissButton = {
-                TextButton(onClick = { deleting = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+            onDismiss = { deleting = false },
         )
     }
 

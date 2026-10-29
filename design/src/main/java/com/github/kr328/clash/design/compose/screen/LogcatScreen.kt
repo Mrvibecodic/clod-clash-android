@@ -15,7 +15,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.util.format
 
 @Immutable
@@ -130,25 +130,15 @@ fun LogcatScreen(
     }
 
     if (deleting) {
-        AlertDialog(
-            onDismissRequest = { deleting = false },
-            title = { Text(stringResource(R.string.delete)) },
-            text = { Text(stringResource(R.string.clod_log_delete_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleting = false
-                        onAction(LogcatAction.Delete)
-                    },
-                ) {
-                    Text(stringResource(R.string.delete))
-                }
+        ConfirmDialog(
+            title = stringResource(R.string.delete),
+            text = stringResource(R.string.clod_log_delete_message),
+            confirm = stringResource(R.string.delete),
+            onConfirm = {
+                deleting = false
+                onAction(LogcatAction.Delete)
             },
-            dismissButton = {
-                TextButton(onClick = { deleting = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+            onDismiss = { deleting = false },
         )
     }
 
