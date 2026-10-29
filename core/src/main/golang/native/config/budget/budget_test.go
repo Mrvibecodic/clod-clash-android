@@ -46,7 +46,7 @@ func TestDirectRetryStaysInsideAddressWindow(t *testing.T) {
 		// 30 с, прямой пришёл на миллисекунды позже — запас остаётся
 		{"reserve right after the tunnel share", 110*time.Second + 5*time.Millisecond, 120 * time.Second, false, DirectReserve, 10*time.Second - 5*time.Millisecond, true},
 	} {
-		b := New(start)
+		b := Within(start, Total)
 		if row.provider {
 			b.EnterProviderPhase()
 		}
@@ -64,7 +64,7 @@ func TestDirectRetryStaysInsideAddressWindow(t *testing.T) {
 }
 
 func TestWindowRefusesBelowTheFloor(t *testing.T) {
-	b := New(start)
+	b := Within(start, Total)
 	b.EnterProviderPhase()
 
 	if _, ok := b.Window(start.Add(Total-MinAttempt+time.Second), 30*time.Second); ok {
@@ -77,7 +77,7 @@ func TestWindowRefusesBelowTheFloor(t *testing.T) {
 }
 
 func TestWindowSurvivesAClockJump(t *testing.T) {
-	b := New(start)
+	b := Within(start, Total)
 
 	if _, ok := b.Window(start.Add(time.Hour), 30*time.Second); ok {
 		t.Fatal("the clock jumped forward past the deadline and a window was still granted")
@@ -96,7 +96,7 @@ func TestConfigurationPhaseCannotEatTheProviderShare(t *testing.T) {
 		110 * time.Second,
 		ConfigShare,
 	} {
-		b := New(start)
+		b := Within(start, Total)
 		now := start.Add(spent)
 
 		if got := b.Remaining(now); got > ConfigShare-spent {
@@ -109,14 +109,14 @@ func TestConfigurationPhaseCannotEatTheProviderShare(t *testing.T) {
 			t.Fatalf("spent %s: providers got %s, less than %s", spent, got, ProviderShare)
 		}
 
-		if b.Deadline() != start.Add(Total) {
-			t.Fatalf("spent %s: the overall deadline moved to %s", spent, b.Deadline())
+		if b.Remaining(start) != Total {
+			t.Fatalf("spent %s: the overall deadline moved by %s", spent, Total-b.Remaining(start))
 		}
 	}
 }
 
 func TestConfigurationPhaseIsCapped(t *testing.T) {
-	b := New(start)
+	b := Within(start, Total)
 
 	if got, ok := b.Window(start, fetchTimeoutForTest); !ok || got != fetchTimeoutForTest {
 		t.Fatalf("first address window = %s, %v", got, ok)
@@ -148,7 +148,7 @@ func TestProviderShareScalesWithASmallerBudget(t *testing.T) {
 }
 
 func TestSecureChannelRoundsShareTheAddressWindow(t *testing.T) {
-	b := New(start)
+	b := Within(start, Total)
 	deadline := start.Add(30 * time.Second)
 
 	spent := time.Duration(0)
@@ -187,7 +187,7 @@ func TestSecureChannelRoundsShareTheAddressWindow(t *testing.T) {
 func TestLastConfigurationStepCannotOverrunTheShare(t *testing.T) {
 	const step = 10 * time.Second
 
-	b := New(start)
+	b := Within(start, Total)
 
 	if got, ok := b.Window(start.Add(ConfigShare-step), step); !ok || got != step {
 		t.Fatalf("the last step of the configuration phase got %s, %v", got, ok)
@@ -208,7 +208,7 @@ func TestLastConfigurationStepCannotOverrunTheShare(t *testing.T) {
 // повтор не дольше DirectReserve, и следующему обмену остаётся окно; после
 // обрыва прямой получает весь остаток, как раньше.
 func TestDirectRetryAfterARefusalLeavesARound(t *testing.T) {
-	b := New(start)
+	b := Within(start, Total)
 	deadline := start.Add(60 * time.Second)
 	refusedAt := start.Add(time.Second)
 

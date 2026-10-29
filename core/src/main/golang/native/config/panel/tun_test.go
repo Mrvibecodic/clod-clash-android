@@ -1,6 +1,7 @@
 package panel
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -8,6 +9,23 @@ import (
 	"testing"
 	"time"
 )
+
+func ReadTunPrefs(dir string) TunPrefs {
+	var prefs TunPrefs
+
+	bytes, err := os.ReadFile(tunPath(dir))
+	if err != nil {
+		return prefs
+	}
+
+	_ = json.Unmarshal(bytes, &prefs)
+
+	prefs.Stack = NormalizeTunStack(prefs.Stack)
+	prefs.IncludePackages = SanitizePackages(prefs.IncludePackages)
+	prefs.ExcludePackages = SanitizePackages(prefs.ExcludePackages)
+
+	return prefs
+}
 
 func TestNormalizeTunStack(t *testing.T) {
 	cases := map[string]string{
@@ -182,26 +200,6 @@ func TestTunPrefsReadInvalid(t *testing.T) {
 
 	if got := ReadTunPrefs(dir); !got.IsEmpty() {
 		t.Errorf("expected empty prefs, got %+v", got)
-	}
-}
-
-func TestTunPrefsReadNormalizes(t *testing.T) {
-	dir := t.TempDir()
-
-	data := []byte(`{"stack":"LWIP","includePackages":[" com.a ","com.a",""]}`)
-
-	if err := os.WriteFile(filepath.Join(dir, tunFileName), data, 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	got := ReadTunPrefs(dir)
-
-	if got.Stack != "" {
-		t.Errorf("Stack = %q, expected empty", got.Stack)
-	}
-
-	if !reflect.DeepEqual(got.IncludePackages, []string{"com.a"}) {
-		t.Errorf("IncludePackages = %v", got.IncludePackages)
 	}
 }
 

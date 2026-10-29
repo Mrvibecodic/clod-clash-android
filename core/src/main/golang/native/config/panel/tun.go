@@ -1,7 +1,6 @@
 package panel
 
 import (
-	"encoding/json"
 	"os"
 	P "path"
 	"strings"
@@ -80,23 +79,6 @@ func TunPrefsOf(include, exclude []string, info Info) TunPrefs {
 		ExcludePackages: SanitizePackages(exclude),
 		AllApps:         info.AllApps,
 	}
-}
-
-func ReadTunPrefs(dir string) TunPrefs {
-	var prefs TunPrefs
-
-	bytes, err := os.ReadFile(tunPath(dir))
-	if err != nil {
-		return prefs
-	}
-
-	_ = json.Unmarshal(bytes, &prefs)
-
-	prefs.Stack = NormalizeTunStack(prefs.Stack)
-	prefs.IncludePackages = SanitizePackages(prefs.IncludePackages)
-	prefs.ExcludePackages = SanitizePackages(prefs.ExcludePackages)
-
-	return prefs
 }
 
 func WriteTunPrefs(dir string, prefs TunPrefs) {

@@ -459,10 +459,6 @@ func TestApplyHeaders(t *testing.T) {
 		t.Fatalf("название = %q", info.Title)
 	}
 
-	if info.HomeURL != "https://example.com" {
-		t.Fatalf("домашняя страница = %q", info.HomeURL)
-	}
-
 	if info.SupportURL != "tg://resolve?domain=support" {
 		t.Fatalf("поддержка = %q", info.SupportURL)
 	}
@@ -1112,7 +1108,6 @@ func TestApplyHeadersLinksVanishWhenPanelStops(t *testing.T) {
 		Title:      "Провайдер",
 		PortalURL:  "https://old.example/cabinet",
 		SupportURL: "https://t.me/old_support",
-		HomeURL:    "https://old.example/sub",
 		BotURL:     "tg://resolve?domain=old_bot",
 		MonitorURL: "https://status.old.example",
 		GuideURL:   "https://old.example/help",
@@ -1131,10 +1126,10 @@ func TestApplyHeadersLinksVanishWhenPanelStops(t *testing.T) {
 		t.Fatalf("бот = %q", info.BotURL)
 	}
 
-	if info.SupportURL != "" || info.HomeURL != "" || info.MonitorURL != "" || info.GuideURL != "" {
+	if info.SupportURL != "" || info.MonitorURL != "" || info.GuideURL != "" {
 		t.Fatalf(
-			"чужие ссылки остались: поддержка %q, страница %q, мониторинг %q, инструкция %q",
-			info.SupportURL, info.HomeURL, info.MonitorURL, info.GuideURL,
+			"чужие ссылки остались: поддержка %q, мониторинг %q, инструкция %q",
+			info.SupportURL, info.MonitorURL, info.GuideURL,
 		)
 	}
 

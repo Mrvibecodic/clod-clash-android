@@ -766,7 +766,9 @@ func TestAForgottenStoreIsGoneAndStaysGone(t *testing.T) {
 	}
 
 	// Несохранённое из памяти ядра в файл не возвращается.
-	Flush()
+	cacheMu.Lock()
+	flushLocked(time.Now().Unix())
+	cacheMu.Unlock()
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("файл вернулся: %v", err)
 	}

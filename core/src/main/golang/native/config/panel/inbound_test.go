@@ -1,27 +1,23 @@
 package panel
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestInboundPrefsLocalProxyPort(t *testing.T) {
-	cases := []struct {
-		prefs    InboundPrefs
-		expected int
-	}{
-		{InboundPrefs{MixedPort: 7890}, 7890},
-		{InboundPrefs{HttpPort: 8080}, 8080},
-		{InboundPrefs{MixedPort: 7890, HttpPort: 8080}, 7890},
-		{InboundPrefs{}, 0},
+func ReadInboundPrefs(dir string) InboundPrefs {
+	var prefs InboundPrefs
+
+	bytes, err := os.ReadFile(inboundPath(dir))
+	if err != nil {
+		return prefs
 	}
 
-	for _, item := range cases {
-		if got := item.prefs.LocalProxyPort(); got != item.expected {
-			t.Errorf("LocalProxyPort of %+v = %d, expected %d", item.prefs, got, item.expected)
-		}
-	}
+	_ = json.Unmarshal(bytes, &prefs)
+
+	return prefs
 }
 
 func TestWriteAndReadInboundPrefs(t *testing.T) {

@@ -23,7 +23,6 @@ type Info struct {
 	Announce    string `json:"announce,omitempty"`
 	AnnounceURL string `json:"announceUrl,omitempty"`
 	SupportURL  string `json:"supportUrl,omitempty"`
-	HomeURL     string `json:"homeUrl,omitempty"`
 	PortalURL   string `json:"portalUrl,omitempty"`
 	Promo       string `json:"promo,omitempty"`
 	PromoURL    string `json:"promoUrl,omitempty"`
@@ -192,7 +191,6 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.Announce = truncateBanner(firstNonEmpty(headerValue(header, "clod-announce"), headerValue(header, "announce")), announceMaxChars)
 	info.AnnounceURL = httpsURL(headerValue(header, "announce-url"))
 	info.SupportURL = contactURL(headerValue(header, "support-url"))
-	info.HomeURL = httpsURL(headerValue(header, "profile-web-page-url"))
 	info.PortalURL = httpsURL(headerValue(header, "clod-portal-url"))
 	info.BotURL = contactURL(headerValue(header, "clod-bot-url"))
 	info.MonitorURL = httpsURL(headerValue(header, "clod-monitor-url"))

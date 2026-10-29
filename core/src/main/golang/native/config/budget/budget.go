@@ -16,10 +16,6 @@ type Budget struct {
 	phase    time.Time
 }
 
-func New(now time.Time) *Budget {
-	return Within(now, Total)
-}
-
 func Within(now time.Time, total time.Duration) *Budget {
 	return &Budget{deadline: now.Add(total), phase: now.Add(configShare(total))}
 }
@@ -34,10 +30,6 @@ func configShare(total time.Duration) time.Duration {
 	}
 
 	return time.Duration(total.Milliseconds()*ConfigShare.Milliseconds()/Total.Milliseconds()) * time.Millisecond
-}
-
-func (b *Budget) Deadline() time.Time {
-	return b.deadline
 }
 
 func (b *Budget) Remaining(now time.Time) time.Duration {
