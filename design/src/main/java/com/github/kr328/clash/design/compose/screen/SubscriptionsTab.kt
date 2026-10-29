@@ -54,7 +54,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.util.toBytesString
@@ -668,36 +667,18 @@ internal fun StatusBadge(text: String, color: Color, on: Color) {
 
 @Composable
 private fun EmptySubscriptions(onAction: (MainAction) -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center,
+    EmptyState(
+        title = stringResource(R.string.clod_no_subscriptions),
+        hint = stringResource(R.string.clod_no_subscriptions_hint),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.clod_no_subscriptions),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
+        Button(onClick = { onAction(MainAction.NewProfile) }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_baseline_add),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
             )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.clod_no_subscriptions_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(24.dp))
-            Button(onClick = { onAction(MainAction.NewProfile) }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_baseline_add),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.clod_sub_add))
-            }
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.clod_sub_add))
         }
     }
 }

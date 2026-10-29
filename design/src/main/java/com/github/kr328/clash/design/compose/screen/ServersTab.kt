@@ -267,6 +267,11 @@ internal fun Waiting() {
 // hint — почему пусто: нет подписки, в подписке нет групп или пуста группа
 @Composable
 private fun EmptyServers(@StringRes hint: Int) {
+    EmptyState(title = stringResource(R.string.clod_no_servers), hint = stringResource(hint))
+}
+
+@Composable
+internal fun EmptyState(title: String, hint: String, action: (@Composable () -> Unit)? = null) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -275,18 +280,22 @@ private fun EmptyServers(@StringRes hint: Int) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(R.string.clod_no_servers),
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(hint),
+                text = hint,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
+            if (action != null) {
+                Spacer(Modifier.height(24.dp))
+                action()
+            }
         }
     }
 }
