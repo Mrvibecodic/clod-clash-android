@@ -6,7 +6,6 @@ import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
 import com.github.kr328.clash.design.OverrideSettingsDesign
 import com.github.kr328.clash.design.compose.screen.ModeShadow
-import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.util.ServiceUnavailableException
 import com.github.kr328.clash.util.queryPanelInfo
@@ -76,12 +75,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
 
         setContentDesign(design)
 
-        if (opened.lost) {
-            design.showToast(
-                com.github.kr328.clash.design.R.string.clod_override_pending_lost,
-                ToastDuration.Long,
-            )
-        }
+        design.warnLostDraft(opened)
 
         while (isActive) {
             select<Unit> {
@@ -92,11 +86,7 @@ class OverrideSettingsActivity : BaseActivity<OverrideSettingsDesign>() {
                     when (it) {
                         OverrideSettingsDesign.Request.Back -> finish()
                         OverrideSettingsDesign.Request.ResetOverride -> {
-                            if (design.requestResetConfirm() && resetStoredOverride(design)) {
-                                defer { }
-
-                                finish()
-                            }
+                            if (design.requestResetConfirm()) resetOverrideAndClose(design)
                         }
                     }
                 }

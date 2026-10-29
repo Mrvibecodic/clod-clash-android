@@ -49,11 +49,14 @@ val geoFilesReadTimeout = 120_000
 
 val geoFilesMaxAge = 24L * 60 * 60 * 1000
 
+// Та же таблица, что GeoAssets.files в :common (скрипт сборки модуль не видит)
+val geoFilesBase = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest"
+
 val geoFilesUrls = mapOf(
-    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb" to "geoip.metadb",
-    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat" to "geosite.dat",
-    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb" to "ASN.mmdb",
-    "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/BundleMRS.7z" to "BundleMRS.7z",
+    "$geoFilesBase/geoip.metadb" to "geoip.metadb",
+    "$geoFilesBase/geosite.dat" to "geosite.dat",
+    "$geoFilesBase/GeoLite2-ASN.mmdb" to "ASN.mmdb",
+    "$geoFilesBase/BundleMRS.7z" to "BundleMRS.7z",
 )
 
 val geoFilesChecksums = layout.buildDirectory.file("geo/geo-sha256.txt")

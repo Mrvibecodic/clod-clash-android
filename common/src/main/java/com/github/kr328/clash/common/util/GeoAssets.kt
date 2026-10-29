@@ -28,12 +28,33 @@ object GeoAssets {
     private const val TEMP_MAX_AGE = 3_600_000L
     private const val STAMPS = "geo-bundled.properties"
 
-    private val names = listOf(
-        "geoip.metadb",
-        "geosite.dat",
-        "ASN.mmdb",
-        "BundleMRS.7z",
+    // Гео-файл ядра: имя в папке ядра; адрес для обновления из сети (null — только
+    // из сборки); расширения, с которыми его можно подложить вручную (пусто —
+    // нельзя); прежние имена, которые такой импорт убирает
+    class Entry(
+        val name: String,
+        val update: String? = null,
+        val importExtensions: List<String> = emptyList(),
+        val obsolete: List<String> = emptyList(),
     )
+
+    private const val UPDATE_BASE = "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest"
+
+    val files = listOf(
+        Entry(
+            name = "geoip.metadb",
+            update = "$UPDATE_BASE/geoip.metadb",
+            importExtensions = listOf(".metadb", ".db", ".mmdb"),
+            obsolete = listOf("geoip.db", "country.mmdb"),
+        ),
+        Entry(name = "geosite.dat", update = "$UPDATE_BASE/geosite.dat", importExtensions = listOf(".dat")),
+        Entry(name = "ASN.mmdb", update = "$UPDATE_BASE/GeoLite2-ASN.mmdb", importExtensions = listOf(".mmdb")),
+        Entry(name = "BundleMRS.7z"),
+    )
+
+    fun entry(name: String): Entry = files.first { it.name == name }
+
+    private val names = files.map { it.name }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val started = AtomicBoolean(false)

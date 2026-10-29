@@ -22,14 +22,7 @@ import java.net.URL
 object GeoData {
     private const val TAG = "GeoData"
 
-    private const val BASE =
-        "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest"
-
-    private val FILES = mapOf(
-        "geoip.metadb" to "$BASE/geoip.metadb",
-        "geosite.dat" to "$BASE/geosite.dat",
-        "ASN.mmdb" to "$BASE/GeoLite2-ASN.mmdb",
-    )
+    private val FILES = GeoAssets.files.mapNotNull { entry -> entry.update?.let { entry.name to it } }.toMap()
 
     private const val CONNECT_TIMEOUT = 10_000
     private const val READ_TIMEOUT = 30_000

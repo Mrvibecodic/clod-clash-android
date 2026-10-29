@@ -2,7 +2,6 @@ package com.github.kr328.clash
 
 import android.net.Uri
 import android.os.Bundle
-import android.provider.OpenableColumns
 import androidx.activity.result.contract.ActivityResultContracts
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
@@ -13,14 +12,13 @@ import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.common.util.clashDir
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.service.R as ServiceR
+import com.github.kr328.clash.util.displayName
 
 class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
     private var reload = false
@@ -45,9 +43,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
 
         setContentDesign(design)
 
-        if (opened.lost) {
-            design.showToast(R.string.clod_override_pending_lost, ToastDuration.Long)
-        }
+        design.warnLostDraft(opened)
 
         while (isActive) {
             select<Unit> {
@@ -69,28 +65,14 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                             }
                         }
                         MetaFeatureSettingsDesign.Request.ResetOverride -> {
-                            if (design.requestResetConfirm() && resetStoredOverride(design)) {
-                                defer { }
-                                finish()
-                            }
+                            if (design.requestResetConfirm()) resetOverrideAndClose(design)
                         }
-                        MetaFeatureSettingsDesign.Request.ImportGeoIp -> {
-                            val uri = startActivityForResult(
-                                ActivityResultContracts.GetContent(),
-                                "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportGeoIp)
-                        }
-                        MetaFeatureSettingsDesign.Request.ImportGeoSite -> {
-                            val uri = startActivityForResult(
-                                ActivityResultContracts.GetContent(),
-                                "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportGeoSite)
-                        }
+                        MetaFeatureSettingsDesign.Request.ImportGeoIp,
+                        MetaFeatureSettingsDesign.Request.ImportGeoSite,
                         MetaFeatureSettingsDesign.Request.ImportASN -> {
-                            val uri = startActivityForResult(
-                                ActivityResultContracts.GetContent(),
-                                "*/*")
-                            importGeoFile(uri, MetaFeatureSettingsDesign.Request.ImportASN)
+                            val uri = startActivityForResult(ActivityResultContracts.GetContent(), "*/*")
+
+                            importGeoFile(uri, GeoAssets.entry(GEO_IMPORTS.getValue(it)))
                         }
                     }
                 }
@@ -108,59 +90,12 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         }
     }
 
-    private data class GeoImportTarget(
-        val fileName: String,
-        val extensions: List<String>,
-        val obsolete: List<String>,
-    )
-
-    private fun geoImportTarget(
-        importType: MetaFeatureSettingsDesign.Request,
-    ): GeoImportTarget? {
-        return when (importType) {
-            MetaFeatureSettingsDesign.Request.ImportGeoIp -> GeoImportTarget(
-                fileName = "geoip.metadb",
-                extensions = listOf(".metadb", ".db", ".mmdb"),
-                obsolete = listOf("geoip.db", "country.mmdb"),
-            )
-            MetaFeatureSettingsDesign.Request.ImportGeoSite -> GeoImportTarget(
-                fileName = "geosite.dat",
-                extensions = listOf(".dat"),
-                obsolete = emptyList(),
-            )
-            MetaFeatureSettingsDesign.Request.ImportASN -> GeoImportTarget(
-                fileName = "ASN.mmdb",
-                extensions = listOf(".mmdb"),
-                obsolete = emptyList(),
-            )
-            else -> null
-        }
-    }
-
-    private suspend fun importGeoFile(uri: Uri?, importType: MetaFeatureSettingsDesign.Request) {
-        val target = geoImportTarget(importType) ?: return
-
+    private suspend fun importGeoFile(uri: Uri?, target: GeoAssets.Entry) {
         if (uri == null) {
             return
         }
 
-        val displayName = withContext(Dispatchers.IO) {
-            try {
-                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    if (!cursor.moveToFirst()) {
-                        return@use null
-                    }
-
-                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-
-                    if (index >= 0) cursor.getString(index) else null
-                }
-            } catch (e: Exception) {
-                Log.w("Import geo file: $e", e)
-
-                null
-            }
-        }
+        val displayName = uri.displayName(contentResolver)
 
         if (displayName.isNullOrBlank()) {
             design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
@@ -170,13 +105,13 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
 
         val extension = "." + displayName.substringAfterLast('.', "")
 
-        if (extension !in target.extensions) {
+        if (extension !in target.importExtensions) {
             design?.showToast(
                 message = getString(R.string.geofile_unknown_db_format),
                 duration = ToastDuration.Long,
                 detail = getString(
                     R.string.geofile_unknown_db_format_message,
-                    target.extensions.joinToString("/"),
+                    target.importExtensions.joinToString("/"),
                 ),
                 kind = NoticeKind.Error,
             )
@@ -187,8 +122,8 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         var noSpace = false
 
         val imported = GeoAssets.writeGuarded(this) {
-            val destination = File(clashDir, target.fileName)
-            val temp = File(clashDir, "${target.fileName}.importing")
+            val destination = File(clashDir, target.name)
+            val temp = File(clashDir, "${target.name}.importing")
 
             try {
                 clashDir.mkdirs()
@@ -230,5 +165,13 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
         } else {
             design?.showToast(R.string.geofile_import_failed, ToastDuration.Long)
         }
+    }
+
+    private companion object {
+        val GEO_IMPORTS = mapOf(
+            MetaFeatureSettingsDesign.Request.ImportGeoIp to "geoip.metadb",
+            MetaFeatureSettingsDesign.Request.ImportGeoSite to "geosite.dat",
+            MetaFeatureSettingsDesign.Request.ImportASN to "ASN.mmdb",
+        )
     }
 }

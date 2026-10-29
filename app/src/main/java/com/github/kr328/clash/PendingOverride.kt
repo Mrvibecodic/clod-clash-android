@@ -153,7 +153,20 @@ internal suspend fun PendingOverride.Draft.saveReporting(
     false
 }
 
-internal suspend fun resetStoredOverride(design: Design<*>): Boolean = try {
+// Удачный сброс закрывает экран, не записывая черновик
+internal suspend fun BaseActivity<*>.resetOverrideAndClose(design: Design<*>) {
+    if (!resetStoredOverride(design)) return
+
+    defer { }
+
+    finish()
+}
+
+internal suspend fun Design<*>.warnLostDraft(opened: PendingOverride.Opened) {
+    if (opened.lost) showToast(R.string.clod_override_pending_lost, ToastDuration.Long)
+}
+
+private suspend fun resetStoredOverride(design: Design<*>): Boolean = try {
     clearPersistedOverride()
 
     true
