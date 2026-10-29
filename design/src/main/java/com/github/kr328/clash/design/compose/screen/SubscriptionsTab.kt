@@ -57,10 +57,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ConfirmDialog
+import com.github.kr328.clash.design.compose.component.Pill
 import com.github.kr328.clash.design.compose.component.RadioOption
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
@@ -655,18 +655,14 @@ private fun GroupPicker(
 
 @Composable
 internal fun StatusBadge(text: String, color: Color, on: Color) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(color.statusContainer(on))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+    Pill(
+        container = color.statusContainer(on),
+        contentColor = color.statusText(),
+        horizontal = 8.dp,
+        vertical = 3.dp,
+        fontWeight = FontWeight.Medium,
     ) {
-        Text(
-            text = text,
-            color = color.statusText(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-        )
+        Text(text)
     }
 }
 

@@ -49,6 +49,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -112,6 +113,7 @@ import com.github.kr328.clash.design.compose.component.FreezePill
 import com.github.kr328.clash.design.compose.component.FreezeSheet
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.DelayPill
+import com.github.kr328.clash.design.compose.component.Pill
 import com.github.kr328.clash.design.compose.component.PingBounds
 import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.PowerButton
@@ -915,32 +917,32 @@ private fun StatusPill(status: ConnectionStatus) {
         accent.statusContainer(MaterialTheme.colorScheme.background)
     }
 
-    Row(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(container)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Pill(
+        container = container,
+        contentColor = accent.statusText(),
+        horizontal = 12.dp,
+        vertical = 6.dp,
     ) {
-        Box(
-            modifier = Modifier
-                .size(7.dp)
-                .clip(CircleShape)
-                .background(accent.statusText()),
-        )
-        Spacer(Modifier.width(7.dp))
-        Text(
-            text = stringResource(
-                when (status) {
-                    ConnectionStatus.Disconnected -> R.string.clod_status_disconnected
-                    ConnectionStatus.Connecting -> R.string.clod_status_connecting
-                    ConnectionStatus.Connected -> R.string.clod_status_connected
-                    ConnectionStatus.Disconnecting -> R.string.clod_status_disconnecting
-                },
-            ),
-            style = MaterialTheme.typography.labelLarge,
-            color = accent.statusText(),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(LocalContentColor.current),
+            )
+            Spacer(Modifier.width(7.dp))
+            Text(
+                text = stringResource(
+                    when (status) {
+                        ConnectionStatus.Disconnected -> R.string.clod_status_disconnected
+                        ConnectionStatus.Connecting -> R.string.clod_status_connecting
+                        ConnectionStatus.Connected -> R.string.clod_status_connected
+                        ConnectionStatus.Disconnecting -> R.string.clod_status_disconnecting
+                    },
+                ),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
     }
 }
 

@@ -96,26 +96,7 @@ fun DelayPill(
 ) {
     val mark = delayMark(delay, bounds)
 
-    if (mark == DelayMark.Untested) {
-        Box(
-            modifier = modifier
-                .widthIn(min = 52.dp)
-                .clip(RoundedCornerShape(50))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "—",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-
-        return
-    }
-
+    val untested = mark == DelayMark.Untested
     val color = when {
         mark == DelayMark.Dead -> ClodTheme.extraColors.delaySlow
         marksOnly || mark == DelayMark.Fast -> ClodTheme.extraColors.delayFast
@@ -123,20 +104,12 @@ fun DelayPill(
         else -> ClodTheme.extraColors.delaySlow
     }
 
-    Box(
-        modifier = modifier
-            .widthIn(min = 52.dp)
-            .clip(RoundedCornerShape(50))
-            .background(color.statusContainer(on))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center,
+    Pill(
+        container = if (untested) MaterialTheme.colorScheme.surfaceVariant else color.statusContainer(on),
+        contentColor = if (untested) MaterialTheme.colorScheme.onSurfaceVariant else color.statusText(),
+        modifier = modifier.widthIn(min = 52.dp),
     ) {
-        Text(
-            text = delayLabel(mark, delay, marksOnly),
-            color = color.statusText(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
+        Text(text = if (untested) "—" else delayLabel(mark, delay, marksOnly))
     }
 }
 
@@ -289,26 +262,23 @@ fun ProxyRow(
 private fun MobilePill(on: Color) {
     val color = MaterialTheme.colorScheme.primary
 
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(color.statusContainer(on))
-            .padding(horizontal = 7.dp, vertical = 1.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Pill(
+        container = color.statusContainer(on),
+        contentColor = color.statusText(),
+        horizontal = 7.dp,
+        vertical = 1.dp,
     ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_signal_bars),
-            contentDescription = null,
-            tint = color.statusText(),
-            modifier = Modifier.size(12.dp),
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = stringResource(R.string.clod_proxy_mobile_only),
-            color = color.statusText(),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                painter = painterResource(R.drawable.ic_signal_bars),
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = stringResource(R.string.clod_proxy_mobile_only),
+                maxLines = 1,
+            )
+        }
     }
 }
