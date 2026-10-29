@@ -40,7 +40,7 @@ class MetaFeatureSettingsDesign(
         }
     }
 
-    private val resetConfirmation = Confirmation { state = state.copy(confirmingReset = it) }
+    private val resetConfirmation = Confirmation<Boolean> { state = state.copy(confirmingReset = it) }
 
     suspend fun requestResetConfirm(): Boolean = resetConfirmation.request()
 }

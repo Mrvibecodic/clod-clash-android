@@ -5,12 +5,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
-// Вопрос «да/нет» на экране: request ждёт ответа, пока вопрос показан (shown(true)),
+// Вопрос на экране с ответом T: request ждёт ответа, пока вопрос показан (shown(true)),
 // отмена ожидания его убирает.
-class Confirmation(private val shown: (Boolean) -> Unit) {
-    private var pending: CancellableContinuation<Boolean>? = null
+class Confirmation<T>(private val shown: (Boolean) -> Unit) {
+    private var pending: CancellableContinuation<T>? = null
 
-    suspend fun request(): Boolean = withContext(Dispatchers.Main) {
+    suspend fun request(): T = withContext(Dispatchers.Main) {
         suspendCancellableCoroutine { continuation ->
             pending = continuation
 
@@ -24,7 +24,7 @@ class Confirmation(private val shown: (Boolean) -> Unit) {
         }
     }
 
-    fun resume(confirmed: Boolean) {
+    fun resume(answer: T) {
         shown(false)
 
         val continuation = pending ?: return
@@ -32,7 +32,7 @@ class Confirmation(private val shown: (Boolean) -> Unit) {
         pending = null
 
         if (continuation.isActive) {
-            continuation.resumeWith(Result.success(confirmed))
+            continuation.resumeWith(Result.success(answer))
         }
     }
 }

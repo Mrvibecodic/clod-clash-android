@@ -10,9 +10,8 @@ import com.github.kr328.clash.design.compose.screen.FilesAction
 import com.github.kr328.clash.design.compose.screen.FilesScreen
 import com.github.kr328.clash.design.compose.screen.FilesState
 import com.github.kr328.clash.design.model.File
-import kotlinx.coroutines.CancellableContinuation
+import com.github.kr328.clash.design.util.Confirmation
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 
 class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
@@ -59,8 +58,8 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
             is FilesAction.Rename -> pick(Request.RenameFile(action.file))
             is FilesAction.Delete -> pick(Request.DeleteFile(action.file))
             is FilesAction.NameChange -> namingText = action.text
-            is FilesAction.NameConfirm -> resumeNaming(action.name)
-            FilesAction.NameCancel -> resumeNaming(null)
+            is FilesAction.NameConfirm -> naming.resume(action.name)
+            FilesAction.NameCancel -> naming.resume(null)
         }
     }
 
@@ -86,7 +85,12 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
         state = state.copy(currentTime = System.currentTimeMillis())
     }
 
-    private var naming: CancellableContinuation<String?>? = null
+    private val naming = Confirmation<String?> { shown ->
+        if (!shown) {
+            state = state.copy(naming = null)
+            namingText = null
+        }
+    }
 
     private var namingId = 0L
 
@@ -95,32 +99,11 @@ class FilesDesign(context: Context) : Design<FilesDesign.Request>(context) {
 
     suspend fun requestFileName(name: String, restored: Boolean = false): String? {
         return withContext(Dispatchers.Main) {
-            suspendCancellableCoroutine { continuation ->
-                naming = continuation
-                namingText = name
+            namingText = name
 
-                state = state.copy(naming = FileNaming(++namingId, name, selectAll = !restored))
+            state = state.copy(naming = FileNaming(++namingId, name, selectAll = !restored))
 
-                continuation.invokeOnCancellation {
-                    naming = null
-                    namingText = null
-
-                    state = state.copy(naming = null)
-                }
-            }
-        }
-    }
-
-    private fun resumeNaming(name: String?) {
-        state = state.copy(naming = null)
-        namingText = null
-
-        val continuation = naming ?: return
-
-        naming = null
-
-        if (continuation.isActive) {
-            continuation.resumeWith(Result.success(name))
+            naming.request()
         }
     }
 }

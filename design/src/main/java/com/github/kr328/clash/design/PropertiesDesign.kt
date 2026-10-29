@@ -127,7 +127,7 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
         }
     }
 
-    private val exitConfirmation = Confirmation { state = state.copy(confirmingExit = it) }
+    private val exitConfirmation = Confirmation<Boolean> { state = state.copy(confirmingExit = it) }
 
     // Открытые окна переживают поворот: экран сохраняет их вместе с черновиком
     val confirmingSecureOff: Boolean
