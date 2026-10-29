@@ -195,7 +195,7 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 		return chanClient(true), ctx, ok
 	}
 
-	answer, offset, err := chanx.Fetch(url, readChanPin(dir), readChanSkew(dir), chanFields(), chanHeaders(), tunnel, directly, log.Warnln)
+	answer, offset, err := chanx.Fetch(url, readChanPin(dir), readChanSkew(dir), fieldsOf(app.DeviceHeaders()), chanHeaders(), tunnel, directly, log.Warnln)
 	if errors.Is(err, chanx.ErrNoRound) {
 		err = errFetchBudget
 	}
@@ -231,10 +231,6 @@ func openUrlSecure(rounds *roundBudget, url string, dir string, direct *directBu
 	}
 
 	return io.NopCloser(strings.NewReader(answer.Body)), header, nil
-}
-
-func chanFields() chanx.Fields {
-	return fieldsOf(app.DeviceHeaders())
 }
 
 // fieldsOf — поля конверта по заголовкам опознания (nil — без опознания)

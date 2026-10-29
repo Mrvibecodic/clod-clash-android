@@ -5,7 +5,6 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"cfa/native/common/safego"
 	"cfa/native/redact"
@@ -38,17 +37,4 @@ func marshalError(err error) *C.char {
 	}
 
 	return C.CString(redact.Text(err.Error()))
-}
-
-func marshalString(obj any) *C.char {
-	if obj == nil {
-		return nil
-	}
-
-	switch o := obj.(type) {
-	case string:
-		return C.CString(o)
-	}
-
-	panic("invalid marshal type " + reflect.TypeOf(obj).Name())
 }

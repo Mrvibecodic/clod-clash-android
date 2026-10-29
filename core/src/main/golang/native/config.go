@@ -19,7 +19,7 @@ type remoteValidCallback struct {
 }
 
 func (r *remoteValidCallback) reportStatus(json string) {
-	C.fetch_report(r.callback, marshalString(json))
+	C.fetch_report(r.callback, C.CString(json))
 }
 
 //export fetchAndValid

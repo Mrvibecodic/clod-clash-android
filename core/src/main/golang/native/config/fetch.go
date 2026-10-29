@@ -261,10 +261,6 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 	return body, header, nil
 }
 
-func openContent(url string) (io.ReadCloser, error) {
-	return app.OpenContent(url)
-}
-
 func fetchConfig(url *U.URL, file string, secure bool, budget *budgets.Budget, limit time.Duration) (fetchHeader, error) {
 	if !secure || (url.Scheme != "http" && url.Scheme != "https") {
 		return fetch(url, file, true, budget, limit)
@@ -350,7 +346,7 @@ func fetch(url *U.URL, file string, device bool, budget *budgets.Budget, limit t
 	case "http", "https":
 		reader, header, err = openUrl(ctx, direct, url.String(), device)
 	case "content":
-		reader, err = openContent(url.String())
+		reader, err = app.OpenContent(url.String())
 	default:
 		err = fmt.Errorf("unsupported scheme %s of %s", url.Scheme, url)
 	}
@@ -522,7 +518,7 @@ func FetchAndValid(
 
 	budget := budgets.Within(time.Now(), total)
 
-	info := readPanelInfo(path)
+	info := panel.Read(path)
 
 	previousConfig := configPath + previousSuffix
 	refused := false
@@ -578,7 +574,7 @@ func FetchAndValid(
 
 		reportSubscriptionInfo(header, reportStatus)
 
-		applyHeaders(&info, header.Raw, url.String())
+		panel.ApplyHeaders(&info, header.Raw, url.String())
 
 		info.LogoFile = fetchLogo(path, info.LogoURL, budget)
 	}
@@ -618,7 +614,7 @@ func FetchAndValid(
 // группами разобранного конфига, до загрузки провайдеров и проверки ядром. На
 // ветке отказа устройству проверок до трёх — столько же записей; папка загрузки
 // при неудаче выбрасывается целиком.
-func verifyProfile(path string, panelInfo PanelInfo, budget *budgets.Budget, reportStatus func(string)) error {
+func verifyProfile(path string, panelInfo panel.Info, budget *budgets.Budget, reportStatus func(string)) error {
 	rawCfg, err := unmarshalProfile(path)
 	if err != nil {
 		return fmt.Errorf("%s: %w", configRejected, err)
@@ -646,7 +642,7 @@ func verifyProfile(path string, panelInfo PanelInfo, budget *budgets.Budget, rep
 		log.Infoln("Subscription sent placeholders instead of servers: %s", strings.Join(report.Remarks, " | "))
 	}
 
-	writePanelInfo(path, panelInfo)
+	panel.Write(path, panelInfo)
 
 	fetchProviders(rawCfg, budget, reportStatus)
 

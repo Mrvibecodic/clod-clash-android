@@ -8,6 +8,7 @@ import (
 
 	"cfa/native/app"
 	"cfa/native/chanx"
+	"cfa/native/config/panel"
 	"cfa/native/report"
 
 	"github.com/metacubex/mihomo/log"
@@ -39,7 +40,7 @@ func SendReport(store, url, profileDir string, device map[string]string) {
 	}
 
 	offset := readChanSkew(profileDir)
-	spare := readPanelInfo(profileDir).SpareAddress(url)
+	spare := panel.Read(profileDir).SpareAddress(url)
 
 	for hours := int64(report.SendHours); ; {
 		packed, ok := report.Pack(store, now, closed, hours, app.VersionName())

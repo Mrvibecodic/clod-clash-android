@@ -9,8 +9,6 @@ import (
 	"cfa/native/config/panel"
 )
 
-type PanelInfo = panel.Info
-
 type ModeState struct {
 	Mode      string           `json:"mode,omitempty"`
 	Source    panel.ModeSource `json:"source"`
@@ -56,19 +54,7 @@ func MarkUpdated(profileDir string, intervalMillis int64) {
 	panel.MarkUpdated(profileDir, time.Now().Unix(), intervalMillis/1000)
 }
 
-func readPanelInfo(dir string) PanelInfo {
-	return panel.Read(dir)
-}
-
-func writePanelInfo(dir string, info PanelInfo) {
-	panel.Write(dir, info)
-}
-
-func applyHeaders(info *PanelInfo, header map[string][]string, current string) {
-	panel.ApplyHeaders(info, header, current)
-}
-
-func applyGroups(info *PanelInfo, cfg *config.RawConfig, template tunnel.TunnelMode) {
+func applyGroups(info *panel.Info, cfg *config.RawConfig, template tunnel.TunnelMode) {
 	if cfg == nil {
 		return
 	}
