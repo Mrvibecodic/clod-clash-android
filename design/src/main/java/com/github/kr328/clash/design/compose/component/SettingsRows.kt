@@ -144,25 +144,34 @@ fun SelectRow(
             text = {
                 Column(Modifier.selectableGroup()) {
                     options.forEachIndexed { index, option ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(selected = index == selectedIndex, role = Role.RadioButton) {
-                                    picking = false
+                        RadioOption(
+                            label = option,
+                            selected = index == selectedIndex,
+                            onClick = {
+                                picking = false
 
-                                    if (index != selectedIndex) onSelect(index)
-                                }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = index == selectedIndex, onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(option)
-                        }
+                                if (index != selectedIndex) onSelect(index)
+                            },
+                        )
                     }
                 }
             },
         )
+    }
+}
+
+@Composable
+internal fun RadioOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(12.dp))
+        Text(label)
     }
 }
 

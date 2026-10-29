@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -58,7 +57,6 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -91,7 +89,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -118,6 +115,7 @@ import com.github.kr328.clash.design.compose.component.DelayPill
 import com.github.kr328.clash.design.compose.component.PingBounds
 import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.PowerButton
+import com.github.kr328.clash.design.compose.component.RadioOption
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.SyncIconButton
@@ -1363,22 +1361,16 @@ private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
                         TunnelState.Mode.Global,
                         TunnelState.Mode.Direct,
                     ).forEach { candidate ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .selectable(selected = candidate == acting, role = Role.RadioButton) {
-                                    picking = false
-                                    if (shouldSaveModePick(mode, candidate)) {
-                                        onAction(MainAction.SetMode(candidate))
-                                    }
+                        RadioOption(
+                            label = modeLabel(candidate),
+                            selected = candidate == acting,
+                            onClick = {
+                                picking = false
+                                if (shouldSaveModePick(mode, candidate)) {
+                                    onAction(MainAction.SetMode(candidate))
                                 }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = candidate == acting, onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(modeLabel(candidate))
-                        }
+                            },
+                        )
                     }
                 }
             },

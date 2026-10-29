@@ -38,7 +38,6 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -62,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ConfirmDialog
+import com.github.kr328.clash.design.compose.component.RadioOption
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.TrafficLimit
@@ -628,13 +628,13 @@ private fun GroupPicker(
         },
         text = {
             Column(Modifier.selectableGroup()) {
-                GroupOption(
+                RadioOption(
                     label = stringResource(R.string.clod_group_none),
                     selected = current == null,
                     onClick = { onPick(null) },
                 )
                 known.forEach { group ->
-                    GroupOption(
+                    RadioOption(
                         label = group,
                         selected = group == current,
                         onClick = { onPick(group) },
@@ -651,21 +651,6 @@ private fun GroupPicker(
             }
         },
     )
-}
-
-@Composable
-private fun GroupOption(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-            .padding(vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RadioButton(selected = selected, onClick = null)
-        Spacer(Modifier.width(12.dp))
-        Text(label)
-    }
 }
 
 @Composable
