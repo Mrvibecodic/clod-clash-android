@@ -1,5 +1,7 @@
 package com.github.kr328.clash.design.util
 
+// Числа повторяют healthCheck* в native/tunnel/connectivity.go — ядро бюджет
+// не возвращает; менять только вместе, иначе подпись о длительности замера врёт
 private const val PROBE_CONCURRENCY = 10
 
 private const val PROBE_TIMEOUT_SECONDS = 5

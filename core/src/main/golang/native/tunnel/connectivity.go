@@ -22,6 +22,8 @@ import (
 	"github.com/metacubex/mihomo/tunnel"
 )
 
+// Числа повторены в design/util/MeasuringBudget.kt (подпись о длительности
+// замера) — менять только вместе
 const (
 	healthCheckConcurrency = 10
 
