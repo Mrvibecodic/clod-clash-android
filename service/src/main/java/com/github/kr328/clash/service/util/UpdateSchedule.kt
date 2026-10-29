@@ -65,7 +65,7 @@ object UpdateSchedule {
      * clod: момент (часы устройства, мс), к которому подписку надо загрузить заново
      * из-за названного панелью срока; null — срока нет или после него уже загружали.
      *
-     * [expire] — срок по часам панели (мс; секунды старых записей нормализуются),
+     * [expire] — срок по часам панели (мс),
      * [clockSkew] — панель минус устройство (мс, [com.github.kr328.clash.service.model.PanelInfo.clockSkewMillis]),
      * [updatedAt] — mtime `config.yaml`. Признак «после истечения ещё не загружали»
      * нигде не хранится — он выводится из этих трёх величин, поэтому переживает
@@ -79,14 +79,11 @@ object UpdateSchedule {
      * загрузка окажется «до дедлайна» — цель переставится уже по свежей поправке.
      */
     fun expiryFetchAt(expire: Long, clockSkew: Long, updatedAt: Long): Long? {
-        val expireMillis = if (expire in 1 until MILLIS_THRESHOLD) expire * 1000 else expire
-        if (expireMillis <= 0)
+        if (expire <= 0)
             return null
 
-        val deadline = expireMillis - clockSkew + EXPIRY_GRACE
+        val deadline = expire - clockSkew + EXPIRY_GRACE
 
         return deadline.takeIf { updatedAt + EXPIRY_SLACK < it }
     }
-
-    private const val MILLIS_THRESHOLD = 1_000_000_000_000L
 }

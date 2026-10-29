@@ -69,8 +69,6 @@ object FreezePlan {
     // Сколько проверок подряд должны обрезаться, чтобы узел считался «режется»
     const val WAVES = 3
 
-    // Файлы старее ставили «режется» после одной обрезанной проверки и хранили
-    // dead: такие итоги при чтении снимаются
     const val VERSION = 2
 
     // Сеть, где клиент не был столько, забывается
@@ -192,22 +190,6 @@ object FreezePlan {
         }
 
         return settled
-    }
-
-    // Снять итоги, поставленные прежними правилами
-    fun upgrade(file: FreezeFile): FreezeFile {
-        if (file.version >= VERSION) return file
-
-        return FreezeFile(
-            version = VERSION,
-            networks = file.networks.mapValues { (_, network) ->
-                network.copy(
-                    nodes = network.nodes.mapValues { (_, node) ->
-                        node.takeIf { it.verdict == null || it.verdict == FreezeVerdict.OK } ?: node.copy(verdict = null)
-                    },
-                )
-            },
-        )
     }
 
     // Проверки захода — в записи сети, по отпечатку

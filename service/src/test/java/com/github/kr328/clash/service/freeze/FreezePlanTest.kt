@@ -93,28 +93,6 @@ class FreezePlanTest {
     }
 
     @Test
-    fun `итоги прежних файлов снимаются при чтении один раз, файлы этой версии не трогаются`() {
-        val old = FreezeFile(
-            networks = mapOf(
-                "k" to FreezeNetwork(nodes = mapOf("cut" to checked("frozen", 0), "gone" to checked("dead", 0), "fine" to checked("ok", 0))),
-            ),
-        )
-        val upgraded = FreezePlan.upgrade(old)
-        val nodes = upgraded.networks.getValue("k").nodes
-
-        assertEquals(FreezePlan.VERSION, upgraded.version)
-        assertEquals(null, nodes.getValue("cut").verdict)
-        assertEquals(null, nodes.getValue("gone").verdict)
-        assertEquals("ok", nodes.getValue("fine").verdict)
-        assertEquals(now, nodes.getValue("cut").tried)
-
-        val fresh = upgraded.copy(networks = mapOf("k" to FreezeNetwork(nodes = mapOf("cut" to checked("frozen", 0)))))
-
-        assertEquals(fresh, FreezePlan.upgrade(fresh))
-        assertEquals(FreezePlan.VERSION, FreezePlan.prune(upgraded, now, emptySet()).version)
-    }
-
-    @Test
     fun `повторяют только обрезанных, и до повторов итога у них нет`() {
         val outcomes = mapOf("ok" to ok, "cut" to cut, "dead" to silent, "refused" to FreezeOutcome("unknown", 403))
 

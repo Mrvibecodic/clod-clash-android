@@ -1,7 +1,6 @@
 package com.github.kr328.clash.service.store
 
 import android.content.Context
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
@@ -122,40 +121,16 @@ class ServiceStore(context: Context) {
         defaultValue = true
     )
 
-    private var storedAccessControlMode: AccessControlMode by store.enum(
-        key = KEY_ACCESS_CONTROL_MODE,
+    var accessControlMode: AccessControlMode by store.enum(
+        key = "access_control_mode",
         defaultValue = AccessControlMode.AcceptSelected,
         values = AccessControlMode.values()
     )
 
-    private var storedAccessControlPackages by store.stringSet(
-        key = KEY_ACCESS_CONTROL_PACKAGES,
+    var accessControlPackages: Set<String> by store.stringSet(
+        key = "access_control_packages",
         defaultValue = emptySet()
     )
-
-    var accessControlMode: AccessControlMode
-        get() {
-            migrateAccessControl(preferences)
-
-            return storedAccessControlMode
-        }
-        set(value) {
-            migrateAccessControl(preferences)
-
-            storedAccessControlMode = value
-        }
-
-    var accessControlPackages: Set<String>
-        get() {
-            migrateAccessControl(preferences)
-
-            return storedAccessControlPackages
-        }
-        set(value) {
-            migrateAccessControl(preferences)
-
-            storedAccessControlPackages = value
-        }
 
     var accessControlApplied: String by store.string(
         key = "access_control_applied",
@@ -272,26 +247,3 @@ class ServiceStore(context: Context) {
         private const val KEY_CLASH_STARTED_ELAPSED = "clash_started_elapsed"
     }
 }
-
-// Один раз: новая установка и «Разрешить все» → «Разрешить выбранные» с пустым
-// списком (оставшийся список мог быть от «Запретить выбранные»)
-internal fun migrateAccessControl(preferences: SharedPreferences) {
-    if (preferences.getBoolean(KEY_ACCESS_CONTROL_SELECTED_DEFAULT, false)) return
-
-    val stored = preferences.getString(KEY_ACCESS_CONTROL_MODE, "") ?: ""
-
-    preferences.edit {
-        if (stored.isEmpty() || stored == AccessControlMode.AcceptAll.name) {
-            putString(KEY_ACCESS_CONTROL_MODE, AccessControlMode.AcceptSelected.name)
-            putStringSet(KEY_ACCESS_CONTROL_PACKAGES, emptySet())
-        }
-
-        putBoolean(KEY_ACCESS_CONTROL_SELECTED_DEFAULT, true)
-    }
-}
-
-internal const val KEY_ACCESS_CONTROL_MODE = "access_control_mode"
-
-internal const val KEY_ACCESS_CONTROL_PACKAGES = "access_control_packages"
-
-private const val KEY_ACCESS_CONTROL_SELECTED_DEFAULT = "access_control_selected_default"

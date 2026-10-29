@@ -167,8 +167,6 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
     private fun createChannels() {
         NotificationManagerCompat.from(context).apply {
-            deleteNotificationChannel(LEGACY_SERVICE_CHANNEL)
-
             createNotificationChannelsCompat(
                 listOf(
                     NotificationChannelCompat.Builder(
@@ -344,7 +342,6 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         private const val KEY_KIND = "kind"
         private const val LEGACY_KEY_PERIODIC = "periodic"
 
-        private const val LEGACY_SERVICE_CHANNEL = "profile_service_channel"
         private const val STATUS_CHANNEL = "profile_status_channel"
         private const val RESULT_CHANNEL = "profile_result_channel"
         private const val ERROR_CHANNEL = "profile_error_channel"

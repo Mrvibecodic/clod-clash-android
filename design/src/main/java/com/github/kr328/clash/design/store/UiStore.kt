@@ -37,18 +37,6 @@ class UiStore(context: Context) {
         editor.apply()
     }
 
-    fun dropRemovedKeys() {
-        val stale = REMOVED_KEYS.filter(preferences::contains)
-
-        if (stale.isEmpty()) return
-
-        val editor = preferences.edit()
-
-        stale.forEach { editor.remove(it) }
-
-        editor.apply()
-    }
-
     var enableVpn: Boolean by store.boolean(
         key = "enable_vpn",
         defaultValue = true
@@ -177,8 +165,6 @@ class UiStore(context: Context) {
             "notifications_snoozes",
             "reliability_asked",
         )
-
-        private val REMOVED_KEYS = listOf("proxy_sort", "proxy_last_group")
 
         val Context.mainActivityAlias: ComponentName
             get() = ComponentName(this, "com.github.kr328.clash.MainActivityAlias")

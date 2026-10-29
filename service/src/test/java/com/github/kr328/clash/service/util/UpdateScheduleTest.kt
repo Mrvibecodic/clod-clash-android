@@ -161,16 +161,6 @@ class UpdateScheduleExpiryTest {
         // срока панели, цель стоит и переставлена на expire + 5 мин + 90 с.
         assertEquals(expire + minutes5 + grace, UpdateSchedule.expiryFetchAt(expire, -minutes5, fetched))
     }
-
-    @Test
-    fun `seconds and milliseconds name the same deadline`() {
-        val expireSeconds = now / 1000 + 600
-
-        assertEquals(
-            UpdateSchedule.expiryFetchAt(expireSeconds * 1000, 0, now),
-            UpdateSchedule.expiryFetchAt(expireSeconds, 0, now),
-        )
-    }
 }
 
 class UpdateScheduleMissedTest {

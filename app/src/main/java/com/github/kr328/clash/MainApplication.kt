@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.NotificationManagerCompat
 import androidx.work.Configuration
 import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.compat.currentProcessName
@@ -13,10 +12,8 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.remote.Remote
 import com.github.kr328.clash.service.ProfileUpdateWorker
-import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.sendServiceRecreated
 import com.github.kr328.clash.update.UpdateNotice
-import com.github.kr328.clash.common.util.clashDir
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.design.store.UiStore.Companion.mainActivityAlias
 
@@ -48,15 +45,8 @@ class MainApplication : Application(), Configuration.Provider {
         Log.i("Process $processName started")
 
         if (processName == packageName) {
-            UiStore(this).apply {
-                dropRemovedKeys()
-                darkMode.applyToSystem(this@MainApplication)
-            }
+            UiStore(this).darkMode.applyToSystem(this)
             restoreLauncherIconIfUnsupported()
-
-            NotificationManagerCompat.from(this).deleteNotificationChannel(LEGACY_WIDGET_CHANNEL)
-            clashDir.resolve(LEGACY_CHAN_SKEW).delete()
-            dropLegacyMigration()
 
             Remote.launch()
         } else {
@@ -87,18 +77,4 @@ class MainApplication : Application(), Configuration.Provider {
         )
     }
 
-    // Остатки прежнего переезда подписки (new-url/new-domain): временная папка пробы
-    // и счётчик переездов в папке каждой подписки.
-    private fun dropLegacyMigration() {
-        filesDir.resolve(LEGACY_MIGRATION_DIR).deleteRecursively()
-
-        importedDir.listFiles()?.forEach { it.resolve(LEGACY_MIGRATION_FILE).delete() }
-    }
-
-    private companion object {
-        const val LEGACY_WIDGET_CHANNEL = "widget_permission_channel"
-        const val LEGACY_CHAN_SKEW = "chan.skew"
-        const val LEGACY_MIGRATION_DIR = "migration"
-        const val LEGACY_MIGRATION_FILE = "migration.json"
-    }
 }
