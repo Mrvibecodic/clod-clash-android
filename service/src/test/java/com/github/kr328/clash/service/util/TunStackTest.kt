@@ -22,7 +22,12 @@ class TunStackTest {
     @Test
     fun autoWithoutProfileUsesMips() {
         assertEquals("mips", resolveTunStack("auto", ""))
-        assertEquals("mips", resolveTunStack("auto", "lwip"))
+    }
+
+    @Test
+    fun profileStackIsPassedThrough() {
+        assertEquals("lwip", resolveTunStack("auto", "lwip"))
+        assertEquals("system", resolveTunStack("auto", " System "))
     }
 
     @Test

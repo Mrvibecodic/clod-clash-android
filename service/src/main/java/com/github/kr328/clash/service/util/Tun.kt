@@ -12,14 +12,18 @@ fun Context.activeTunPrefs(): TunPrefs? {
     return ServiceStore(this).activeProfile?.let { readTunPrefs(it) }
 }
 
-// Набор совпадает с NormalizeTunStack в native/config/panel/tun.go;
-// без явного выбора и без стека в подписке — MIPS, как у самого ядра
-private val TUN_STACKS = setOf("system", "gvisor", "mixed", "mips")
+// Стек из tun.json уже нормализован ядром при разборе подписки (NormalizeTunStack
+// в native/config/panel/tun.go); незнакомое значение мост сам заменяет на MIPS.
+val TUN_STACKS = listOf("system", "gvisor", "mixed", "mips")
 
 private const val DEFAULT_TUN_STACK = "mips"
 
-fun resolveTunStack(mode: String, fromProfile: String): String = when {
-    mode in TUN_STACKS -> mode
-    fromProfile in TUN_STACKS -> fromProfile
-    else -> DEFAULT_TUN_STACK
+fun resolveTunStack(mode: String, fromProfile: String): String {
+    val stack = fromProfile.trim().lowercase()
+
+    return when {
+        mode in TUN_STACKS -> mode
+        stack.isNotEmpty() -> stack
+        else -> DEFAULT_TUN_STACK
+    }
 }

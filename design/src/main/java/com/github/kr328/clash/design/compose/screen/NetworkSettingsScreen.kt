@@ -158,11 +158,12 @@ fun NetworkSettingsScreen(
                 enabled = vpnOptions,
                 onSelect = { onAction(NetworkSettingsAction.SetTunStack(it)) },
             )
+            // незнакомый стек мост заменяет на MIPS
             val effectiveStack = when (state.effectiveTunStack) {
+                "system" -> stringResource(R.string.tun_stack_system)
                 "gvisor" -> stringResource(R.string.tun_stack_gvisor)
                 "mixed" -> stringResource(R.string.tun_stack_mixed)
-                "mips" -> stringResource(R.string.tun_stack_mips)
-                else -> stringResource(R.string.tun_stack_system)
+                else -> stringResource(R.string.tun_stack_mips)
             }
             ReadOnlyRow(
                 title = stringResource(R.string.clod_tun_stack_effective),
