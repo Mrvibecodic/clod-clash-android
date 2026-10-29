@@ -69,12 +69,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -123,6 +121,8 @@ import com.github.kr328.clash.design.compose.component.SelectorRow
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.rememberGroupIcon
+import com.github.kr328.clash.design.compose.component.rememberImage
+import com.github.kr328.clash.design.compose.component.requestFocusAfterFrame
 import com.github.kr328.clash.design.compose.component.usedTraffic
 import com.github.kr328.clash.design.compose.theme.ClodTheme
 import com.github.kr328.clash.design.compose.theme.SessionUploadTint
@@ -144,8 +144,6 @@ import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.profileDisplayName
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -555,9 +553,7 @@ private fun HomeTab(
 
     LaunchedEffect(television) {
         if (television) {
-            withFrameNanos { }
-
-            runCatching { powerFocus.requestFocus() }
+            powerFocus.requestFocusAfterFrame()
                 .onFailure { Log.w("Request power focus: $it") }
         }
     }
@@ -1497,12 +1493,5 @@ private fun MoreTab(state: MainScreenState, onAction: (MainAction) -> Unit) {
 }
 
 @Composable
-private fun rememberProviderLogo(path: String?, version: Long): ImageBitmap? {
-    val target = path?.takeIf { it.isNotBlank() }
-
-    return produceState<ImageBitmap?>(initialValue = null, target, version) {
-        value = target?.let {
-            withContext(Dispatchers.IO) { GroupIcons.loadLocal(File(it)) }
-        }
-    }.value
-}
+private fun rememberProviderLogo(path: String?, version: Long): ImageBitmap? =
+    rememberImage(path, version) { GroupIcons.loadLocal(File(it)) }

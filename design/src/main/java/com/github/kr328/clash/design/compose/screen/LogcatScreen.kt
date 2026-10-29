@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +30,7 @@ import com.github.kr328.clash.core.model.LogMessage
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.ConfirmDialog
+import com.github.kr328.clash.design.compose.component.ProgressBar
 import com.github.kr328.clash.design.util.format
 
 @Immutable
@@ -150,14 +150,10 @@ private fun ExportProgressDialog(export: LogcatExport) {
     AlertDialog(
         onDismissRequest = {},
         text = {
-            if (export.total > 0) {
-                LinearProgressIndicator(
-                    progress = { export.written.toFloat() / export.total },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
+            ProgressBar(
+                progress = if (export.total > 0) export.written.toFloat() / export.total else null,
+                modifier = Modifier.fillMaxWidth(),
+            )
         },
         confirmButton = {},
     )

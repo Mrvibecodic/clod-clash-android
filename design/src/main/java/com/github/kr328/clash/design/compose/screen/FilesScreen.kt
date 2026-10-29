@@ -31,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -47,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
+import com.github.kr328.clash.design.compose.component.requestFocusAfterFrame
 import com.github.kr328.clash.design.model.File
 import com.github.kr328.clash.design.util.ValidatorFileName
 import com.github.kr328.clash.design.util.relativeTime
@@ -247,12 +247,7 @@ private fun FileNameDialog(
             val keyboard = LocalSoftwareKeyboardController.current
 
             LaunchedEffect(Unit) {
-                withFrameNanos { }
-
-                runCatching {
-                    focusRequester.requestFocus()
-                    keyboard?.show()
-                }
+                focusRequester.requestFocusAfterFrame().mapCatching { keyboard?.show() }
             }
 
             OutlinedTextField(

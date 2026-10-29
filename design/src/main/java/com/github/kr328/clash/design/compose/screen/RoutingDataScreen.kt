@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +24,7 @@ import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SubScreenScaffold
+import com.github.kr328.clash.design.compose.component.ToolbarSpinner
 import com.github.kr328.clash.design.util.relativeTime
 
 @Immutable
@@ -62,12 +62,7 @@ fun RoutingDataScreen(
         modifier = modifier,
         actions = {
             if (state.updating) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier = Modifier
-                        .padding(horizontal = 13.dp)
-                        .size(22.dp),
-                )
+                ToolbarSpinner(modifier = Modifier.padding(horizontal = 13.dp))
             } else {
                 IconButton(onClick = { onAction(MainAction.UpdateRoutingData) }) {
                     Icon(
@@ -104,12 +99,7 @@ fun RoutingDataScreen(
                     error = provider.error != null,
                 ) {
                     if (provider.updating) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.dp,
-                            modifier = Modifier
-                                .padding(horizontal = 13.dp)
-                                .size(22.dp),
-                        )
+                        ToolbarSpinner(modifier = Modifier.padding(horizontal = 13.dp))
                     } else {
                         IconButton(
                             onClick = { onAction(MainAction.UpdateRoutingDataProvider(provider.key)) },

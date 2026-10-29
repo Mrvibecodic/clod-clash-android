@@ -13,10 +13,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -37,6 +35,8 @@ import com.github.kr328.clash.design.compose.component.ActionRow
 import com.github.kr328.clash.design.compose.component.ActivityScaffold
 import com.github.kr328.clash.design.compose.component.ConfirmDialog
 import com.github.kr328.clash.design.compose.component.InfoCard
+import com.github.kr328.clash.design.compose.component.ProgressBar
+import com.github.kr328.clash.design.compose.component.ToolbarSpinner
 import com.github.kr328.clash.design.util.ValidatorAutoUpdateInterval
 import com.github.kr328.clash.design.util.ValidatorHttpUrl
 import com.github.kr328.clash.service.model.Profile
@@ -122,12 +122,7 @@ fun PropertiesScreen(
         modifier = modifier,
         actions = {
             if (processing) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .padding(horizontal = 14.dp)
-                        .size(22.dp),
-                    strokeWidth = 2.dp,
-                )
+                ToolbarSpinner(modifier = Modifier.padding(horizontal = 14.dp))
             } else {
                 FilledTonalIconButton(
                     onClick = { onAction(PropertiesAction.Commit) },
@@ -368,14 +363,7 @@ private fun ProgressDialog(progress: FetchProgress) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(12.dp))
-                if (progress.progress >= 0f) {
-                    LinearProgressIndicator(
-                        progress = { progress.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                }
+                ProgressBar(progress.progress.takeIf { it >= 0f }, Modifier.fillMaxWidth())
             }
         },
         confirmButton = {},

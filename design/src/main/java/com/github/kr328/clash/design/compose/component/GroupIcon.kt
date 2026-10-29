@@ -16,15 +16,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun rememberGroupIcon(url: String?): ImageBitmap? {
-    val context = LocalContext.current
-    val target = url?.takeIf { it.isNotBlank() }
+fun rememberImage(key: String?, vararg extra: Any?, loader: suspend (String) -> ImageBitmap?): ImageBitmap? {
+    val target = key?.takeIf { it.isNotBlank() }
 
-    return produceState<ImageBitmap?>(initialValue = null, target) {
+    return produceState<ImageBitmap?>(initialValue = null, target, *extra) {
         value = target?.let {
-            withContext(Dispatchers.IO) { GroupIcons.load(context, it) }
+            withContext(Dispatchers.IO) { loader(it) }
         }
     }.value
+}
+
+@Composable
+fun rememberGroupIcon(url: String?): ImageBitmap? {
+    val context = LocalContext.current
+
+    return rememberImage(url) { GroupIcons.load(context, it) }
 }
 
 @Composable

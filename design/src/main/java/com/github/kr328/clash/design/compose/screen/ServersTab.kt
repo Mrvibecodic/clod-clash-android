@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -52,6 +51,7 @@ import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.GroupIcon
 import com.github.kr328.clash.design.compose.component.SelectorRow
+import com.github.kr328.clash.design.compose.component.ToolbarSpinner
 import com.github.kr328.clash.design.compose.component.rememberGroupIcon
 import com.github.kr328.clash.design.model.BUILTIN_OUTBOUNDS
 import com.github.kr328.clash.design.model.proxySubtitle
@@ -115,10 +115,7 @@ fun ServersTab(
                 enabled = state.groups.isNotEmpty() && !state.readOnly && noServers == null,
             ) {
                 if (state.testing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp,
-                    )
+                    ToolbarSpinner(size = 24.dp)
                 } else {
                     Icon(
                         painter = painterResource(R.drawable.ic_baseline_flash_on),
