@@ -2,7 +2,7 @@ package groups
 
 const GlobalGroupName = "GLOBAL"
 
-var globalNonRoutable = map[string]bool{
+var builtin = map[string]bool{
 	"DIRECT":      true,
 	"REJECT":      true,
 	"REJECT-DROP": true,
@@ -11,13 +11,19 @@ var globalNonRoutable = map[string]bool{
 	"COMPATIBLE":  true,
 }
 
+// IsBuiltin — встроенный выход ядра: стоит в группе рядом с серверами, но
+// сервером не считается.
+func IsBuiltin(name string) bool {
+	return builtin[name]
+}
+
 type GlobalMember struct {
 	Name     string
 	Resolved string
 }
 
 func routable(member GlobalMember) bool {
-	if globalNonRoutable[member.Name] {
+	if builtin[member.Name] {
 		return false
 	}
 
@@ -26,7 +32,7 @@ func routable(member GlobalMember) bool {
 		resolved = member.Name
 	}
 
-	return !globalNonRoutable[resolved]
+	return !builtin[resolved]
 }
 
 func GlobalSelectionRoutable(members []GlobalMember, selected string) bool {

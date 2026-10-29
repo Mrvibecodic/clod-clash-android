@@ -1394,7 +1394,7 @@ func TestMobileOnlyOfIsWhatTheCoreHides(t *testing.T) {
 		{"name": "Wi-Fi", "type": "vless"},
 	}
 
-	got := MobileOnlyOf([]string{"LTE", "Proxy", "DIRECT", "GLOBAL", "Provider node"}, proxies, []string{"Proxy"})
+	got := MobileOnlyOf([]string{"LTE", "Proxy", "DIRECT", "PASS-RULE", "GLOBAL", "Provider node"}, proxies, []string{"Proxy"})
 	want := []string{"LTE", "Provider node", "via LTE", "via via"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("%q, ждали %q", got, want)

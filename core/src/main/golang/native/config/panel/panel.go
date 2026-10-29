@@ -277,19 +277,19 @@ func mobileOnly(raw string) []string {
 // серверы (имена групп и встроенных узлов ничего не скрывают) и вместе с ними
 // узлы из proxies, которые соединяются через скрытые (dialer-proxy). Узлы
 // провайдеров ядро достраивает само.
-func MobileOnlyOf(names []string, proxies []map[string]any, groups []string) []string {
+func MobileOnlyOf(names []string, proxies []map[string]any, groupNames []string) []string {
 	if len(names) == 0 {
 		return nil
 	}
 
-	skip := map[string]bool{"DIRECT": true, "REJECT": true, "REJECT-DROP": true, "PASS": true, "COMPATIBLE": true, "GLOBAL": true}
-	for _, group := range groups {
+	skip := map[string]bool{groups.GlobalGroupName: true}
+	for _, group := range groupNames {
 		skip[group] = true
 	}
 
 	var out []string
 	for _, name := range names {
-		if !skip[name] {
+		if !skip[name] && !groups.IsBuiltin(name) {
 			out = append(out, name)
 		}
 	}

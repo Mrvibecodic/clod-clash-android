@@ -110,7 +110,7 @@ class RouteGroupsTest {
     fun `без выбора скрытый первый член уступает видимому серверу, а не DIRECT`() {
         val gone = { name: String -> name == "LTE" || name == "lte" }
 
-        val first = PanelGroup(name = "Proxy", type = "select", proxies = listOf("LTE", "DIRECT", "NL"))
+        val first = PanelGroup(name = "Proxy", type = "select", proxies = listOf("LTE", "DIRECT", "PASS-RULE", "NL"))
         assertEquals("NL", offlineGroup(first, null, gone = gone, hides = { false }).now)
 
         // Первым — группа, где скрыто всё: её пропускают, как и у ядра
