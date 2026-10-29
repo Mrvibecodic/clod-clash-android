@@ -53,8 +53,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.github.kr328.clash.core.util.toBytesString
 import com.github.kr328.clash.design.R
@@ -377,50 +379,25 @@ private fun SubscriptionCard(
                     )
                 }
 
-                val traffic = trafficText(profile, used)
-
-                if (traffic != null || profile.expire > 0) {
-                    Spacer(Modifier.height(6.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (traffic != null) {
-                            Text(
-                                text = traffic,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                            )
-                        } else {
-                            Spacer(Modifier.weight(1f))
-                        }
-                        if (profile.expire > 0) {
-                            Text(
-                                text = expiryLeft(profile.expire, now)
-                                    ?: expiryDate(profile.expire, now),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = status.color().statusText(),
-                                fontWeight = FontWeight.Medium,
-                            )
-                        }
-                    }
-                }
-
-                if (profile.total > 0) {
-                    Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = if (profile.active) {
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
-                        } else {
-                            ProgressIndicatorDefaults.linearTrackColor
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(50)),
-                    )
-                }
+                UsageBlock(
+                    profile = profile,
+                    used = used,
+                    expiry = if (profile.expire > 0) {
+                        expiryLeft(profile.expire, now) ?: expiryDate(profile.expire, now)
+                    } else {
+                        null
+                    },
+                    expiryStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = status.color().statusText(),
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    gap = 6.dp,
+                    trackColor = if (profile.active) {
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
+                    } else {
+                        ProgressIndicatorDefaults.linearTrackColor
+                    },
+                )
 
                 if (missed == 1) {
                     Spacer(Modifier.height(8.dp))
@@ -518,41 +495,17 @@ fun ActiveSubscriptionCard(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val traffic = trafficText(profile, used)
-
-                if (traffic != null) {
-                    Text(
-                        text = traffic,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
-                if (profile.expire > 0) {
-                    Text(
-                        text = expiryDate(profile.expire, now),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            if (profile.total > 0) {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(50)),
-                )
-            }
+            // Карточка есть только при лимите трафика или сроке, так строка
+            // «трафик · срок» здесь не пропадает никогда
+            UsageBlock(
+                profile = profile,
+                used = used,
+                expiry = if (profile.expire > 0) expiryDate(profile.expire, now) else null,
+                expiryStyle = MaterialTheme.typography.bodySmall.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                gap = 8.dp,
+            )
 
             if (showActions && panel != null &&
                 (panel.portalUrl.isNotBlank() || panel.supportUrl.isNotBlank())
@@ -590,6 +543,51 @@ fun ActiveSubscriptionCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun UsageBlock(
+    profile: Profile,
+    used: Long,
+    expiry: String?,
+    expiryStyle: TextStyle,
+    gap: Dp,
+    trackColor: Color = ProgressIndicatorDefaults.linearTrackColor,
+) {
+    val traffic = trafficText(profile, used)
+
+    if (traffic != null || expiry != null) {
+        Spacer(Modifier.height(gap))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (traffic != null) {
+                Text(
+                    text = traffic,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
+            if (expiry != null) {
+                Text(text = expiry, style = expiryStyle)
+            }
+        }
+    }
+
+    if (profile.total > 0) {
+        Spacer(Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { (used.toFloat() / profile.total).coerceIn(0f, 1f) },
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = trackColor,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(50)),
+        )
     }
 }
 
