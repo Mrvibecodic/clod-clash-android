@@ -21,6 +21,8 @@ import com.github.kr328.clash.design.compose.component.InfoCard
 import com.github.kr328.clash.design.compose.component.SectionHeader
 import com.github.kr328.clash.design.compose.component.SelectRow
 import com.github.kr328.clash.design.compose.component.SwitchRow
+import com.github.kr328.clash.design.compose.component.subtitleColor
+import com.github.kr328.clash.design.compose.component.titleColor
 
 @Immutable
 data class NetworkSettingsState(
@@ -204,12 +206,12 @@ private fun ReadOnlyRow(title: String, value: String, enabled: Boolean) {
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.38f),
+            color = titleColor(enabled),
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (enabled) 1f else 0.38f),
+            color = subtitleColor(enabled),
         )
     }
 }
