@@ -241,8 +241,6 @@ func Load(path string) error {
 		return ErrLoadCancelled
 	}
 
-	forgetLegacyFakeIPs(cfg.DNS)
-
 	pendingGeneration.CompareAndSwap(generation, 0)
 
 	// До применения: новые группы и первая проверка провайдеров сразу без

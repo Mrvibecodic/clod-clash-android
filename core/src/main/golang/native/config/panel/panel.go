@@ -174,8 +174,6 @@ func Read(dir string) Info {
 
 	_ = json.Unmarshal(bytes, &info)
 
-	info.Title = truncate(info.Title, titleMaxChars)
-
 	return info
 }
 

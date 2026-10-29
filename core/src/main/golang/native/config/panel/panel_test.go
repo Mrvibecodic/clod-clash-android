@@ -1182,24 +1182,6 @@ func TestTruncateIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestTitleIsTruncatedOnRead(t *testing.T) {
-	dir := t.TempDir()
-
-	long := strings.Repeat("я", titleMaxChars+140)
-
-	Write(dir, Info{Title: long})
-
-	got := Read(dir)
-
-	if want := truncate(long, titleMaxChars); got.Title != want {
-		t.Fatalf("название из файла = %q, ожидалось %q", got.Title, want)
-	}
-
-	if got.Title == long {
-		t.Fatalf("длинное название дожило до читателя")
-	}
-}
-
 func TestApplyHeadersTruncatesStoredTitle(t *testing.T) {
 	long := strings.Repeat("я", titleMaxChars+140)
 
