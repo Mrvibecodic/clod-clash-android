@@ -11,13 +11,6 @@ class ActiveProfileTest {
     private val b = UUID.fromString("00000000-0000-0000-0000-00000000000b")
 
     @Test
-    fun goneClearsOnlyItself() {
-        assertEquals(ActiveProfileAction.Clear, activeProfileGone(a, a))
-        assertEquals(ActiveProfileAction.Keep, activeProfileGone(a, b))
-        assertEquals(ActiveProfileAction.Keep, activeProfileGone(null, a))
-    }
-
-    @Test
     fun rollbackRestoresExistingRetained() {
         assertEquals(ActiveProfileAction.Restore, activeProfileRollback(b, b, a, true))
     }
@@ -62,12 +55,5 @@ class ActiveProfileTest {
         assertFalse(loadFailureKeepsRetained(ready = true, retained = a, coreLoaded = false))
         assertFalse(loadFailureKeepsRetained(ready = false, retained = a, coreLoaded = true))
         assertFalse(loadFailureKeepsRetained(ready = true, retained = null, coreLoaded = true))
-    }
-
-    @Test
-    fun vacantWithoutLiveActive() {
-        assertTrue(activeProfileVacant(null, false))
-        assertTrue(activeProfileVacant(a, false))
-        assertFalse(activeProfileVacant(a, true))
     }
 }

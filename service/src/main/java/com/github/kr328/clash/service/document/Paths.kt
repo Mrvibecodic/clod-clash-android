@@ -31,15 +31,6 @@ object Paths {
                 scope = null,
                 relative = null,
             )
-            2 -> Path(
-                uuid = UUID.fromString(segments[0]),
-                scope = when (segments[1]) {
-                    CONFIGURATION_ID -> Path.Scope.Configuration
-                    PROVIDERS_ID -> Path.Scope.Providers
-                    else -> throw IllegalArgumentException("unknown scope ${segments[1]}")
-                },
-                relative = null,
-            )
             else -> Path(
                 uuid = UUID.fromString(segments[0]),
                 scope = when (segments[1]) {
@@ -47,7 +38,7 @@ object Paths {
                     PROVIDERS_ID -> Path.Scope.Providers
                     else -> throw IllegalArgumentException("unknown scope ${segments[1]}")
                 },
-                relative = segments.drop(2),
+                relative = segments.drop(2).takeIf { it.isNotEmpty() },
             )
         }
     }

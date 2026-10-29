@@ -1,6 +1,5 @@
 package com.github.kr328.clash.service
 
-import android.annotation.TargetApi
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -80,10 +79,10 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         var profile: UUID? = null
         var underlying: Network? = null
 
-        // На 5.1–9 establish() забывает подложенную сеть (а до него она не
-        // задаётся вовсе) — повторить её после каждого открытия туннеля.
+        // До 10 establish() забывает подложенную сеть — повторить её после
+        // каждого открытия туннеля.
         fun restoreUnderlying() {
-            if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
+            if (Build.VERSION.SDK_INT <= 28) {
                 setUnderlyingNetworks(underlying?.let { arrayOf(it) })
             }
         }
@@ -180,9 +179,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                         if (n != underlying) {
                             underlying = n
 
-                            if (Build.VERSION.SDK_INT in 22..28) @TargetApi(22) {
-                                setUnderlyingNetworks(n?.let { arrayOf(it) })
-                            }
+                            restoreUnderlying()
                         }
 
                         false
@@ -220,7 +217,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         session.claimUserIntent()
 
         if (StatusProvider.serviceRunning) {
-            if (shouldWarnAlwaysOnBusy(StatusProvider.serviceRunning, StatusProvider.serviceReady, alwaysOn)) {
+            // Постоянный VPN стучится, пока служба ещё поднимается — сказать, почему отказ
+            if (!StatusProvider.serviceReady && alwaysOn) {
                 StaticNotificationModule.notifyStartFailed(this, getString(R.string.clod_always_on_busy))
             }
 

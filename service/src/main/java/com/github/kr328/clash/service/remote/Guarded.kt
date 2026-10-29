@@ -55,7 +55,7 @@ class GuardedRemoteService(private val delegate: IRemoteService) : IRemoteServic
     override fun profile(): IProfileManager = guardSync("profile") { delegate.profile() }
 }
 
-class GuardedClashManager(private val delegate: IClashManager) : IClashManager by delegate {
+class GuardedClashManager(private val delegate: IClashManager) : IClashManager {
     override fun queryTrafficTotal(): Long =
         guardSync("queryTrafficTotal") { delegate.queryTrafficTotal() }
 
@@ -111,7 +111,7 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager b
         guard { delegate.updateProvider(type, name) }
 }
 
-class GuardedProfileManager(private val delegate: IProfileManager) : IProfileManager by delegate {
+class GuardedProfileManager(private val delegate: IProfileManager) : IProfileManager {
     override suspend fun create(
         type: Profile.Type,
         name: String,

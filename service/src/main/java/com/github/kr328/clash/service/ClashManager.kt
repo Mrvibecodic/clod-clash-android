@@ -16,7 +16,6 @@ import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
-import com.github.kr328.clash.service.util.modeChoiceChanged
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.sync.withLock
@@ -116,7 +115,7 @@ class ClashManager(private val context: Context) : IClashManager,
     override suspend fun setProfileMode(uuid: UUID, mode: TunnelState.Mode) = withContext(Dispatchers.IO) {
         if (ImportedDao().queryByUUID(uuid) == null) return@withContext
 
-        if (!modeChoiceChanged(ModeChoiceDao().queryChoice(uuid), mode)) return@withContext
+        if (ModeChoiceDao().queryChoice(uuid) == mode) return@withContext
 
         ModeChoiceDao().setChoice(ModeChoice(uuid, mode))
 
@@ -179,11 +178,8 @@ class ClashManager(private val context: Context) : IClashManager,
 
     override fun setLogObserver(observer: ILogObserver?) {
         synchronized(this) {
-            logReceiver?.apply {
-                cancel()
-
-                Clash.forceGc()
-            }
+            // Отмена будит читателя, его finally закрывает канал и чистит память ядра
+            logReceiver?.cancel()
 
             markReceiver?.cancel()
 

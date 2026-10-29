@@ -19,7 +19,6 @@ import com.github.kr328.clash.service.data.Selections
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.ActiveProfileAction
 import com.github.kr328.clash.service.util.ProfileInputs
-import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.activeProfileRollback
 import com.github.kr328.clash.service.util.displayProfileName
 import com.github.kr328.clash.service.util.importedDir
@@ -64,7 +63,7 @@ class ConfigurationModule(
         get() = false
 
     private fun forgetMissingProfile(missing: UUID): Nothing {
-        if (activeProfileGone(store.activeProfile, missing) == ActiveProfileAction.Clear) {
+        if (store.activeProfile == missing) {
             store.activeProfile = null
         }
 

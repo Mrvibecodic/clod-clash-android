@@ -82,9 +82,6 @@ fun moduleFailureOutcome(live: Boolean, sessionAlive: Boolean, tryRestart: () ->
     else -> ModuleFailureOutcome.Fail
 }
 
-fun shouldWarnAlwaysOnBusy(running: Boolean, ready: Boolean, alwaysOn: Boolean): Boolean =
-    running && !ready && alwaysOn
-
 fun afterStopOutcome(
     restartRequested: Boolean,
     stickyAllowed: Boolean,

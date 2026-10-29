@@ -26,9 +26,7 @@ import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.pendingDir
 import com.github.kr328.clash.service.util.ProfileSwap
 import com.github.kr328.clash.service.util.ActiveProfileAction
-import com.github.kr328.clash.service.util.activeProfileGone
 import com.github.kr328.clash.service.util.activeProfileSelect
-import com.github.kr328.clash.service.util.activeProfileVacant
 import com.github.kr328.clash.service.util.applyDeviceInfo
 import com.github.kr328.clash.service.util.copyProfileTo
 import com.github.kr328.clash.service.util.ProfileFields
@@ -170,7 +168,8 @@ object ProfileProcessor {
                         val store = ServiceStore(context)
                         val stored = store.activeProfile
 
-                        if (activate && activeProfileVacant(stored, stored != null && ImportedDao().exists(stored))) {
+                        // Активной нет или она уже удалена — новая становится активной
+                        if (activate && (stored == null || !ImportedDao().exists(stored))) {
                             store.activeProfile = snapshot.uuid
                         }
 
@@ -440,7 +439,7 @@ object ProfileProcessor {
 
                 val store = ServiceStore(context)
 
-                if (activeProfileGone(store.activeProfile, uuid) == ActiveProfileAction.Clear) {
+                if (store.activeProfile == uuid) {
                     store.activeProfile = null
                 }
 

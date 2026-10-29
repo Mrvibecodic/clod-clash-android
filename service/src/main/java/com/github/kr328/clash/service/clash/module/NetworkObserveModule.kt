@@ -162,9 +162,6 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             }
         }
 
-        override fun onUnavailable() {
-            Log.i("NetworkObserve onUnavailable")
-        }
     }
 
     private fun register(): Boolean {
@@ -182,15 +179,13 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         }
     }
 
-    private fun unregister(): Boolean {
+    private fun unregister() {
         Log.i("NetworkObserve start unregister")
         try {
             connectivity.unregisterNetworkCallback(callback)
         } catch (e: Exception) {
             Log.w("NetworkObserve unregister failed", e)
         }
-
-        return false
     }
 
     private fun networkToInt(entry: Map.Entry<Network, NetworkInfo>): Int {
@@ -328,7 +323,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
         val reset = resetsConnections(store.resetConnectionsOnNetworkChange, unconfirmedMark, flapMark)
         val hold = flapMark.withinLimit
-        val awake = isInteractive() || store.keepAwake
+        val awake = awake()
 
         markNetworkEvent(
             reason,
@@ -382,7 +377,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
             recoverForce = false
 
-            if (isInteractive() || store.keepAwake) {
+            if (awake()) {
                 Clash.recoverDeadNodes(forced)
             } else {
                 probePending = true
@@ -412,8 +407,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         }
     }
 
-    private fun isInteractive(): Boolean =
-        service.getSystemService<PowerManager>()?.isInteractive ?: true
+    private fun awake(): Boolean =
+        awake(service.getSystemService<PowerManager>()?.isInteractive ?: true, store.keepAwake)
 
     private fun preferredNetwork(): Network? =
         networkInfos.asSequence().minByOrNull { networkToInt(it) }?.key
@@ -485,7 +480,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                             Clash.notifyNetworkReady()
 
                             if (SystemClock.elapsedRealtime() - lastResetAt >= RESET_THROTTLE_MS) {
-                                if (isInteractive() || store.keepAwake) {
+                                if (awake()) {
                                     probeNodes()
 
                                     scheduleRecover(scope, force = true)
@@ -512,7 +507,7 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                             }
                         }
                         probeTicker.onReceive {
-                            val ticks = ticksPerProbe(isInteractive(), store.keepAwake)
+                            val ticks = ticksPerProbe(awake())
 
                             if (++idleTicks >= ticks) {
                                 idleTicks = 0

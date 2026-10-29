@@ -3,8 +3,6 @@ package com.github.kr328.clash.service.util
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.TunnelState
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SessionOverrideTest {
@@ -18,18 +16,5 @@ class SessionOverrideTest {
     @Test
     fun noChoiceClearsTheSession() {
         assertEquals(ConfigurationOverride(), sessionOverrideFor(null))
-    }
-
-    @Test
-    fun repeatingTheStoredChoiceChangesNothing() {
-        for (mode in listOf(TunnelState.Mode.Rule, TunnelState.Mode.Global, TunnelState.Mode.Direct)) {
-            assertFalse(modeChoiceChanged(mode, mode))
-        }
-    }
-
-    @Test
-    fun anotherChoiceIsAChange() {
-        assertTrue(modeChoiceChanged(null, TunnelState.Mode.Global))
-        assertTrue(modeChoiceChanged(TunnelState.Mode.Rule, TunnelState.Mode.Direct))
     }
 }
