@@ -25,7 +25,7 @@ func ApplySubtitlePattern(pattern string) {
 	} else {
 		uiSubtitlePattern = nil
 
-		log.Warnln("Compile ui-subtitle-pattern: %s", err.Error())
+		log.Warnln("Ignore unsupported ui-subtitle-pattern: %s", err.Error())
 	}
 }
 

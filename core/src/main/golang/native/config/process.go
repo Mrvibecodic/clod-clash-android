@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dlclark/regexp2"
-
 	"cfa/native/common"
 	"cfa/native/config/groups"
 	"cfa/native/config/panel"
@@ -329,12 +327,6 @@ func patchProviders(cfg *config.RawConfig, profileDir string, _ panel.Info) erro
 func validConfig(cfg *config.RawConfig, _ string, info panel.Info) error {
 	if len(cfg.Proxy) == 0 && len(cfg.ProxyProvider) == 0 && !info.RefusesDevice() {
 		return errors.New("profile does not contain `proxies` or `proxy-providers`")
-	}
-
-	if _, err := regexp2.Compile(cfg.ClashForAndroid.UiSubtitlePattern, 0); err != nil {
-		log.Warnln("Ignore unsupported ui-subtitle-pattern: %s", err.Error())
-
-		cfg.ClashForAndroid.UiSubtitlePattern = ""
 	}
 
 	return nil
