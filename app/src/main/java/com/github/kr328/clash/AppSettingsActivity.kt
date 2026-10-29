@@ -51,7 +51,6 @@ class AppSettingsActivity : BaseActivity<AppSettingsDesign>(), Behavior {
             uiStore,
             prefs,
             this,
-            locked,
             ::onHideIconChange,
             { clashActive },
             ::onReset,

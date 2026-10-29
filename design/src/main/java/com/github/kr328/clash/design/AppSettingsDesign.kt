@@ -34,7 +34,6 @@ class AppSettingsDesign(
     private val uiStore: UiStore,
     prefs: AppSettingsPrefs,
     private val behavior: Behavior,
-    private val running: Boolean,
     private val onHideIconChange: (hide: Boolean) -> Unit,
     private val isRunning: () -> Boolean,
     private val onReset: suspend () -> Unit,
@@ -63,27 +62,29 @@ class AppSettingsDesign(
         (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || uiStore.hideAppIcon)
 
     private var state by mutableStateOf(
-        AppSettingsState(
-            autoRestart = behavior.autoRestart,
-            darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
-            language = currentLanguage(),
-            showGroupIcons = uiStore.showGroupIcons,
-            showAllGroupsOnHome = uiStore.showAllGroupsOnHome,
-            hideAppIcon = uiStore.hideAppIcon,
-            canHideAppIcon = canHideAppIcon,
-            hideFromRecents = uiStore.hideFromRecents,
-            allowExternalControl = uiStore.allowExternalControl,
-            dynamicNotification = prefs.dynamicNotification,
-            notificationEditable = !running,
-            enableHwid = prefs.enableHwid,
-            subNotifications = prefs.subNotifications,
-            profileErrorNotifications = prefs.profileErrorNotifications,
-            profileUpdateNotifications = prefs.profileUpdateNotifications,
-            appUpdateNotifications = prefs.appUpdateNotifications,
-            autoCheckUpdate = autoCheckUpdate,
-            notificationsBlocked = notificationsBlocked(),
-            resetEnabled = !running,
-        ),
+        isRunning().let { running ->
+            AppSettingsState(
+                autoRestart = behavior.autoRestart,
+                darkMode = darkModes.indexOf(uiStore.darkMode).coerceAtLeast(0),
+                language = currentLanguage(),
+                showGroupIcons = uiStore.showGroupIcons,
+                showAllGroupsOnHome = uiStore.showAllGroupsOnHome,
+                hideAppIcon = uiStore.hideAppIcon,
+                canHideAppIcon = canHideAppIcon,
+                hideFromRecents = uiStore.hideFromRecents,
+                allowExternalControl = uiStore.allowExternalControl,
+                dynamicNotification = prefs.dynamicNotification,
+                notificationEditable = !running,
+                enableHwid = prefs.enableHwid,
+                subNotifications = prefs.subNotifications,
+                profileErrorNotifications = prefs.profileErrorNotifications,
+                profileUpdateNotifications = prefs.profileUpdateNotifications,
+                appUpdateNotifications = prefs.appUpdateNotifications,
+                autoCheckUpdate = autoCheckUpdate,
+                notificationsBlocked = notificationsBlocked(),
+                resetEnabled = !running,
+            )
+        },
     )
 
     override val root: View = composeRoot {
