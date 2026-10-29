@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="color_clash">#4F46E5</color>
+    <color name="color_clash_light">#4F46E5</color>
+    <color name="color_clash_dark">#A7A5FF</color>
+    <color name="color_clash">@color/color_clash_light</color>
 </resources>
