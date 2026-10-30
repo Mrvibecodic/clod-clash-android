@@ -72,10 +72,51 @@ class UpdateOutcomeTest {
     }
 
     @Test
+    fun `a success without its own notice still has every outcome identifier to clear`() {
+        val uuid = UUID.fromString("00000000-0000-0000-0000-0000000000ff")
+
+        val ids = UpdateOutcome.ids(uuid)
+
+        for (kind in UpdateOutcome.Kind.entries) {
+            assertTrue(ids.contains(UpdateOutcome.id(uuid, kind)))
+        }
+
+        assertEquals(ids.distinct(), ids)
+    }
+
+    @Test
     fun `only a scheduled update waits for the network to settle`() {
         assertFalse(UpdateOutcome.waitsForNetwork(ProfileUpdateWorker.Kind.Manual))
         assertTrue(UpdateOutcome.waitsForNetwork(ProfileUpdateWorker.Kind.Periodic))
         assertTrue(UpdateOutcome.waitsForNetwork(ProfileUpdateWorker.Kind.Expiry))
+    }
+
+    @Test
+    fun `a manual failure is always announced`() {
+        for (attempt in 0..2) for (temporary in listOf(true, false)) for (retrying in listOf(true, false)) {
+            assertTrue(UpdateOutcome.notifiesFailure(ProfileUpdateWorker.Kind.Manual, attempt, temporary, retrying))
+        }
+    }
+
+    @Test
+    fun `a periodic network failure with a retry ahead waits for the retry`() {
+        val periodic = ProfileUpdateWorker.Kind.Periodic
+
+        assertFalse(UpdateOutcome.notifiesFailure(periodic, attempt = 0, temporary = true, retrying = true))
+        assertTrue(UpdateOutcome.notifiesFailure(periodic, attempt = 1, temporary = true, retrying = true))
+        assertTrue(UpdateOutcome.notifiesFailure(periodic, attempt = 0, temporary = true, retrying = false))
+        assertTrue(UpdateOutcome.notifiesFailure(periodic, attempt = 0, temporary = false, retrying = true))
+        assertTrue(UpdateOutcome.notifiesFailure(periodic, attempt = 3, temporary = false, retrying = false))
+    }
+
+    @Test
+    fun `an expiry series is announced once, on its first attempt`() {
+        val expiry = ProfileUpdateWorker.Kind.Expiry
+
+        assertTrue(UpdateOutcome.notifiesFailure(expiry, attempt = 0, temporary = true, retrying = true))
+        assertTrue(UpdateOutcome.notifiesFailure(expiry, attempt = 0, temporary = false, retrying = true))
+        assertFalse(UpdateOutcome.notifiesFailure(expiry, attempt = 1, temporary = true, retrying = true))
+        assertFalse(UpdateOutcome.notifiesFailure(expiry, attempt = 1, temporary = false, retrying = true))
     }
 
     @Test

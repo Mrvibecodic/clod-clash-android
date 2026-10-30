@@ -23,8 +23,9 @@ object UpdateOutcome {
         else -> uuid.hashCode()
     }
 
-    fun replaced(uuid: UUID, kind: Kind): List<Int> =
-        Kind.entries.filter { it != kind }.map { id(uuid, it) }.distinct() - id(uuid, kind)
+    fun ids(uuid: UUID): List<Int> = Kind.entries.map { id(uuid, it) }.distinct()
+
+    fun replaced(uuid: UUID, kind: Kind): List<Int> = ids(uuid) - id(uuid, kind)
 
     // Ручное обновление человек ждёт на экране — без пауз и повторов.
     fun waitsForNetwork(kind: ProfileUpdateWorker.Kind): Boolean = kind != ProfileUpdateWorker.Kind.Manual
@@ -38,4 +39,14 @@ object UpdateOutcome {
         waitsForNetwork(kind) && temporary && spent < QUICK_FAILURE && others == 0
 
     val QUICK_FAILURE: Long = TimeUnit.SECONDS.toMillis(60)
+
+    // Сбой сети на первой попытке периода, за которой будет повтор, не объявляем.
+    // Повторы после истечения срока идут без сдачи, и шуметь о каждом — значит
+    // слать «не удалось обновить» вечно раз в 5 ч: объявляется первая попытка серии.
+    fun notifiesFailure(kind: ProfileUpdateWorker.Kind, attempt: Int, temporary: Boolean, retrying: Boolean): Boolean =
+        when (kind) {
+            ProfileUpdateWorker.Kind.Manual -> true
+            ProfileUpdateWorker.Kind.Periodic -> !(temporary && retrying && attempt == 0)
+            ProfileUpdateWorker.Kind.Expiry -> attempt == 0
+        }
 }

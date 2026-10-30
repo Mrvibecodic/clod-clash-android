@@ -128,21 +128,25 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Повторы после истечения срока идут без сдачи, и шуметь о каждом —
-            // значит слать «не удалось обновить» вечно раз в 5 ч; уведомление
-            // только о первой попытке серии, повторы — в журнал и в эфир.
-            failed(imported.uuid, name, e.message ?: "Unknown", notify = kind != Kind.Expiry || runAttemptCount == 0)
+            val reason = e.message ?: "Unknown"
 
-            when (kind) {
-                Kind.Periodic ->
-                    if (UpdateSchedule.retryWithinPeriod(imported.interval, runAttemptCount + 1)) Result.retry()
-                    else Result.failure()
+            val retrying = when (kind) {
+                Kind.Periodic -> UpdateSchedule.retryWithinPeriod(imported.interval, runAttemptCount + 1)
                 // Без сдачи: бэкофф WorkManager растёт до своего потолка (5 ч), а
                 // цель стоит, пока загрузка после срока не удастся. Серия одна —
                 // открытие приложения ждущую задачу не сбивает (KEEP).
-                Kind.Expiry -> Result.retry()
-                Kind.Manual -> Result.failure()
+                Kind.Expiry -> true
+                Kind.Manual -> false
             }
+
+            failed(
+                imported.uuid,
+                name,
+                reason,
+                notify = UpdateOutcome.notifiesFailure(kind, runAttemptCount, temporary(reason), retrying),
+            )
+
+            if (retrying) Result.retry() else Result.failure()
         }
 
         try {
@@ -298,6 +302,9 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
                 context.getString(title),
                 content,
             )
+        } else {
+            // Висящее «не удалось обновить» после удачи — уже неправда
+            UpdateOutcome.ids(uuid).forEach(NotificationManagerCompat.from(context)::cancel)
         }
 
         context.sendProfileUpdateCompleted(uuid, warning)
