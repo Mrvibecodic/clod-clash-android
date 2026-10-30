@@ -154,6 +154,28 @@ class UpdateFailuresTest {
     }
 
     @Test
+    fun `a failure that passes by itself is the network on the way or a channel silent for it`() {
+        listOf(
+            "clod-chan-silent: Get \"https://sub.example.com/***\": EOF",
+            "clod-chan-silent: clod-chan-dropped: Get \"https://sub.example.com/***\": EOF",
+            "clod-chan-silent: something odd",
+            "Get \"https://sub.example.com/***\": dial tcp: connect: network is unreachable",
+            "clod-chan-silent: time budget for the update is exhausted",
+            "lookup sub.example.com: no such host",
+        ).forEach { assertEquals(it, true, UpdateFailures.classify(it)?.cause?.temporary) }
+
+        listOf(
+            "server answered with status 502",
+            "server answered with status 403",
+            "clod-chan-doubt: relay answered with status 403",
+            "clod-chan-stale",
+            "clod-config-rejected: yaml: line 3: bad",
+            "write failed: ENOSPC (No space left on device)",
+            "Get \"https://sub.example.com/***\": x509: certificate has expired or is not yet valid",
+        ).forEach { assertEquals(it, false, UpdateFailures.classify(it)?.cause?.temporary) }
+    }
+
+    @Test
     fun `a connection the server closed unanswered is doubtful but keeps the connection text`() {
         val raw = "clod-chan-silent: clod-chan-dropped: Get \"https://sub.example.com/***\": EOF"
 

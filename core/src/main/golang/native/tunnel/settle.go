@@ -20,6 +20,10 @@ const (
 	heartbeatInterval = 10 * time.Second
 
 	settleStep = 250 * time.Millisecond
+
+	// settleLimit — дольше запрос вне проб не ждёт: удержание от сна или
+	// смены сети — секунды, а мигающая сеть продлевала бы его без конца
+	settleLimit = 30 * time.Second
 )
 
 var (
@@ -90,6 +94,17 @@ func beat() {
 	}
 
 	C.ProbeBeat(now)
+}
+
+// AwaitNetworkSettled — то же ожидание для запроса не из ядра (плановое
+// обновление подписки): сразу после сна сеть и соединения узлов ещё не готовы
+func AwaitNetworkSettled() {
+	ctx, cancel := context.WithTimeout(context.Background(), settleLimit)
+	defer cancel()
+
+	if err := waitNetworkSettled(ctx); err != nil {
+		log.Warnln("Network is still settling after %s, going on", settleLimit)
+	}
 }
 
 // waitNetworkSettled ждёт конца удержания проб. Удержание одно, у ядра: его

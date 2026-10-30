@@ -33,6 +33,11 @@ object UpdateFailures {
         // Причина в сети по дороге, а не в ответе сервера
         val transport: Boolean
             get() = this == Timeout || this == Tls || this == Dns || this == Connection
+
+        // Сбой, который проходит сам: сеть по дороге или канал, не ответивший из-за
+        // сети. Сертификат сам не починится — о нём сразу
+        val temporary: Boolean
+            get() = this == Timeout || this == Dns || this == Connection || this == Silent
     }
 
     // Что сказал защищённый канал при добавлении подписки или его включении.

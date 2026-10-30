@@ -1,10 +1,13 @@
 package com.github.kr328.clash.service
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 class UpdateOutcomeTest {
     @Test
@@ -66,6 +69,28 @@ class UpdateOutcomeTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `only a scheduled update waits for the network to settle`() {
+        assertFalse(UpdateOutcome.waitsForNetwork(ProfileUpdateWorker.Kind.Manual))
+        assertTrue(UpdateOutcome.waitsForNetwork(ProfileUpdateWorker.Kind.Periodic))
+        assertTrue(UpdateOutcome.waitsForNetwork(ProfileUpdateWorker.Kind.Expiry))
+    }
+
+    @Test
+    fun `only a quick network failure of a scheduled update is tried again at once`() {
+        val quick = UpdateOutcome.QUICK_FAILURE - 1
+
+        assertTrue(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Periodic, temporary = true, spent = 0, others = 0))
+        assertTrue(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Expiry, temporary = true, spent = quick, others = 0))
+        assertFalse(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Manual, temporary = true, spent = 0, others = 0))
+        assertFalse(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Periodic, temporary = false, spent = 0, others = 0))
+        // Попытка, съевшая бюджет (таймаут), с повтором вышла бы за предел задачи
+        assertFalse(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Periodic, temporary = true, spent = UpdateOutcome.QUICK_FAILURE, others = 0))
+        assertFalse(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Periodic, temporary = true, spent = TimeUnit.SECONDS.toMillis(180), others = 0))
+        // Чужая загрузка впереди в очереди — длина неизвестна, повтор подождёт бэкоффа
+        assertFalse(UpdateOutcome.retriesAtOnce(ProfileUpdateWorker.Kind.Periodic, temporary = true, spent = 0, others = 1))
     }
 
     @Test

@@ -303,6 +303,13 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeNotifyNetworkReady(JNIEnv *
     notifyNetworkReady();
 }
 
+JNIEXPORT void JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeAwaitNetworkSettled(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    awaitNetworkSettled();
+}
+
 JNIEXPORT jint JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativePatchSelector(JNIEnv *env, jobject thiz,
                                                                    jstring profile, jstring selector,

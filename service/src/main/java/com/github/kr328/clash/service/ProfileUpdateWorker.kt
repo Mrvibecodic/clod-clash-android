@@ -4,6 +4,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -19,6 +20,7 @@ import com.github.kr328.clash.common.id.UndefinedIds
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.Redact
 import com.github.kr328.clash.common.util.setUUID
+import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.data.Imported
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.store.ServiceStore
@@ -34,11 +36,14 @@ import com.github.kr328.clash.service.util.sendProfileUpdateFailed
 import com.github.kr328.clash.service.util.sendProfileUpdateStarted
 import com.github.kr328.clash.service.util.withStoredLocale
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
     CoroutineWorker(context, parameters) {
@@ -114,7 +119,7 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
         val result = try {
             val failedProviders = processing(name) {
-                ProfileProcessor.update(context, imported.uuid)
+                fetch(imported.uuid, kind)
             } ?: return gone(imported.uuid)
 
             completed(imported.uuid, context.displayProfileName(imported.uuid, imported.name, imported.nameManual), failedProviders)
@@ -150,6 +155,40 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
         return result
     }
+
+    // Задачи по расписанию Android отпускает пачкой в миг пробуждения: сеть и
+    // соединения узлов ещё не готовы, и первая попытка после сна падает на сети.
+    private suspend fun fetch(uuid: UUID, kind: Kind): List<String>? {
+        if (!UpdateOutcome.waitsForNetwork(kind)) return ProfileProcessor.update(context, uuid)
+
+        val began = SystemClock.elapsedRealtime()
+
+        settle()
+
+        return try {
+            ProfileProcessor.update(context, uuid)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val reason = e.message.orEmpty()
+
+            val spent = SystemClock.elapsedRealtime() - began
+
+            if (!UpdateOutcome.retriesAtOnce(kind, temporary(reason), spent, updating.count { it != uuid })) throw e
+
+            Log.w("Update of $uuid failed on the way (${Redact.text(reason)}), one more try in ${RETRY_PAUSE / 1000} s")
+
+            delay(RETRY_PAUSE)
+
+            settle()
+
+            ProfileProcessor.update(context, uuid)
+        }
+    }
+
+    private suspend fun settle() = withContext(Dispatchers.IO) { Clash.awaitNetworkSettled() }
+
+    private fun temporary(reason: String): Boolean = UpdateFailures.classify(reason)?.cause?.temporary == true
 
     private suspend fun reschedule(uuid: UUID, kind: Kind) {
         // Подписку могли удалить за время загрузки — ставить задачи ей некому.
@@ -337,6 +376,8 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
 
         fun input(imported: Imported, kind: Kind): Data =
             workDataOf(KEY_UUID to imported.uuid.toString(), KEY_KIND to kind.name)
+
+        private val RETRY_PAUSE = TimeUnit.SECONDS.toMillis(15)
 
         private const val KEY_UUID = "uuid"
         private const val KEY_KIND = "kind"

@@ -31,6 +31,7 @@ object Bridge {
     external fun nativeProbeCurrentNodes()
     external fun nativeRecoverDeadNodes(force: Boolean)
     external fun nativeNotifyNetworkReady()
+    external fun nativeAwaitNetworkSettled()
     external fun nativeSetCellular(cellular: Boolean): Boolean
     external fun nativeTestProfileDelays(path: String, cellular: Boolean): String?
     external fun nativeQueryNodeFingerprints(path: String): String?

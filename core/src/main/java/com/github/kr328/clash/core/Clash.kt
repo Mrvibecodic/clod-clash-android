@@ -184,6 +184,11 @@ object Clash {
         Bridge.nativeNotifyNetworkReady()
     }
 
+    // Блокирует поток до конца удержания после сна или смены сети; потолок — в ядре
+    fun awaitNetworkSettled() {
+        Bridge.nativeAwaitNetworkSettled()
+    }
+
     // Сеть устройства мобильная (SIM): серверы «только для мобильной сети» видны.
     // true — набор скрытых серверов сменился (группы ядра теперь другие)
     fun setCellular(cellular: Boolean): Boolean {

@@ -177,6 +177,13 @@ func notifyNetworkReady() {
 	tunnel.NoteNetworkReady()
 }
 
+//export awaitNetworkSettled
+func awaitNetworkSettled() {
+	defer guard("awaitNetworkSettled", func() {})()
+
+	tunnel.AwaitNetworkSettled()
+}
+
 //export patchSelector
 func patchSelector(profile, selector, name C.c_string, restore C.int) (result C.int) {
 	defer guard("patchSelector", func() {})()
