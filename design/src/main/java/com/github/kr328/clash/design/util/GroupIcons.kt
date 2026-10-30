@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.common.util.sha256Hex
+import com.github.kr328.clash.common.util.writeAtomically
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -199,31 +200,31 @@ object GroupIcons {
 
                 if (open.contentLength > MAX_BYTES) return false
 
-                open.inputStream.use { input ->
-                    temporary.outputStream().use { output ->
-                        var total = 0
-                        val buffer = ByteArray(16 * 1024)
+                target.writeAtomically(temporary) { file ->
+                    open.inputStream.use { input ->
+                        file.outputStream().use { output ->
+                            var total = 0
+                            val buffer = ByteArray(16 * 1024)
 
-                        while (true) {
-                            val read = input.read(buffer)
-                            if (read < 0) break
+                            while (true) {
+                                val read = input.read(buffer)
+                                if (read < 0) break
 
-                            total += read
-                            if (total > MAX_BYTES) return false
+                                total += read
+                                if (total > MAX_BYTES) return false
 
-                            output.write(buffer, 0, read)
+                                output.write(buffer, 0, read)
+                            }
                         }
                     }
                 }
             }
 
-            temporary.renameTo(target)
+            true
         } catch (e: Exception) {
             Log.w("Download group icon: $e", e)
 
             false
-        } finally {
-            temporary.delete()
         }
     }
 

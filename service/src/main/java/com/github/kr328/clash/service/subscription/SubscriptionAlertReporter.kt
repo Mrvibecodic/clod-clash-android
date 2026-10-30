@@ -10,6 +10,7 @@ import com.github.kr328.clash.common.compat.getColorCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Components
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.writeAtomically
 import com.github.kr328.clash.service.R
 import com.github.kr328.clash.service.data.ImportedDao
 import com.github.kr328.clash.service.store.ServiceStore
@@ -26,7 +27,6 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.io.IOException
 import java.util.UUID
 
 private val stateSerializer = MapSerializer(String.serializer(), Long.serializer())
@@ -103,15 +103,7 @@ private fun Context.writeState(uuid: UUID, value: Map<String, Long>) {
         if (value.isEmpty()) {
             file.delete()
         } else {
-            val temporary = File(file.path + ".tmp")
-
-            temporary.writeText(Json.encodeToString(stateSerializer, value))
-
-            if (!temporary.renameTo(file)) {
-                temporary.delete()
-
-                throw IOException("rename $temporary")
-            }
+            file.writeAtomically { it.writeText(Json.encodeToString(stateSerializer, value)) }
         }
     } catch (e: Exception) {
         Log.w("Write $STATE_FILE of $uuid: $e", e)

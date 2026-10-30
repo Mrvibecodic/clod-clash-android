@@ -2,6 +2,7 @@ package com.github.kr328.clash.service.freeze
 
 import android.content.Context
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.common.util.writeAtomically
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.UUID
@@ -32,14 +33,8 @@ object FreezeStore {
 
         file.parentFile?.mkdirs()
 
-        val fresh = File(file.path + ".new")
-
-        fresh.writeText(json.encodeToString(FreezeFile.serializer(), data.copy(version = FreezePlan.VERSION)))
-
-        if (!fresh.renameTo(file)) {
-            file.delete()
-
-            fresh.renameTo(file)
+        file.writeAtomically(File(file.path + ".new")) {
+            it.writeText(json.encodeToString(FreezeFile.serializer(), data.copy(version = FreezePlan.VERSION)))
         }
     }
 

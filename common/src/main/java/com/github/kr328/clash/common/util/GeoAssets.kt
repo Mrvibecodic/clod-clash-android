@@ -271,20 +271,16 @@ object GeoAssets {
             val temp = File(dir, "$name${TempArtifacts.MARK}.${Process.myPid()}")
 
             try {
-                FileOutputStream(temp).use { output ->
-                    context.assets.open(name).use { it.copyTo(output) }
+                target.writeAtomically(temp) { file ->
+                    FileOutputStream(file).use { output ->
+                        context.assets.open(name).use { it.copyTo(output) }
+                    }
                 }
 
-                if (temp.renameTo(target)) {
-                    stamps[name] = stamp(target.length(), target.lastModified())
-                    writeStamps(stampsFile, stamps)
-                } else {
-                    Log.w("$TAG: unable to replace $name")
-                }
+                stamps[name] = stamp(target.length(), target.lastModified())
+                writeStamps(stampsFile, stamps)
             } catch (e: Throwable) {
                 Log.w("$TAG: $name: $e", e)
-            } finally {
-                temp.delete()
             }
         }
     }
@@ -293,19 +289,11 @@ object GeoAssets {
         val temp = File(file.parentFile, "${file.name}${TempArtifacts.MARK}.${Process.myPid()}")
 
         try {
-            temp.writeText(stamps.entries.joinToString("\n") { "${it.key}=${it.value}" })
-
-            if (!temp.renameTo(file)) {
-                Log.w("$TAG: unable to write $STAMPS")
-
-                file.delete()
-            }
+            file.writeAtomically(temp) { out -> out.writeText(stamps.entries.joinToString("\n") { "${it.key}=${it.value}" }) }
         } catch (e: Throwable) {
             Log.w("$TAG: $e", e)
 
             file.delete()
-        } finally {
-            temp.delete()
         }
     }
 }
