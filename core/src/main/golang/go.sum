@@ -189,8 +189,8 @@ github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c h1:+2C1UshSLzaogL
 github.com/metacubex/tfo-go v0.0.0-20260623020846-376a77860b8c/go.mod h1:l9oLnLoEXyGZ5RVLsh7QCC5XsouTUyKk4F2nLm2DHLw=
 github.com/metacubex/tls v0.1.9 h1:pcHJSwFeHNswF96Z5RQW+j5cmwI2AYPdsNumK6JJSls=
 github.com/metacubex/tls v0.1.9/go.mod h1:0XeVdL0cBw+8i5Hqy3lVeP9IyD/LFTq02ExvHM6rzEM=
-github.com/metacubex/utls v0.0.0-20261013160100-8853e107ae26 h1:2b+XVQMqdKglcQvfCJ7ZD5jhvHRv5c2D0sIvujLxc1s=
-github.com/metacubex/utls v0.0.0-20261013160100-8853e107ae26/go.mod h1:kncGGVhFaoGn5M3pFe3SXhZCzsbCJayNOH4UEqTKTko=
+github.com/metacubex/utls v0.0.0-20261026164304-a6a364afbd13 h1:lXv1RLnNAMCvAVdsSwSVCDx1+agnOvMgpGwwaj0wlTA=
+github.com/metacubex/utls v0.0.0-20261026164304-a6a364afbd13/go.mod h1:kncGGVhFaoGn5M3pFe3SXhZCzsbCJayNOH4UEqTKTko=
 github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d h1:UMFI+kdp0jA8s9tC7oul0pWeTW6s8lnm0dD5PT+RY14=
 github.com/metacubex/wazero v0.0.0-20260628025728-9ae6bdcf2a7d/go.mod h1:p48xp436h1oGfoXuEnVONeDhTW+E2UpY94GAVxA62oI=
 github.com/metacubex/wireguard-go v0.0.0-20250820062549-a6cecdd7f57f h1:FGBPRb1zUabhPhDrlKEjQ9lgIwQ6cHL4x8M9lrERhbk=
