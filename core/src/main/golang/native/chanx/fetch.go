@@ -65,6 +65,10 @@ func Over(attempt func(direct bool) (bool, error), detour func(err error, reache
 
 	warn("Secure channel: request failed through the tunnel (%s), retried directly", err.Error())
 
+	if directErr != nil {
+		warn("Secure channel: the direct retry failed as well (%s)", directErr.Error())
+	}
+
 	if directErr != nil && !directReached {
 		return false, err
 	}

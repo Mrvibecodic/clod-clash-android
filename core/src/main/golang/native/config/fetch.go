@@ -221,6 +221,8 @@ func openUrl(ctx context.Context, direct *directBudget, url string, device bool)
 		)
 
 		if err != nil {
+			log.Warnln("Subscription direct retry failed as well (%s)", err.Error())
+
 			return nil, fetchHeader{}, tunnelErr
 		}
 	}
