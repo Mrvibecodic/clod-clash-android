@@ -7,8 +7,8 @@ import androidx.annotation.StringRes
 import com.github.kr328.clash.BuildConfig
 import com.github.kr328.clash.common.compat.versionCodeCompat
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.service.util.UpdateFailures
+import com.github.kr328.clash.util.Transfer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -19,7 +19,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
-import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URL
 import java.security.MessageDigest
@@ -38,7 +37,6 @@ object Updater {
 
     private const val CONNECT_TIMEOUT = 15_000
     private const val READ_TIMEOUT = 30_000
-    private const val BUFFER_SIZE = 64 * 1024
     private const val PROGRESS_STEP = 256 * 1024
     private const val MANIFEST_MAX_BYTES = 1L * 1024 * 1024
     private const val APK_MAX_BYTES = 200L * 1024 * 1024
@@ -207,78 +205,28 @@ object Updater {
         add(Proxy.NO_PROXY)
 
         if (mixedPort != null && mixedPort > 0) {
-            add(Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", mixedPort)))
+            add(Transfer.localProxy(mixedPort))
         }
     }
-
-    private class LimitExceededException(message: String) : IOException(message)
 
     private suspend fun <T : Any> request(
         url: String,
         mixedPort: Int?,
-        read: suspend (HttpURLConnection) -> T,
-    ): T? {
-        for (proxy in routes(mixedPort)) {
-            currentCoroutineContext().ensureActive()
-
-            val result = runCatching {
-                val connection = Redirects.open(
-                    url,
-                    { address -> address.openConnection(proxy) as HttpURLConnection },
-                    { open ->
-                        open.connectTimeout = CONNECT_TIMEOUT
-                        open.readTimeout = READ_TIMEOUT
-                        open.setRequestProperty("User-Agent", USER_AGENT)
-                    },
-                )
-
-                try {
-                    if (connection.responseCode !in 200..299) {
-                        error("HTTP ${connection.responseCode}")
-                    }
-
-                    read(connection)
-                } finally {
-                    connection.disconnect()
-                }
-            }.onFailure {
-                if (it is CancellationException || it is UpdateException) throw it
-
-                Log.i("$TAG: $url через $proxy не удалось: ${it.message}")
-            }
-
-            if (result.exceptionOrNull() is LimitExceededException) return null
-
-            result.getOrNull()?.let { return it }
-        }
-
-        return null
-    }
+        read: suspend (HttpURLConnection) -> T?,
+    ): T? = Transfer.firstRoute(TAG, url, routes(mixedPort), CONNECT_TIMEOUT, READ_TIMEOUT, stop = { it is UpdateException }, read = read)
 
     private suspend fun fetch(url: String, mixedPort: Int?): ByteArray? =
         request(url, mixedPort) { connection ->
             val total = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
 
             if (total > MANIFEST_MAX_BYTES) {
-                throw LimitExceededException("манифест больше $MANIFEST_MAX_BYTES байт")
+                throw Transfer.TooLarge("манифест больше $MANIFEST_MAX_BYTES байт")
             }
 
             connection.inputStream.use { input ->
                 val bytes = ByteArrayOutputStream()
-                val buffer = ByteArray(BUFFER_SIZE)
 
-                while (true) {
-                    currentCoroutineContext().ensureActive()
-
-                    val read = input.read(buffer)
-                    if (read < 0) break
-
-                    if (bytes.size() + read > MANIFEST_MAX_BYTES) {
-                        throw LimitExceededException("манифест больше $MANIFEST_MAX_BYTES байт")
-                    }
-
-                    bytes.write(buffer, 0, read)
-                }
+                Transfer.copy(input, bytes, MANIFEST_MAX_BYTES)
 
                 bytes.toByteArray()
             }
@@ -293,40 +241,24 @@ object Updater {
         val total = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
 
         if (total > APK_MAX_BYTES) {
-            throw LimitExceededException("файл больше $APK_MAX_BYTES байт")
+            throw Transfer.TooLarge("файл больше $APK_MAX_BYTES байт")
         }
 
         val digest = MessageDigest.getInstance("SHA-256")
-        val buffer = ByteArray(BUFFER_SIZE)
-        var received = 0L
         var lastReported = 0L
 
-        connection.inputStream.use { input ->
+        val received = connection.inputStream.use { input ->
             try {
                 target.outputStream().use { output ->
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-
-                        val read = input.read(buffer)
-                        if (read < 0) break
-
-                        output.write(buffer, 0, read)
+                    Transfer.copy(input, output, APK_MAX_BYTES) { buffer, read, copied ->
                         digest.update(buffer, 0, read)
 
-                        received += read
+                        if (copied - lastReported >= PROGRESS_STEP) {
+                            lastReported = copied
 
-                        if (received > APK_MAX_BYTES) {
-                            throw LimitExceededException("файл больше $APK_MAX_BYTES байт")
+                            onProgress(copied, total)
                         }
-
-                        if (received - lastReported >= PROGRESS_STEP) {
-                            lastReported = received
-
-                            onProgress(received, total)
-                        }
-                    }
-
-                    output.flush()
+                    }.also { output.flush() }
                 }
             } catch (e: IOException) {
                 throw if (UpdateFailures.noSpace(e)) UpdateException(UpdateException.Kind.Storage, e.message.orEmpty()) else e

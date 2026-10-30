@@ -3,21 +3,17 @@ package com.github.kr328.clash.util
 import android.content.Context
 import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
-import com.github.kr328.clash.common.net.Redirects
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.clashDir
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.service.util.UpdateFailures
-import com.github.kr328.clash.update.Updater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.RandomAccessFile
-import java.net.HttpURLConnection
-import java.net.InetSocketAddress
 import java.net.Proxy
-import java.net.URL
 
 object GeoData {
     private const val TAG = "GeoData"
@@ -28,7 +24,6 @@ object GeoData {
     private const val READ_TIMEOUT = 30_000
     private const val TOTAL_BUDGET = 180_000L
     private const val STALE_TEMP = 60L * 60 * 1000
-    private const val BUFFER_SIZE = 64 * 1024
     private const val MIN_SIZE = 512L * 1024
     private const val SIZE_LIMIT = 64L * 1024 * 1024
 
@@ -78,14 +73,8 @@ object GeoData {
                 FILES.forEach { (name, url) ->
                     val temp = File(context.clashDir, "$name.download")
 
-                    val onFull = { noSpace = true }
-                    val received = SystemClock.elapsedRealtime() < deadline && (
-                        if (port != null) {
-                            download(url, port, temp, name, onFull) || download(url, null, temp, name, onFull)
-                        } else {
-                            download(url, null, temp, name, onFull)
-                        }
-                        )
+                    val received = SystemClock.elapsedRealtime() < deadline &&
+                        download(url, listOfNotNull(port?.let(Transfer::localProxy)) + null, temp, name) { noSpace = true }
 
                     if (received) {
                         downloaded[name] = temp
@@ -137,84 +126,38 @@ object GeoData {
         }
     }
 
-    private fun download(url: String, mixedPort: Int?, target: File, name: String, onFull: () -> Unit): Boolean {
-        return try {
-            val proxy = mixedPort?.let {
-                Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", it))
+    private suspend fun download(url: String, routes: List<Proxy?>, target: File, name: String, onFull: () -> Unit): Boolean =
+        Transfer.firstRoute(TAG, url, routes, CONNECT_TIMEOUT, READ_TIMEOUT) { connection ->
+            val length = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
+
+            if (length !in MIN_SIZE..SIZE_LIMIT) {
+                Log.w("$TAG: $url -> declared $length bytes")
+
+                return@firstRoute null
             }
-            val connection = Redirects.open(
-                url,
-                { address ->
-                    (
-                        if (proxy != null) address.openConnection(proxy) else address.openConnection()
-                        ) as HttpURLConnection
-                },
-                { open ->
-                    open.connectTimeout = CONNECT_TIMEOUT
-                    open.readTimeout = READ_TIMEOUT
-                    open.setRequestProperty("User-Agent", Updater.USER_AGENT)
-                },
-            )
 
-            try {
-                if (connection.responseCode !in 200..299) {
-                    Log.w("$TAG: $url -> ${connection.responseCode}")
-
-                    return false
-                }
-
-                val length = connection.getHeaderField("Content-Length")?.toLongOrNull() ?: -1L
-
-                if (length !in MIN_SIZE..SIZE_LIMIT) {
-                    Log.w("$TAG: $url -> declared $length bytes")
-
-                    return false
-                }
-
-                var copied = 0L
-
+            val copied = try {
                 connection.inputStream.use { input ->
-                    FileOutputStream(target).use { output ->
-                        val buffer = ByteArray(BUFFER_SIZE)
-
-                        while (true) {
-                            val read = input.read(buffer)
-
-                            if (read < 0) {
-                                break
-                            }
-
-                            copied += read
-
-                            if (copied > length) {
-                                Log.w("$TAG: $url is larger than declared")
-
-                                return false
-                            }
-
-                            output.write(buffer, 0, read)
-                        }
-                    }
+                    FileOutputStream(target).use { output -> Transfer.copy(input, output, length) }
                 }
+            } catch (e: Transfer.TooLarge) {
+                Log.w("$TAG: $url is larger than declared")
 
-                if (copied != length) {
-                    Log.w("$TAG: $url -> $copied of $length bytes")
+                return@firstRoute null
+            } catch (e: IOException) {
+                if (UpdateFailures.noSpace(e)) onFull()
 
-                    return false
-                }
-
-                verify(target, name)
-            } finally {
-                connection.disconnect()
+                throw e
             }
-        } catch (e: Exception) {
-            Log.w("$TAG: $url: $e", e)
 
-            if (UpdateFailures.noSpace(e)) onFull()
+            if (copied != length) {
+                Log.w("$TAG: $url -> $copied of $length bytes")
 
-            false
-        }
-    }
+                return@firstRoute null
+            }
+
+            verify(target, name).takeIf { it }
+        } == true
 
     private fun verify(file: File, name: String): Boolean {
         if (!name.endsWith(".mmdb") && !name.endsWith(".metadb")) {
