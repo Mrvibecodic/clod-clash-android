@@ -1,7 +1,6 @@
 package com.github.kr328.clash.design.compose.screen
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +46,7 @@ import com.github.kr328.clash.design.util.bidiIsolated
 import com.github.kr328.clash.design.util.measuringMinutes
 import com.github.kr328.clash.design.compose.component.NoServersCard
 import com.github.kr328.clash.design.compose.component.ProxyRow
+import com.github.kr328.clash.design.compose.component.chipStripScroll
 import com.github.kr328.clash.design.compose.component.pingBounds
 import com.github.kr328.clash.design.compose.component.noServersReason
 import com.github.kr328.clash.design.compose.component.GroupIcon
@@ -315,7 +315,7 @@ private fun ChipGroups(state: ServersState, onAction: (MainAction) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+            .chipStripScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {

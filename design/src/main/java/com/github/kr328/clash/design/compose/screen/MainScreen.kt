@@ -1,23 +1,19 @@
 package com.github.kr328.clash.design.compose.screen
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -36,6 +32,8 @@ import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
@@ -70,9 +68,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,7 +85,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -144,6 +147,7 @@ import com.github.kr328.clash.service.model.PanelInfo
 import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.util.UpdateSchedule
 import com.github.kr328.clash.service.util.profileDisplayName
+import kotlinx.coroutines.flow.filterNotNull
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -324,8 +328,6 @@ sealed interface MainAction {
     data object AppsBypassLater : MainAction
 }
 
-private const val TAB_TRANSITION_MILLIS = 200
-
 private const val WIDE_LAYOUT_WIDTH_DP = 600
 
 private val CONTENT_MAX_WIDTH = 640.dp
@@ -419,34 +421,66 @@ private fun MainContent(
             when (state.subScreen) {
                 SubScreen.About -> AboutScreen(state.about, onAction)
                 SubScreen.RoutingData -> RoutingDataScreen(state.routingData, onAction)
-                null -> AnimatedContent(
-                    targetState = state.selectedTab,
-                    transitionSpec = {
-                        val forward = targetState.ordinal > initialState.ordinal
-                        val enter = slideInHorizontally(tween(TAB_TRANSITION_MILLIS)) { width ->
-                            if (forward) width else -width
-                        } + fadeIn(tween(TAB_TRANSITION_MILLIS))
-                        val exit = slideOutHorizontally(tween(TAB_TRANSITION_MILLIS)) { width ->
-                            if (forward) -width else width
-                        } + fadeOut(tween(TAB_TRANSITION_MILLIS))
-
-                        enter togetherWith exit
-                    },
-                    label = "MainTab",
-                ) { tab ->
-                    tabStates.SaveableStateProvider(tab.name) {
-                        when (tab) {
-                            MainTab.Servers -> ServersTab(state.servers, state.active, onAction, loaded = state.loaded)
-                            MainTab.Subscriptions ->
-                                SubscriptionsTab(state.subscriptions, onAction, loaded = state.loaded)
-                            MainTab.More -> MoreTab(state, onAction)
-                            else -> HomeTab(state, session, onAction)
-                        }
-                    }
-                }
+                null -> TabPager(state, session, onAction, tabStates)
             }
         }
     }
+}
+
+@Composable
+private fun TabPager(
+    state: MainScreenState,
+    session: () -> SessionStats,
+    onAction: (MainAction) -> Unit,
+    tabStates: SaveableStateHolder,
+) {
+    val context = LocalContext.current
+    val television = remember(context) { context.isTelevision() }
+    val touch = LocalInputModeManager.current.inputMode == InputMode.Touch
+    val pager = remember { PagerState(currentPage = state.selectedTab.ordinal) { MainTab.entries.size } }
+    val selected by rememberUpdatedState(state.selectedTab)
+    val action by rememberUpdatedState(onAction)
+
+    LaunchedEffect(state.selectedTab) {
+        pager.travelTo(state.selectedTab.ordinal)
+    }
+
+    LaunchedEffect(pager) {
+        snapshotFlow { if (pager.isScrollInProgress) null else pager.currentPage }
+            .filterNotNull()
+            .collect { page ->
+                val tab = MainTab.entries[page]
+
+                if (tab != selected) action(MainAction.SelectTab(tab))
+            }
+    }
+
+    HorizontalPager(
+        state = pager,
+        modifier = Modifier.fillMaxSize(),
+        userScrollEnabled = touch && !television,
+        key = { MainTab.entries[it].name },
+    ) { page ->
+        val tab = MainTab.entries[page]
+
+        tabStates.SaveableStateProvider(tab.name) {
+            when (tab) {
+                MainTab.Servers -> ServersTab(state.servers, state.active, onAction, loaded = state.loaded)
+                MainTab.Subscriptions ->
+                    SubscriptionsTab(state.subscriptions, onAction, loaded = state.loaded)
+                MainTab.More -> MoreTab(state, onAction)
+                MainTab.Home -> HomeTab(state, session, onAction)
+            }
+        }
+    }
+}
+
+// Встроенная анимация на 3+ страницы перепрыгивает почти до цели, а нужен проезд через все вкладки
+private suspend fun PagerState.travelTo(page: Int) {
+    if (page == currentPage && currentPageOffsetFraction == 0f) return
+
+    animateScrollBy((page - currentPage - currentPageOffsetFraction) * (layoutInfo.pageSize + layoutInfo.pageSpacing))
+    animateScrollToPage(page)
 }
 
 @Composable

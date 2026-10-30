@@ -2,7 +2,6 @@ package com.github.kr328.clash.design.compose.screen
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,6 +65,7 @@ import com.github.kr328.clash.design.compose.component.RadioOption
 import com.github.kr328.clash.design.compose.component.SyncIcon
 import com.github.kr328.clash.design.compose.component.SyncIconButton
 import com.github.kr328.clash.design.compose.component.TrafficLimit
+import com.github.kr328.clash.design.compose.component.chipStripScroll
 import com.github.kr328.clash.design.compose.component.exhausted
 import com.github.kr328.clash.design.compose.component.expiredAt
 import com.github.kr328.clash.design.compose.component.trafficLimit
@@ -187,7 +187,7 @@ fun SubscriptionsTab(state: SubscriptionsState, onAction: (MainAction) -> Unit, 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
+                    .chipStripScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
