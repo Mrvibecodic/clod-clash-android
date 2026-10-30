@@ -331,9 +331,10 @@ class SessionLifecycle(
         }
 
         val store = ServiceStore(service)
-        val count = store.recordStickyRestart(SystemClock.elapsedRealtime(), STICKY_RESTART_WINDOW_MS)
+        val restart = store.recordStickyRestart(SystemClock.elapsedRealtime(), STICKY_RESTART_WINDOW_MS, STICKY_RESTART_LIMIT)
+        val count = restart.count
 
-        if (count >= STICKY_RESTART_LIMIT) {
+        if (!restart.withinLimit) {
             store.stickyRestarts = ""
 
             reason = service.getString(R.string.clod_crash_loop, count)

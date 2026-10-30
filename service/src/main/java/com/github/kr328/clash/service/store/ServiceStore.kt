@@ -9,6 +9,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.store.Store
 import com.github.kr328.clash.common.store.asStoreProvider
 import com.github.kr328.clash.service.PreferenceProvider
+import com.github.kr328.clash.service.clash.module.ReactionSeries
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.util.KEY_APP_LOCALE
 import java.util.*
@@ -216,17 +217,16 @@ class ServiceStore(context: Context) {
 
     // Marks are elapsedRealtime values and only meaningful within one boot,
     // so they are stored together with a boot id and dropped after a reboot
-    fun recordStickyRestart(now: Long, windowMs: Long): Int {
+    internal fun recordStickyRestart(now: Long, windowMs: Long, limit: Int): ReactionSeries.Mark {
         val boot = bootId()
         val stored = stickyRestarts.split('|', limit = 2)
         val previous = if (stored.size == 2 && stored[0] == boot) stored[1] else ""
-        val marks = previous.split(',')
-            .mapNotNull { it.toLongOrNull() }
-            .filter { it <= now && now - it < windowMs } + now
+        val series = ReactionSeries(windowMs, limit, previous.split(',').mapNotNull { it.toLongOrNull() })
+        val mark = series.mark(now)
 
-        stickyRestarts = boot + "|" + marks.joinToString(",")
+        stickyRestarts = boot + "|" + series.recorded.joinToString(",")
 
-        return marks.size
+        return mark
     }
 
     private fun bootId(): String {

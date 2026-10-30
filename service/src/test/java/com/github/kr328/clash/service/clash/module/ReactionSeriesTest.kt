@@ -176,4 +176,26 @@ class ReactionSeriesTest {
             }
         }
     }
+
+    @Test
+    fun `take при выбранном лимите отказывает и не копит отметку`() {
+        val series = ReactionSeries(window, 2)
+
+        assertEquals(listOf(true, true, false, false), listOf(0L, 1_000L, 2_000L, 3_000L).map { series.take(it) })
+        assertEquals(listOf(0L, 1_000L), series.recorded)
+
+        assertTrue(series.take(window))
+        assertEquals(listOf(1_000L, window), series.recorded)
+    }
+
+    @Test
+    fun `сохранённые отметки продолжают серию, а отметки из будущего выбрасываются`() {
+        val series = ReactionSeries(window, 3, listOf(5_000L, 10_000L, 90_000L))
+
+        val mark = series.mark(20_000L)
+
+        assertEquals(3, mark.count)
+        assertFalse(mark.withinLimit)
+        assertEquals(listOf(5_000L, 10_000L, 20_000L), series.recorded)
+    }
 }

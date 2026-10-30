@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.service.ServiceLog
 import com.github.kr328.clash.service.clash.module.Module
+import com.github.kr328.clash.service.clash.module.ReactionSeries
 import com.github.kr328.clash.service.freeze.NetworkKey
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -28,23 +29,11 @@ interface ClashRuntime {
 
 private class ModuleFailure(cause: Exception) : Exception(cause)
 
-internal class RestartBudget(private val limit: Int, private val windowMs: Long, private val now: () -> Long) {
-    private val restarts = ArrayDeque<Long>()
+internal class RestartBudget(limit: Int, windowMs: Long, private val now: () -> Long) {
+    private val restarts = ReactionSeries(windowMs, limit)
 
     @Synchronized
-    fun take(): Boolean {
-        val at = now()
-
-        while (restarts.isNotEmpty() && at - restarts.first() >= windowMs) {
-            restarts.removeFirst()
-        }
-
-        if (restarts.size >= limit) return false
-
-        restarts.addLast(at)
-
-        return true
-    }
+    fun take(): Boolean = restarts.take(now())
 }
 
 internal fun restartBudget() = RestartBudget(2, 10 * 60 * 1000L, SystemClock::elapsedRealtime)
