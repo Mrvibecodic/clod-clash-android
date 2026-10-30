@@ -110,10 +110,9 @@ object Clash {
         fd: Int,
         stack: String,
         gateway: String,
-        portal: String,
         dns: String,
     ) {
-        val code = Bridge.nativeStartTun(fd, stack, gateway, portal, dns)
+        val code = Bridge.nativeStartTun(fd, stack, gateway, dns)
 
         if (code != 0) {
             throw ClashException("start tun failed")

@@ -19,7 +19,6 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
         val fd: Int,
         val stack: String,
         val gateway: String,
-        val portal: String,
         val dns: String,
     )
 
@@ -66,7 +65,6 @@ class TunModule(private val vpn: VpnService) : Module<Unit>(vpn) {
                 fd = device.fd,
                 stack = device.stack,
                 gateway = device.gateway,
-                portal = device.portal,
                 dns = device.dns,
             )
         } catch (e: Exception) {

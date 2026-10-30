@@ -126,7 +126,7 @@ func attachSocketCallbacks(callback unsafe.Pointer) {
 }
 
 //export startTun
-func startTun(fd C.int, stack, gateway, portal, dns C.c_string) (result C.int) {
+func startTun(fd C.int, stack, gateway, dns C.c_string) (result C.int) {
 	handedOver := false
 
 	defer guard("startTun", func() { result = 1 })()
@@ -156,12 +156,11 @@ func startTun(fd C.int, stack, gateway, portal, dns C.c_string) (result C.int) {
 	f := int(fd)
 	s := C.GoString(stack)
 	g := C.GoString(gateway)
-	p := C.GoString(portal)
 	d := C.GoString(dns)
 
 	handedOver = true
 
-	closer, err := tun.Start(f, s, g, p, d)
+	closer, err := tun.Start(f, s, g, d)
 	if err != nil {
 		log.Errorln("Start tun: %s", err.Error())
 

@@ -15,8 +15,8 @@ import (
 	"github.com/metacubex/mihomo/tunnel"
 )
 
-func Start(fd int, stack, gateway, portal, dns string) (io.Closer, error) {
-	log.Debugln("TUN: fd = %d, stack = %s, gateway = %s, portal = %s, dns = %s", fd, stack, gateway, portal, dns)
+func Start(fd int, stack, gateway, dns string) (io.Closer, error) {
+	log.Debugln("TUN: fd = %d, stack = %s, gateway = %s, dns = %s", fd, stack, gateway, dns)
 
 	owned := true
 
