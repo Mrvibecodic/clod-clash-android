@@ -188,6 +188,8 @@ data class ServersState(
     val allOnHome: Boolean = false,
     val testing: Boolean = false,
     val measuring: Int = 0,
+    // Сколько из measuring уже измерено; 0 — хода замера не видно
+    val measured: Int = 0,
     val offline: Boolean = false,
     // Список из файла подписки, пока туннель её загружает
     val loading: Boolean = false,

@@ -1453,7 +1453,7 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.renderOfflineDelays(update: OfflineDelays.State) {
         when (update) {
             is OfflineDelays.State.Idle -> Unit
-            is OfflineDelays.State.Running -> setProxyTesting(true, update.total)
+            is OfflineDelays.State.Running -> setProxyTesting(true, update.total, update.measured)
             is OfflineDelays.State.Done -> {
                 reportFailures("Offline delays") {
                 if (withProfile { queryActive() }?.uuid == update.profile) {

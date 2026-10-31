@@ -493,10 +493,10 @@ class MainDesign(
         }
     }
 
-    suspend fun setProxyTesting(testing: Boolean, measuring: Int = 0) {
+    suspend fun setProxyTesting(testing: Boolean, measuring: Int = 0, measured: Int = 0) {
         withContext(Dispatchers.Main) {
             state = state.copy(
-                servers = state.servers.copy(testing = testing, measuring = measuring),
+                servers = state.servers.copy(testing = testing, measuring = measuring, measured = measured),
             )
         }
     }

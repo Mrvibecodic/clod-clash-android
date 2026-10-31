@@ -295,6 +295,7 @@
     <string name="clod_sub_unlimited">безлимит</string>
     <string name="clod_sub_days">%1$d дн</string>
     <string name="clod_delay_ms">%1$d мс</string>
+    <string name="clod_delays_measured">Измерено %1$d из %2$d</string>
     <plurals name="clod_delays_measuring">
         <item quantity="one">Измеряем %1$d сервер, до %2$d мин</item>
         <item quantity="few">Измеряем %1$d сервера, до %2$d мин</item>

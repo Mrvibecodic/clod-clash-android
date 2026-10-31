@@ -4,6 +4,8 @@ import com.github.kr328.clash.common.Global
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.freeze.NetworkKey
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -17,7 +19,7 @@ object OfflineDelays {
     sealed interface State {
         data object Idle : State
 
-        data class Running(val profile: UUID, val total: Int) : State
+        data class Running(val profile: UUID, val total: Int, val measured: Int = 0) : State
 
         data class Done(
             val profile: UUID,
@@ -46,7 +48,15 @@ object OfflineDelays {
 
             try {
                 // Не в мобильной сети серверы только для неё не видны и не проверяются
-                val raw = withClash { testProfileDelays(profile, NetworkKey.cellularNow(Global.application)) }
+                val raw = coroutineScope {
+                    val progress = launch { followProgress(profile) }
+
+                    try {
+                        withClash { testProfileDelays(profile, NetworkKey.cellularNow(Global.application)) }
+                    } finally {
+                        progress.cancel()
+                    }
+                }
 
                 delays = try {
                     Json.Default.decodeFromString(serializer, raw)
@@ -66,6 +76,29 @@ object OfflineDelays {
             current.value = State.Done(profile, delays, failure)
         }
     }
+
+    // Ход замера — только для подписи: сбой опроса замер не прерывает
+    private suspend fun followProgress(profile: UUID) {
+        while (true) {
+            delay(PROGRESS_POLL_MS)
+
+            val (measured, total) = try {
+                progressOf(withClash { queryProfileDelayProgress() })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                continue
+            }
+
+            if (total > 0) current.value = State.Running(profile, total, measured)
+        }
+    }
+
+    // Ход из ядра: старшие 32 бита — измерено, младшие — всего
+    internal fun progressOf(packed: Long): Pair<Int, Int> =
+        (packed ushr 32).toInt() to (packed and 0xffffffffL).toInt()
+
+    private const val PROGRESS_POLL_MS = 1_000L
 
     fun consume() {
         if (current.value is State.Done) {

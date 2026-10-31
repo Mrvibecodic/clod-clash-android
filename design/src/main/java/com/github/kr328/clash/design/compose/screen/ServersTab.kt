@@ -91,12 +91,16 @@ fun ServersTab(
 
                 if (state.testing && state.measuring > 0) {
                     Text(
-                        text = pluralStringResource(
-                            R.plurals.clod_delays_measuring,
-                            state.measuring,
-                            state.measuring,
-                            measuringMinutes(state.measuring),
-                        ),
+                        text = if (state.measured > 0) {
+                            stringResource(R.string.clod_delays_measured, state.measured, state.measuring)
+                        } else {
+                            pluralStringResource(
+                                R.plurals.clod_delays_measuring,
+                                state.measuring,
+                                state.measuring,
+                                measuringMinutes(state.measuring),
+                            )
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

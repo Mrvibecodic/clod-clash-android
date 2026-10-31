@@ -342,6 +342,7 @@
     <string name="clod_sub_unlimited">unlimited</string>
     <string name="clod_sub_days">%1$d d</string>
     <string name="clod_delay_ms">%1$d ms</string>
+    <string name="clod_delays_measured">Measured %1$d of %2$d</string>
     <plurals name="clod_delays_measuring">
         <item quantity="one">Measuring %1$d server, up to %2$d min</item>
         <item quantity="other">Measuring %1$d servers, up to %2$d min</item>
