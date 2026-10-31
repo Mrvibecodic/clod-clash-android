@@ -1,6 +1,7 @@
 package com.github.kr328.clash.service
 
 import android.content.Context
+import androidx.core.app.NotificationManagerCompat
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.service.data.Database
 import com.github.kr328.clash.service.data.Imported
@@ -12,6 +13,7 @@ import com.github.kr328.clash.service.model.Profile
 import com.github.kr328.clash.service.remote.IFetchObserver
 import com.github.kr328.clash.service.remote.IProfileManager
 import com.github.kr328.clash.service.store.ServiceStore
+import com.github.kr328.clash.service.subscription.reportSubscriptionAlerts
 import com.github.kr328.clash.service.util.fetchedAt
 import com.github.kr328.clash.service.util.generateProfileUUID
 import com.github.kr328.clash.service.util.pendingDir
@@ -149,6 +151,10 @@ class ProfileManager(private val context: Context) : IProfileManager,
                 // Сохранение (у подписки по ссылке — с новой загрузкой) без туннеля
                 // сверяет пометки 16–20: панель могла включить или выключить проверку
                 FreezeChecks.profileUpdated(uuid)
+
+                NotificationManagerCompat.from(context).cancel(UpdateOutcome.id(uuid, UpdateOutcome.Kind.Failure))
+
+                context.reportSubscriptionAlerts(uuid)
 
                 scheduleUpdate(uuid, false)
             }

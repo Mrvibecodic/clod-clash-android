@@ -304,61 +304,61 @@ object ProfileProcessor {
         val profileDir = context.importedDir.resolve(uuid.toString())
         val probe = context.processingDir
 
-        profileLock.withLock {
+        try {
+            profileLock.withLock {
+                probe.deleteRecursively()
+
+                profileDir.copyProfileTo(probe, overwrite = true)
+            }
+
+            val fetched = try {
+                fetchProfile(context, probe, target, true, true, secure, callback)
+            } catch (e: Exception) {
+                Log.w("Spare address of $uuid did not answer, keeping the current one: $e", e)
+
+                return emptyList()
+            }
+
+            val info = fetched.info
+
+            val moved = profileLock.withLock {
+                val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock false
+
+                // Адрес для перевода построен от того основного, с которого шло обновление; сменили
+                // его за это время — перевод к подписке уже не относится.
+                if (imported.source != current) return@withLock false
+
+                if (spareTaken(uuid, target)) return@withLock false
+
+                ProfileSwap.replace(profileDir, probe, warn = { Log.w(it) })
+
+                ImportedDao().update(
+                    imported.copy(
+                        source = target,
+                        upload = info?.subUpload ?: imported.upload,
+                        download = info?.subDownload ?: imported.download,
+                        total = info?.subTotal ?: imported.total,
+                        expire = info?.subExpire ?: imported.expire,
+                        quota = info?.subUpload != null || imported.quota,
+                    ),
+                )
+
+                Clash.markProfileUpdated(profileDir, imported.interval)
+
+                true
+            }
+
+            if (!moved) return emptyList()
+
+            Log.i("Subscription $uuid moved to the spare address by the provider")
+
+            context.sendProfileChanged(uuid)
+            context.notifySubscriptionMoved(uuid)
+
+            return fetched.failedProviders
+        } finally {
             probe.deleteRecursively()
-
-            profileDir.copyProfileTo(probe, overwrite = true)
         }
-
-        val fetched = try {
-            fetchProfile(context, probe, target, true, true, secure, callback)
-        } catch (e: Exception) {
-            Log.w("Spare address of $uuid did not answer, keeping the current one: $e", e)
-
-            probe.deleteRecursively()
-
-            return emptyList()
-        }
-
-        val info = fetched.info
-
-        val moved = profileLock.withLock {
-            val imported = ImportedDao().queryByUUID(uuid) ?: return@withLock false
-
-            // Адрес для перевода построен от того основного, с которого шло обновление; сменили
-            // его за это время — перевод к подписке уже не относится.
-            if (imported.source != current) return@withLock false
-
-            if (spareTaken(uuid, target)) return@withLock false
-
-            ProfileSwap.replace(profileDir, probe, warn = { Log.w(it) })
-
-            ImportedDao().update(
-                imported.copy(
-                    source = target,
-                    upload = info?.subUpload ?: imported.upload,
-                    download = info?.subDownload ?: imported.download,
-                    total = info?.subTotal ?: imported.total,
-                    expire = info?.subExpire ?: imported.expire,
-                    quota = info?.subUpload != null || imported.quota,
-                ),
-            )
-
-            Clash.markProfileUpdated(profileDir, imported.interval)
-
-            true
-        }
-
-        probe.deleteRecursively()
-
-        if (!moved) return emptyList()
-
-        Log.i("Subscription $uuid moved to the spare address by the provider")
-
-        context.sendProfileChanged(uuid)
-        context.notifySubscriptionMoved(uuid)
-
-        return fetched.failedProviders
     }
 
     suspend fun repair(context: Context) {
