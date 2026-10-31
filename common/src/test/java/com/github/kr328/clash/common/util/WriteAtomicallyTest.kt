@@ -3,6 +3,7 @@ package com.github.kr328.clash.common.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -70,5 +71,23 @@ class WriteAtomicallyTest {
         assertFalse(download())
         assertEquals("old", file.readText())
         assertFalse(temp.exists())
+    }
+
+    @Test
+    fun `durable move puts the ready file in place`() {
+        val target = File(folder.root, "geoip.metadb").apply { writeText("old") }
+        val ready = File(folder.root, "geoip.metadb.download").apply { writeText("new") }
+
+        assertTrue(ready.moveDurablyTo(target))
+        assertEquals("new", target.readText())
+        assertFalse(ready.exists())
+    }
+
+    @Test
+    fun `durable move of a missing file fails and keeps the target`() {
+        val target = File(folder.root, "geoip.metadb").apply { writeText("old") }
+
+        assertFalse(File(folder.root, "absent").moveDurablyTo(target))
+        assertEquals("old", target.readText())
     }
 }

@@ -12,6 +12,7 @@ import com.github.kr328.clash.design.compose.component.NoticeKind
 import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.service.util.UpdateFailures
 import com.github.kr328.clash.common.util.clashDir
+import com.github.kr328.clash.common.util.moveDurablyTo
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.selects.select
 import java.io.File
@@ -136,7 +137,7 @@ class MetaFeatureSettingsActivity : BaseActivity<MetaFeatureSettingsDesign>() {
                     true
                 } ?: false
 
-                if (!opened || !temp.renameTo(destination)) {
+                if (!opened || !temp.moveDurablyTo(destination)) {
                     return@writeGuarded false
                 }
 

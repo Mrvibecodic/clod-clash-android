@@ -5,6 +5,7 @@ import android.os.SystemClock
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.GeoAssets
 import com.github.kr328.clash.common.util.clashDir
+import com.github.kr328.clash.common.util.moveDurablyTo
 import com.github.kr328.clash.design.compose.screen.GeoFileState
 import com.github.kr328.clash.service.util.UpdateFailures
 import kotlinx.coroutines.Dispatchers
@@ -88,7 +89,7 @@ object GeoData {
                 if (downloaded.isNotEmpty()) {
                     GeoAssets.writeGuarded(context) {
                         downloaded.forEach { (name, temp) ->
-                            if (temp.renameTo(File(context.clashDir, name))) {
+                            if (temp.moveDurablyTo(File(context.clashDir, name))) {
                                 updated += name
                             } else {
                                 Log.w("$TAG: unable to replace $name")
