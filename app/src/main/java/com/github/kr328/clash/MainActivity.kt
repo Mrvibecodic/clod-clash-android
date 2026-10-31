@@ -2456,9 +2456,9 @@ class MainActivity : BaseActivity<MainDesign>() {
         fun startProvider(key: String) {
             if (current.value is State.Running || !busy.add(key)) return
 
-            Global.launch {
+            launchHoldingService {
                 try {
-                    val provider = updatableProviders().firstOrNull { keyOf(it) == key } ?: return@launch
+                    val provider = updatableProviders().firstOrNull { keyOf(it) == key } ?: return@launchHoldingService
 
                     updateOne(provider)
                 } finally {
@@ -2484,7 +2484,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             current.value = State.Running
 
-            Global.launch {
+            launchHoldingService {
                 try {
                     val geo = GeoData.update(app, app.activeLocalProxyPort(), running)
 

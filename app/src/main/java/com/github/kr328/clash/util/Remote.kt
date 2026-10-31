@@ -39,11 +39,13 @@ val serviceUnavailableHandler = CoroutineExceptionHandler { _, e ->
 
 private suspend fun awaitRemote(): RemoteHandle {
     while (true) {
+        Remote.service.holdForOperation()
+
         withTimeoutOrNull(REMOTE_WAIT_MS) { Remote.service.remote.get() }?.let { return it }
 
         val since = Remote.service.boundSince
 
-        if (since != 0L && System.currentTimeMillis() - since >= REMOTE_WAIT_MS) {
+        if (Remote.service.gaveUp || since != 0L && System.currentTimeMillis() - since >= REMOTE_WAIT_MS) {
             throw ServiceUnavailableException(
                 Global.application.withAppLocale().getString(R.string.clod_service_unavailable),
             )
@@ -57,24 +59,26 @@ private suspend fun <R, T> withRemote(
     block: suspend R.() -> T,
 ): T {
     while (true) {
-        val remote = awaitRemote()
-
         Remote.service.beginOperation()
 
         try {
-            return withContext(Dispatchers.IO) { select(remote).block() }
-        } catch (e: DeadObjectException) {
-            Log.w("Remote services panic")
+            val remote = awaitRemote()
 
-            Remote.service.remote.reset(remote)
+            try {
+                return withContext(Dispatchers.IO) { select(remote).block() }
+            } catch (e: DeadObjectException) {
+                Log.w("Remote services panic")
 
-            if (!retry) {
-                throw ServiceUnavailableException(
-                    Global.application.withAppLocale().getString(R.string.clod_service_unavailable),
-                )
+                Remote.service.remote.reset(remote)
+
+                if (!retry) {
+                    throw ServiceUnavailableException(
+                        Global.application.withAppLocale().getString(R.string.clod_service_unavailable),
+                    )
+                }
+
+                delay(REMOTE_RETRY_DELAY_MS)
             }
-
-            delay(REMOTE_RETRY_DELAY_MS)
         } finally {
             Remote.service.endOperation()
         }
@@ -92,8 +96,8 @@ suspend fun <T> withProfile(
 ): T = withRemote(retry, { it.profile }, block)
 
 // Работа из нескольких вызовов держит службу целиком, а не каждый вызов по
-// отдельности: иначе привязка, отпущенная между вызовами (приложение ушло с
-// экрана), остановила бы следующий шаг до возвращения человека в приложение.
+// отдельности: иначе, пока приложение не на экране, служба привязывалась бы
+// и отпускалась на каждом шаге.
 fun launchHoldingService(block: suspend CoroutineScope.() -> Unit): Job {
     Remote.service.beginOperation()
 

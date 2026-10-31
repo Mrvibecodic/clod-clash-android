@@ -46,6 +46,14 @@ class Service(private val context: Application, val crashed: () -> Unit) {
 
     private var unbindRequested = false
 
+    private var visible = false
+
+    // Служба падала раз за разом: заново её поднимает только возвращение на
+    // экран, иначе каждая ждущая операция снова открывала бы экран аварии.
+    @Volatile
+    var gaveUp = false
+        private set
+
     private var unbindTimer: Job? = null
 
     fun beginOperation() {
@@ -61,6 +69,24 @@ class Service(private val context: Application, val crashed: () -> Unit) {
     }
 
     fun requestUnbind() {
+        visible = false
+
+        unbindWhenIdle()
+    }
+
+    // Операция, которой нужна служба, пока приложение не на экране, держит
+    // привязку сама: она отпущена или ещё не сделана — привязаться заново.
+    fun holdForOperation() {
+        main.post {
+            if (boundSince != 0L || inFlight.get() == 0 || gaveUp) return@post
+
+            connect()
+
+            if (!visible) unbindWhenIdle()
+        }
+    }
+
+    private fun unbindWhenIdle() {
         if (inFlight.get() == 0) {
             return unbind()
         }
@@ -110,6 +136,13 @@ class Service(private val context: Application, val crashed: () -> Unit) {
     }
 
     fun bind() {
+        visible = true
+        gaveUp = false
+
+        connect()
+    }
+
+    private fun connect() {
         try {
             unbindTimer?.cancel()
             unbindRequested = false
@@ -135,6 +168,8 @@ class Service(private val context: Application, val crashed: () -> Unit) {
     }
 
     private fun giveUp() {
+        gaveUp = true
+
         unbind()
 
         crashed()
