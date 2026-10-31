@@ -9,8 +9,6 @@ import (
 	"cfa/native/config/groups"
 	"cfa/native/config/panel"
 
-	"github.com/dlclark/regexp2"
-
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	C "github.com/metacubex/mihomo/constant"
@@ -263,7 +261,7 @@ func shownDelay(px C.Proxy, url string) int {
 	return int(px.LastDelayForTestUrl(url))
 }
 
-func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup {
+func QueryProxyGroup(name string, split func(string) (string, string, bool)) *ProxyGroup {
 	p := tunnel.Proxies()[name]
 
 	if p == nil {
@@ -284,7 +282,7 @@ func QueryProxyGroup(name string, uiSubtitlePattern *regexp2.Regexp) *ProxyGroup
 		return &ProxyGroup{Type: g.Type().String(), Proxies: []*Proxy{}, AllHidden: true}
 	}
 
-	proxies := convertProxies(members, uiSubtitlePattern, GroupTestURL(g), g.Type() == C.Selector)
+	proxies := convertProxies(members, split, GroupTestURL(g), g.Type() == C.Selector)
 
 	group := &ProxyGroup{
 		Type:    g.Type().String(),
@@ -386,26 +384,9 @@ func httpsIcon(raw string) string {
 	return parsed.String()
 }
 
-// splitSubtitle — имя сервера по ui-subtitle-pattern: совпадение уходит из
-// заголовка в подпись. ok=false — шаблона нет или он не совпал
-func splitSubtitle(name string, pattern *regexp2.Regexp) (title, subtitle string, ok bool) {
-	if pattern == nil {
-		return "", "", false
-	}
-
-	runes := []rune(name)
-	match, err := pattern.FindRunesMatch(runes)
-	if err != nil || match == nil {
-		return "", "", false
-	}
-
-	return string(runes[:match.Index]) + string(runes[match.Index+match.Length:]),
-		string(runes[match.Index : match.Index+match.Length]), true
-}
-
 // nodeDelays — список select: сам он членов не проверяет, и вложенная группа
 // в нём без ручной проверки осталась бы без цифры
-func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupTestURL string, nodeDelays bool) []*Proxy {
+func convertProxies(proxies []C.Proxy, split func(string) (string, string, bool), groupTestURL string, nodeDelays bool) []*Proxy {
 	result := make([]*Proxy, 0, 128)
 
 	for _, p := range proxies {
@@ -428,7 +409,7 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 		}
 
 		if _, ok := p.Adapter().(outboundgroup.ProxyGroup); !ok {
-			if cut, matched, ok := splitSubtitle(name, uiSubtitlePattern); ok {
+			if cut, matched, ok := split(name); ok {
 				title, subtitle = cut, matched
 			}
 		}
@@ -447,7 +428,7 @@ func convertProxies(proxies []C.Proxy, uiSubtitlePattern *regexp2.Regexp, groupT
 		if isGroup {
 			if node, owner := shownNode(group); node != nil {
 				current, currentTitle, currentGroup = node.Name(), node.Name(), owner.Name()
-				if cut, _, ok := splitSubtitle(current, uiSubtitlePattern); ok {
+				if cut, _, ok := split(current); ok {
 					currentTitle = cut
 				}
 

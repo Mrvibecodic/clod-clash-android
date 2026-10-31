@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"unsafe"
 
-	"cfa/native/app"
 	"cfa/native/common/safego"
 	"cfa/native/config"
+	"cfa/native/subtitle"
 	"cfa/native/tunnel"
 )
 
@@ -46,7 +46,7 @@ func queryGroup(name C.c_string) (result *C.char) {
 
 	n := C.GoString(name)
 
-	response := tunnel.QueryProxyGroup(n, app.SubtitlePattern())
+	response := tunnel.QueryProxyGroup(n, subtitle.Split)
 
 	if response == nil {
 		return nil

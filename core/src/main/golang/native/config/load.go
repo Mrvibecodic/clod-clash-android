@@ -7,9 +7,9 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"cfa/native/app"
 	"cfa/native/config/panel"
 	"cfa/native/report"
+	"cfa/native/subtitle"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/common/yaml"
@@ -264,7 +264,7 @@ func Load(path string) error {
 
 		report.SetNodes(filepath.Base(path), report.NodesOf(rawCfg.Proxy), report.ProvidersOf(rawCfg.ProxyProvider))
 
-		app.ApplySubtitlePattern(rawCfg.ClashForAndroid.UiSubtitlePattern)
+		subtitle.Apply(rawCfg.ClashForAndroid.UiSubtitlePattern)
 	})
 
 	return nil
