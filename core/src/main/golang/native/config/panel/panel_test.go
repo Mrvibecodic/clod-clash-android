@@ -492,27 +492,6 @@ func TestApplyHeaders(t *testing.T) {
 	}
 }
 
-func TestApplyHeadersBareExpireToggle(t *testing.T) {
-	var info Info
-
-	ApplyHeaders(&info, map[string][]string{"notification-subs-expire": {"true"}}, "https://panel.example.com/sub")
-
-	if !reflect.DeepEqual(info.NotifyExpireDays, defaultNotifyExpireDays) {
-		t.Fatalf("ожидались умолчания %#v, получено %#v", defaultNotifyExpireDays, info.NotifyExpireDays)
-	}
-
-	info = Info{}
-
-	ApplyHeaders(&info, map[string][]string{
-		"notification-subs-expire": {"true"},
-		"notify-expire-days":       {"5"},
-	}, "https://panel.example.com/sub")
-
-	if !reflect.DeepEqual(info.NotifyExpireDays, []int{5}) {
-		t.Fatalf("ожидался список из панели, получено %#v", info.NotifyExpireDays)
-	}
-}
-
 func TestApplyHeadersResetsStateFields(t *testing.T) {
 	info := Info{
 		HwidState:            HwidActive,

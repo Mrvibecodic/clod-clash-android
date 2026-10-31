@@ -202,9 +202,6 @@ func ApplyHeaders(info *Info, header map[string][]string, current string) {
 	info.RefillDate = parseRefillDate(headerValue(header, "subscription-refill-date"))
 
 	info.NotifyExpireDays = thresholds(headerValue(header, "notify-expire-days"), 1, 365)
-	if info.NotifyExpireDays == nil && boolHeader(header, "notification-subs-expire") {
-		info.NotifyExpireDays = append([]int(nil), defaultNotifyExpireDays...)
-	}
 
 	info.NotifyTrafficPercent = thresholds(headerValue(header, "notify-traffic-percent"), 1, 100)
 
@@ -593,8 +590,6 @@ func hwidState(header map[string][]string) string {
 
 	return HwidUnknown
 }
-
-var defaultNotifyExpireDays = []int{1, 3, 7}
 
 const maxThresholds = 10
 
