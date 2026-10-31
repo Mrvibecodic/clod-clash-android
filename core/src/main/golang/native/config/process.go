@@ -34,7 +34,15 @@ var processors = []processor{
 
 // info — panel.json папки подписки: читается один раз на разбор, а при
 // проверке загрузки приходит из памяти, вместе с только что принятыми заголовками.
-type processor func(cfg *config.RawConfig, profileDir string, info panel.Info) error
+// save — разбор для загрузки или проверки: только он пишет tun.json и
+// inbound.json; разбор ради чтения узлов папку не трогает — она может быть уже подменена.
+type parseInput struct {
+	dir  string
+	info panel.Info
+	save bool
+}
+
+type processor func(cfg *config.RawConfig, src parseInput) error
 
 func overrideMode(content string) *tunnel.TunnelMode {
 	var slot struct {
@@ -52,7 +60,7 @@ func modeLocked(profileDir string, info panel.Info) bool {
 	return panel.LockActive(panel.WithUpdatedAt(profileDir, info), time.Now().Unix())
 }
 
-func patchOverride(cfg *config.RawConfig, profileDir string, info panel.Info) error {
+func patchOverride(cfg *config.RawConfig, src parseInput) error {
 	template := cfg.Mode
 	nameServers := cfg.DNS.NameServer
 
@@ -70,7 +78,7 @@ func patchOverride(cfg *config.RawConfig, profileDir string, info panel.Info) er
 		template.String(),
 		modeName(overrideMode(persist)),
 		modeName(overrideMode(session)),
-		modeLocked(profileDir, info),
+		modeLocked(src.dir, src.info),
 	)
 
 	// The provider pinned the mode: the override slots must not win over the subscription.
@@ -90,7 +98,7 @@ func patchOverride(cfg *config.RawConfig, profileDir string, info panel.Info) er
 	return nil
 }
 
-func patchExternalController(cfg *config.RawConfig, _ string, _ panel.Info) error {
+func patchExternalController(cfg *config.RawConfig, _ parseInput) error {
 	cfg.ExternalController = ""
 	cfg.ExternalControllerTLS = ""
 	cfg.ExternalControllerUnix = ""
@@ -122,7 +130,7 @@ func mixedPortOverridden(slot OverrideSlot) bool {
 	return ok
 }
 
-func patchGeneral(cfg *config.RawConfig, profileDir string, _ panel.Info) error {
+func patchGeneral(cfg *config.RawConfig, src parseInput) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
 
@@ -133,13 +141,15 @@ func patchGeneral(cfg *config.RawConfig, profileDir string, _ panel.Info) error 
 		cfg.MixedPort = defaultMixedPort
 	}
 
-	panel.WriteInboundPrefs(profileDir, panel.InboundPrefs{
-		MixedPort: cfg.MixedPort,
-		HttpPort:  cfg.Port,
-	})
+	if src.save {
+		panel.WriteInboundPrefs(src.dir, panel.InboundPrefs{
+			MixedPort: cfg.MixedPort,
+			HttpPort:  cfg.Port,
+		})
+	}
 
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
-		cfg.ExternalUI = profileDir + "/ui"
+		cfg.ExternalUI = src.dir + "/ui"
 	} else {
 		// Without a controller the dashboard is unreachable; do not let the core download it.
 		cfg.ExternalUI = ""
@@ -150,14 +160,14 @@ func patchGeneral(cfg *config.RawConfig, profileDir string, _ panel.Info) error 
 	return nil
 }
 
-func patchProfile(cfg *config.RawConfig, _ string, _ panel.Info) error {
+func patchProfile(cfg *config.RawConfig, _ parseInput) error {
 	cfg.Profile.StoreSelected = false
 	cfg.Profile.StoreFakeIP = true
 
 	return nil
 }
 
-func patchDns(cfg *config.RawConfig, _ string, _ panel.Info) error {
+func patchDns(cfg *config.RawConfig, _ parseInput) error {
 	if !cfg.DNS.Enable {
 		cfg.DNS = config.DefaultRawConfig().DNS
 		cfg.DNS.NameServer = defaultNameServers
@@ -251,8 +261,8 @@ func applyOwnDns(cfg *config.RawConfig, override string) {
 	}
 }
 
-func patchTun(cfg *config.RawConfig, profileDir string, info panel.Info) error {
-	prefs := panel.TunPrefsOf(cfg.Tun.IncludePackage, cfg.Tun.ExcludePackage, info)
+func patchTun(cfg *config.RawConfig, src parseInput) error {
+	prefs := panel.TunPrefsOf(cfg.Tun.IncludePackage, cfg.Tun.ExcludePackage, src.info)
 
 	if cfg.Tun.Enable {
 		prefs.Stack = panel.NormalizeTunStack(cfg.Tun.Stack.String())
@@ -273,7 +283,9 @@ func patchTun(cfg *config.RawConfig, profileDir string, info panel.Info) error {
 		}
 	}
 
-	panel.WriteTunPrefs(profileDir, prefs)
+	if src.save {
+		panel.WriteTunPrefs(src.dir, prefs)
+	}
 
 	cfg.Tun.Enable = false
 	cfg.Tun.AutoRoute = false
@@ -281,7 +293,7 @@ func patchTun(cfg *config.RawConfig, profileDir string, info panel.Info) error {
 	return nil
 }
 
-func patchListeners(cfg *config.RawConfig, _ string, _ panel.Info) error {
+func patchListeners(cfg *config.RawConfig, _ parseInput) error {
 	newListeners := make([]map[string]any, 0, len(cfg.Listeners))
 	for _, mapping := range cfg.Listeners {
 		if proxyType, existType := mapping["type"].(string); existType {
@@ -300,7 +312,7 @@ func patchListeners(cfg *config.RawConfig, _ string, _ panel.Info) error {
 // was downloaded yet, and COMPATIBLE is a direct adapter: the whole group would
 // go out unprotected without a word. Where the subscription did not pick its own
 // fallback, reject instead.
-func patchEmptyFallback(cfg *config.RawConfig, _ string, _ panel.Info) error {
+func patchEmptyFallback(cfg *config.RawConfig, _ parseInput) error {
 	for _, name := range groups.RejectWhenProvidersAreEmpty(cfg.ProxyGroup, cfg.ProxyProvider) {
 		log.Infoln("[APP] Group %s rejects while its providers are empty", name)
 	}
@@ -308,7 +320,7 @@ func patchEmptyFallback(cfg *config.RawConfig, _ string, _ panel.Info) error {
 	return nil
 }
 
-func patchProviders(cfg *config.RawConfig, profileDir string, _ panel.Info) error {
+func patchProviders(cfg *config.RawConfig, src parseInput) error {
 	forEachProviders(cfg, func(index int, total int, key string, provider map[string]any, prefix string) {
 		path, _ := provider["path"].(string)
 		if len(path) > 0 {
@@ -318,23 +330,23 @@ func patchProviders(cfg *config.RawConfig, profileDir string, _ panel.Info) erro
 		} else {
 			return
 		}
-		provider["path"] = profileDir + "/providers/" + path
+		provider["path"] = src.dir + "/providers/" + path
 	})
 
 	return nil
 }
 
-func validConfig(cfg *config.RawConfig, _ string, info panel.Info) error {
-	if len(cfg.Proxy) == 0 && len(cfg.ProxyProvider) == 0 && !info.RefusesDevice() {
+func validConfig(cfg *config.RawConfig, src parseInput) error {
+	if len(cfg.Proxy) == 0 && len(cfg.ProxyProvider) == 0 && !src.info.RefusesDevice() {
 		return errors.New("profile does not contain `proxies` or `proxy-providers`")
 	}
 
 	return nil
 }
 
-func process(cfg *config.RawConfig, profileDir string, info panel.Info) error {
+func process(cfg *config.RawConfig, src parseInput) error {
 	for _, p := range processors {
-		if err := p(cfg, profileDir, info); err != nil {
+		if err := p(cfg, src); err != nil {
 			return err
 		}
 	}

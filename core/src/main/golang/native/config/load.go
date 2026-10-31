@@ -43,13 +43,18 @@ func unmarshalProfile(profilePath string) (*config.RawConfig, error) {
 	return config.UnmarshalRawConfig(configData)
 }
 
+// UnmarshalAndPatch — подписка, как её увидит ядро, только для чтения
 func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
+	return unmarshalAndPatch(profilePath, false)
+}
+
+func unmarshalAndPatch(profilePath string, save bool) (*config.RawConfig, error) {
 	rawConfig, err := unmarshalProfile(profilePath)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := process(rawConfig, profilePath, panel.Read(profilePath)); err != nil {
+	if err := process(rawConfig, parseInput{dir: profilePath, info: panel.Read(profilePath), save: save}); err != nil {
 		return nil, err
 	}
 
@@ -202,7 +207,7 @@ func parseLocked(rawConfig *config.RawConfig) (*config.Config, error) {
 func Load(path string) error {
 	generation := loadGeneration.Load()
 
-	rawCfg, err := UnmarshalAndPatch(path)
+	rawCfg, err := unmarshalAndPatch(path, true)
 	if err != nil {
 		log.Errorln("Load %s: %s", path, err.Error())
 

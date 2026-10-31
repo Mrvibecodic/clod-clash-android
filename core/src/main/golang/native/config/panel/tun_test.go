@@ -164,7 +164,7 @@ func TestAllAppsFromPanelFile(t *testing.T) {
 	}
 }
 
-// Разбор конфига зовёт запись на каждой загрузке и пробе: тот же tun.json не переписывается.
+// Разбор конфига зовёт запись на каждой загрузке и проверке скачанного: тот же tun.json не переписывается.
 func TestTunPrefsSameNotRewritten(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, tunFileName)

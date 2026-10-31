@@ -624,7 +624,7 @@ func verifyProfile(path string, panelInfo panel.Info, budget *budgets.Budget, re
 
 	template := rawCfg.Mode
 
-	if err := process(rawCfg, path, panelInfo); err != nil {
+	if err := process(rawCfg, parseInput{dir: path, info: panelInfo, save: true}); err != nil {
 		return fmt.Errorf("%s: %w", configRejected, err)
 	}
 
