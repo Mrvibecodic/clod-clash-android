@@ -26,7 +26,7 @@ suspend fun Design<*>.showExceptionToast(exception: Exception, headline: Int = R
     }
 }
 
-internal fun humanText(e: Throwable): String? =
+fun humanText(e: Throwable): String? =
     e.takeIf { it is HumanMessage }?.message?.takeIf { it.isNotBlank() }
 
 internal fun exceptionDetail(e: Throwable): String =

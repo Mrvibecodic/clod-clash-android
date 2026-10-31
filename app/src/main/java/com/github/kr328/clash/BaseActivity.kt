@@ -7,6 +7,7 @@ import android.net.Uri
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts.CreateDocument
 import androidx.activity.result.contract.ActivityResultContracts.GetContent
@@ -29,6 +30,7 @@ import com.github.kr328.clash.design.ui.ToastDuration
 import com.github.kr328.clash.design.ui.DayNight
 import com.github.kr328.clash.design.util.resolveThemedBoolean
 import com.github.kr328.clash.design.util.resolveThemedColor
+import com.github.kr328.clash.design.util.humanText
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.remote.Broadcasts
 import com.github.kr328.clash.service.R as ServiceR
@@ -186,8 +188,29 @@ abstract class BaseActivity<D : Design<*>> : AppCompatActivity(),
         }
 
         launch {
-            main()
+            try {
+                main()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                closeOnFailure(e)
+            }
         }
+    }
+
+    // Экран, чей main() кончился отказом, без своего цикла событий мёртв: он
+    // закрывается с сообщением, а не роняет приложение и не остаётся пустым.
+    // Отказ службы на уже показанном экране — как раньше, только сообщением.
+    private fun closeOnFailure(e: Exception) {
+        if (e is ServiceUnavailableException && design != null) throw e
+
+        Log.w("Screen ${javaClass.simpleName} failed: $e", e.takeUnless { it is ServiceUnavailableException })
+
+        Toast.makeText(this, humanText(e) ?: getString(R.string.clod_action_failed), Toast.LENGTH_LONG).show()
+
+        deferRunning = true
+
+        super.finish()
     }
 
     override fun onStart() {

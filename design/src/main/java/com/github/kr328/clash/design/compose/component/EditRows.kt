@@ -13,9 +13,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -112,7 +114,7 @@ fun LinesRow(
     )
 
     if (editing) {
-        var text by rememberSaveable { mutableStateOf(values.orEmpty().joinToString("\n")) }
+        var text by rememberSaveable(saver = boundedTextSaver) { mutableStateOf(values.orEmpty().joinToString("\n")) }
 
         EditDialog(
             title = title,
@@ -160,7 +162,7 @@ fun PairsRow(
     )
 
     if (editing) {
-        var text by rememberSaveable {
+        var text by rememberSaveable(saver = boundedTextSaver) {
             mutableStateOf(values.orEmpty().entries.joinToString("\n") { "${it.key} = ${it.value}" })
         }
 
@@ -198,6 +200,16 @@ fun PairsRow(
         )
     }
 }
+
+// Большой список (hosts на тысячи строк) в состояние экрана не кладётся: через
+// Binder он не проходит и ронял приложение при повороте или уходе с экрана.
+// Такое окно после пересоздания экрана открывается со списком до правок.
+internal const val SAVED_TEXT_LIMIT = 65_536
+
+internal val boundedTextSaver: Saver<MutableState<String>, String> = Saver(
+    save = { state -> state.value.takeIf { it.length <= SAVED_TEXT_LIMIT } },
+    restore = { mutableStateOf(it) },
+)
 
 internal fun pairsInvalid(text: String): Boolean =
     text.lines().any { it.isNotBlank() && it.substringBefore('=', "").isBlank() }
