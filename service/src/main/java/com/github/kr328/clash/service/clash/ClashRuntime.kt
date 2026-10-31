@@ -82,7 +82,7 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                         // Мобильная ли сеть — ядру до модулей: первая загрузка подписки
                         // уже без серверов только для мобильной сети вне неё. Дальше её
                         // называет сторож сети, и его слово — последнее
-                        Clash.setCellular(NetworkKey.cellularNow(Global.application))
+                        Clash.setCellular(cellularAtStart())
 
                         // Сброс ядра и снятие замка ждут, пока модули доработают
                         // свои finally: иначе прощание старой сессии (пустой DNS,
@@ -140,4 +140,14 @@ private fun clearSessionOverride() {
     } catch (e: Exception) {
         Log.w("Clear session override: $e", e)
     }
+}
+
+// Сбой системы при опросе сетей не срывает старт: сеть считается не мобильной,
+// дальше её назовёт сторож сети.
+private fun cellularAtStart(): Boolean = try {
+    NetworkKey.cellularNow(Global.application)
+} catch (e: Exception) {
+    Log.w("Cellular network at start: $e", e)
+
+    false
 }

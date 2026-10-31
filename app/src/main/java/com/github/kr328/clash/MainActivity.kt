@@ -994,19 +994,29 @@ class MainActivity : BaseActivity<MainDesign>() {
         @Volatile
         private var shownKey: String? = null
 
-        override fun onAvailable(network: Network) {
+        override fun onAvailable(network: Network) = reporting {
             getSystemService<ConnectivityManager>()?.getNetworkCapabilities(network)?.let { seen(network, it) }
         }
 
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = seen(network, capabilities)
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = reporting { seen(network, capabilities) }
 
         // Шлюз и DNS входят в ключ сети
-        override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) = changed()
+        override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) = reporting { changed() }
 
-        override fun onLost(network: Network) {
+        override fun onLost(network: Network) = reporting {
             working.remove(network)
 
             changed()
+        }
+
+        // Колбэк идёт в системном потоке: сбой системы при опросе сети уронил бы
+        // приложение. Пометки тогда обновятся на следующем событии сети
+        private inline fun reporting(block: () -> Unit) {
+            try {
+                block()
+            } catch (e: Exception) {
+                Log.w("Offline network watch: $e", e)
+            }
         }
 
         fun clear() {

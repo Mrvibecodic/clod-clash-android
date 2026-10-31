@@ -91,74 +91,97 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     private val flaps = ReactionSeries(REACTION_WINDOW_MS, REACTION_FLAP_LIMIT)
 
+    // Колбэки идут в системном потоке, где исключение уронило бы службу вместе
+    // с туннелем: сбой уходит в модуль и перезапускает его, как любой другой.
+    @Volatile
+    private var callbackFailures = Channel<Exception>(Channel.CONFLATED)
+
+    private inline fun reporting(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: Exception) {
+            callbackFailures.trySend(e)
+        }
+    }
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            Log.i("NetworkObserve onAvailable network=$network")
-            networkInfos[network] = NetworkInfo()
+            reporting {
+                Log.i("NetworkObserve onAvailable network=$network")
+                networkInfos[network] = NetworkInfo()
 
-            onNetworkMaybeChanged(network, "onAvailable")
+                onNetworkMaybeChanged(network, "onAvailable")
+            }
         }
 
         override fun onCapabilitiesChanged(
             network: Network,
             networkCapabilities: NetworkCapabilities,
         ) {
-            networkInfos[network]?.capabilities = networkCapabilities
+            reporting {
+                networkInfos[network]?.capabilities = networkCapabilities
 
-            if (!networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                return
-            }
+                if (!networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                    return
+                }
 
-            onNetworkMaybeChanged(network, "caps")
+                onNetworkMaybeChanged(network, "caps")
 
-            if (network == currentNetwork && !currentValidatedSeen) {
-                currentValidatedSeen = true
+                if (network == currentNetwork && !currentValidatedSeen) {
+                    currentValidatedSeen = true
 
-                networkReady.trySend(Unit)
+                    networkReady.trySend(Unit)
+                }
             }
         }
 
         override fun onLosing(network: Network, maxMsToLive: Int) {
-            Log.i("NetworkObserve onLosing network=$network")
-            networkInfos[network]?.losingMs = System.currentTimeMillis() + maxMsToLive
-            notifyDnsChange()
+            reporting {
+                Log.i("NetworkObserve onLosing network=$network")
+                networkInfos[network]?.losingMs = System.currentTimeMillis() + maxMsToLive
+                notifyDnsChange()
+            }
         }
 
         override fun onLost(network: Network) {
-            Log.i("NetworkObserve onLost network=$network")
-            networkInfos.remove(network)
-            notifyDnsChange()
+            reporting {
+                Log.i("NetworkObserve onLost network=$network")
+                networkInfos.remove(network)
+                notifyDnsChange()
 
-            val preferred = preferredNetwork()
+                val preferred = preferredNetwork()
 
-            if (network == currentNetwork) {
-                preferred?.let { onNetworkMaybeChanged(it, "onLost") }
-                    ?: run {
-                        markNetworkEvent("onLost", network, "reacted=false (no network left)")
-                        ClientReports.network(null)
-                    }
-            } else {
-                markNetworkEvent("onLost", network, "reacted=false (not current)")
+                if (network == currentNetwork) {
+                    preferred?.let { onNetworkMaybeChanged(it, "onLost") }
+                        ?: run {
+                            markNetworkEvent("onLost", network, "reacted=false (no network left)")
+                            ClientReports.network(null)
+                        }
+                } else {
+                    markNetworkEvent("onLost", network, "reacted=false (not current)")
+                }
+
+                networks.trySend(preferred)
             }
-
-            networks.trySend(preferred)
         }
 
         override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
-            Log.i("NetworkObserve onLinkPropertiesChanged network=$network ${describe(linkProperties)}")
-            networkInfos[network]?.dnsList = linkProperties.dnsServers
-            notifyDnsChange()
+            reporting {
+                Log.i("NetworkObserve onLinkPropertiesChanged network=$network ${describe(linkProperties)}")
+                networkInfos[network]?.dnsList = linkProperties.dnsServers
+                notifyDnsChange()
 
-            // Подложка — предпочтительная сеть, а не та, у которой сменились свойства:
-            // иначе фоновая мобильная сеть делала бы VPN лимитным при Wi-Fi
-            networks.trySend(preferredNetwork())
+                // Подложка — предпочтительная сеть, а не та, у которой сменились свойства:
+                // иначе фоновая мобильная сеть делала бы VPN лимитным при Wi-Fi
+                networks.trySend(preferredNetwork())
 
-            if (network == currentNetwork) {
-                val seen = NetworkKey.seen(service, network)
+                if (network == currentNetwork) {
+                    val seen = NetworkKey.seen(service, network)
 
-                reportCellular(seen)
-                FreezeChecks.networkSeen(network, seen)
-                ClientReports.network(seen)
+                    reportCellular(seen)
+                    FreezeChecks.networkSeen(network, seen)
+                    ClientReports.network(seen)
+                }
             }
         }
 
@@ -439,6 +462,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         recoverForce = false
         networkInfos.clear()
 
+        val failures = Channel<Exception>(Channel.CONFLATED).also { callbackFailures = it }
+
         // Регистрация — внутри try: колбэк, оставшийся без finally, перезапущенный
         // модуль зарегистрировал бы второй раз
         try {
@@ -468,6 +493,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
                 while (true) {
                     select<Unit> {
+                        failures.onReceive {
+                            throw it
+                        }
                         networks.onReceive {
                             enqueueEvent(it)
                         }
