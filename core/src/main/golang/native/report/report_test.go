@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -951,13 +952,19 @@ func TestANetworkChangeRightAfterAReadKeepsTheCollectorAlive(t *testing.T) {
 	}
 }
 
-// Паника в сборе не роняет процесс: цикл кончается, и следующий SetTarget
-// запускает его заново.
-func TestAPanicInTheCollectorEndsTheLoopAndTheNextTargetRestartsIt(t *testing.T) {
+// Паника в одном шаге сбора не роняет процесс и не кончает сбор: следующий
+// шаг идёт сам, без нового SetTarget.
+func TestAPanicInOneCollectorStepKeepsTheLoopRunning(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "s")
 	address := Address
-	Address = func() (string, string) { panic("synthetic") }
+	panicked := make(chan struct{})
+	var once sync.Once
+	Address = func() (string, string) {
+		once.Do(func() { close(panicked) })
+
+		panic("synthetic")
+	}
 	SetNodes("s", map[string]NodeInfo{"Узел": node()}, nil)
 
 	isRunning := func() bool {
@@ -976,22 +983,18 @@ func TestAPanicInTheCollectorEndsTheLoopAndTheNextTargetRestartsIt(t *testing.T)
 	SetTarget(path, "s")
 	NetworkChanged("net-a", "wifi", time.Now().UnixMilli())
 
-	for deadline := time.Now().Add(2 * time.Second); isRunning(); time.Sleep(10 * time.Millisecond) {
-		if time.Now().After(deadline) {
-			t.Fatal("цикл сбора не кончился после паники")
-		}
+	select {
+	case <-panicked:
+	case <-time.After(2 * time.Second):
+		t.Fatal("шаг сбора не дошёл до чтения адреса")
 	}
 
 	Address = func() (string, string) { return "192.0.2.1", "" }
-	restarted := make(chan struct{})
-	go func() {
-		SetTarget(path, "s")
-		close(restarted)
-	}()
-	select {
-	case <-restarted:
-	case <-time.After(2 * time.Second):
-		t.Fatal("SetTarget встал на замке сборщика после паники")
+
+	time.Sleep(50 * time.Millisecond)
+
+	if !isRunning() {
+		t.Fatal("цикл сбора кончился после паники одного шага")
 	}
 
 	NetworkChanged("net-b", "mobile", time.Now().UnixMilli())
@@ -1003,7 +1006,7 @@ func TestAPanicInTheCollectorEndsTheLoopAndTheNextTargetRestartsIt(t *testing.T)
 	}
 	for deadline := time.Now().Add(2 * time.Second); !known(); time.Sleep(10 * time.Millisecond) {
 		if time.Now().After(deadline) {
-			t.Fatal("сбор не ожил после нового SetTarget")
+			t.Fatal("сбор не пошёл дальше после паники одного шага")
 		}
 	}
 }

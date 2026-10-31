@@ -203,7 +203,7 @@ func loop() {
 		case <-wake:
 		}
 
-		tick()
+		safego.Run("reportTick", tick)
 	}
 }
 
@@ -215,7 +215,7 @@ func trafficLoop(stop <-chan struct{}) {
 			return
 		}
 
-		trafficTickOnce()
+		safego.Run("reportTraffic", trafficTickOnce)
 	}
 }
 

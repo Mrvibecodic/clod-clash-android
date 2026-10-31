@@ -109,9 +109,13 @@ func stackParts(stack []byte, size int) []string {
 }
 
 func Go(name string, body func()) {
-	go func() {
-		defer Guard(name, func() {})()
+	go Run(name, body)
+}
 
-		body()
-	}()
+// Run — body под защитой в горутине вызывающего: цикл, вызывающий так каждый шаг,
+// переживает панику одного шага.
+func Run(name string, body func()) {
+	defer Guard(name, func() {})()
+
+	body()
 }

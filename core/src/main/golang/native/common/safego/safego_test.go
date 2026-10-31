@@ -180,3 +180,21 @@ func TestStackPartsKeepEveryByteWithinTheSizeAndCutAtLineEnds(t *testing.T) {
 		t.Fatalf("empty stack gave %d parts", len(got))
 	}
 }
+
+func TestLoopOfRunStepsSurvivesPanickingStep(t *testing.T) {
+	steps := 0
+
+	for i := 0; i < 3; i++ {
+		Run("step", func() {
+			steps++
+
+			if steps == 1 {
+				panic("boom")
+			}
+		})
+	}
+
+	if steps != 3 {
+		t.Fatalf("the loop stopped after a panicking step: %d of 3 steps ran", steps)
+	}
+}

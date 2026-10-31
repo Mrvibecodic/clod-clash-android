@@ -67,7 +67,7 @@ func heartbeat() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		beat()
+		safego.Run("heartbeat", beat)
 	}
 }
 
