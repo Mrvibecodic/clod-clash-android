@@ -19,6 +19,7 @@ import com.github.kr328.clash.service.util.importedDir
 import com.github.kr328.clash.service.util.profileDisplayName
 import com.github.kr328.clash.service.util.readPanelInfo
 import com.github.kr328.clash.service.util.readProfileJson
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,7 +42,13 @@ private val alertsLock = Mutex()
 // прочли бы одно и то же alerts.json и уведомили бы дважды. Ввод-вывод — не на
 // потоке вызывающего.
 suspend fun Context.reportSubscriptionAlerts(uuid: UUID) = alertsLock.withLock {
-    withContext(Dispatchers.IO) { checkSubscriptionAlerts(uuid) }
+    try {
+        withContext(Dispatchers.IO) { checkSubscriptionAlerts(uuid) }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.w("Subscription alerts of $uuid: $e", e)
+    }
 }
 
 private suspend fun Context.checkSubscriptionAlerts(uuid: UUID) {

@@ -149,13 +149,7 @@ class ProfileUpdateWorker(context: Context, parameters: WorkerParameters) :
             if (retrying) Result.retry() else Result.failure()
         }
 
-        try {
-            context.reportSubscriptionAlerts(uuid)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w("Subscription alerts of $uuid: $e", e)
-        }
+        context.reportSubscriptionAlerts(uuid)
 
         return result
     }

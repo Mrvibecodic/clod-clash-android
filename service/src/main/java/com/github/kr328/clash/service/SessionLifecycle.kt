@@ -23,7 +23,6 @@ import com.github.kr328.clash.service.util.sendClashStarted
 import com.github.kr328.clash.service.util.sendClashStarting
 import com.github.kr328.clash.service.util.sendClashStopped
 import com.github.kr328.clash.service.util.withStoredLocale
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -197,13 +196,7 @@ class SessionLifecycle(
         val context = service.applicationContext.withStoredLocale()
 
         Global.launch {
-            try {
-                context.reportSubscriptionAlerts(uuid)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w("Subscription alerts of $uuid: $e", e)
-            }
+            context.reportSubscriptionAlerts(uuid)
         }
     }
 
