@@ -109,6 +109,10 @@ func patchExternalController(cfg *config.RawConfig, _ parseInput) error {
 
 const defaultMixedPort = 7890
 
+// Своя папка стандартной панели: панель провайдера, скачанная раньше в ui,
+// на её место не встанет
+const defaultExternalUIName = "metacubexd"
+
 const mixedPortKey = "mixed-port"
 
 func portOccupied(cfg *config.RawConfig, port int) bool {
@@ -149,7 +153,11 @@ func patchGeneral(cfg *config.RawConfig, src parseInput) error {
 	}
 
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
+		// Панель управления — всегда стандартная: код панели по адресу из подписки
+		// получил бы доступ к управлению ядром
 		cfg.ExternalUI = src.dir + "/ui"
+		cfg.ExternalUIURL = config.DefaultRawConfig().ExternalUIURL
+		cfg.ExternalUIName = defaultExternalUIName
 	} else {
 		// Without a controller the dashboard is unreachable; do not let the core download it.
 		cfg.ExternalUI = ""
