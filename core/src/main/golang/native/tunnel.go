@@ -114,6 +114,16 @@ func testProfileDelays(path C.c_string, cellular C.int) (result *C.char) {
 	return marshalJson(tunnel.TestProfileDelays(C.GoString(path), cellular != 0))
 }
 
+//export queryProfileDelayProgress
+func queryProfileDelayProgress(done, total *C.uint64_t) {
+	defer guard("queryProfileDelayProgress", func() {})()
+
+	d, t := tunnel.ProfileDelayProgress()
+
+	*done = C.uint64_t(d)
+	*total = C.uint64_t(t)
+}
+
 //export queryNodeFingerprints
 func queryNodeFingerprints(path C.c_string) (result *C.char) {
 	defer guard("queryNodeFingerprints", func() {})()

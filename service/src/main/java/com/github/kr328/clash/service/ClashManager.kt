@@ -94,6 +94,8 @@ class ClashManager(private val context: Context) : IClashManager,
         Clash.testProfileDelays(context.importedDir.resolve(uuid.toString()), cellular)
     }
 
+    override fun queryProfileDelayProgress(): Long = Clash.queryProfileDelayProgress()
+
     override fun patchOverride(slot: Clash.OverrideSlot, configuration: ConfigurationOverride) {
         Clash.patchOverride(slot, configuration)
 

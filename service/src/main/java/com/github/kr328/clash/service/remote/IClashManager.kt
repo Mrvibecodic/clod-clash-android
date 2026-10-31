@@ -21,6 +21,7 @@ interface IClashManager {
     suspend fun healthCheckGroups(groups: List<String>, exclude: List<String>, force: Boolean)
 
     suspend fun testProfileDelays(uuid: UUID, cellular: Boolean): String
+    fun queryProfileDelayProgress(): Long
     fun queryFreezeMarks(uuid: UUID): Map<String, String>
     suspend fun updateProvider(type: Provider.Type, name: String)
 

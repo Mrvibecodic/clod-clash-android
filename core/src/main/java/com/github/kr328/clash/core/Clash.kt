@@ -203,6 +203,11 @@ object Clash {
         return Bridge.nativeTestProfileDelays(path.absolutePath, cellular) ?: "{}"
     }
 
+    // Ход замера без туннеля: старшие 32 бита — готово, младшие — всего; 0 — замера нет
+    fun queryProfileDelayProgress(): Long {
+        return Bridge.nativeQueryProfileDelayProgress()
+    }
+
     // clod:freeze — имя узла → отпечаток; null — узлы работающего туннеля
     fun queryNodeFingerprints(path: File?): String {
         return Bridge.nativeQueryNodeFingerprints(path?.absolutePath.orEmpty()) ?: "{}"

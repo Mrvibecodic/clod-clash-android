@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"cfa/native/common/safego"
 	"cfa/native/config"
@@ -115,6 +116,14 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 
 	log.Infoln("Test profile `%s`: %d proxies via %s", path, len(proxies), url)
 
+	profileProgress.done.Store(0)
+	profileProgress.total.Store(int64(len(proxies)))
+
+	defer func() {
+		profileProgress.total.Store(0)
+		profileProgress.done.Store(0)
+	}()
+
 	ctx, cancel := context.WithTimeout(root, healthCheckBudget(len(proxies)))
 	defer cancel()
 
@@ -129,6 +138,7 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 
 		safego.Go("testProfileDelay", func() {
 			defer wg.Done()
+			defer profileProgress.done.Add(1)
 
 			select {
 			case screenProbes.slots <- struct{}{}:
@@ -181,6 +191,15 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 }
 
 const delayUnknown = 0xffff
+
+// Ход замера без туннеля для экрана: готово из всего; 0 из 0 — замера нет
+var profileProgress struct {
+	done, total atomic.Int64
+}
+
+func ProfileDelayProgress() (done, total int64) {
+	return profileProgress.done.Load(), profileProgress.total.Load()
+}
 
 func profileTestURL(rawCfg *mihomoConfig.RawConfig) string {
 	for _, group := range rawCfg.ProxyGroup {

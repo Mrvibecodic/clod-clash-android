@@ -191,6 +191,17 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeHealthCheckGroups(JNIEnv *e
     healthCheckGroups(_completable, _request);
 }
 
+JNIEXPORT jlong JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryProfileDelayProgress(JNIEnv *env, jobject thiz) {
+    TRACE_METHOD();
+
+    uint64_t done = 0, total = 0;
+
+    queryProfileDelayProgress(&done, &total);
+
+    return (jlong) ((done & 0xffffffffu) << 32u | (total & 0xffffffffu));
+}
+
 JNIEXPORT jstring JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeTestProfileDelays(JNIEnv *env, jobject thiz,
                                                                       jstring path,

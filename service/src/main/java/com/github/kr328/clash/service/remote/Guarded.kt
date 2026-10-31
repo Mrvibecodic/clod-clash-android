@@ -104,6 +104,9 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager {
     override suspend fun testProfileDelays(uuid: UUID, cellular: Boolean): String =
         guard { delegate.testProfileDelays(uuid, cellular) }
 
+    override fun queryProfileDelayProgress(): Long =
+        guardSync("queryProfileDelayProgress") { delegate.queryProfileDelayProgress() }
+
     override fun queryFreezeMarks(uuid: UUID): Map<String, String> =
         guardSync("queryFreezeMarks") { delegate.queryFreezeMarks(uuid) }
 

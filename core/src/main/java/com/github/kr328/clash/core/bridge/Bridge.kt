@@ -34,6 +34,7 @@ object Bridge {
     external fun nativeAwaitNetworkSettled()
     external fun nativeSetCellular(cellular: Boolean): Boolean
     external fun nativeTestProfileDelays(path: String, cellular: Boolean): String?
+    external fun nativeQueryProfileDelayProgress(): Long
     external fun nativeQueryNodeFingerprints(path: String): String?
     external fun nativeDownloadChecks(request: String): String?
     external fun nativeClientReport(request: String)
