@@ -144,4 +144,14 @@ class UpdateOutcomeTest {
             UpdateOutcome.id(second, UpdateOutcome.Kind.Partial),
         )
     }
+
+    @Test
+    fun `a full save clears a partial update left hanging, a partial save keeps it`() {
+        val uuid = UUID.randomUUID()
+        val partial = UpdateOutcome.id(uuid, UpdateOutcome.Kind.Partial)
+        val failure = UpdateOutcome.id(uuid, UpdateOutcome.Kind.Failure)
+
+        assertEquals(setOf(partial, failure), UpdateOutcome.settledBySave(uuid, partial = false).toSet())
+        assertEquals(listOf(failure), UpdateOutcome.settledBySave(uuid, partial = true))
+    }
 }

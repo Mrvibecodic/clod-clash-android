@@ -27,6 +27,9 @@ object UpdateOutcome {
 
     fun replaced(uuid: UUID, kind: Kind): List<Int> = ids(uuid) - id(uuid, kind)
 
+    fun settledBySave(uuid: UUID, partial: Boolean): List<Int> =
+        if (partial) replaced(uuid, Kind.Partial) else ids(uuid)
+
     // Ручное обновление человек ждёт на экране — без пауз и повторов.
     fun waitsForNetwork(kind: ProfileUpdateWorker.Kind): Boolean = kind != ProfileUpdateWorker.Kind.Manual
 

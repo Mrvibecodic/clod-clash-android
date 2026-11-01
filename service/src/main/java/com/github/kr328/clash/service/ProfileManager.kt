@@ -145,21 +145,22 @@ class ProfileManager(private val context: Context) : IProfileManager,
 
     override suspend fun commit(uuid: UUID, activate: Boolean, callback: IFetchObserver?): UUID =
         withContext(NonCancellable) {
-            val saved = ProfileProcessor.apply(context, uuid, callback, activate)
+            val applied = ProfileProcessor.apply(context, uuid, callback, activate)
 
-            if (saved == uuid) {
+            if (applied.uuid == uuid) {
                 // Сохранение (у подписки по ссылке — с новой загрузкой) без туннеля
                 // сверяет пометки 16–20: панель могла включить или выключить проверку
                 FreezeChecks.profileUpdated(uuid)
 
-                NotificationManagerCompat.from(context).cancel(UpdateOutcome.id(uuid, UpdateOutcome.Kind.Failure))
+                UpdateOutcome.settledBySave(uuid, partial = applied.failedProviders.isNotEmpty())
+                    .forEach(NotificationManagerCompat.from(context)::cancel)
 
                 context.reportSubscriptionAlerts(uuid)
 
                 scheduleUpdate(uuid, false)
             }
 
-            saved
+            applied.uuid
         }
 
     override suspend fun release(uuid: UUID) {

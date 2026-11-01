@@ -54,6 +54,8 @@ object ProfileProcessor {
 
     class Fetched(val info: FetchStatus?, val failedProviders: List<String>)
 
+    class Applied(val uuid: UUID, val failedProviders: List<String>)
+
     private val profileLock = Mutex()
     private val processLock = Mutex()
 
@@ -67,7 +69,7 @@ object ProfileProcessor {
             Clash.switchMode(context.importedDir.resolve(uuid.toString()), session)
         }
 
-    suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver?, activate: Boolean): UUID =
+    suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver?, activate: Boolean): Applied =
         withContext(NonCancellable) {
             processLock.withLock {
                 var promoted = false
@@ -99,7 +101,7 @@ object ProfileProcessor {
                             context.sendProfileChanged(uuid)
                             context.sendProfileChanged(existing)
 
-                            return@withContext existing
+                            return@withContext Applied(existing, emptyList())
                         }
 
                         repairLocked(context)
@@ -114,8 +116,9 @@ object ProfileProcessor {
                     }
 
                     val force = snapshot.type != Profile.Type.File
-                    val subscriptionInfo =
-                        fetchProfile(context, context.processingDir, snapshot.source, force, false, snapshot.secure, callback).info
+                    val fetched =
+                        fetchProfile(context, context.processingDir, snapshot.source, force, false, snapshot.secure, callback)
+                    val subscriptionInfo = fetched.info
 
                     profileLock.withLock {
                         val current = PendingDao().queryByUUID(snapshot.uuid)
@@ -176,11 +179,11 @@ object ProfileProcessor {
                         context.sendProfileChanged(snapshot.uuid)
                     }
 
-                    followMove(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
+                    val moved = followMove(context, snapshot.uuid, snapshot.source, snapshot.secure, callback)
 
                     ClientReports.fetched(context, snapshot.uuid)
 
-                    snapshot.uuid
+                    Applied(snapshot.uuid, (fetched.failedProviders + moved).distinct())
                 } finally {
                     if (!promoted) context.processingDir.deleteRecursively()
                 }
