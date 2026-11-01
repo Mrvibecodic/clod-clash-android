@@ -271,15 +271,17 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
             return
         }
 
-        currentNetwork = network
-        currentValidatedSeen = false
-
         val seen = NetworkKey.seen(service, network)
 
         // До сброса соединений по смене сети: сброс один
         reportCellular(seen)
 
         ClientReports.network(seen)
+
+        // Сеть запоминается, когда её свойства прочитаны: сбой до этого
+        // перезапускает модуль, и повторный onAvailable доводит смену до конца
+        currentNetwork = network
+        currentValidatedSeen = false
 
         networks.trySend(network)
 
