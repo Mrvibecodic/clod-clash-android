@@ -85,9 +85,10 @@ func profileNodes(path string) (proxies []C.Proxy, url string, find func(string)
 	return proxies, profileTestURL(rawCfg), find, release, nil
 }
 
-// TestProfileDelays — задержки узлов подписки без туннеля; не в мобильной
-// сети (cellular=false) серверы только для неё не проверяются: их не видно —
-// ни их, ни серверов, что соединяются через них, и у провайдеров тоже.
+// TestProfileDelays — задержки узлов подписки без туннеля; заглушки панели
+// не проверяются, не в мобильной сети (cellular=false) — и серверы только
+// для неё: их не видно — ни их, ни серверов, что соединяются через них, и у
+// провайдеров тоже.
 func TestProfileDelays(path string, cellular bool) map[string]int {
 	result := map[string]int{}
 
@@ -104,8 +105,14 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 		return result
 	}
 
-	if mobileOnly := panel.Read(path).MobileOnly; !cellular && len(mobileOnly) > 0 {
-		proxies = slices.DeleteFunc(proxies, hidden.HidesBy(mobileOnly, find))
+	info := panel.Read(path)
+
+	if len(info.Sentinels) > 0 {
+		proxies = slices.DeleteFunc(proxies, func(p C.Proxy) bool { return slices.Contains(info.Sentinels, p.Name()) })
+	}
+
+	if !cellular && len(info.MobileOnly) > 0 {
+		proxies = slices.DeleteFunc(proxies, hidden.HidesBy(info.MobileOnly, find))
 	}
 
 	if len(proxies) == 0 {
