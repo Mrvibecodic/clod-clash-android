@@ -17,12 +17,12 @@ import (
 )
 
 // Внешний адрес клиента в текущей сети — тот, с которого идут замеры.
-// Спрашивается у Яндекса (адреса страницы yandex.ru/internet) мимо туннеля:
+// Спрашивается у ipify мимо туннеля:
 // сокет ядра защищён от VPN, как у загрузки подписки напрямую.
 
 const (
-	ipv4URL   = "https://ipv4-internet.yandex.net/api/v0/ip"
-	ipv6URL   = "https://ipv6-internet.yandex.net/api/v0/ip"
+	ipv4URL   = "https://api.ipify.org"
+	ipv6URL   = "https://api6.ipify.org"
 	ipTimeout = 10 * time.Second
 	browserUA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36"
 )
