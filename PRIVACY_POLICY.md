@@ -63,12 +63,12 @@ crash-reporting code. Everything described below covers the requests this app ma
     encrypted answer to a subscription update that it accepts reports; once an answer comes
     without that confirmation, the app stops collecting and deletes the collected measurements. The app keeps unsent measurements for at most 7 days. Turning off the secure channel for a subscription stops
     its reports.
-*   **To Yandex, to learn the external IP address.** For the report above, the app asks
-    `ipv4-internet.yandex.net` and `ipv6-internet.yandex.net` (operated by Yandex) for the
+*   **To ipify, to learn the external IP address.** For the report above, the app asks
+    `api.ipify.org` and `api6.ipify.org` (the ipify service) for the
     address your connection appears from — when the network changes and at most once an hour
     on the same network (if the address could not be learned, at most once every 5 minutes),
     and only while it collects a report for a subscription with the secure channel. The request goes outside the tunnel and carries no identifier or device
-    headers, but Yandex sees your IP address.
+    headers, but ipify sees your IP address.
 *   **To a connectivity-check address, through each server.** Measuring latency (the
     "check" button, the automatic check when the Servers tab is opened, and the checks
     after a network change) sends a tiny request to a test address through every server
@@ -142,7 +142,7 @@ therefore not the controller (operator) of it. The data that leaves your device 
 *   your subscription provider — it is the controller for the subscription requests, device
     values and quality reports it receives, and its own privacy policy governs how long it
     keeps them, what it uses them for and how you can exercise your rights;
-*   the third parties named above (Google, Cloudflare, Quad9, Yandex, GitHub, your network
+*   the third parties named above (Google, Cloudflare, Quad9, ipify, GitHub, your network
     operator's resolver, the operators of addresses in your configuration), each under its own
     policy.
 
@@ -166,7 +166,7 @@ legal basis, retention, recipients) and inform its users.
 **International transfers**
 
 The services the app contacts may be located outside your country — for example Google,
-Cloudflare and GitHub in the United States and Yandex in Russia; your provider's servers are
+Cloudflare and GitHub in the United States; your provider's servers are
 wherever the provider places them.
 
 **Children's privacy**
