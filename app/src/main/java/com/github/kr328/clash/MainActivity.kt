@@ -58,6 +58,7 @@ import com.github.kr328.clash.util.loadRouteGroups
 import com.github.kr328.clash.util.offlineGroup
 import com.github.kr328.clash.util.offlineLeaf
 import com.github.kr328.clash.util.OfflineDelays
+import com.github.kr328.clash.util.ProviderValuesReset
 import com.github.kr328.clash.util.patchSubscriptionGroup
 import com.github.kr328.clash.util.plannedOnlySelf
 import com.github.kr328.clash.util.ProfileImports
@@ -177,7 +178,9 @@ class MainActivity : BaseActivity<MainDesign>() {
             design.showFreezeSheet()
         }
 
-        restored?.getString(KEY_PROVIDER_VALUES)?.let { design.checkProviderValues(UUID.fromString(it), restoring = true) }
+        restored?.getString(KEY_PROVIDER_VALUES)?.let {
+            design.checkProviderValues(UUID.fromString(it), restoring = restored?.getBoolean(KEY_PROVIDER_VALUES_PENDING) != true)
+        }
 
         if (restored == null && !design.hasProfiles) {
             design.selectTab(MainTab.Subscriptions)
@@ -228,6 +231,10 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         launch {
             OfflineDelays.state.collect { design.renderOfflineDelays(it) }
+        }
+
+        launch {
+            ProviderValuesReset.state.collect { design.renderProviderValuesReset(it) }
         }
 
         launch {
@@ -599,17 +606,8 @@ class MainActivity : BaseActivity<MainDesign>() {
                         }
                         is MainDesign.Request.OpenUrl -> openProviderUrl(request.url)
                         is MainDesign.Request.CheckProviderValues -> design.checkProviderValues(request.profile, restoring = false)
-                        is MainDesign.Request.ResetProviderValues -> work.trySend {
-                            if (favoritesProfile != request.profile) return@trySend
-
-                            try {
-                                withClash { resetProviderValues(request.profile, request.keys) }
-
-                                design.showToast(DesignR.string.clod_provider_values_done, ToastDuration.Short)
-                            } finally {
-                                design.fetchMode(request.profile)
-                            }
-                        }
+                        is MainDesign.Request.ResetProviderValues ->
+                            if (favoritesProfile == request.profile) ProviderValuesReset.start(request.profile, request.keys)
                         MainDesign.Request.CheckUpdate ->
                             if (UpdateTask.state.value is UpdateTask.State.Checking) {
                                 UpdateTask.cancel()
@@ -945,6 +943,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         this@MainActivity.launch {
             try {
                 reportFailures("Provider values") {
+                    ProviderValuesReset.awaitIdle()
+
                     val values = withClash { queryProviderValues(profile) }
 
                     when {
@@ -957,6 +957,22 @@ class MainActivity : BaseActivity<MainDesign>() {
                 providerValuesChecking = null
             }
         }
+    }
+
+    private suspend fun MainDesign.renderProviderValuesReset(update: ProviderValuesReset.State) {
+        if (update !is ProviderValuesReset.State.Done) return
+
+        ProviderValuesReset.consume()
+
+        val error = update.error
+
+        if (error == null) {
+            showToast(DesignR.string.clod_provider_values_done, ToastDuration.Short)
+        } else {
+            showExceptionToast(error)
+        }
+
+        if (update.profile == favoritesProfile) reportFailures("Provider values mode") { fetchMode(update.profile) }
     }
 
     // Режим показанной подписки. Сбой запроса оставляет прежний показ — как в
@@ -1778,6 +1794,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         private const val KEY_SUB_GROUP = "sub_group"
         private const val KEY_FREEZE_SHEET = "freeze_sheet"
         private const val KEY_PROVIDER_VALUES = "provider_values"
+        private const val KEY_PROVIDER_VALUES_PENDING = "provider_values_pending"
         private const val KEY_RELIABILITY_PROMPT = "reliability_prompt"
         private const val KEY_APPS_PROMPT = "apps_prompt"
     }
@@ -2602,7 +2619,10 @@ class MainActivity : BaseActivity<MainDesign>() {
         outState.putString(KEY_GROUP, design.selectedGroupName)
         outState.putString(KEY_SUB_GROUP, design.selectedSubscriptionGroup)
         outState.putBoolean(KEY_FREEZE_SHEET, design.freezeSheetOpen)
-        outState.putString(KEY_PROVIDER_VALUES, design.providerValuesProfile?.toString())
+        val shown = design.providerValuesProfile
+
+        outState.putString(KEY_PROVIDER_VALUES, (shown ?: providerValuesChecking)?.toString())
+        outState.putBoolean(KEY_PROVIDER_VALUES_PENDING, shown == null && providerValuesChecking != null)
         outState.putBoolean(KEY_RELIABILITY_PROMPT, design.reliabilityPromptOpen)
         if (isChangingConfigurations) outState.putBoolean(KEY_APPS_PROMPT, design.appsPromptOpen)
     }
