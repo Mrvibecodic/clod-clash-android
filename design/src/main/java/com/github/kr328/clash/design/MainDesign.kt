@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.github.kr328.clash.core.model.ProfileMode
+import com.github.kr328.clash.core.model.ProviderValues
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.Traffic
 import com.github.kr328.clash.core.model.TunnelState
@@ -24,6 +25,7 @@ import com.github.kr328.clash.design.compose.screen.SessionStats
 import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.compose.screen.UpdateState
+import com.github.kr328.clash.design.compose.screen.ProviderValuesPrompt
 import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.model.RoutingDataMerge
 import com.github.kr328.clash.design.model.appsPromptAfter
@@ -69,6 +71,8 @@ class MainDesign(
         data class PatchMode(val mode: TunnelState.Mode) : Request
 
         data class OpenUrl(val url: String) : Request
+        data class CheckProviderValues(val profile: UUID) : Request
+        data class ResetProviderValues(val profile: UUID, val keys: List<String>) : Request
         data object CheckUpdate : Request
         data object UpdateNow : Request
         data object UpdateSkip : Request
@@ -159,6 +163,14 @@ class MainDesign(
             MainAction.ShowFreeze -> state = state.copy(freezeSheet = true)
             MainAction.HideFreeze -> state = state.copy(freezeSheet = false)
             is MainAction.OpenUrl -> request(Request.OpenUrl(action.url))
+            MainAction.OpenProviderValues ->
+                state.active?.profile?.uuid?.let { request(Request.CheckProviderValues(it)) }
+            MainAction.CloseProviderValues -> state = state.copy(providerValues = null)
+            is MainAction.ResetProviderValues -> {
+                state = state.copy(providerValues = null)
+
+                request(Request.ResetProviderValues(action.profile, action.keys))
+            }
             MainAction.CheckUpdate -> request(Request.CheckUpdate)
             MainAction.UpdateNow -> request(Request.UpdateNow)
             MainAction.UpdateSkip -> request(Request.UpdateSkip)
@@ -257,7 +269,10 @@ class MainDesign(
 
     suspend fun setActiveProfile(active: SubscriptionItem?) {
         withContext(Dispatchers.Main) {
-            state = state.copy(active = active)
+            state = state.copy(
+                active = active,
+                providerValues = state.providerValues?.takeIf { it.profile == active?.profile?.uuid },
+            )
         }
     }
 
@@ -318,6 +333,16 @@ class MainDesign(
         }
     }
 
+    suspend fun showProviderValues(profile: UUID, values: ProviderValues) {
+        withContext(Dispatchers.Main) {
+            if (state.active?.profile?.uuid != profile) return@withContext
+
+            val groups = values.groups.sortedBy { PROVIDER_GROUP_ORDER.indexOf(it.id) }
+
+            state = state.copy(providerValues = ProviderValuesPrompt(profile, groups))
+        }
+    }
+
     suspend fun setMode(mode: ProfileMode) {
         withContext(Dispatchers.Main) {
             state = state.copy(profileMode = mode)
@@ -343,6 +368,9 @@ class MainDesign(
         get() = state.subscriptions.selectedGroup
 
     // Открытые листы переживают пересоздание экрана
+    val providerValuesProfile: UUID?
+        get() = state.providerValues?.profile
+
     val freezeSheetOpen: Boolean
         get() = state.freezeSheet
 
@@ -598,3 +626,12 @@ class MainDesign(
         requests.trySend(request)
     }
 }
+
+private val PROVIDER_GROUP_ORDER = listOf(
+    ProviderValues.GROUP_MODE,
+    ProviderValues.GROUP_LOG,
+    ProviderValues.GROUP_PORTS,
+    ProviderValues.GROUP_TUN,
+    ProviderValues.GROUP_DNS,
+    ProviderValues.GROUP_FEATURES,
+)

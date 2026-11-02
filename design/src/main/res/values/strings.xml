@@ -634,4 +634,20 @@
     <string name="clod_reset_summary">App, network and notification settings go back to defaults, the list on the Apps screen and the config overrides are cleared. Subscriptions and their own settings stay.</string>
     <string name="clod_reset_confirm">App, network and notification settings go back to defaults. The list on the Apps screen is cleared and the access control mode goes back to “Allow selected apps” — until you check apps again, the subscription\'s app list applies; without one, no app goes through the tunnel. The config overrides are cleared too. Subscriptions and their own settings stay untouched.</string>
     <string name="clod_reset_action">Reset</string>
+    <string name="clod_provider_values">Return provider values</string>
+    <string name="clod_provider_values_same">Everything as in the subscription</string>
+    <string name="clod_provider_values_text">Subscription “%s”. The checked values will become what the subscription template sets.</string>
+    <string name="clod_provider_values_apply">Return</string>
+    <string name="clod_provider_values_done">Provider values returned</string>
+    <plurals name="clod_provider_values_count">
+        <item quantity="one">%d change</item>
+        <item quantity="other">%d changes</item>
+    </plurals>
+    <string name="clod_provider_values_shared">For all subscriptions \u00b7 %s</string>
+    <string name="clod_provider_group_mode">Mode</string>
+    <string name="clod_provider_group_log">Log and delay</string>
+    <string name="clod_provider_group_ports">Ports and network</string>
+    <string name="clod_provider_group_tun">Tunnel</string>
+    <string name="clod_provider_group_dns">DNS and hosts</string>
+    <string name="clod_provider_group_features">Core features</string>
 </resources>

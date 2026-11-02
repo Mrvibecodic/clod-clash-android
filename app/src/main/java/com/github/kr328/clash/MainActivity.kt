@@ -177,6 +177,8 @@ class MainActivity : BaseActivity<MainDesign>() {
             design.showFreezeSheet()
         }
 
+        restored?.getString(KEY_PROVIDER_VALUES)?.let { design.checkProviderValues(UUID.fromString(it), restoring = true) }
+
         if (restored == null && !design.hasProfiles) {
             design.selectTab(MainTab.Subscriptions)
         }
@@ -596,6 +598,18 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
                         }
                         is MainDesign.Request.OpenUrl -> openProviderUrl(request.url)
+                        is MainDesign.Request.CheckProviderValues -> design.checkProviderValues(request.profile, restoring = false)
+                        is MainDesign.Request.ResetProviderValues -> work.trySend {
+                            if (favoritesProfile != request.profile) return@trySend
+
+                            try {
+                                withClash { resetProviderValues(request.profile, request.keys) }
+
+                                design.showToast(DesignR.string.clod_provider_values_done, ToastDuration.Short)
+                            } finally {
+                                design.fetchMode(request.profile)
+                            }
+                        }
                         MainDesign.Request.CheckUpdate ->
                             if (UpdateTask.state.value is UpdateTask.State.Checking) {
                                 UpdateTask.cancel()
@@ -923,6 +937,28 @@ class MainActivity : BaseActivity<MainDesign>() {
         shownActive = active
     }
 
+    private fun MainDesign.checkProviderValues(profile: UUID, restoring: Boolean) {
+        if (providerValuesChecking != null) return
+
+        providerValuesChecking = profile
+
+        this@MainActivity.launch {
+            try {
+                reportFailures("Provider values") {
+                    val values = withClash { queryProviderValues(profile) }
+
+                    when {
+                        favoritesProfile != profile -> Unit
+                        values.groups.isNotEmpty() -> showProviderValues(profile, values)
+                        !restoring -> showToast(DesignR.string.clod_provider_values_same, ToastDuration.Short)
+                    }
+                }
+            } finally {
+                providerValuesChecking = null
+            }
+        }
+    }
+
     // Режим показанной подписки. Сбой запроса оставляет прежний показ — как в
     // полном чтении экрана
     private suspend fun MainDesign.fetchMode(uuid: UUID) {
@@ -1144,6 +1180,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         groupsShownFor?.let { pendingSelections[Slot(it, group)] }
 
     private var worker: Job? = null
+
+    private var providerValuesChecking: UUID? = null
 
     // Выбор, который прямо сейчас уходит в ядро: отмена экрана может оборвать его до
     // отправки. Досылка повторяет его, только если он не дошёл: повторный выбор в ядре
@@ -1739,6 +1777,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
         private const val KEY_SUB_GROUP = "sub_group"
         private const val KEY_FREEZE_SHEET = "freeze_sheet"
+        private const val KEY_PROVIDER_VALUES = "provider_values"
         private const val KEY_RELIABILITY_PROMPT = "reliability_prompt"
         private const val KEY_APPS_PROMPT = "apps_prompt"
     }
@@ -2563,6 +2602,7 @@ class MainActivity : BaseActivity<MainDesign>() {
         outState.putString(KEY_GROUP, design.selectedGroupName)
         outState.putString(KEY_SUB_GROUP, design.selectedSubscriptionGroup)
         outState.putBoolean(KEY_FREEZE_SHEET, design.freezeSheetOpen)
+        outState.putString(KEY_PROVIDER_VALUES, design.providerValuesProfile?.toString())
         outState.putBoolean(KEY_RELIABILITY_PROMPT, design.reliabilityPromptOpen)
         if (isChangingConfigurations) outState.putBoolean(KEY_APPS_PROMPT, design.appsPromptOpen)
     }

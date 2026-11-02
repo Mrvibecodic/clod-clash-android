@@ -103,6 +103,7 @@ import com.github.kr328.clash.common.compat.isTelevision
 import com.github.kr328.clash.common.constants.Intents
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.model.ProfileMode
+import com.github.kr328.clash.core.model.ProviderValues
 import com.github.kr328.clash.core.model.Proxy
 import com.github.kr328.clash.core.model.TunnelState
 import com.github.kr328.clash.core.util.toBytesString
@@ -222,6 +223,9 @@ data class SubscriptionItem(
 }
 
 @Immutable
+data class ProviderValuesPrompt(val profile: UUID, val groups: List<ProviderValues.Group>)
+
+@Immutable
 data class SubscriptionsState(
     val profiles: List<SubscriptionItem> = emptyList(),
     val updatingUuids: Set<UUID> = emptySet(),
@@ -237,6 +241,7 @@ data class MainScreenState(
     val startupStage: String? = null,
     val active: SubscriptionItem? = null,
     val profileMode: ProfileMode = ProfileMode(),
+    val providerValues: ProviderValuesPrompt? = null,
     val selectedTab: MainTab = MainTab.Home,
     val subScreen: SubScreen? = null,
     val servers: ServersState = ServersState(),
@@ -303,6 +308,9 @@ sealed interface MainAction {
     data object HideFreeze : MainAction
 
     data class OpenUrl(val url: String) : MainAction
+    data object OpenProviderValues : MainAction
+    data object CloseProviderValues : MainAction
+    data class ResetProviderValues(val profile: UUID, val keys: List<String>) : MainAction
     data object CheckUpdate : MainAction
     data object UpdateNow : MainAction
     data object UpdateLater : MainAction
@@ -383,6 +391,13 @@ fun MainScreen(
 
             if (state.freezeSheet) {
                 FreezeSheet(supportUrl = state.active?.panel?.supportUrl.orEmpty(), onAction = onAction)
+            }
+
+            val active = state.active
+            val prompt = state.providerValues
+
+            if (active != null && prompt != null && prompt.profile == active.profile.uuid) {
+                ProviderValuesDialog(active.title, prompt.profile, prompt.groups, onAction)
             }
 
             if (state.appsSheetShown) {
@@ -1415,8 +1430,9 @@ private fun ModeRow(mode: ProfileMode, onAction: (MainAction) -> Unit) {
 @Composable
 private fun ProviderLinksSection(active: SubscriptionItem?, onAction: (MainAction) -> Unit) {
     val links = providerLinks(active?.panel)
+    val returnable = active?.profile?.type == Profile.Type.Url
 
-    if (links.isEmpty() || active == null) return
+    if ((links.isEmpty() && !returnable) || active == null) return
 
     SectionHeader(active.title)
 
@@ -1440,6 +1456,21 @@ private fun ProviderLinksSection(active: SubscriptionItem?, onAction: (MainActio
                 title = stringResource(link.title),
                 icon = painterResource(link.icon),
                 onClick = { onAction(MainAction.OpenUrl(link.url)) },
+            )
+        }
+
+        if (returnable) {
+            if (links.isNotEmpty()) {
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier.padding(start = 52.dp),
+                )
+            }
+
+            ActionRow(
+                title = stringResource(R.string.clod_provider_values),
+                icon = painterResource(R.drawable.ic_baseline_restore),
+                onClick = { onAction(MainAction.OpenProviderValues) },
             )
         }
     }

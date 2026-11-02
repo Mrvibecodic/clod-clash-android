@@ -637,4 +637,22 @@
     <string name="clod_reset_summary">Настройки приложения, сети и уведомлений вернутся к заводским, список на экране «Приложения» и переопределения конфига очистятся. Подписки и их собственные настройки останутся.</string>
     <string name="clod_reset_confirm">Настройки приложения, сети и уведомлений вернутся к заводским. Список на экране «Приложения» очистится, а режим контроля доступа вернётся к «Разрешить выбранные приложения» — пока вы снова не отметите приложения, действует список приложений подписки, а без него через туннель не пойдёт ни одно. Переопределения конфига тоже очистятся. Подписки и их собственные настройки останутся нетронутыми.</string>
     <string name="clod_reset_action">Сбросить</string>
+    <string name="clod_provider_values">Вернуть значения провайдера</string>
+    <string name="clod_provider_values_same">Всё как в подписке</string>
+    <string name="clod_provider_values_text">Подписка «%s». Отмеченное станет таким, как задаёт шаблон подписки.</string>
+    <string name="clod_provider_values_apply">Вернуть</string>
+    <string name="clod_provider_values_done">Значения провайдера возвращены</string>
+    <plurals name="clod_provider_values_count">
+        <item quantity="one">%d изменение</item>
+        <item quantity="few">%d изменения</item>
+        <item quantity="many">%d изменений</item>
+        <item quantity="other">%d изменения</item>
+    </plurals>
+    <string name="clod_provider_values_shared">Для всех подписок \u00b7 %s</string>
+    <string name="clod_provider_group_mode">Режим</string>
+    <string name="clod_provider_group_log">Журнал и задержка</string>
+    <string name="clod_provider_group_ports">Порты и сеть</string>
+    <string name="clod_provider_group_tun">Туннель</string>
+    <string name="clod_provider_group_dns">DNS и hosts</string>
+    <string name="clod_provider_group_features">Функции ядра</string>
 </resources>
