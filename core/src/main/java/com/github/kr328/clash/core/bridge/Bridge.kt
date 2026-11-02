@@ -64,6 +64,7 @@ object Bridge {
     external fun nativeQueryModeOf(path: String, session: String): String?
     external fun nativeSwitchMode(path: String, session: String): Boolean
     external fun nativeQueryProviderValues(path: String, session: String): String?
+    external fun nativeResetProviderValues(keys: String): Boolean
     external fun nativeMarkProfileUpdated(path: String, interval: Long)
     external fun nativeReloadGeoData()
     external fun nativeSubscribeLogcat(callback: LogcatInterface)

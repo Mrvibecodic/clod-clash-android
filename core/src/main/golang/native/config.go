@@ -4,6 +4,7 @@ package main
 import "C"
 
 import (
+	"encoding/json"
 	"runtime"
 	"unsafe"
 
@@ -161,6 +162,28 @@ func queryProviderValues(path, session C.c_string) *C.char {
 	}
 
 	return marshalJson(values)
+}
+
+// keys — JSON-массив ключей. 1 — снято. Ноль (и при панике тоже) — не снято.
+//
+//export resetProviderValues
+func resetProviderValues(keys C.c_string) (result C.int) {
+	defer guard("resetProviderValues", func() {})()
+
+	var list []string
+	if err := json.Unmarshal([]byte(C.GoString(keys)), &list); err != nil {
+		log.Warnln("Reset provider values: %s", err.Error())
+
+		return 0
+	}
+
+	if err := config.ResetProviderValues(list); err != nil {
+		log.Warnln("Reset provider values: %s", err.Error())
+
+		return 0
+	}
+
+	return 1
 }
 
 // 1 — сброшено. Ноль (и при панике тоже) — не сброшено.

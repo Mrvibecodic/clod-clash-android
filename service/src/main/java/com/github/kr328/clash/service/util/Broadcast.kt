@@ -72,6 +72,10 @@ fun Context.sendTunnelAppsChanged() {
     sendBroadcastSelf(Intent(Intents.ACTION_TUNNEL_APPS_CHANGED))
 }
 
+fun Context.sendTunStackChanged() {
+    sendBroadcastSelf(Intent(Intents.ACTION_TUN_STACK_CHANGED))
+}
+
 fun Context.sendOverrideChanged() {
     val intent = Intent(Intents.ACTION_OVERRIDE_CHANGED)
 

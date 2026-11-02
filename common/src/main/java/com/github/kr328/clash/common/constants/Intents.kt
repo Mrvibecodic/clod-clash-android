@@ -23,6 +23,7 @@ object Intents {
     val ACTION_FREEZE_MARKS_CHANGED = "$packageName.intent.action.FREEZE_MARKS_CHANGED"
     val ACTION_HIDDEN_SERVERS_CHANGED = "$packageName.intent.action.HIDDEN_SERVERS_CHANGED"
     val ACTION_TUNNEL_APPS_CHANGED = "$packageName.intent.action.TUNNEL_APPS_CHANGED"
+    val ACTION_TUN_STACK_CHANGED = "$packageName.intent.action.TUN_STACK_CHANGED"
 
     const val EXTRA_STOP_REASON = "stop_reason"
     const val EXTRA_UUID = "uuid"

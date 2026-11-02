@@ -66,6 +66,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val apps = install(AppListCacheModule(self, notifyChanges = true))
         val watch = install(TunWatchModule(self))
+        val stack = install(TunStackModule(self))
         install(TimeZoneModule(self))
         install(SuspendModule(self))
 
@@ -133,6 +134,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                     }
                     apps.onEvent { installed ->
                         profile?.takeIf { opened }?.let { reopenTun(it, packagesChanged = true, installed = installed) }
+
+                        false
+                    }
+                    stack.onEvent {
+                        profile?.takeIf { opened }?.let { reopenTun(it) }
 
                         false
                     }

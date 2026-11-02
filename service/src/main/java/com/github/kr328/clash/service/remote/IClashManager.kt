@@ -33,6 +33,7 @@ interface IClashManager {
     suspend fun setProfileMode(uuid: UUID, mode: TunnelState.Mode)
 
     suspend fun queryProviderValues(uuid: UUID): ProviderValues
+    suspend fun resetProviderValues(uuid: UUID, keys: List<String>)
 
     fun reloadGeoData()
 

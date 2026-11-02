@@ -16,8 +16,12 @@ import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.ProviderReset
+import com.github.kr328.clash.service.util.TUN_STACK_AUTO
+import com.github.kr328.clash.service.util.providerResets
 import com.github.kr328.clash.service.util.providerTunStack
 import com.github.kr328.clash.service.util.sendOverrideChanged
+import com.github.kr328.clash.service.util.sendTunStackChanged
 import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.*
@@ -138,7 +142,35 @@ class ClashManager(private val context: Context) : IClashManager,
         core.copy(groups = core.groups + ProviderValues.Group(ProviderValues.GROUP_TUN, listOf(stack)))
     }
 
-    private suspend fun switchModeLive(current: UUID, mode: TunnelState.Mode): Boolean {
+    // Файл настроек ядра пишется последним, а применение уходит и после сбоя:
+    // что уже записано, не остаётся без применения. Отмена вызова (экран
+    // пересоздан) не обрывает возврат на полпути
+    override suspend fun resetProviderValues(uuid: UUID, keys: List<String>) = withContext(Dispatchers.IO + NonCancellable) {
+        val core = keys - ProviderValues.MODE_CHOICE - ProviderValues.TUN_STACK
+
+        try {
+            if (ProviderValues.TUN_STACK in keys) store.tunStackMode = TUN_STACK_AUTO
+
+            if (ProviderValues.MODE_CHOICE in keys) ModeChoiceDao().removeChoice(uuid)
+
+            if (core.isNotEmpty()) Clash.resetProviderValues(core)
+        } finally {
+            val resets = providerResets(keys)
+
+            if (ProviderReset.Reload in resets) context.sendOverrideChanged()
+
+            if (ProviderReset.Mode in resets &&
+                !switchModeLive(uuid, ModeChoiceDao().queryChoice(uuid)) &&
+                uuid == store.activeProfile
+            ) {
+                context.sendOverrideChanged()
+            }
+
+            if (ProviderReset.Stack in resets) context.sendTunStackChanged()
+        }
+    }
+
+    private suspend fun switchModeLive(current: UUID, mode: TunnelState.Mode?): Boolean {
         if (StatusProvider.currentProfileUuid != current.toString()) return false
 
         if (!ConfigurationModule.coreLoad.tryLock()) return false

@@ -99,6 +99,9 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager {
     override suspend fun queryProviderValues(uuid: UUID): ProviderValues =
         guard { delegate.queryProviderValues(uuid) }
 
+    override suspend fun resetProviderValues(uuid: UUID, keys: List<String>) =
+        guard { delegate.resetProviderValues(uuid, keys) }
+
     override suspend fun healthCheck(group: String) =
         guard { delegate.healthCheck(group) }
 

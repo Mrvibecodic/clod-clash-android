@@ -12,4 +12,7 @@ interface ModeChoiceDao {
 
     @Query("SELECT mode FROM profile_modes WHERE uuid = :uuid")
     suspend fun queryChoice(uuid: UUID): TunnelState.Mode?
+
+    @Query("DELETE FROM profile_modes WHERE uuid = :uuid")
+    suspend fun removeChoice(uuid: UUID)
 }

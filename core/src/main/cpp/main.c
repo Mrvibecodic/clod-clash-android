@@ -461,6 +461,16 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryProviderValues(JNIEnv 
     return new_string(response);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeResetProviderValues(JNIEnv *env, jobject thiz,
+                                                                         jstring keys) {
+    TRACE_METHOD();
+
+    scoped_string _keys = get_string(keys);
+
+    return (jboolean) (resetProviderValues(_keys) != 0);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeMarkProfileUpdated(JNIEnv *env, jobject thiz,
                                                                         jstring path,
