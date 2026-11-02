@@ -2,6 +2,7 @@ package overlay
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/metacubex/mihomo/config"
@@ -89,5 +90,24 @@ func TestDnsBuiltIn(t *testing.T) {
 		if !cfg.DNS.Enable || cfg.DNS.EnhancedMode != C.DNSFakeIP || !reflect.DeepEqual(cfg.DNS.NameServer, c.want) {
 			t.Errorf("%s: enable %v, mode %s, nameserver %v", c.name, cfg.DNS.Enable, cfg.DNS.EnhancedMode, cfg.DNS.NameServer)
 		}
+	}
+}
+
+func TestDnsKeepsBuiltInLists(t *testing.T) {
+	nameServers := slices.Clone(defaultNameServers)
+	fakeIPFilter := slices.Clone(defaultFakeIPFilter)
+
+	Dns(parse(t, "{}\n"), t.Logf, `{"dns":{"nameserver":["https://own.example.com/dns-query"],"fake-ip-filter":["+.example.com"]}}`)
+
+	if !reflect.DeepEqual(defaultNameServers, nameServers) || !reflect.DeepEqual(defaultFakeIPFilter, fakeIPFilter) {
+		t.Fatalf("встроенные списки изменились: %v, %v", defaultNameServers, defaultFakeIPFilter)
+	}
+
+	cfg := parse(t, "{}\n")
+
+	Dns(cfg, t.Logf)
+
+	if !reflect.DeepEqual(cfg.DNS.NameServer, append(nameServers, systemNameServer)) {
+		t.Fatalf("встроенный DNS после своего: %v", cfg.DNS.NameServer)
 	}
 }

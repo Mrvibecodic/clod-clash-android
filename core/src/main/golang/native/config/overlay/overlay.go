@@ -106,10 +106,10 @@ func applyOwnDns(cfg *config.RawConfig, override string, warn Warn) {
 func Dns(cfg *config.RawConfig, warn Warn, slots ...string) {
 	if !cfg.DNS.Enable {
 		cfg.DNS = config.DefaultRawConfig().DNS
-		cfg.DNS.NameServer = defaultNameServers
+		cfg.DNS.NameServer = slices.Clone(defaultNameServers)
 		cfg.DNS.EnhancedMode = C.DNSFakeIP
 		cfg.DNS.FakeIPRange = defaultFakeIPRange
-		cfg.DNS.FakeIPFilter = defaultFakeIPFilter
+		cfg.DNS.FakeIPFilter = slices.Clone(defaultFakeIPFilter)
 
 		cfg.ClashForAndroid.AppendSystemDNS = true
 
@@ -120,7 +120,7 @@ func Dns(cfg *config.RawConfig, warn Warn, slots ...string) {
 		if len(cfg.DNS.NameServer) == 0 {
 			warn("Override left dns.nameserver empty: using the built-in list")
 
-			cfg.DNS.NameServer = defaultNameServers
+			cfg.DNS.NameServer = slices.Clone(defaultNameServers)
 		}
 
 		cfg.DNS.Enable = true
