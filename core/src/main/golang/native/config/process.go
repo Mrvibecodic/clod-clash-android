@@ -4,17 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"net/netip"
-	"slices"
-	"strings"
 	"time"
 
 	"cfa/native/common"
 	"cfa/native/config/groups"
+	"cfa/native/config/overlay"
 	"cfa/native/config/panel"
 
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/config"
-	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
 	"github.com/metacubex/mihomo/tunnel"
 )
@@ -62,17 +60,11 @@ func modeLocked(profileDir string, info panel.Info) bool {
 
 func patchOverride(cfg *config.RawConfig, src parseInput) error {
 	template := cfg.Mode
-	nameServers := cfg.DNS.NameServer
 
 	persist := ReadOverride(OverrideSlotPersist)
 	session := ReadOverride(OverrideSlotSession)
 
-	if err := json.NewDecoder(strings.NewReader(persist)).Decode(cfg); err != nil {
-		log.Warnln("Apply persist override: %s", err.Error())
-	}
-	if err := json.NewDecoder(strings.NewReader(session)).Decode(cfg); err != nil {
-		log.Warnln("Apply session override: %s", err.Error())
-	}
+	overlay.Apply(cfg, persist, session, log.Warnln)
 
 	mode, source := panel.ResolveMode(
 		template.String(),
@@ -88,13 +80,6 @@ func patchOverride(cfg *config.RawConfig, src parseInput) error {
 
 	cfg.Mode = tunnel.ModeMapping[mode]
 
-	// An empty list from the override would make the core reject the profile.
-	if len(cfg.DNS.NameServer) == 0 && len(nameServers) > 0 {
-		log.Warnln("Override left dns.nameserver empty: keeping the subscription list")
-
-		cfg.DNS.NameServer = nameServers
-	}
-
 	return nil
 }
 
@@ -107,43 +92,15 @@ func patchExternalController(cfg *config.RawConfig, _ parseInput) error {
 	return nil
 }
 
-const defaultMixedPort = 7890
-
 // Своя папка стандартной панели: панель провайдера, скачанная раньше в ui,
 // на её место не встанет
 const defaultExternalUIName = "metacubexd"
-
-const mixedPortKey = "mixed-port"
-
-func portOccupied(cfg *config.RawConfig, port int) bool {
-	return cfg.Port == port ||
-		cfg.SocksPort == port ||
-		cfg.RedirPort == port ||
-		cfg.TProxyPort == port
-}
-
-func mixedPortOverridden(slot OverrideSlot) bool {
-	var keys map[string]json.RawMessage
-
-	if err := json.Unmarshal([]byte(ReadOverride(slot)), &keys); err != nil {
-		return false
-	}
-
-	_, ok := keys[mixedPortKey]
-
-	return ok
-}
 
 func patchGeneral(cfg *config.RawConfig, src parseInput) error {
 	cfg.Interface = ""
 	cfg.RoutingMark = 0
 
-	if cfg.MixedPort == 0 && cfg.Port == 0 && !cfg.AllowLan &&
-		!portOccupied(cfg, defaultMixedPort) &&
-		!mixedPortOverridden(OverrideSlotPersist) &&
-		!mixedPortOverridden(OverrideSlotSession) {
-		cfg.MixedPort = defaultMixedPort
-	}
+	overlay.DefaultMixedPort(cfg, ReadOverride(OverrideSlotPersist), ReadOverride(OverrideSlotSession))
 
 	if src.save {
 		panel.WriteInboundPrefs(src.dir, panel.InboundPrefs{
@@ -176,31 +133,7 @@ func patchProfile(cfg *config.RawConfig, _ parseInput) error {
 }
 
 func patchDns(cfg *config.RawConfig, _ parseInput) error {
-	if !cfg.DNS.Enable {
-		cfg.DNS = config.DefaultRawConfig().DNS
-		cfg.DNS.NameServer = defaultNameServers
-		cfg.DNS.EnhancedMode = C.DNSFakeIP
-		cfg.DNS.FakeIPRange = defaultFakeIPRange
-		cfg.DNS.FakeIPFilter = defaultFakeIPFilter
-
-		cfg.ClashForAndroid.AppendSystemDNS = true
-
-		for _, slot := range []OverrideSlot{OverrideSlotPersist, OverrideSlotSession} {
-			applyOwnDns(cfg, ReadOverride(slot))
-		}
-
-		if len(cfg.DNS.NameServer) == 0 {
-			log.Warnln("Override left dns.nameserver empty: using the built-in list")
-
-			cfg.DNS.NameServer = defaultNameServers
-		}
-
-		cfg.DNS.Enable = true
-	}
-
-	if cfg.ClashForAndroid.AppendSystemDNS && !slices.ContainsFunc(cfg.DNS.NameServer, isSystemNameServer) {
-		cfg.DNS.NameServer = append(cfg.DNS.NameServer, systemNameServer)
-	}
+	overlay.Dns(cfg, log.Warnln, ReadOverride(OverrideSlotPersist), ReadOverride(OverrideSlotSession))
 
 	warnPrivateFakeIPRange(cfg.DNS.FakeIPRange)
 
@@ -230,51 +163,10 @@ func warnPrivateFakeIPRange(fakeIPRange string) {
 	}
 }
 
-const systemNameServer = "system://"
-
-func isSystemNameServer(server string) bool {
-	return server == systemNameServer || server == "system"
-}
-
-func applyOwnDns(cfg *config.RawConfig, override string) {
-	var keys struct {
-		DNS json.RawMessage `json:"dns"`
-		App json.RawMessage `json:"clash-for-android"`
-	}
-
-	if err := json.Unmarshal([]byte(override), &keys); err != nil {
-		return
-	}
-
-	var mode struct {
-		Enable *bool `json:"enable"`
-	}
-
-	if len(keys.DNS) > 0 {
-		if err := json.Unmarshal(keys.DNS, &mode); err != nil || mode.Enable != nil {
-			return
-		}
-	}
-
-	if len(keys.App) > 0 {
-		if err := json.Unmarshal(keys.App, &cfg.ClashForAndroid); err != nil {
-			log.Warnln("Apply own app override: %s", err.Error())
-		}
-	}
-
-	if len(keys.DNS) > 0 {
-		if err := json.Unmarshal(keys.DNS, &cfg.DNS); err != nil {
-			log.Warnln("Apply own dns override: %s", err.Error())
-		}
-	}
-}
-
 func patchTun(cfg *config.RawConfig, src parseInput) error {
 	prefs := panel.TunPrefsOf(cfg.Tun.IncludePackage, cfg.Tun.ExcludePackage, src.info)
 
-	if cfg.Tun.Enable {
-		prefs.Stack = panel.NormalizeTunStack(cfg.Tun.Stack.String())
-	}
+	prefs.Stack = panel.TemplateStack(cfg.Tun.Enable, cfg.Tun.Stack.String(), cfg.Listeners)
 
 	for _, mapping := range cfg.Listeners {
 		if listenerType, ok := mapping["type"].(string); !ok || listenerType != "tun" {
@@ -283,12 +175,6 @@ func patchTun(cfg *config.RawConfig, src parseInput) error {
 
 		prefs.IncludePackages = panel.MergePackages(prefs.IncludePackages, groups.Strings(mapping["include-package"]))
 		prefs.ExcludePackages = panel.MergePackages(prefs.ExcludePackages, groups.Strings(mapping["exclude-package"]))
-
-		if prefs.Stack == "" {
-			if stack, ok := mapping["stack"].(string); ok {
-				prefs.Stack = panel.NormalizeTunStack(stack)
-			}
-		}
 	}
 
 	if src.save {

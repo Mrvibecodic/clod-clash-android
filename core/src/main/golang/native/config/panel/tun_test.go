@@ -45,6 +45,31 @@ func TestNormalizeTunStack(t *testing.T) {
 	}
 }
 
+func TestTemplateStack(t *testing.T) {
+	tun := func(stack any) map[string]any { return map[string]any{"type": "tun", "stack": stack} }
+
+	cases := []struct {
+		name      string
+		enabled   bool
+		stack     string
+		listeners []map[string]any
+		want      string
+	}{
+		{"секция tun", true, "System", []map[string]any{tun("gvisor")}, "system"},
+		{"выключенная секция не в счёт", false, "system", nil, ""},
+		{"незнакомый стек секции — слушатель", true, "lwip", []map[string]any{tun("Mixed")}, "mixed"},
+		{"слушатель не tun не в счёт", false, "", []map[string]any{{"type": "mixed", "stack": "system"}}, ""},
+		{"первый знакомый стек слушателя", false, "", []map[string]any{tun("lwip"), tun(1), tun("gvisor")}, "gvisor"},
+		{"стек не задан", true, "", nil, ""},
+	}
+
+	for _, c := range cases {
+		if got := TemplateStack(c.enabled, c.stack, c.listeners); got != c.want {
+			t.Errorf("%s: получено %q, ожидалось %q", c.name, got, c.want)
+		}
+	}
+}
+
 func TestSanitizePackages(t *testing.T) {
 	got := SanitizePackages([]string{" com.a ", "", "com.b", "com.a"})
 	expected := []string{"com.a", "com.b"}

@@ -38,6 +38,28 @@ func NormalizeTunStack(stack string) string {
 	return ""
 }
 
+func TemplateStack(enabled bool, stack string, listeners []map[string]any) string {
+	if enabled {
+		if stack := NormalizeTunStack(stack); stack != "" {
+			return stack
+		}
+	}
+
+	for _, mapping := range listeners {
+		if listenerType, ok := mapping["type"].(string); !ok || listenerType != "tun" {
+			continue
+		}
+
+		if stack, ok := mapping["stack"].(string); ok {
+			if stack := NormalizeTunStack(stack); stack != "" {
+				return stack
+			}
+		}
+	}
+
+	return ""
+}
+
 func SanitizePackages(packages []string) []string {
 	if len(packages) == 0 {
 		return nil
