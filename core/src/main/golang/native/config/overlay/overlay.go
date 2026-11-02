@@ -7,6 +7,7 @@ import (
 
 	"github.com/metacubex/mihomo/config"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/constant/sniffer"
 )
 
 const defaultMixedPort = 7890
@@ -19,6 +20,30 @@ type Warn func(format string, args ...any)
 
 func Apply(cfg *config.RawConfig, persist, session string, warn Warn) {
 	nameServers := cfg.DNS.NameServer
+
+	// Ядро сравнивает имена протоколов без регистра: своя запись в другом
+	// регистре легла бы рядом, и ядро взяло бы одну из двух наугад
+	if len(cfg.Sniffer.Sniff) > 0 {
+		sniff := make(map[string]config.RawSniffingConfig, len(cfg.Sniffer.Sniff))
+
+		for name, entry := range cfg.Sniffer.Sniff {
+			key := name
+
+			for _, protocol := range sniffer.List {
+				if strings.EqualFold(name, protocol.String()) {
+					key = protocol.String()
+				}
+			}
+
+			if _, taken := sniff[key]; taken && name != key {
+				continue
+			}
+
+			sniff[key] = entry
+		}
+
+		cfg.Sniffer.Sniff = sniff
+	}
 
 	if err := json.NewDecoder(strings.NewReader(persist)).Decode(cfg); err != nil {
 		warn("Apply persist override: %s", err.Error())

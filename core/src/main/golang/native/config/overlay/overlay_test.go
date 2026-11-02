@@ -111,3 +111,30 @@ func TestDnsKeepsBuiltInLists(t *testing.T) {
 		t.Fatalf("встроенный DNS после своего: %v", cfg.DNS.NameServer)
 	}
 }
+
+func TestApplyReplacesSniffEntryOfAnyCase(t *testing.T) {
+	cfg := parse(t, "sniffer:\n  sniff:\n    tls:\n      ports: [443]\n    http:\n      ports: [80]\n    HTTP:\n      ports: [8080]\n")
+
+	Apply(cfg, `{"sniffer":{"sniff":{"TLS":{"ports":["8443"]}}}}`, `{}`, t.Logf)
+
+	want := map[string][]string{"TLS": {"8443"}, "HTTP": {"8080"}}
+	got := map[string][]string{}
+
+	for name, entry := range cfg.Sniffer.Sniff {
+		got[name] = entry.Ports
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("получено %v", got)
+	}
+}
+
+func TestApplyKeepsUnknownSniffName(t *testing.T) {
+	cfg := parse(t, "sniffer:\n  sniff:\n    foo:\n      ports: [1]\n")
+
+	Apply(cfg, `{}`, `{}`, t.Logf)
+
+	if _, ok := cfg.Sniffer.Sniff["foo"]; !ok || len(cfg.Sniffer.Sniff) != 1 {
+		t.Fatalf("незнакомое имя изменено: %v", cfg.Sniffer.Sniff)
+	}
+}
