@@ -12,6 +12,7 @@ import com.github.kr328.clash.service.PreferenceProvider
 import com.github.kr328.clash.service.clash.module.ReactionSeries
 import com.github.kr328.clash.service.model.AccessControlMode
 import com.github.kr328.clash.service.util.KEY_APP_LOCALE
+import com.github.kr328.clash.service.util.TUN_STACK_AUTO
 import java.util.*
 
 class ServiceStore(context: Context) {
@@ -160,7 +161,7 @@ class ServiceStore(context: Context) {
 
     var tunStackMode by store.string(
         key = "tun_stack_mode",
-        defaultValue = "auto"
+        defaultValue = TUN_STACK_AUTO
     )
 
     var dynamicNotification by store.boolean(
@@ -187,7 +188,7 @@ class ServiceStore(context: Context) {
         systemProxy = true
         allowBypass = false
         allowIpv6 = false
-        tunStackMode = "auto"
+        tunStackMode = TUN_STACK_AUTO
         dynamicNotification = false
         keepAwake = false
         appLocale = ""

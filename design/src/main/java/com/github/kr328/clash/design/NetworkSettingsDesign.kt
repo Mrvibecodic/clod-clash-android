@@ -12,6 +12,7 @@ import com.github.kr328.clash.design.compose.screen.NetworkSettingsState
 import com.github.kr328.clash.design.store.UiStore
 import com.github.kr328.clash.service.store.ServiceSettings
 import com.github.kr328.clash.service.util.TUN_STACKS
+import com.github.kr328.clash.service.util.TUN_STACK_AUTO
 import com.github.kr328.clash.service.util.resolveTunStack
 
 class NetworkSettingsDesign(
@@ -27,7 +28,7 @@ class NetworkSettingsDesign(
         data object Back : Request
     }
 
-    private val tunStacks = listOf("auto") + TUN_STACKS
+    private val tunStacks = listOf(TUN_STACK_AUTO) + TUN_STACKS
 
     private var state by mutableStateOf(
         NetworkSettingsState(

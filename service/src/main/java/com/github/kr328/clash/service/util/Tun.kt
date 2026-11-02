@@ -16,6 +16,8 @@ fun Context.activeTunPrefs(): TunPrefs? {
 // в native/config/panel/tun.go); незнакомое значение мост сам заменяет на MIPS.
 val TUN_STACKS = listOf("system", "gvisor", "mixed", "mips")
 
+const val TUN_STACK_AUTO = "auto"
+
 private const val DEFAULT_TUN_STACK = "mips"
 
 fun resolveTunStack(mode: String, fromProfile: String): String {
