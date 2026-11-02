@@ -107,7 +107,7 @@ var featureFields = []field{
 	{group: GroupFeatures, key: "sniffer.skip-dst-address", value: func(s side) any { return s.cfg.Sniffer.SkipDstAddress }},
 }
 
-var fields = slices.Concat(generalFields, dnsFields, featureFields)
+var fields = slices.Concat(generalFields, dnsFields, featureFields, sniffFields)
 
 func lookup(tree map[string]any, key string, fold bool) bool {
 	var node any = tree
