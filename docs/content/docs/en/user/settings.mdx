@@ -3,9 +3,19 @@ title: "All settings"
 description: "What is on the More tab: connection, network, dropping connections, background, look, notifications"
 ---
 
-All settings live on the **More** tab. If the provider sent links, a block with the subscription
-name sits on top: **Customer portal**, **Support**, **Bot**, **Server status**, **Setup guide** — only
-the links that were sent are shown.
+All settings live on the **More** tab. If the active subscription was added by a link or the provider
+sent links, a block with its name sits on top. It holds the provider links: **Customer portal**,
+**Support**, **Bot**, **Server status**, **Setup guide** — only the links that were sent are shown.
+
+For a subscription added by a link, the last row of the block is **Return provider values**. Tap it
+and the app checks which of your settings override what the subscription sets: mode, log level,
+ports, network stack, DNS and hosts, core features. If everything matches, a short message says
+“Everything as in the subscription”. Otherwise a window with the groups opens: check the ones you
+want, expand a group to see what it will become, and tap **Return**. The app does not fill in values
+itself — it clears your setting (“Do not modify”, “Auto”), and the subscription value applies.
+Groups marked “For all subscriptions” change shared settings, so they affect your other
+subscriptions too. The subscription links, name, update interval, app list and server choices are
+left alone. A subscription from a file has no such row.
 
 <Shot src="ru/more.png" alt="The More tab: provider links, connection, app, help" />
 
@@ -132,7 +142,8 @@ DNS is set in **Core features → Override → DNS**, the **Strategy** item:
 <Callout type="warn" title="If something broke after your edits">
 If the subscription stopped applying after edits in Override, the app says “Failed to apply the
 subscription… Check your own edits in the override”. Reset the override and everything goes back to
-how it was.
+how it was. To remove only what conflicts with the subscription, use **Return provider values** at
+the top of the More tab.
 </Callout>
 
 ## Databases and sets
