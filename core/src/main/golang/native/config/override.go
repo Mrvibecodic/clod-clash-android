@@ -3,6 +3,7 @@ package config
 import (
 	"sync"
 
+	"cfa/native/config/overlay"
 	"cfa/native/config/overridefile"
 
 	"github.com/metacubex/mihomo/constant"
@@ -87,4 +88,10 @@ func ClearOverride(slot OverrideSlot) error {
 	}
 
 	return nil
+}
+
+func ResetProviderValues(keys []string) error {
+	return persistOverride().Update(func(content string) (string, error) {
+		return overlay.Clear(content, overlay.Resettable(keys))
+	})
 }

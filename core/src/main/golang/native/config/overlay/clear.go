@@ -2,6 +2,7 @@ package overlay
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 )
 
@@ -65,4 +66,16 @@ func Clear(persist string, keys []string) (string, error) {
 	data, err := json.Marshal(root)
 
 	return string(data), err
+}
+
+func Resettable(keys []string) []string {
+	var result []string
+
+	for _, key := range keys {
+		if key == modeKey || slices.ContainsFunc(fields, func(f field) bool { return f.own() == key }) {
+			result = append(result, key)
+		}
+	}
+
+	return result
 }

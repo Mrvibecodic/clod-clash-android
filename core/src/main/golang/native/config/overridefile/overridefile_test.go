@@ -1,8 +1,11 @@
 package overridefile
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -155,5 +158,84 @@ func TestStoreKeepsReadErrorUntilWrite(t *testing.T) {
 
 	if got, err := store.Read(); err != nil || got != `{}` {
 		t.Fatalf("запись не сняла ошибку: %q, %v", got, err)
+	}
+}
+
+func TestStoreUpdate(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "override.json")
+	store := NewStore(path, "{}")
+
+	if err := store.Write(`{"ipv6":true}`); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.Update(func(content string) (string, error) {
+		return "", errors.New("отказ")
+	}); err == nil {
+		t.Fatal("отказ изменения не доложен")
+	}
+
+	if got, _ := os.ReadFile(path); string(got) != `{"ipv6":true}` {
+		t.Fatalf("после отказа файл переписан: %s", got)
+	}
+
+	if err := store.Update(func(content string) (string, error) {
+		return strings.Replace(content, "true", "false", 1), nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, _ := os.ReadFile(path); string(got) != `{"ipv6":false}` {
+		t.Fatalf("на диске %s", got)
+	}
+
+	if got, err := store.Read(); err != nil || got != `{"ipv6":false}` {
+		t.Fatalf("зеркало %q, %v", got, err)
+	}
+}
+
+func TestStoreUpdatesDoNotLoseEachOther(t *testing.T) {
+	store := NewStore(filepath.Join(t.TempDir(), "override.json"), "")
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < 20; i++ {
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+
+			_ = store.Update(func(content string) (string, error) { return content + "u", nil })
+		}()
+
+		go func() {
+			defer wg.Done()
+
+			_ = store.Update(func(content string) (string, error) { return content + "w", nil })
+		}()
+	}
+
+	wg.Wait()
+
+	if got, err := store.Read(); err != nil || len(got) != 40 {
+		t.Fatalf("изменения потерялись: %q, %v", got, err)
+	}
+}
+
+func TestStoreUpdateKeepsReadError(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "override.json")
+
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	called := false
+
+	if err := NewStore(path, "{}").Update(func(content string) (string, error) {
+		called = true
+
+		return content, nil
+	}); err == nil || called {
+		t.Fatal("нечитаемый файл изменён как заводской")
 	}
 }

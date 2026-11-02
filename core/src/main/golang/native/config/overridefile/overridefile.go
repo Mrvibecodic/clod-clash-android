@@ -57,16 +57,45 @@ func NewStore(path, factory string) *Store {
 	return &Store{path: path, factory: factory}
 }
 
-func (s *Store) Read() (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func (s *Store) load() {
 	if !s.loaded {
 		s.content, s.err = Read(s.path, s.factory)
 		s.loaded = true
 	}
+}
+
+func (s *Store) Read() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.load()
 
 	return s.content, s.err
+}
+
+// Под тем же замком, что Write: чужая запись не ляжет между чтением и записью
+func (s *Store) Update(change func(content string) (string, error)) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.load()
+
+	if s.err != nil {
+		return s.err
+	}
+
+	content, err := change(s.content)
+	if err != nil {
+		return err
+	}
+
+	if err := Write(s.path, content); err != nil {
+		return err
+	}
+
+	s.content = content
+
+	return nil
 }
 
 func (s *Store) Write(content string) error {
