@@ -644,6 +644,15 @@
         <item quantity="other">%d changes</item>
     </plurals>
     <string name="clod_provider_values_shared">For all subscriptions \u00b7 %s</string>
+    <string name="clod_provider_values_change">%1$s → %2$s</string>
+    <string name="clod_provider_values_line">%1$s: %2$s → %3$s</string>
+    <string name="clod_provider_values_keep">%1$s (%2$s)</string>
+    <string name="clod_provider_values_auto">%1$s (from subscription: %2$s)</string>
+    <string name="clod_provider_values_from_subscription">from subscription (%s)</string>
+    <string name="clod_provider_values_all_ports">All ports</string>
+    <string name="clod_provider_values_section">%1$s · %2$s</string>
+    <string name="clod_provider_values_show">Show changes</string>
+    <string name="clod_provider_values_hide">Hide changes</string>
     <string name="clod_provider_group_mode">Mode</string>
     <string name="clod_provider_group_log">Log and delay</string>
     <string name="clod_provider_group_ports">Ports and network</string>
