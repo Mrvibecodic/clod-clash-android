@@ -52,6 +52,46 @@ func runDifferences(t *testing.T, cases []differencesCase) {
 func TestDifferences(t *testing.T) {
 	runDifferences(t, []differencesCase{
 		{
+			name:     "ключа нет в шаблоне — строки нет",
+			template: "proxies: []\n",
+			persist:  `{"log-level":"debug","mixed-port":7891,"tcp-concurrent":true}`,
+			want:     map[string][]string{},
+		},
+		{
+			name:     "своё значение совпадает с шаблоном — строки нет",
+			template: "log-level: info\nmixed-port: 7890\nallow-lan: false\n",
+			persist:  `{"log-level":"info","mixed-port":7890,"allow-lan":false}`,
+			want:     map[string][]string{},
+		},
+		{
+			name:     "своего значения нет — строки нет",
+			template: "log-level: warning\nmixed-port: 7890\n",
+			persist:  `{}`,
+			want:     map[string][]string{},
+		},
+		{
+			name:     "отличается — строка в своей группе",
+			template: "log-level: info\nunified-delay: true\nmixed-port: 7890\nipv6: true\ngeodata-mode: true\n",
+			persist:  `{"log-level":"debug","unified-delay":false,"mixed-port":7891,"ipv6":false,"geodata-mode":false,"secret":"x"}`,
+			want: map[string][]string{
+				GroupLog:      {"log-level", "unified-delay"},
+				GroupPorts:    {"mixed-port", "ipv6"},
+				GroupFeatures: {"geodata-mode"},
+			},
+		},
+		{
+			name:     "порт 0 из шаблона ядро заменяет своим — сравнивается с ним",
+			template: "mixed-port: 0\n",
+			persist:  `{"mixed-port":7890}`,
+			want:     map[string][]string{},
+		},
+		{
+			name:     "порт 0 из шаблона при своём http-порте остаётся 0",
+			template: "mixed-port: 0\n",
+			persist:  `{"mixed-port":0,"port":8080}`,
+			want:     map[string][]string{},
+		},
+		{
 			name:     "режим: выбор подписки перебивает шаблон",
 			template: "mode: rule\n",
 			mode:     Mode{Choice: ptr("global")},
@@ -100,10 +140,50 @@ func TestDifferencesValues(t *testing.T) {
 
 	want := []Group{
 		{ID: GroupMode, Lines: []Line{{Key: modeKey, Now: `"global"`, Becomes: `"rule"`, Reset: []string{ModeChoice, modeKey}}}},
+		{ID: GroupLog, Lines: []Line{{Key: "log-level", Now: `"debug"`, Becomes: `"info"`, Reset: []string{"log-level"}}}},
+		{ID: GroupPorts, Lines: []Line{{Key: "mixed-port", Now: `7891`, Becomes: `7890`, Reset: []string{"mixed-port"}}}},
 	}
 
 	if !reflect.DeepEqual(values.Groups, want) {
 		t.Fatalf("получено %+v", values.Groups)
+	}
+}
+
+func TestDifferencesBecomesKeepsOtherOwnValues(t *testing.T) {
+	values, err := Differences([]byte("mixed-port: 0\n"), `{"mixed-port":7891,"port":8080}`, Mode{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []Group{{ID: GroupPorts, Lines: []Line{{Key: "mixed-port", Now: `7891`, Becomes: `0`, Reset: []string{"mixed-port"}}}}}
+
+	if !reflect.DeepEqual(values.Groups, want) {
+		t.Fatalf("получено %+v", values.Groups)
+	}
+}
+
+func TestDifferencesStack(t *testing.T) {
+	cases := []struct {
+		template string
+		want     string
+	}{
+		{"tun:\n  enable: true\n  stack: system\n", "system"},
+		{"tun:\n  enable: true\n", ""},
+		{"tun:\n  enable: false\n  stack: system\n", ""},
+		{"listeners:\n  - name: t\n    type: tun\n    stack: mixed\n", "mixed"},
+		{"tun:\n  enable: true\nlisteners:\n  - name: t\n    type: tun\n    stack: system\n", "mips"},
+		{"tun:\n  enable: true\nlisteners:\n  - name: t\n    type: tun\n", ""},
+	}
+
+	for _, c := range cases {
+		values, err := Differences([]byte(c.template), `{}`, Mode{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if values.Stack != c.want {
+			t.Errorf("%q: стек %q, ожидался %q", c.template, values.Stack, c.want)
+		}
 	}
 }
 
