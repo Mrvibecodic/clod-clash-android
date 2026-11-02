@@ -32,6 +32,8 @@ interface IClashManager {
     suspend fun queryProfileMode(uuid: UUID): ProfileMode
     suspend fun setProfileMode(uuid: UUID, mode: TunnelState.Mode)
 
+    suspend fun queryProviderValues(uuid: UUID): ProviderValues
+
     fun reloadGeoData()
 
     fun setLogObserver(observer: ILogObserver?)

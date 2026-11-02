@@ -444,6 +444,23 @@ Java_com_github_kr328_clash_core_bridge_Bridge_nativeSwitchMode(JNIEnv *env, job
     return (jboolean) (switchMode(_path, _session) != 0);
 }
 
+JNIEXPORT jstring JNICALL
+Java_com_github_kr328_clash_core_bridge_Bridge_nativeQueryProviderValues(JNIEnv *env, jobject thiz,
+                                                                         jstring path,
+                                                                         jstring session) {
+    TRACE_METHOD();
+
+    scoped_string _path = get_string(path);
+    scoped_string _session = get_string(session);
+
+    scoped_string response = queryProviderValues(_path, _session);
+
+    if (response == NULL)
+        return NULL;
+
+    return new_string(response);
+}
+
 JNIEXPORT void JNICALL
 Java_com_github_kr328_clash_core_bridge_Bridge_nativeMarkProfileUpdated(JNIEnv *env, jobject thiz,
                                                                         jstring path,

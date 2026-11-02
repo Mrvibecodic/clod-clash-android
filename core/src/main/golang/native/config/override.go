@@ -5,6 +5,7 @@ import (
 
 	"cfa/native/config/overlay"
 	"cfa/native/config/overridefile"
+	"cfa/native/config/panel"
 
 	"github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/log"
@@ -88,6 +89,24 @@ func ClearOverride(slot OverrideSlot) error {
 	}
 
 	return nil
+}
+
+func ProviderValues(profileDir, session string) (overlay.Values, error) {
+	template, err := panel.ReadProfileFile(profileDir, panel.ProfileConfigFile)
+	if err != nil {
+		return overlay.Values{}, err
+	}
+
+	persist, err := QueryOverride(OverrideSlotPersist)
+	if err != nil {
+		return overlay.Values{}, err
+	}
+
+	return overlay.Differences(template, persist, overlay.Mode{
+		Persist: modeName(overrideMode(persist)),
+		Choice:  modeName(overrideMode(session)),
+		Locked:  modeLocked(profileDir, panel.Read(profileDir)),
+	})
 }
 
 func ResetProviderValues(keys []string) error {

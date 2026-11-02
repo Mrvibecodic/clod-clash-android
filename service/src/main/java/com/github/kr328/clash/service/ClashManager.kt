@@ -16,6 +16,7 @@ import com.github.kr328.clash.service.remote.IClashManager
 import com.github.kr328.clash.service.remote.ILogObserver
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.importedDir
+import com.github.kr328.clash.service.util.providerTunStack
 import com.github.kr328.clash.service.util.sendOverrideChanged
 import com.github.kr328.clash.service.util.sessionOverrideFor
 import kotlinx.coroutines.sync.withLock
@@ -124,6 +125,17 @@ class ClashManager(private val context: Context) : IClashManager,
         if (!switchModeLive(uuid, mode) && uuid == store.activeProfile) {
             context.sendOverrideChanged()
         }
+    }
+
+    override suspend fun queryProviderValues(uuid: UUID): ProviderValues = withContext(Dispatchers.IO) {
+        val core = Clash.queryProviderValues(
+            context.importedDir.resolve(uuid.toString()),
+            sessionOverrideFor(ModeChoiceDao().queryChoice(uuid)),
+        )
+
+        val stack = providerTunStack(store.tunStackMode, core.stack) ?: return@withContext core
+
+        core.copy(groups = core.groups + ProviderValues.Group(ProviderValues.GROUP_TUN, listOf(stack)))
     }
 
     private suspend fun switchModeLive(current: UUID, mode: TunnelState.Mode): Boolean {

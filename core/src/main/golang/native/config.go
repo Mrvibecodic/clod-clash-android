@@ -147,6 +147,22 @@ func markProfileUpdated(path C.c_string, interval C.int64_t) {
 	config.MarkUpdated(C.GoString(path), int64(interval))
 }
 
+// NULL — не посчитано (и при панике тоже): разницы, которой не знаем, не показываем.
+//
+//export queryProviderValues
+func queryProviderValues(path, session C.c_string) *C.char {
+	defer guard("queryProviderValues", func() {})()
+
+	values, err := config.ProviderValues(C.GoString(path), C.GoString(session))
+	if err != nil {
+		log.Warnln("Query provider values: %s", err.Error())
+
+		return nil
+	}
+
+	return marshalJson(values)
+}
+
 // 1 — сброшено. Ноль (и при панике тоже) — не сброшено.
 //
 //export clearOverride

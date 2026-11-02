@@ -335,6 +335,15 @@ object Clash {
         )
     }
 
+    fun queryProviderValues(path: File, session: ConfigurationOverride): ProviderValues {
+        val json = Bridge.nativeQueryProviderValues(
+            path.absolutePath,
+            CoreJson.encodeToString(ConfigurationOverride.serializer(), session),
+        ) ?: throw IllegalStateException("the core returned no provider values")
+
+        return CoreJson.decodeFromString(ProviderValues.serializer(), json)
+    }
+
     fun markProfileUpdated(path: File, interval: Long) {
         Bridge.nativeMarkProfileUpdated(path.absolutePath, interval)
     }

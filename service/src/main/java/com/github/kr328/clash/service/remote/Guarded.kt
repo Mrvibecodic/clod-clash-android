@@ -6,6 +6,7 @@ import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.core.Clash
 import com.github.kr328.clash.core.model.ConfigurationOverride
 import com.github.kr328.clash.core.model.ProfileMode
+import com.github.kr328.clash.core.model.ProviderValues
 import com.github.kr328.clash.core.model.Provider
 import com.github.kr328.clash.core.model.ProviderList
 import com.github.kr328.clash.core.model.ProxyGroup
@@ -94,6 +95,9 @@ class GuardedClashManager(private val delegate: IClashManager) : IClashManager {
 
     override suspend fun setProfileMode(uuid: UUID, mode: TunnelState.Mode) =
         guard { delegate.setProfileMode(uuid, mode) }
+
+    override suspend fun queryProviderValues(uuid: UUID): ProviderValues =
+        guard { delegate.queryProviderValues(uuid) }
 
     override suspend fun healthCheck(group: String) =
         guard { delegate.healthCheck(group) }
