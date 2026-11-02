@@ -378,8 +378,8 @@ class Screenshots {
     }
 
     @Test
-    @Config(qualifiers = "+h1250dp")
-    fun more() = shoot("more", height = 1250) {
+    @Config(qualifiers = "+h1310dp")
+    fun more() = shoot("more", height = 1310) {
         MainScreen(state = state(tab = MainTab.More), onAction = {})
     }
 
