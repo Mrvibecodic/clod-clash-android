@@ -109,8 +109,9 @@ servers a set gets on a later update.
 - If only such servers are left in a group, off the mobile network the group lets nothing through
   rather than sending traffic directly; the list shows “Servers are available only on a mobile
   network” instead of servers.
-- A template rule that names such a server directly still goes through it — servers are hidden from
-  groups only.
+- Servers are hidden from groups only. If a template rule sends traffic straight to such a server
+  rather than to a group (for example, `DOMAIN-SUFFIX,example.com,Moscow LTE`), that traffic goes
+  through the server on Wi-Fi too. To keep a server for the mobile network only, point rules at a group.
 
 Send names with Cyrillic letters or flags as base64 of the whole value: `🇷🇺 Москва LTE|МТС Питер`
 is `base64:8J+Ht/Cfh7og0JzQvtGB0LrQstCwIExURXzQnNCi0KEg0J/QuNGC0LXRgA==`.
