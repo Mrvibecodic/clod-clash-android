@@ -5,6 +5,7 @@ import com.github.kr328.clash.design.compose.screen.MainTab
 import com.github.kr328.clash.design.compose.screen.ReliabilityState
 import com.github.kr328.clash.design.compose.screen.SubScreen
 import com.github.kr328.clash.design.compose.screen.UpdateState
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,34 +13,49 @@ import org.junit.Test
 class AppsBypassTest {
     @Test
     fun `служба работает — туннель только для себя и настройки дают то же`() {
-        assertTrue(appsBypassVpn(running = true, tunnelOnlySelf = true, plannedOnlySelf = true, vpnMode = true))
+        assertTrue(appsBypassVpn(running = true, tunnelOnlySelf = true, plannedOnlySelf = { true }, vpnMode = true))
     }
 
     @Test
     fun `служба работает — приложения уже выбраны, туннель ещё пересобирается`() {
-        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = true, plannedOnlySelf = false, vpnMode = true))
+        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = true, plannedOnlySelf = { false }, vpnMode = true))
     }
 
     @Test
     fun `служба работает — выбор снят, туннель ещё прежний`() {
-        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = false, plannedOnlySelf = true, vpnMode = true))
+        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = false, plannedOnlySelf = { true }, vpnMode = true))
     }
 
     @Test
     fun `служба работает без туннеля — приложения ни при чём`() {
-        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = null, plannedOnlySelf = true, vpnMode = false))
-        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = null, plannedOnlySelf = true, vpnMode = true))
+        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = null, plannedOnlySelf = { true }, vpnMode = false))
+        assertFalse(appsBypassVpn(running = true, tunnelOnlySelf = null, plannedOnlySelf = { true }, vpnMode = true))
     }
 
     @Test
     fun `служба не работает — по тому, что соберётся при включении`() {
-        assertTrue(appsBypassVpn(running = false, tunnelOnlySelf = null, plannedOnlySelf = true, vpnMode = true))
-        assertFalse(appsBypassVpn(running = false, tunnelOnlySelf = null, plannedOnlySelf = false, vpnMode = true))
+        assertTrue(appsBypassVpn(running = false, tunnelOnlySelf = null, plannedOnlySelf = { true }, vpnMode = true))
+        assertFalse(appsBypassVpn(running = false, tunnelOnlySelf = null, plannedOnlySelf = { false }, vpnMode = true))
     }
 
     @Test
     fun `служба не работает в режиме без VPN — плашки нет`() {
-        assertFalse(appsBypassVpn(running = false, tunnelOnlySelf = null, plannedOnlySelf = true, vpnMode = false))
+        assertFalse(appsBypassVpn(running = false, tunnelOnlySelf = null, plannedOnlySelf = { true }, vpnMode = false))
+    }
+
+    @Test
+    fun `будущий состав туннеля спрашивается, только когда ответ от него зависит`() {
+        var asked = 0
+        val planned = { asked++; true }
+
+        appsBypassVpn(running = true, tunnelOnlySelf = false, vpnMode = true, plannedOnlySelf = planned)
+        appsBypassVpn(running = true, tunnelOnlySelf = null, vpnMode = true, plannedOnlySelf = planned)
+        appsBypassVpn(running = false, tunnelOnlySelf = null, vpnMode = false, plannedOnlySelf = planned)
+        assertEquals(0, asked)
+
+        appsBypassVpn(running = true, tunnelOnlySelf = true, vpnMode = false, plannedOnlySelf = planned)
+        appsBypassVpn(running = false, tunnelOnlySelf = true, vpnMode = true, plannedOnlySelf = planned)
+        assertEquals(2, asked)
     }
 
     @Test

@@ -4,8 +4,9 @@ package com.github.kr328.clash.design.model
 // работающей службе — по туннелю, который она подняла (нет туннеля — режим без
 // VPN), и только если нынешние настройки дают то же: иначе служба уже
 // пересобирает туннель. Без службы — по тому, что она соберёт при включении.
-fun appsBypassVpn(running: Boolean, tunnelOnlySelf: Boolean?, plannedOnlySelf: Boolean, vpnMode: Boolean): Boolean =
-    if (running) tunnelOnlySelf == true && plannedOnlySelf else vpnMode && plannedOnlySelf
+// Будущий состав туннеля спрашивается, только когда ответ зависит от него.
+inline fun appsBypassVpn(running: Boolean, tunnelOnlySelf: Boolean?, vpnMode: Boolean, plannedOnlySelf: () -> Boolean): Boolean =
+    (if (running) tunnelOnlySelf == true else vpnMode) && plannedOnlySelf()
 
 // Лист о приложениях — только при работающей службе и пока приложения идут
 // мимо. Открывается поводом (Главная стала видна, служба запустилась) или

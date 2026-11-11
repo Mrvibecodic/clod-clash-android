@@ -905,7 +905,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
             val loaded = if (running) notes.uuid?.let { runCatching { UUID.fromString(it) }.getOrNull() } else null
 
-            appsBypassVpn(running, notes.tunnelOnlySelf, plannedOnlySelf(loaded), uiStore.enableVpn)
+            appsBypassVpn(running, notes.tunnelOnlySelf, uiStore.enableVpn) { plannedOnlySelf(loaded) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
