@@ -78,30 +78,30 @@ func TestLabel(t *testing.T) {
 	}
 }
 
-func TestTransportOfReadsTheConfigLikeTheCore(t *testing.T) {
-	got := TransportOf(map[string]any{
+func TestTransportReadsTheConfigLikeTheCore(t *testing.T) {
+	got := decodeProxy(map[string]any{
 		"network":      "ws",
 		"tls":          1,
 		"reality-opts": map[string]any{"public-key": "k"},
 		"ws-opts":      map[string]any{"v2ray-http-upgrade": true},
-	})
+	}).transport()
 	if got != (Transport{Network: "ws", TLS: true, RealityKey: true, HTTPUpgrade: true}) {
 		t.Fatalf("%+v", got)
 	}
 
 	// Строку ядро флагом не считает (такой узел оно не разберёт вовсе).
-	if got := TransportOf(map[string]any{"tls": "true", "reality-opts": map[string]any{}}); got != (Transport{}) {
+	if got := decodeProxy(map[string]any{"tls": "true", "reality-opts": map[string]any{}}).transport(); got != (Transport{}) {
 		t.Fatalf("%+v", got)
 	}
 
 	// Ключи — без учёта регистра и с «_» вместо «-», как у ядра.
-	got = TransportOf(map[string]any{
+	got = decodeProxy(map[string]any{
 		"Network":        "ws",
 		"TLS":            true,
 		"reality_opts":   map[string]any{"Public_Key": "k"},
 		"WS_OPTS":        map[string]any{"v2ray_http_upgrade": 1},
 		"TLSMirror-Opts": map[string]any{"primary_key": "m"},
-	})
+	}).transport()
 	if got != (Transport{Network: "ws", TLS: true, RealityKey: true, TLSMirrorKey: true, HTTPUpgrade: true}) {
 		t.Fatalf("%+v", got)
 	}

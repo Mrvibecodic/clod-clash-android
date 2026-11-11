@@ -116,11 +116,7 @@ func decodeProxy(proxy map[string]any) proxyOption {
 	return opt
 }
 
-// TransportOf — то же, что ядро запоминает у узла при разборе (adapter.nodeOf).
-func TransportOf(proxy map[string]any) Transport {
-	return decodeProxy(proxy).transport()
-}
-
+// То же, что ядро запоминает у узла при разборе (adapter.nodeOf).
 func (opt proxyOption) transport() Transport {
 	return Transport{
 		Network:      opt.Network,
