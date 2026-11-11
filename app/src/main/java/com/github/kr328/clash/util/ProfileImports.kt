@@ -325,7 +325,7 @@ object ProfileImports {
                 }
 
                 withProfile(retry = false) {
-                    commit(profile.uuid, true) { status ->
+                    commit(profile.uuid) { status ->
                         FailedProviders.accumulate(failed, status)
 
                         observer(status)
@@ -498,7 +498,7 @@ object ProfileImports {
         observer: IFetchObserver?,
     ): Profile {
         val saved = withProfile(retry = false) {
-            commit(uuid, true, observer)
+            commit(uuid, observer)
         }
 
         return withProfile { queryAll().firstOrNull { it.uuid == saved } }

@@ -143,9 +143,9 @@ class ProfileManager(private val context: Context) : IProfileManager,
         scheduleUpdate(uuid, true)
     }
 
-    override suspend fun commit(uuid: UUID, activate: Boolean, callback: IFetchObserver?): UUID =
+    override suspend fun commit(uuid: UUID, callback: IFetchObserver?): UUID =
         withContext(NonCancellable) {
-            val applied = ProfileProcessor.apply(context, uuid, callback, activate)
+            val applied = ProfileProcessor.apply(context, uuid, callback)
 
             if (applied.uuid == uuid) {
                 // Сохранение (у подписки по ссылке — с новой загрузкой) без туннеля

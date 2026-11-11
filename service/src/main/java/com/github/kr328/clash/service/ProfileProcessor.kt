@@ -69,7 +69,7 @@ object ProfileProcessor {
             Clash.switchMode(context.importedDir.resolve(uuid.toString()), session)
         }
 
-    suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver?, activate: Boolean): Applied =
+    suspend fun apply(context: Context, uuid: UUID, callback: IFetchObserver?): Applied =
         withContext(NonCancellable) {
             processLock.withLock {
                 var promoted = false
@@ -94,7 +94,7 @@ object ProfileProcessor {
 
                             val store = ServiceStore(context)
 
-                            if (activate && activeProfileSelect(store.activeProfile, existing, true) == ActiveProfileAction.Set) {
+                            if (activeProfileSelect(store.activeProfile, existing, true) == ActiveProfileAction.Set) {
                                 store.activeProfile = existing
                             }
 
@@ -172,7 +172,7 @@ object ProfileProcessor {
                         val stored = store.activeProfile
 
                         // Активной нет или она уже удалена — новая становится активной
-                        if (activate && (stored == null || !ImportedDao().exists(stored))) {
+                        if (stored == null || !ImportedDao().exists(stored)) {
                             store.activeProfile = snapshot.uuid
                         }
 

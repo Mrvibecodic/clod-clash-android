@@ -15,7 +15,7 @@ interface IProfileManager {
         intervalManual: Boolean = false,
         nameManual: Boolean = false,
     ): UUID
-    suspend fun commit(uuid: UUID, activate: Boolean, callback: IFetchObserver? = null): UUID
+    suspend fun commit(uuid: UUID, callback: IFetchObserver?): UUID
     suspend fun release(uuid: UUID)
     suspend fun delete(uuid: UUID)
     suspend fun patch(
