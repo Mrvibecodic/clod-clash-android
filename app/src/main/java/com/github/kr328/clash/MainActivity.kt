@@ -52,6 +52,7 @@ import com.github.kr328.clash.design.compose.screen.SubscriptionItem
 import com.github.kr328.clash.design.util.showExceptionToast
 import com.github.kr328.clash.store.AppStore
 import com.github.kr328.clash.util.refreshDynamicShortcuts
+import com.github.kr328.clash.util.AppsOccasion
 import com.github.kr328.clash.util.GeoData
 import com.github.kr328.clash.util.HealthProbes
 import com.github.kr328.clash.util.loadRouteGroups
@@ -155,6 +156,8 @@ class MainActivity : BaseActivity<MainDesign>() {
         // режимом — там повторяется; застав старт службы — тоже: ActivityStart
         // снимает ожидание старта, и перечитывание взводит его заново.
         val visible = activityStarted
+
+        appsOccasion.owe(!appsPromptKept)
 
         var firstFetch: Boolean? = try {
             design.fetch().takeIf {
@@ -347,6 +350,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                             work.trySend {
                                 val first = firstFetch.also { firstFetch = null }
 
+                                // Первое чтение, чей итог взят, повод уже получило
+                                if (first == null) appsOccasion.owe(!appsPromptKept)
+
+                                appsPromptKept = false
+
                                 reconcileUpdatingProfiles()
 
                                 val started = first ?: run {
@@ -386,13 +394,7 @@ class MainActivity : BaseActivity<MainDesign>() {
                             }
 
                             // Отдельно: сбой чтения выше не лишает входа листа о приложениях
-                            work.trySend {
-                                val opportunity = !appsPromptKept
-
-                                appsPromptKept = false
-
-                                design.fetchAppsBypass(opportunity = opportunity)
-                            }
+                            work.trySend { design.fetchOwedAppsBypass() }
                         }
                         Event.ClashStop -> {
                             stopRequestedAt = null
@@ -421,9 +423,11 @@ class MainActivity : BaseActivity<MainDesign>() {
                             stopRequestedAt = null
                             startRequestedAt = null
 
+                            appsOccasion.owe(true)
+
                             requestFetch()
 
-                            work.trySend { design.fetchAppsBypass(opportunity = true) }
+                            work.trySend { design.fetchOwedAppsBypass() }
 
                             if (!uiStore.reliabilityAsked) {
                                 launch { design.fetchReliability(prompt = true) }
@@ -887,21 +891,24 @@ class MainActivity : BaseActivity<MainDesign>() {
         fetchFreezeMarks(favoritesProfile)
         setDismissedPromo(favoritesProfile, favoritesProfile?.let { uiStore.dismissedPromo(it) }.orEmpty())
 
-        fetchAppsBypass(notes, opportunity = false)
+        val owed = appsOccasion.take()
+
+        if (!fetchAppsBypass(notes, opportunity = owed == true)) appsOccasion.giveBack(owed)
 
         return reloadProxyGroups()
     }
 
     // Идут ли приложения мимо VPN. opportunity — повод показать лист: Главная
     // стала видна или служба запустилась. Сбой чтения или ответ, расходящийся с
-    // рассылками (служба запускается или останавливается), оставляет прежний показ.
-    private suspend fun MainDesign.fetchAppsBypass(status: StatusClient.Status? = null, opportunity: Boolean) {
+    // рассылками (служба запускается или останавливается), оставляет прежний
+    // показ: false — расчёт до экрана не дошёл.
+    private suspend fun MainDesign.fetchAppsBypass(status: StatusClient.Status? = null, opportunity: Boolean): Boolean {
         val running = clashRunning
 
         val bypass = try {
             val notes = status ?: withContext(Dispatchers.IO) { StatusClient(this@MainActivity).status() }
 
-            if (notes.running != running) return
+            if (notes.running != running) return false
 
             val loaded = if (running) notes.uuid?.let { runCatching { UUID.fromString(it) }.getOrNull() } else null
 
@@ -911,10 +918,16 @@ class MainActivity : BaseActivity<MainDesign>() {
         } catch (e: Exception) {
             Log.w("Apps bypass: $e", e)
 
-            return
+            return false
         }
 
         setAppsBypass(bypass, running, opportunity && selectedTab == MainTab.Home)
+
+        return true
+    }
+
+    private suspend fun MainDesign.fetchOwedAppsBypass() {
+        fetchAppsBypass(opportunity = appsOccasion.take() ?: return)
     }
 
     private suspend fun MainDesign.showProfiles(profiles: List<Profile>) {
@@ -1160,6 +1173,8 @@ class MainActivity : BaseActivity<MainDesign>() {
     private var homeRouteReadAt = SystemClock.elapsedRealtime()
 
     private var appsPromptKept = false
+
+    private val appsOccasion = AppsOccasion()
 
     private var lastHealthCheckAt: Long
         get() = HealthProbes.checkedAt
