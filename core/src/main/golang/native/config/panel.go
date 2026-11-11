@@ -25,7 +25,7 @@ func modeName(mode *tunnel.TunnelMode) *string {
 	return &name
 }
 
-func QueryMode(profileDir, session string) ModeState {
+func QueryMode(profileDir, session string) (ModeState, panel.Info) {
 	info := panel.ReadWithMode(profileDir, func() string {
 		cfg, err := unmarshalProfile(profileDir)
 		if err != nil {
@@ -47,7 +47,7 @@ func QueryMode(profileDir, session string) ModeState {
 		state.LockUntil = panel.LockUntil(panel.WithUpdatedAt(profileDir, info))
 	}
 
-	return state
+	return state, info
 }
 
 func MarkUpdated(profileDir string, intervalMillis int64) {

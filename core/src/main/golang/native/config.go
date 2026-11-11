@@ -127,7 +127,9 @@ func writeOverride(slot C.int, content C.c_string) (result C.int) {
 func queryModeOf(path, session C.c_string) *C.char {
 	defer guard("queryModeOf", func() {})()
 
-	return marshalJson(config.QueryMode(C.GoString(path), C.GoString(session)))
+	state, _ := config.QueryMode(C.GoString(path), C.GoString(session))
+
+	return marshalJson(state)
 }
 
 //export switchMode

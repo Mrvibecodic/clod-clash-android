@@ -45,20 +45,24 @@ func unmarshalProfile(profilePath string) (*config.RawConfig, error) {
 
 // UnmarshalAndPatch — подписка, как её увидит ядро, только для чтения
 func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
-	return unmarshalAndPatch(profilePath, false)
+	rawConfig, _, err := unmarshalAndPatch(profilePath, false)
+
+	return rawConfig, err
 }
 
-func unmarshalAndPatch(profilePath string, save bool) (*config.RawConfig, error) {
+func unmarshalAndPatch(profilePath string, save bool) (*config.RawConfig, panel.Info, error) {
 	rawConfig, err := unmarshalProfile(profilePath)
 	if err != nil {
-		return nil, err
+		return nil, panel.Info{}, err
 	}
 
-	if err := process(rawConfig, parseInput{dir: profilePath, info: panel.Read(profilePath), save: save}); err != nil {
-		return nil, err
+	info := panel.Read(profilePath)
+
+	if err := process(rawConfig, parseInput{dir: profilePath, info: info, save: save}); err != nil {
+		return nil, panel.Info{}, err
 	}
 
-	return rawConfig, nil
+	return rawConfig, info, nil
 }
 
 var (
@@ -207,7 +211,7 @@ func parseLocked(rawConfig *config.RawConfig) (*config.Config, error) {
 func Load(path string) error {
 	generation := loadGeneration.Load()
 
-	rawCfg, err := unmarshalAndPatch(path, true)
+	rawCfg, info, err := unmarshalAndPatch(path, true)
 	if err != nil {
 		log.Errorln("Load %s: %s", path, err.Error())
 
@@ -250,7 +254,7 @@ func Load(path string) error {
 
 	// До применения: новые группы и первая проверка провайдеров сразу без
 	// скрытых серверов (ядро решает по имени, когда узел спрашивают)
-	setMobileOnly(panel.Read(path).MobileOnly)
+	setMobileOnly(info.MobileOnly)
 
 	// Узлы в ядре меняются вместе с конфигом: пока он применяется, они ничьи, и
 	// сборщик отчёта их замеры не берёт
@@ -280,7 +284,9 @@ func SwitchMode(profileDir, session string) bool {
 		return false
 	}
 
-	mode, ok := tunnel.ModeMapping[QueryMode(profileDir, session).Mode]
+	state, info := QueryMode(profileDir, session)
+
+	mode, ok := tunnel.ModeMapping[state.Mode]
 	if !ok {
 		return false
 	}
@@ -290,7 +296,7 @@ func SwitchMode(profileDir, session string) bool {
 	// Подписка обновилась тем же конфигом (ядро не перезагружалось), а список
 	// серверов только для мобильной сети мог смениться
 	if dir := loaded.Load(); dir != nil && *dir == profileDir {
-		setMobileOnly(panel.Read(profileDir).MobileOnly)
+		setMobileOnly(info.MobileOnly)
 	}
 
 	if !globalDeclared.Load() {
