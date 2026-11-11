@@ -13,7 +13,7 @@ object ProviderValuesReset {
     sealed interface State {
         data object Idle : State
 
-        data class Running(val profile: UUID) : State
+        data object Running : State
 
         data class Done(val profile: UUID, val error: Exception?) : State
     }
@@ -25,7 +25,7 @@ object ProviderValuesReset {
     fun start(profile: UUID, keys: List<String>) {
         if (current.value is State.Running) return
 
-        current.value = State.Running(profile)
+        current.value = State.Running
 
         Global.launch {
             var failure: Exception? = null

@@ -139,8 +139,8 @@ fun ServersTab(
             ) {
                 NoServersCard(
                     reason = noServers,
-                    panel = active?.panel,
-                    profile = active?.profile,
+                    panel = active.panel,
+                    profile = active.profile,
                     onOpenUrl = { onAction(MainAction.OpenUrl(it)) },
                     onOpenSettings = { onAction(MainAction.OpenAppSettings) },
                 )

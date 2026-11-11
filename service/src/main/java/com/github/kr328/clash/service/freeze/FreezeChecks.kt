@@ -356,7 +356,7 @@ object FreezeChecks {
         // Серверы только для мобильной сети вне сети SIM скрыты — не проверяются;
         // их прежние пометки остаются
         val cellular = NetworkKey.cellular(seen) == true
-        val checkable = fingerprints.filterKeys { panel?.hidesOffMobile(it, cellular) != true }
+        val checkable = fingerprints.filterKeys { !panel.hidesOffMobile(it, cellular) }
         val due = if (starting) emptyList() else FreezePlan.due(checkable, net, now)
 
         if (due.isNotEmpty()) {

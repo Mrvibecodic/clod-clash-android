@@ -19,7 +19,7 @@ object OfflineDelays {
     sealed interface State {
         data object Idle : State
 
-        data class Running(val profile: UUID, val total: Int, val measured: Int = 0) : State
+        data class Running(val total: Int, val measured: Int = 0) : State
 
         data class Done(
             val profile: UUID,
@@ -40,7 +40,7 @@ object OfflineDelays {
     fun start(profile: UUID, total: Int) {
         if (current.value is State.Running) return
 
-        current.value = State.Running(profile, total)
+        current.value = State.Running(total)
 
         Global.launch {
             var delays = emptyMap<String, Int>()
@@ -49,7 +49,7 @@ object OfflineDelays {
             try {
                 // Не в мобильной сети серверы только для неё не видны и не проверяются
                 val raw = coroutineScope {
-                    val progress = launch { followProgress(profile) }
+                    val progress = launch { followProgress() }
 
                     try {
                         withClash { testProfileDelays(profile, NetworkKey.cellularNow(Global.application)) }
@@ -78,7 +78,7 @@ object OfflineDelays {
     }
 
     // Ход замера — только для подписи: сбой опроса замер не прерывает
-    private suspend fun followProgress(profile: UUID) {
+    private suspend fun followProgress() {
         while (true) {
             delay(PROGRESS_POLL_MS)
 
@@ -90,7 +90,7 @@ object OfflineDelays {
                 continue
             }
 
-            if (total > 0) current.value = State.Running(profile, total, measured)
+            if (total > 0) current.value = State.Running(total, measured)
         }
     }
 

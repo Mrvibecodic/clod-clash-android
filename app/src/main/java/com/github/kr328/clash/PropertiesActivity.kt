@@ -75,7 +75,7 @@ class PropertiesActivity : BaseActivity<PropertiesDesign>() {
                     is ProfileImports.State.Failed -> {
                         ProfileImports.consume(token)
                         design.clearImporting()
-                        if (it.channelOff) design.setSecure(false)
+                        if (it.channelOff) design.clearSecure()
                         design.showToast(it.message, ToastDuration.Long, detail = it.detail, kind = NoticeKind.Error)
                     }
                     ProfileImports.State.Idle -> design.clearImporting()

@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 object UpdateTask {
     sealed interface State {
@@ -30,7 +29,7 @@ object UpdateTask {
         ) : State
         data class Available(val available: Updater.Available) : State
         data class Downloading(val available: Updater.Available, val progress: Float) : State
-        data class Ready(val available: Updater.Available, val apk: File) : State
+        data class Ready(val available: Updater.Available) : State
         data class Failed(val kind: Updater.UpdateException.Kind?, val detail: String?) : State
     }
 
@@ -125,7 +124,7 @@ object UpdateTask {
             result.fold(
                 onSuccess = { apk ->
                     val before = current.getAndUpdate {
-                        if (it is State.Downloading) State.Ready(available, apk) else it
+                        if (it is State.Downloading) State.Ready(available) else it
                     }
 
                     if (before !is State.Downloading) {

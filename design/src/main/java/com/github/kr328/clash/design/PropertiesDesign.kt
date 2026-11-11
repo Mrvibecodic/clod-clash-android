@@ -111,9 +111,9 @@ class PropertiesDesign(context: Context) : Design<PropertiesDesign.Request>(cont
     }
 
     // Канал включали, а он не ответил: переключатель обратно в «выкл».
-    suspend fun setSecure(on: Boolean) {
+    suspend fun clearSecure() {
         withContext(Dispatchers.Main) {
-            state = state.copy(secure = on)
+            state = state.copy(secure = false)
         }
     }
 

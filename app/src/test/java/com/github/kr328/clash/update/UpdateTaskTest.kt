@@ -4,7 +4,6 @@ import com.github.kr328.clash.update.UpdateTask.InstallOutcome
 import com.github.kr328.clash.update.UpdateTask.State
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.io.File
 
 class UpdateTaskTest {
     private val available = Updater.Available(
@@ -12,7 +11,7 @@ class UpdateTaskTest {
         UpdateManifest.Platform(url = "https://example.org/a.apk", sha256 = "00"),
     )
 
-    private val ready = State.Ready(available, File("update.apk"))
+    private val ready = State.Ready(available)
 
     @Test
     fun installedClearsTheOffer() {
