@@ -93,8 +93,9 @@ object FreezeChecks {
     @Volatile
     private var loaded: UUID? = null
 
-    // Показанные пометки: подписка, сеть (null — не распознана) и имя узла → frozen
-    private data class Shown(val uuid: UUID, val net: String?, val marks: Map<String, String>)
+    // Показанные пометки: подписка, сеть (null — не распознана) и имя узла → frozen;
+    // off — проверка у подписки выключена, пометок нет в любой сети
+    private data class Shown(val uuid: UUID, val net: String?, val marks: Map<String, String>, val off: Boolean)
 
     @Volatile
     private var shown: Shown? = null
@@ -133,6 +134,8 @@ object FreezeChecks {
     // никто не сообщает) — их нет, заход пойдёт, экран узнает по оповещению
     fun marks(uuid: UUID): Map<String, String> {
         val known = shown
+
+        if (known?.uuid == uuid && known.off) return emptyMap()
 
         if (known?.uuid != uuid || known.net != NetworkKey.keyOf(NetworkKey.seen(context, network))) {
             owed = true
@@ -274,10 +277,10 @@ object FreezeChecks {
         }
     }
 
-    private fun publish(uuid: UUID, marks: Map<String, String>, net: String? = null) {
+    private fun publish(uuid: UUID, marks: Map<String, String>, net: String? = null, off: Boolean = false) {
         val previous = shown
 
-        shown = Shown(uuid, net, marks)
+        shown = Shown(uuid, net, marks, off)
 
         if (owed || previous?.uuid != uuid || previous.marks != marks) {
             owed = false
@@ -310,7 +313,7 @@ object FreezeChecks {
         // Включает проверку только панель — заголовком clod-16-20-check: true
         val panel = context.readPanelInfo(uuid)
         if (panel?.freezeCheck != true) {
-            publish(uuid, emptyMap(), key)
+            publish(uuid, emptyMap(), key, off = panel != null)
 
             return
         }
