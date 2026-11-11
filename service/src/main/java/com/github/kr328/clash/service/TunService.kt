@@ -153,7 +153,11 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
                         when (loss) {
                             TunLoss.Ignore -> Unit
-                            TunLoss.GiveUp -> throw IllegalStateException(getString(R.string.clod_tun_lost))
+                            TunLoss.GiveUp -> {
+                                ServiceLog.mark("tun: lost, reopen limit reached")
+
+                                throw IllegalStateException(getString(R.string.clod_tun_lost))
+                            }
                             TunLoss.Reopen -> current?.let {
                                 ServiceLog.mark("tun: lost, reopening")
 
@@ -165,6 +169,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                                     tun.open(it)
                                 } catch (e: EstablishRejected) {
                                     Log.w("TunService: establish rejected, the permission is gone", e)
+
+                                    ServiceLog.mark("tun: reopen rejected")
 
                                     revoked(ownGone = true)
 
@@ -203,6 +209,8 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 StatusProvider.tunnelOnlySelf = null
 
                 val startedAt = SystemClock.elapsedRealtime()
+
+                ServiceLog.mark(watch.summary)
 
                 TunModule.requestStop()
 

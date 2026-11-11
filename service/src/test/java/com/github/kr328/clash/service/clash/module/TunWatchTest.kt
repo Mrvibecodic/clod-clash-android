@@ -43,4 +43,45 @@ class TunWatchTest {
         assertEquals(TunLoss.Reopen, tunLoss(opened = true, settled = true) { true })
         assertEquals(TunLoss.GiveUp, tunLoss(opened = true, settled = true) { false })
     }
+
+    @Test
+    fun journalGetsACheckOutcomeOnlyWhenItChanges() {
+        val marks = mutableListOf<String>()
+        val checks = WatchChecks({ 0L }, marks::add)
+
+        checks.note("own vpn present")
+        checks.note("own vpn present")
+        checks.note("own vpn absent")
+        checks.note("own vpn absent")
+        checks.note("check failed, SecurityException")
+        checks.note("own vpn present")
+
+        assertEquals(
+            listOf(
+                "tun watch: own vpn present",
+                "tun watch: own vpn absent",
+                "tun watch: check failed, SecurityException",
+                "tun watch: own vpn present",
+            ),
+            marks,
+        )
+    }
+
+    @Test
+    fun summaryTellsTheLastCheckItsAgeAndTheCount() {
+        var now = 1_000L
+        val checks = WatchChecks({ now }, {})
+
+        assertEquals("tun watch: no checks", checks.summary())
+
+        checks.note("own vpn present")
+
+        now = 20_000L
+
+        checks.note("own vpn present")
+
+        now = 95_500L
+
+        assertEquals("tun watch: last check 75 s ago, own vpn present, 2 checks", checks.summary())
+    }
 }
