@@ -11,6 +11,7 @@ import androidx.core.content.getSystemService
 import com.github.kr328.clash.common.log.Log
 import com.github.kr328.clash.common.util.ticker
 import com.github.kr328.clash.service.ServiceLog
+import com.github.kr328.clash.service.freeze.NetworkKey
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -31,11 +32,19 @@ class TunWatchModule(service: Service) : Module<Unit>(service) {
     // null — узнать не вышло: тогда не тревожим
     @Suppress("DEPRECATION")
     private fun vpnUp(): Boolean? {
-        val up = try {
-            connectivity.allNetworks.any {
-                val capabilities = connectivity.getNetworkCapabilities(it)
-
-                capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && ours(capabilities)
+        val seen = try {
+            connectivity.allNetworks.firstNotNullOfOrNull { network ->
+                connectivity.getNetworkCapabilities(network)
+                    ?.takeIf { it.hasTransport(NetworkCapabilities.TRANSPORT_VPN) && ours(it) }
+                    ?.let {
+                        vpnSeen(
+                            net = network.toString(),
+                            validated = it.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
+                            suspended = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+                                !it.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED),
+                            over = NetworkKey.transportOf(it),
+                        )
+                    }
             }
         } catch (e: Exception) {
             Log.w("Tunnel watch: $e", e)
@@ -45,9 +54,9 @@ class TunWatchModule(service: Service) : Module<Unit>(service) {
             return null
         }
 
-        checks.note(if (up) "own vpn present" else "own vpn absent")
+        checks.note(seen ?: "own vpn absent")
 
-        return up
+        return seen != null
     }
 
     override suspend fun run() = coroutineScope {
@@ -81,6 +90,17 @@ class TunWatchModule(service: Service) : Module<Unit>(service) {
 // чужих VPN (рабочий профиль, Private Space, другой пользователь) он скрыт — их
 // не считаем. Раньше ownerUid приложениям не отдаётся: считаем своей любую
 fun ownVpn(sdk: Int, ownerUid: Int, myUid: Int): Boolean = sdk < 30 || ownerUid == myUid
+
+// Ключ в строке состояния рисует система по своему взгляду на VPN-сеть:
+// в журнал идёт этот взгляд
+fun vpnSeen(net: String, validated: Boolean, suspended: Boolean, over: String): String =
+    listOfNotNull(
+        "own vpn present",
+        "net $net",
+        if (validated) "validated" else "not validated",
+        "suspended".takeIf { suspended },
+        "over $over",
+    ).joinToString()
 
 internal class WatchChecks(private val now: () -> Long, private val mark: (String) -> Unit) {
     private class Check(val outcome: String, val at: Long, val count: Int)

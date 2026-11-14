@@ -68,6 +68,22 @@ class TunWatchTest {
     }
 
     @Test
+    fun presentVpnIsNamedTheWayTheSystemShowsIt() {
+        assertEquals(
+            "own vpn present, net 187, validated, over wifi",
+            vpnSeen(net = "187", validated = true, suspended = false, over = "wifi"),
+        )
+        assertEquals(
+            "own vpn present, net 187, not validated, over cellular",
+            vpnSeen(net = "187", validated = false, suspended = false, over = "cellular"),
+        )
+        assertEquals(
+            "own vpn present, net 201, validated, suspended, over other",
+            vpnSeen(net = "201", validated = true, suspended = true, over = "other"),
+        )
+    }
+
+    @Test
     fun summaryTellsTheLastCheckItsAgeAndTheCount() {
         var now = 1_000L
         val checks = WatchChecks({ now }, {})
