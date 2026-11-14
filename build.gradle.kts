@@ -101,6 +101,9 @@ subprojects {
                 resources {
                     excludes.add("DebugProbesKt.bin")
                 }
+                jniLibs {
+                    useLegacyPackaging = true
+                }
             }
         }
 
