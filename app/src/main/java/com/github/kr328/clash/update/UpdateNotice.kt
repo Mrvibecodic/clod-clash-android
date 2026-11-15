@@ -18,10 +18,14 @@ import com.github.kr328.clash.common.compat.getColorCompat
 import com.github.kr328.clash.common.compat.pendingIntentFlags
 import com.github.kr328.clash.common.constants.Notifications
 import com.github.kr328.clash.common.log.Log
+import com.github.kr328.clash.core.Clash
+import com.github.kr328.clash.service.StatusProvider
 import com.github.kr328.clash.service.store.ServiceStore
 import com.github.kr328.clash.service.util.activeLocalProxyPort
 import com.github.kr328.clash.service.util.withStoredLocale
 import com.github.kr328.clash.store.AppStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import com.github.kr328.clash.design.R as DesignR
 import com.github.kr328.clash.service.R as ServiceR
@@ -169,6 +173,10 @@ object UpdateNotice {
             }
 
             if (!canPost(NotificationManagerCompat.from(context))) return Result.success()
+
+            // Задачу система отпускает в миг пробуждения, когда сеть ещё не готова.
+            // Без VPN ядро в этом процессе может быть не загружено — ради ожидания не грузим.
+            if (StatusProvider.serviceRunning) withContext(Dispatchers.IO) { Clash.awaitNetworkSettled() }
 
             val available = Updater.check(context, app.prereleaseChannel, context.activeLocalProxyPort()).getOrElse {
                 if ((it as? Updater.UpdateException)?.kind != Updater.UpdateException.Kind.NoBuild) {
