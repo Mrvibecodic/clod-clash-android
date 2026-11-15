@@ -18,6 +18,9 @@ grep -Eq 'expectedStatus +string' adapter/outboundgroup/selector.go
 grep -Eq '"expectedStatus": +s\.expectedStatus,' adapter/outboundgroup/selector.go
 grep -Eq 'expectedStatus: +option\.ExpectedStatus,' adapter/outboundgroup/selector.go
 grep -q ResetNetwork adapter/outbound/base.go
+grep -q ProbeWake adapter/outbound/wake.go
+grep -qF 'h.wake.renew(' adapter/outbound/hysteria2.go
+grep -qF 't.wake.renew(' adapter/outbound/tuic.go
 grep -q ErrRedirectDowngrade component/http/http.go
 grep -qF 'req.URL.Scheme != "https"' component/http/http.go
 grep -qF 'return ErrRedirectDowngrade' component/http/http.go
