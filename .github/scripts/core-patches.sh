@@ -29,3 +29,17 @@ grep -A1 -F 'tunnel.OnRunning()' hub/executor/executor.go | grep -qF 'runtime.GC
 # Проверка 16–20: обрыв по пути — «неясно», отпечаток без имени сервера и Host
 grep -A3 -F 'case ctx.Err() == nil:' adapter/download.go | grep -qF 'return DownloadUnknown'
 grep -q disguiseKeys adapter/fingerprint.go
+# Автовыбор: узел, переставший отвечать, замечается по трафику, после
+# оживления возвращается в выбор; транспорты отставляют старые соединения
+grep -q watchedConn adapter/outboundgroup/silence.go
+grep -q cutPause adapter/outboundgroup/silence.go
+grep -qF 'проверен из-за' adapter/outboundgroup/silence.go
+grep -q kindOf adapter/outboundgroup/kind.go
+grep -q nodeOf adapter/parser.go
+grep -q recheckControlPauses adapter/outboundgroup/recheck.go
+grep -q probationOf adapter/outboundgroup/recheck.go
+grep -q lookAgain adapter/provider/healthcheck.go
+grep -q FreshConns adapter/provider/fresh.go
+grep -q CloseRetired transport/gun/retire.go
+grep -A3 -F 'func (c *Client) ResetNetwork()' transport/xhttp/client.go | grep -qF 'c.CloseRetired()'
+grep -A20 -F 'func (t *PoolClient) ResetNetwork()' transport/tuic/pool_client.go | grep -qF 't.CloseRetired()'
