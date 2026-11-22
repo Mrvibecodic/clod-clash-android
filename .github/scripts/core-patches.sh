@@ -39,6 +39,8 @@ grep -q nodeOf adapter/parser.go
 grep -q recheckControlPauses adapter/outboundgroup/recheck.go
 grep -q probationOf adapter/outboundgroup/recheck.go
 grep -q lookAgain adapter/provider/healthcheck.go
+grep -q awaitProbeHold adapter/provider/healthcheck.go
+grep -q roundSilenceLimit adapter/provider/healthcheck.go
 grep -q FreshConns adapter/provider/fresh.go
 grep -q CloseRetired transport/gun/retire.go
 grep -A3 -F 'func (c *Client) ResetNetwork()' transport/xhttp/client.go | grep -qF 'c.CloseRetired()'
