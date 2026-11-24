@@ -1506,9 +1506,9 @@ class MainActivity : BaseActivity<MainDesign>() {
     }
 
     private suspend fun MainDesign.startOfflineHealthCheck() {
-        if (OfflineDelays.running) return
-
         val active = withProfile { queryActive() } ?: return
+
+        if (OfflineDelays.runningFor(active.uuid)) return
 
         // Как меряет ядро: только серверы, без групп и встроенных DIRECT/REJECT
         val groupNames = offlineRouteGroups.mapTo(HashSet()) { it.name }
@@ -1522,7 +1522,10 @@ class MainActivity : BaseActivity<MainDesign>() {
     private suspend fun MainDesign.renderOfflineDelays(update: OfflineDelays.State) {
         when (update) {
             is OfflineDelays.State.Idle -> Unit
-            is OfflineDelays.State.Running -> setProxyTesting(true, update.total, update.measured)
+            // Ход замера — только у своей подписки: на другой он чужой
+            is OfflineDelays.State.Running -> if (update.profile == offlineProfile) {
+                setProxyTesting(true, update.total, update.measured)
+            }
             is OfflineDelays.State.Done -> {
                 reportFailures("Offline delays") {
                 if (withProfile { queryActive() }?.uuid == update.profile) {
@@ -1541,7 +1544,7 @@ class MainActivity : BaseActivity<MainDesign>() {
 
                 setProxyTesting(false)
 
-                OfflineDelays.consume()
+                OfflineDelays.consume(update)
             }
         }
     }
@@ -1613,6 +1616,12 @@ class MainActivity : BaseActivity<MainDesign>() {
             offlineProfile = active
             offlineDelays = emptyMap()
             offlineSelections.clear()
+
+            // Ход замера без VPN — только у своей подписки: у этой он виден
+            // сразу, с числами, у другой спиннер гаснет
+            (OfflineDelays.state.value as? OfflineDelays.State.Running)?.let {
+                if (it.profile == active) setProxyTesting(true, it.total, it.measured) else setProxyTesting(false)
+            }
         }
 
         val saved = if (proxyGroupNames.isEmpty()) emptyMap() else withClash { querySelections() }

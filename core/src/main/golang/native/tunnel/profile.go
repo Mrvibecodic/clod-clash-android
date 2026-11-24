@@ -96,6 +96,11 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 	// службы, отменяет старый корень, а замер получает свежий и живёт дальше.
 	root := probeContext()
 
+	// Новый замер гасит прежний: человек сменил подписку посреди замера, а
+	// прежний мерил бы дальше, занимая пробы и подменяя ход замера на экране
+	run := startProfileRun(root)
+	defer run.finish()
+
 	proxies, url, find, release, err := profileNodes(path)
 	defer release()
 
@@ -123,15 +128,9 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 
 	log.Infoln("Test profile `%s`: %d proxies via %s", path, len(proxies), url)
 
-	profileProgress.done.Store(0)
-	profileProgress.total.Store(int64(len(proxies)))
+	run.total.Store(int64(len(proxies)))
 
-	defer func() {
-		profileProgress.total.Store(0)
-		profileProgress.done.Store(0)
-	}()
-
-	ctx, cancel := context.WithTimeout(root, healthCheckBudget(len(proxies)))
+	ctx, cancel := context.WithTimeout(run.ctx, healthCheckBudget(len(proxies)))
 	defer cancel()
 
 	var mu sync.Mutex
@@ -145,7 +144,7 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 
 		safego.Go("testProfileDelay", func() {
 			defer wg.Done()
-			defer profileProgress.done.Add(1)
+			defer run.done.Add(1)
 
 			select {
 			case screenProbes.slots <- struct{}{}:
@@ -199,13 +198,59 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 
 const delayUnknown = 0xffff
 
-// Ход замера без туннеля для экрана: готово из всего; 0 из 0 — замера нет
-var profileProgress struct {
+// Замер без туннеля: свой выключатель и свой ход — замер, погашенный новым,
+// не трогает ход нового
+type profileRun struct {
+	ctx         context.Context
+	cancel      context.CancelFunc
 	done, total atomic.Int64
 }
 
+var (
+	profileRunMu sync.Mutex
+
+	currentProfileRun *profileRun
+)
+
+func startProfileRun(root context.Context) *profileRun {
+	run := &profileRun{}
+	run.ctx, run.cancel = context.WithCancel(root)
+
+	profileRunMu.Lock()
+	defer profileRunMu.Unlock()
+
+	if prev := currentProfileRun; prev != nil {
+		prev.cancel()
+
+		log.Infoln("Test profile: previous test cancelled by a new one")
+	}
+
+	currentProfileRun = run
+
+	return run
+}
+
+func (run *profileRun) finish() {
+	run.cancel()
+
+	profileRunMu.Lock()
+	defer profileRunMu.Unlock()
+
+	if currentProfileRun == run {
+		currentProfileRun = nil
+	}
+}
+
+// Ход замера без туннеля для экрана: готово из всего; 0 из 0 — замера нет
 func ProfileDelayProgress() (done, total int64) {
-	return profileProgress.done.Load(), profileProgress.total.Load()
+	profileRunMu.Lock()
+	defer profileRunMu.Unlock()
+
+	if run := currentProfileRun; run != nil {
+		return run.done.Load(), run.total.Load()
+	}
+
+	return 0, 0
 }
 
 func profileTestURL(rawCfg *mihomoConfig.RawConfig) string {

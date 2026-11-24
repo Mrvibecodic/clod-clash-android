@@ -14,12 +14,13 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 
 object OfflineDelays {
     sealed interface State {
         data object Idle : State
 
-        data class Running(val total: Int, val measured: Int = 0) : State
+        data class Running(val profile: UUID, val total: Int, val measured: Int = 0) : State
 
         data class Done(
             val profile: UUID,
@@ -34,13 +35,23 @@ object OfflineDelays {
 
     val state: StateFlow<State> = current
 
-    val running: Boolean
-        get() = current.value is State.Running
+    // Номер запуска: итог и ход замера, погашенного новым, на экран не идут.
+    // Сверка номера и запись состояния — под одним замком с новым запуском
+    private val runs = AtomicLong()
 
+    private fun publish(run: Long, state: State) = synchronized(runs) {
+        if (runs.get() == run) current.value = state
+    }
+
+    fun runningFor(profile: UUID): Boolean = (current.value as? State.Running)?.profile == profile
+
+    // Замер другой подписки не ждёт прежнего: ядро гасит прежний само
     fun start(profile: UUID, total: Int) {
-        if (current.value is State.Running) return
+        if (runningFor(profile)) return
 
-        current.value = State.Running(total)
+        val run = synchronized(runs) {
+            runs.incrementAndGet().also { current.value = State.Running(profile, total) }
+        }
 
         Global.launch {
             var delays = emptyMap<String, Int>()
@@ -49,7 +60,7 @@ object OfflineDelays {
             try {
                 // Не в мобильной сети серверы только для неё не видны и не проверяются
                 val raw = coroutineScope {
-                    val progress = launch { followProgress() }
+                    val progress = launch { followProgress(run, profile) }
 
                     try {
                         withClash { testProfileDelays(profile, NetworkKey.cellularNow(Global.application)) }
@@ -73,12 +84,12 @@ object OfflineDelays {
                 failure = e
             }
 
-            current.value = State.Done(profile, delays, failure)
+            publish(run, State.Done(profile, delays, failure))
         }
     }
 
     // Ход замера — только для подписи: сбой опроса замер не прерывает
-    private suspend fun followProgress() {
+    private suspend fun followProgress(run: Long, profile: UUID) {
         while (true) {
             delay(PROGRESS_POLL_MS)
 
@@ -90,7 +101,7 @@ object OfflineDelays {
                 continue
             }
 
-            if (total > 0) current.value = State.Running(total, measured)
+            if (total > 0) publish(run, State.Running(profile, total, measured))
         }
     }
 
@@ -100,9 +111,8 @@ object OfflineDelays {
 
     private const val PROGRESS_POLL_MS = 1_000L
 
-    fun consume() {
-        if (current.value is State.Done) {
-            current.value = State.Idle
-        }
+    // Убирает только показанный итог: итог следующего замера дождётся показа
+    fun consume(done: State.Done) {
+        current.compareAndSet(done, State.Idle)
     }
 }
