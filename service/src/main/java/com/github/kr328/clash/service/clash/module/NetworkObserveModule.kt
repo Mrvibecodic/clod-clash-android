@@ -285,6 +285,9 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         currentNetwork = network
         currentValidatedSeen = false
 
+        // DNS — вслед за сетью: смена по проверке приходит без свойств сети
+        notifyDnsChange()
+
         networks.trySend(network)
 
         if (!networkKnown) {
@@ -304,14 +307,15 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
 
     // Текущая сеть потеряла проверку: SIM, на которую система уже увела трафик,
     // пришла раньше и была отвергнута как не лучшая — смена доводится здесь.
-    // Её проверку система уже сообщила, до этой смены: готовность — сразу
+    // Проверку новой система уже сообщила, до этой смены: готовность — сразу
     private fun onValidationLost(network: Network) {
+        if (network != currentNetwork) return
+
         val preferred = preferredNetwork()
         val validated = preferred?.let { networkInfos[it]?.capabilities ?: connectivity.getNetworkCapabilities(it) }
             ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
-        val next = networkAfterValidationLost(currentNetwork, network, preferred, validated) ?: return
 
-        notifyDnsChange()
+        val next = NetworkKey.afterValidationLost(network, preferred, validated) ?: return
 
         onNetworkMaybeChanged(next, "unvalidated")
 

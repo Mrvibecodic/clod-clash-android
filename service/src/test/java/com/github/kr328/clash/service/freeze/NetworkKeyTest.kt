@@ -91,4 +91,16 @@ class NetworkKeyTest {
         assertEquals(false, NetworkKey.cellular(NetworkKey.Seen(transport = "wifi")))
         assertEquals(null, NetworkKey.cellular(null))
     }
+
+    @Test
+    fun `потеря проверки текущей сетью — уход только на другую проверенную`() {
+        // SIM пришла, пока Wi-Fi ещё считался проверенным, и была отвергнута;
+        // теперь у Wi-Fi проверка пропала и первая в очереди — SIM
+        assertEquals("sim", NetworkKey.afterValidationLost("wifi", "sim", preferredValidated = true))
+        // SIM на миг без проверки не меняется на Wi-Fi без интернета
+        assertNull(NetworkKey.afterValidationLost("sim", "wifi", preferredValidated = false))
+        // Других сетей нет
+        assertNull(NetworkKey.afterValidationLost("wifi", "wifi", preferredValidated = false))
+        assertNull(NetworkKey.afterValidationLost("wifi", null, preferredValidated = false))
+    }
 }

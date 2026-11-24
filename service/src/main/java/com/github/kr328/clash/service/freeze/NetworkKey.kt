@@ -124,6 +124,14 @@ object NetworkKey {
         return Outward(transportOf(capabilities), rank(capabilities))
     }
 
+    // Куда уйти, когда текущая сеть потеряла проверку: система, уводя трафик
+    // (Wi-Fi без интернета → SIM), сообщает о новой сети раньше, чем о потере
+    // проверки у прежней, — новая тогда ещё не первая в очереди. Уходим на первую,
+    // только если она другая и проверена: SIM, на миг потерявшая проверку, не
+    // меняется на Wi-Fi без интернета
+    fun <N> afterValidationLost(lost: N, preferred: N?, preferredValidated: Boolean): N? =
+        preferred.takeIf { it != null && it != lost && preferredValidated }
+
     // Мобильная, когда первая из сетей наружу — сеть SIM; сетей нет — не мобильная
     fun cellularPreferred(networks: Collection<Outward>): Boolean =
         networks.minByOrNull { it.rank }?.transport == "cellular"
