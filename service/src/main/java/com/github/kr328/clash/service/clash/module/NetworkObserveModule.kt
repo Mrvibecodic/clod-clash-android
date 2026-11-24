@@ -122,6 +122,8 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
                 networkInfos[network]?.capabilities = networkCapabilities
 
                 if (!networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                    onValidationLost(network)
+
                     return
                 }
 
@@ -298,6 +300,26 @@ class NetworkObserveModule(service: Service) : Module<Network?>(service) {
         Log.i("NetworkObserve network changed to $network")
 
         networkChanges.trySend(reason)
+    }
+
+    // Текущая сеть потеряла проверку: SIM, на которую система уже увела трафик,
+    // пришла раньше и была отвергнута как не лучшая — смена доводится здесь.
+    // Её проверку система уже сообщила, до этой смены: готовность — сразу
+    private fun onValidationLost(network: Network) {
+        val preferred = preferredNetwork()
+        val validated = preferred?.let { networkInfos[it]?.capabilities ?: connectivity.getNetworkCapabilities(it) }
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+        val next = networkAfterValidationLost(currentNetwork, network, preferred, validated) ?: return
+
+        notifyDnsChange()
+
+        onNetworkMaybeChanged(next, "unvalidated")
+
+        if (next == currentNetwork && !currentValidatedSeen) {
+            currentValidatedSeen = true
+
+            networkReady.trySend(Unit)
+        }
     }
 
     // Ядру — только смена между мобильной и не мобильной; сеть не названа — без
