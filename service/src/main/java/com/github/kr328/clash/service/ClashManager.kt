@@ -170,12 +170,14 @@ class ClashManager(private val context: Context) : IClashManager,
         }
     }
 
+    // Подписка в ядре сверяется под замком загрузки: метку новой загрузка
+    // ставит под ним же, и режим старой не ляжет на ядро новой
     private suspend fun switchModeLive(current: UUID, mode: TunnelState.Mode?): Boolean {
-        if (StatusProvider.currentProfileUuid != current.toString()) return false
-
         if (!ConfigurationModule.coreLoad.tryLock()) return false
 
         try {
+            if (StatusProvider.currentProfileUuid != current.toString()) return false
+
             val session = sessionOverrideFor(mode)
 
             Clash.patchOverride(Clash.OverrideSlot.Session, session)

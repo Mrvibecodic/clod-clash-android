@@ -214,6 +214,14 @@ class ConfigurationModule(
                         Clash.load(profileDir).await()
 
                         applyOutcome = "ok"
+
+                        // Ядро уже на новой подписке: метка публикуется под тем же
+                        // замком — по ней служба переключает режим на лету, и
+                        // переключение не должно застать ядро новой с меткой старой
+                        StatusProvider.currentProfile =
+                            service.displayProfileName(active.uuid, active.name, active.nameManual)
+
+                        StatusProvider.currentProfileUuid = active.uuid.toString()
                     } catch (e: CancellationException) {
                         applyOutcome = "cancelled"
 
@@ -231,13 +239,6 @@ class ConfigurationModule(
                 loaded = current
                 loadedInputs = inputs
                 lockUntil = lockDeadline(active.uuid, session)
-
-                // Ядро уже на новой подписке: метка публикуется сразу, а не после
-                // возврата выбора узлов, — по ней служба переключает режим на лету.
-                StatusProvider.currentProfile =
-                    service.displayProfileName(active.uuid, active.name, active.nameManual)
-
-                StatusProvider.currentProfileUuid = active.uuid.toString()
 
                 if (first) stage(Intents.STAGE_SELECTING)
 
