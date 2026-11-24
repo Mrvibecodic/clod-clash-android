@@ -45,7 +45,7 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
         super.attachBaseContext(base.withStoredLocale())
     }
 
-    private val session = SessionLifecycle(this, this) { runtime.launch(it) }
+    private val session = SessionLifecycle(this, this) { failure, afterModules -> runtime.launch(failure, afterModules) }
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
@@ -215,8 +215,6 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
                 TunModule.requestStop()
 
                 Log.i("Tunnel closed in ${SystemClock.elapsedRealtime() - startedAt} ms")
-
-                session.finishSession()
             }
         }
     }
@@ -304,11 +302,12 @@ class TunService : VpnService(), CoroutineScope by CoroutineScope(Dispatchers.De
 
         val startedAt = SystemClock.elapsedRealtime()
 
-        session.destroy()
-
         // Туннель закрывает сам рантайм в фоне; главный поток ждёт его не
-        // дольше срока ожидания.
+        // дольше срока ожидания. Остановку объявляет рантайм, когда модули
+        // доработали; destroy — только если он не успел или не начинался
         cancelAndJoinBlocking()
+
+        session.destroy()
 
         Log.i(
             "TunService destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms: " +

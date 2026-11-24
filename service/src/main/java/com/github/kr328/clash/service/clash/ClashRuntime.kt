@@ -23,7 +23,9 @@ interface ClashRuntimeScope {
 typealias ModuleFailureSink = (module: String, e: Exception, live: Boolean, tryRestart: () -> Boolean) -> Boolean
 
 interface ClashRuntime {
-    fun launch(onModuleFailure: ModuleFailureSink)
+    // afterModules — конец сессии: вызывается, когда все модули доработали свои
+    // finally, и до сброса ядра
+    fun launch(onModuleFailure: ModuleFailureSink, afterModules: () -> Unit)
     fun requestGc()
 }
 
@@ -66,29 +68,61 @@ internal suspend fun runModule(
 
 private const val RESTART_DELAY_MS = 3_000L
 
+// Каркас сессии рантайма. Сброс ядра и снятие замка ждут, пока модули доработают
+// свои finally: иначе прощание старой сессии (пустой DNS, остановка туннеля)
+// ложится поверх следующей. Конец сессии (afterModules: «остановлено», запуск
+// отложенной) — тоже после модулей: иначе поздняя запись модуля (подписка
+// загрузилась ровно на стопе) ложится поверх уже объявленной остановки
+internal suspend fun <S> runSession(
+    prepare: () -> Unit,
+    modules: CoroutineScope.() -> S,
+    block: suspend S.() -> Unit,
+    afterModules: () -> Unit,
+    teardown: () -> Unit,
+) {
+    try {
+        prepare()
+
+        coroutineScope {
+            modules().block()
+
+            cancel()
+        }
+    } catch (e: ModuleFailure) {
+        // Причина уже у сессии; выпущенный наружу, отказ уронил бы
+        // процесс службы
+    } finally {
+        withContext(NonCancellable) {
+            try {
+                afterModules()
+            } finally {
+                teardown()
+            }
+        }
+    }
+}
+
 fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): ClashRuntime {
     return object : ClashRuntime {
-        override fun launch(onModuleFailure: ModuleFailureSink) {
+        override fun launch(onModuleFailure: ModuleFailureSink, afterModules: () -> Unit) {
             launch(Dispatchers.IO) {
                 globalLock.withLock {
                     Log.d("ClashRuntime: initialize")
 
                     ServiceLog.mark("runtime: start")
 
-                    try {
-                        Clash.reset()
-                        clearSessionOverride()
+                    runSession(
+                        prepare = {
+                            Clash.reset()
+                            clearSessionOverride()
 
-                        // Мобильная ли сеть — ядру до модулей: первая загрузка подписки
-                        // уже без серверов только для мобильной сети вне неё. Дальше её
-                        // называет сторож сети, и его слово — последнее
-                        Clash.setCellular(cellularAtStart())
-
-                        // Сброс ядра и снятие замка ждут, пока модули доработают
-                        // свои finally: иначе прощание старой сессии (пустой DNS,
-                        // остановка туннеля) ложится поверх следующей.
-                        coroutineScope {
-                            val scope = object : ClashRuntimeScope {
+                            // Мобильная ли сеть — ядру до модулей: первая загрузка подписки
+                            // уже без серверов только для мобильной сети вне неё. Дальше её
+                            // называет сторож сети, и его слово — последнее
+                            Clash.setCellular(cellularAtStart())
+                        },
+                        modules = {
+                            object : ClashRuntimeScope {
                                 override fun <E, T : Module<E>> install(module: T): T {
                                     launch {
                                         runModule(
@@ -102,16 +136,10 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                                     return module
                                 }
                             }
-
-                            scope.block()
-
-                            cancel()
-                        }
-                    } catch (e: ModuleFailure) {
-                        // Причина уже у сессии; выпущенный наружу, отказ уронил бы
-                        // процесс службы
-                    } finally {
-                        withContext(NonCancellable) {
+                        },
+                        block = block,
+                        afterModules = afterModules,
+                        teardown = {
                             val startedAt = SystemClock.elapsedRealtime()
 
                             Clash.reset()
@@ -120,8 +148,8 @@ fun CoroutineScope.clashRuntime(block: suspend ClashRuntimeScope.() -> Unit): Cl
                             Log.i("ClashRuntime: destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms")
 
                             ServiceLog.mark("runtime: finished")
-                        }
-                    }
+                        },
+                    )
                 }
             }
         }

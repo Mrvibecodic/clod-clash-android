@@ -93,7 +93,7 @@ fun afterStopOutcome(
 class SessionLifecycle(
     private val service: Service,
     private val scope: CoroutineScope,
-    private val launchRuntime: (ModuleFailureSink) -> Unit,
+    private val launchRuntime: (ModuleFailureSink, afterModules: () -> Unit) -> Unit,
 ) {
     @Volatile
     var reason: String? = null
@@ -375,7 +375,10 @@ class SessionLifecycle(
             return
         }
 
-        launchRuntime { module, e, live, tryRestart -> moduleFailed(session, module, e, live, tryRestart) }
+        launchRuntime(
+            { module, e, live, tryRestart -> moduleFailed(session, module, e, live, tryRestart) },
+            ::finishSession,
+        )
     }
 
     fun onStartCommand(systemStart: Boolean, unattended: Boolean, startId: Int): StartCommandOutcome {
@@ -460,7 +463,7 @@ class SessionLifecycle(
         }
     }
 
-    fun finishSession() {
+    private fun finishSession() {
         notifyStopped()
 
         // Вне замка: binder-вызов. Запомненная команда новее stopId, и с ней

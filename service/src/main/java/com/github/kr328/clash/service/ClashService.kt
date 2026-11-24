@@ -19,7 +19,7 @@ class ClashService : BaseService() {
     private val self: ClashService
         get() = this
 
-    private val session = SessionLifecycle(this, this) { runtime.launch(it) }
+    private val session = SessionLifecycle(this, this) { failure, afterModules -> runtime.launch(failure, afterModules) }
 
     private val runtime: ClashRuntime = clashRuntime {
         val store = ServiceStore(self)
@@ -75,8 +75,6 @@ class ClashService : BaseService() {
         } finally {
             withContext(NonCancellable) {
                 session.beginStop()
-
-                session.finishSession()
             }
         }
     }
@@ -128,9 +126,11 @@ class ClashService : BaseService() {
 
         val startedAt = SystemClock.elapsedRealtime()
 
-        session.destroy()
-
+        // BaseService дожидается рантайма: остановку объявляет он, когда модули
+        // доработали; destroy — только если не успел или не начинался
         super.onDestroy()
+
+        session.destroy()
 
         Log.i(
             "ClashService destroyed in ${SystemClock.elapsedRealtime() - startedAt} ms: " +
