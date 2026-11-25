@@ -90,7 +90,7 @@ func MarkUpdated(dir string, now, interval int64) {
 	info.UpdatedAt = now
 	info.UpdateInterval = interval
 
-	Write(dir, info)
+	_ = Write(dir, info)
 }
 
 func ReadWithMode(dir string, subscription func() string) Info {
@@ -99,7 +99,7 @@ func ReadWithMode(dir string, subscription func() string) Info {
 	if info.Mode == "" {
 		info.Mode = templateMode(subscription())
 
-		Write(dir, info)
+		_ = Write(dir, info)
 	}
 
 	return info

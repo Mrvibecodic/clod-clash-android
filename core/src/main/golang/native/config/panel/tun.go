@@ -1,7 +1,6 @@
 package panel
 
 import (
-	"os"
 	P "path"
 	"strings"
 )
@@ -103,12 +102,10 @@ func TunPrefsOf(include, exclude []string, info Info) TunPrefs {
 	}
 }
 
-func WriteTunPrefs(dir string, prefs TunPrefs) {
+func WriteTunPrefs(dir string, prefs TunPrefs) error {
 	if prefs.IsEmpty() {
-		_ = os.Remove(tunPath(dir))
-
-		return
+		return removeFile(tunPath(dir))
 	}
 
-	writeJSON(tunPath(dir), &prefs)
+	return writeJSON(tunPath(dir), &prefs)
 }

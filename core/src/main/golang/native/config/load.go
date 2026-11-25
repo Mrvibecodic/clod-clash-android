@@ -45,12 +45,12 @@ func unmarshalProfile(profilePath string) (*config.RawConfig, error) {
 
 // UnmarshalAndPatch — подписка, как её увидит ядро, только для чтения
 func UnmarshalAndPatch(profilePath string) (*config.RawConfig, error) {
-	rawConfig, _, err := unmarshalAndPatch(profilePath, false)
+	rawConfig, _, err := unmarshalAndPatch(profilePath, nil)
 
 	return rawConfig, err
 }
 
-func unmarshalAndPatch(profilePath string, save bool) (*config.RawConfig, panel.Info, error) {
+func unmarshalAndPatch(profilePath string, files *panel.ProfileFiles) (*config.RawConfig, panel.Info, error) {
 	rawConfig, err := unmarshalProfile(profilePath)
 	if err != nil {
 		return nil, panel.Info{}, err
@@ -58,7 +58,7 @@ func unmarshalAndPatch(profilePath string, save bool) (*config.RawConfig, panel.
 
 	info := panel.Read(profilePath)
 
-	if err := process(rawConfig, parseInput{dir: profilePath, info: info, save: save}); err != nil {
+	if err := process(rawConfig, parseInput{dir: profilePath, info: info, files: files}); err != nil {
 		return nil, panel.Info{}, err
 	}
 
@@ -211,11 +211,19 @@ func parseLocked(rawConfig *config.RawConfig) (*config.Config, error) {
 func Load(path string) error {
 	generation := loadGeneration.Load()
 
-	rawCfg, info, err := unmarshalAndPatch(path, true)
+	files := &panel.ProfileFiles{}
+
+	rawCfg, info, err := unmarshalAndPatch(path, files)
 	if err != nil {
 		log.Errorln("Load %s: %s", path, err.Error())
 
 		return err
+	}
+
+	// Принятая подписка их уже записала; здесь — для профиля, принятого
+	// прежней версией, и для своего порта из переопределения
+	if err := files.Write(path); err != nil {
+		log.Warnln("Load %s: %s", path, err.Error())
 	}
 
 	logDns(rawCfg)

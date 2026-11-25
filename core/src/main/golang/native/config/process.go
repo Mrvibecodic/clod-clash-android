@@ -32,12 +32,13 @@ var processors = []processor{
 
 // info — panel.json папки подписки: читается один раз на разбор, а при
 // проверке загрузки приходит из памяти, вместе с только что принятыми заголовками.
-// save — разбор для загрузки или проверки: только он пишет tun.json и
-// inbound.json; разбор ради чтения узлов папку не трогает — она может быть уже подменена.
+// files — разбор для загрузки или проверки: в него кладутся tun.json и
+// inbound.json, пишет их вызвавший; разбор ради чтения узлов (nil) папку не
+// трогает — она может быть уже подменена.
 type parseInput struct {
-	dir  string
-	info panel.Info
-	save bool
+	dir   string
+	info  panel.Info
+	files *panel.ProfileFiles
 }
 
 type processor func(cfg *config.RawConfig, src parseInput) error
@@ -102,11 +103,8 @@ func patchGeneral(cfg *config.RawConfig, src parseInput) error {
 
 	overlay.DefaultMixedPort(cfg, ReadOverride(OverrideSlotPersist), ReadOverride(OverrideSlotSession))
 
-	if src.save {
-		panel.WriteInboundPrefs(src.dir, panel.InboundPrefs{
-			MixedPort: cfg.MixedPort,
-			HttpPort:  cfg.Port,
-		})
+	if src.files != nil {
+		src.files.Inbound = panel.InboundPrefs{MixedPort: cfg.MixedPort, HttpPort: cfg.Port}
 	}
 
 	if cfg.ExternalController != "" || cfg.ExternalControllerTLS != "" {
@@ -177,8 +175,8 @@ func patchTun(cfg *config.RawConfig, src parseInput) error {
 		prefs.ExcludePackages = panel.MergePackages(prefs.ExcludePackages, groups.Strings(mapping["exclude-package"]))
 	}
 
-	if src.save {
-		panel.WriteTunPrefs(src.dir, prefs)
+	if src.files != nil {
+		src.files.Tun = prefs
 	}
 
 	cfg.Tun.Enable = false

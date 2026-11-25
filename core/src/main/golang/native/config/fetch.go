@@ -624,8 +624,14 @@ func verifyProfile(path string, panelInfo panel.Info, budget *budgets.Budget, re
 
 	template := rawCfg.Mode
 
-	if err := process(rawCfg, parseInput{dir: path, info: panelInfo, save: true}); err != nil {
+	files := &panel.ProfileFiles{}
+
+	if err := process(rawCfg, parseInput{dir: path, info: panelInfo, files: files}); err != nil {
 		return fmt.Errorf("%s: %w", configRejected, err)
+	}
+
+	if err := files.Write(path); err != nil {
+		return err
 	}
 
 	applyGroups(&panelInfo, rawCfg, template)
@@ -644,7 +650,9 @@ func verifyProfile(path string, panelInfo panel.Info, budget *budgets.Budget, re
 		log.Infoln("Subscription sent placeholders instead of servers: %s", strings.Join(report.Remarks, " | "))
 	}
 
-	panel.Write(path, panelInfo)
+	if err := panel.Write(path, panelInfo); err != nil {
+		return err
+	}
 
 	fetchProviders(rawCfg, budget, reportStatus)
 

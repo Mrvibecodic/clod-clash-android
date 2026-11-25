@@ -174,10 +174,10 @@ func Read(dir string) Info {
 	return info
 }
 
-func Write(dir string, info Info) {
+func Write(dir string, info Info) error {
 	info.Mode = templateMode(info.Mode)
 
-	writeJSON(panelPath(dir), &info)
+	return writeJSON(panelPath(dir), &info)
 }
 
 func ApplyHeaders(info *Info, header map[string][]string, current string) {

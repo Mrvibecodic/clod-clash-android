@@ -1,7 +1,6 @@
 package panel
 
 import (
-	"os"
 	P "path"
 )
 
@@ -20,12 +19,10 @@ func (i InboundPrefs) IsEmpty() bool {
 	return i.MixedPort == 0 && i.HttpPort == 0
 }
 
-func WriteInboundPrefs(dir string, prefs InboundPrefs) {
+func WriteInboundPrefs(dir string, prefs InboundPrefs) error {
 	if prefs.IsEmpty() {
-		_ = os.Remove(inboundPath(dir))
-
-		return
+		return removeFile(inboundPath(dir))
 	}
 
-	writeJSON(inboundPath(dir), &prefs)
+	return writeJSON(inboundPath(dir), &prefs)
 }

@@ -82,15 +82,24 @@ func isWhole(dir string) bool {
 // writeJSON пишет файл каталога профиля через временный и переименование:
 // читатель без замка не застанет его недописанным. Тот же файл не
 // переписывается — разбор конфига зовёт запись на каждой загрузке и проверке скачанного.
-func writeJSON(path string, value any) {
+func writeJSON(path string, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
-		return
+		return err
 	}
 
 	if current, err := os.ReadFile(path); err == nil && bytes.Equal(current, data) {
-		return
+		return nil
 	}
 
-	_ = common.WriteFile(path, data, false)
+	return common.WriteFile(path, data, false)
+}
+
+// removeFile — файла нет, и это не ошибка.
+func removeFile(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+
+	return nil
 }
