@@ -5,16 +5,19 @@ description: "Which core is built into the Android client and how it differs fro
 
 The core is updated together with the app; it cannot be updated separately. Inside is
 [Clod Core](https://github.com/Mrvibecodic/clod-core), our fork of the stable
-[mihomo](https://github.com/MetaCubeX/mihomo) v1.19.32, the `android` branch. The user sees the core
-version in **More → About**, for example “Clod Core v1.19.32-clod.5”.
+[mihomo](https://github.com/MetaCubeX/mihomo), the `android` branch. The user sees the core
+version in **More → About**.
 
 ## Patches for Android
 
 - While the network is switching or the app was asleep, failed checks are not recorded against
   nodes — live servers are not marked dead.
 - On a network change, if the user has “Drop connections when the network changes” on (it is by
-  default), shared node sessions (smux, anytls, tuic, hysteria2, gRPC, ssh) are reset, so new
+  default), shared node sessions (smux, anytls, tuic, hysteria2, gRPC, XHTTP, ssh) are reset, so new
   connections do not land on a dead session of the old network.
+- Hysteria2 and TUIC nodes answer right after the phone wakes from sleep.
+- Servers listed in the `clod-mobile-only` header are hidden from groups while the phone is not on
+  a mobile network.
 - Servers in manual-select groups are checked with the expected status code set in the group.
 - If the subscription or set address redirects from `https` to `http`, the download is refused
   instead of going out in the clear.
@@ -22,22 +25,33 @@ version in **More → About**, for example “Clod Core v1.19.32-clod.5”.
 
 ## Differences from stock mihomo
 
-- **A fresh MIPS network stack** — with TCP and ICMP fixes; “Auto” uses it by default if the template
-  sets no stack.
-- **A newer TLS fingerprint library** — utls v1.9.0-mod-meta: Firefox 148 and Safari 26.3
-  fingerprints with a post-quantum key, fixes for TLS session resumption. The chrome, ios and edge
-  fingerprints do not change.
-- **Nodes do not “blink” dead.** If a live node's check fails or hangs, a second one starts a second
-  later (later for slow nodes); the node counts as dead only if both fail — including a closed port,
-  an unknown name or a wrong status code. A node already marked dead gets a single probe. Both the core's scheduled checks and the app's own
-  checks work this way — by the button, on connecting and after a network change.
+- **Fresh TLS fingerprints.** `chrome` matches Chrome 155, `firefox` matches Firefox 156; the other
+  fingerprints are as in mihomo.
+- **Nodes do not “blink” dead.** If a live node's check fails or hangs, a second one follows; the
+  node counts as dead only if both fail — including a closed port, an unknown name or a wrong status
+  code. A scheduled check that no node answered is treated as the device's own network going away,
+  not the servers: no marks are written while such silence lasts under 10 minutes. Both the core's
+  scheduled checks and the app's own checks work this way — by the button, on connecting and after a
+  network change.
+- **Automatic selection notices a silent server without waiting for the scheduled check.** If the
+  selected server accepts connections but does not answer, url-test checks it together with a few
+  nearby servers and leaves a dead one at once. The server the group left is rechecked within the
+  next minutes, and after a couple of clean checks the group returns to it.
+- **Checks do not break working connections.** For gRPC, XHTTP and TUIC the second probe goes over a
+  new connection, and the existing one is not dropped.
+- **XHTTP keeps one HTTP/2 connection per transport**, starts a backup dial if the handshake drags
+  on, and retries a packet-up request the server rejected over its stream limit.
 - **An unstable node loses to a stable one.** Automatic selection adds a penalty to its latency — a
   quarter of the timeout for each failure among the last three checks.
-- **Fewer extra checks.** A node that sits in several groups is checked once per round, and nodes on
-  one server are checked 250 ms apart instead of in a burst, so a blocker does not take the checks for
-  an attack.
+- **Fewer extra checks.** A node that sits in several groups is checked once per round, nodes that
+  groups point at go first, and nodes on one server are checked 250 ms apart instead of in a burst, so
+  a blocker does not take the checks for an attack.
+- **The 16–20 check** (the `clod-16-20-check` header) — a download through the node inside the core.
 - **Data survives a crash.** Server sets, rule sets and geo databases are written through a
   temporary file: if a write breaks off, the old file stays intact.
+- **Fixes.** An SSH node recreates its connection after a write error instead of hanging; VMess does
+  not mix up the order of received data; a long or incomplete name on incoming SOCKS and HTTP does not
+  crash the core; fake-ip does not hand out taken addresses after a config reload.
 
 ## Network stack
 
