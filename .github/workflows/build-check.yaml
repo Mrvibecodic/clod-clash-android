@@ -164,9 +164,19 @@ jobs:
           app:testStandardDebugUnitTest
           common:testStandardDebugUnitTest
 
+      # Поведение экранов на Robolectric: свайп вкладок, доступность строк
+      # серверов. Только классы *Test — класс Screenshots снимает картинки для
+      # сайта и в проверку не входит
+      - name: Screen tests
+        id: screen-tests
+        if: success()
+        run: >-
+          ./gradlew --no-daemon -Pclod.abi=arm64-v8a
+          screenshots:testStandardDebugUnitTest --tests '*Test'
+
       - name: Upload Test Report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        if: ${{ !cancelled() && steps.unit-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() && (steps.unit-tests.outcome == 'failure' || steps.screen-tests.outcome == 'failure') }}
         with:
           name: unit-test-report
           if-no-files-found: ignore
@@ -183,6 +193,8 @@ jobs:
             app/build/test-results/
             common/build/reports/tests/
             common/build/test-results/
+            screenshots/build/reports/tests/
+            screenshots/build/test-results/
 
       - name: Build
         if: success()
