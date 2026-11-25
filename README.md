@@ -38,6 +38,20 @@
 - [Ядро Clod Core](https://mrvibecodic.github.io/clod-clash-android/ru/docs/provider/core) —
   чем оно отличается от стокового mihomo.
 
+## Благодарности
+
+Проектам, у которых мы подсмотрели продуктовые решения. Чужого кода в них мы не брали —
+только форматы, приёмы и подходы:
+
+* [Prizrak-Box](https://github.com/legiz-ru/Prizrak-Box) от legiz-ru — цветовая разметка
+  `#RRGGBB` в объявлениях и синоним `global-mode: false` для замка режима;
+* [koala-clash](https://github.com/coolcoala/koala-clash) и
+  [KoalaClash-Android](https://github.com/coolcoala/KoalaClash-Android) от coolcoala — формат
+  User-Agent «имя/версия» и заголовки опознания устройства;
+* [FlClash](https://github.com/chen08209/FlClash) от chen08209 и его форк
+  [FlClashX](https://github.com/pluralplay/FlClashX) от pluralplay — подмена хоста подписки
+  на другой домен и состав заголовков.
+
 ## Основа и лицензия
 
 Оболочка приложения выросла из
