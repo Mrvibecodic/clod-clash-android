@@ -6,6 +6,13 @@ on:
       - 'docs/**'
       - '**.md'
   workflow_dispatch:
+  # Релиз зовёт эти же проверки и без них не собирается; собирает он ядро
+  # того же коммита, что прошло проверки. Своя concurrency здесь с
+  # github.workflow совпала бы при вызове с группой релиза и подвесила бы его
+  workflow_call:
+    outputs:
+      core_sha:
+        value: ${{ jobs.BuildDebug.outputs.core_sha }}
   push:
     branches:
       - main
@@ -19,6 +26,8 @@ permissions:
 jobs:
   BuildDebug:
     runs-on: ubuntu-latest
+    outputs:
+      core_sha: ${{ steps.core.outputs.sha }}
     env:
       GOFLAGS: -mod=mod
     steps:
@@ -26,11 +35,13 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       
       - name: Checkout submodules
+        id: core
         run: |
           # Ядро Clod Core — всегда голова ветки android на момент сборки, а не
           # гитлинк клиента: пин в клиенте не поднимается (решение владельца).
           git submodule update --init --recursive --force --remote
           git -C core/src/foss/golang/clash log -1 --format='Clod Core: %H %s'
+          echo "sha=$(git -C core/src/foss/golang/clash rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Check Core Patches
         run: .github/scripts/core-patches.sh

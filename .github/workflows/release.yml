@@ -97,9 +97,17 @@ jobs:
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "Версия $VERSION_NAME ($VERSION_CODE)"
 
+  # Те же проверки, что на пуш в main: красные — релиза нет, даже черновика
+  checks:
+    name: Проверки сборки
+    needs: check_version
+    uses: ./.github/workflows/build-check.yaml
+    permissions:
+      contents: read
+
   prepare_release:
     name: Черновик релиза
-    needs: check_version
+    needs: [check_version, checks]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -140,7 +148,7 @@ jobs:
 
   build:
     name: Сборка
-    needs: [check_version, prepare_release]
+    needs: [check_version, checks, prepare_release]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -153,10 +161,18 @@ jobs:
           persist-credentials: false
 
       - name: Подтянуть submodule ядра
+        env:
+          CORE_SHA: ${{ needs.checks.outputs.core_sha }}
         run: |
+          set -euo pipefail
           # Ядро Clod Core — всегда голова ветки android на момент сборки, а не
           # гитлинк клиента: пин в клиенте не поднимается (решение владельца).
+          # Берётся тот же коммит, что прошёл проверки: новый, пришедший за
+          # время релиза, их не прошёл
+          : "${CORE_SHA:?проверки не назвали коммит ядра}"
           git submodule update --init --recursive --force --remote
+          git -C core/src/foss/golang/clash checkout --quiet "$CORE_SHA"
+          git -C core/src/foss/golang/clash submodule update --init --recursive
           git -C core/src/foss/golang/clash log -1 --format='Clod Core: %H %s'
 
       - name: Патчи ядра на месте
