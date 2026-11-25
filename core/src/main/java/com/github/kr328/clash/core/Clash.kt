@@ -200,8 +200,11 @@ object Clash {
     }
 
     // cellular — сеть мобильная: без неё серверы только для мобильной сети не проверяются
+    // Не измерено ничего, хотя было что мерить (замер прерван, профиль не
+    // разобран, сбой в ядре), — ошибка, а не пустой итог
     fun testProfileDelays(path: File, cellular: Boolean): String {
-        return Bridge.nativeTestProfileDelays(path.absolutePath, cellular) ?: "{}"
+        return Bridge.nativeTestProfileDelays(path.absolutePath, cellular)
+            ?: throw ClashException("profile delay test: no node was measured")
     }
 
     // Ход замера без туннеля: старшие 32 бита — готово, младшие — всего; 0 — замера нет

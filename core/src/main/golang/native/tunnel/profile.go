@@ -2,6 +2,7 @@ package tunnel
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"runtime"
@@ -89,7 +90,7 @@ func profileNodes(path string) (proxies []C.Proxy, url string, find func(string)
 // не проверяются, не в мобильной сети (cellular=false) — и серверы только
 // для неё: их не видно — ни их, ни серверов, что соединяются через них, и у
 // провайдеров тоже.
-func TestProfileDelays(path string, cellular bool) map[string]int {
+func TestProfileDelays(path string, cellular bool) (map[string]int, error) {
 	result := map[string]int{}
 
 	// Корень проб берётся ДО разбора профиля: иначе отмена, пришедшая на старте
@@ -107,7 +108,7 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 	if err != nil {
 		log.Errorln("Test profile `%s`: %s", path, err.Error())
 
-		return result
+		return nil, err
 	}
 
 	info := panel.Read(path)
@@ -123,7 +124,7 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 	if len(proxies) == 0 {
 		log.Warnln("Test profile `%s`: no proxies to test", path)
 
-		return result
+		return result, nil
 	}
 
 	log.Infoln("Test profile `%s`: %d proxies via %s", path, len(proxies), url)
@@ -193,8 +194,19 @@ func TestProfileDelays(path string, cellular bool) map[string]int {
 		path, alive, len(result), len(proxies)-len(result), len(proxies),
 	)
 
-	return result
+	if probeoutcome.Interrupted(len(proxies), len(result), context.Cause(run.ctx), errCoreReset, errConfigReplaced, errRunSuperseded) {
+		log.Warnln("Test profile `%s`: interrupted, nothing measured", path)
+
+		return nil, errNothingMeasured
+	}
+
+	return result, nil
 }
+
+var (
+	errNothingMeasured = errors.New("profile delay test interrupted: no node was measured")
+	errRunSuperseded   = errors.New("profile delay test superseded")
+)
 
 const delayUnknown = 0xffff
 
@@ -202,7 +214,7 @@ const delayUnknown = 0xffff
 // не трогает ход нового
 type profileRun struct {
 	ctx         context.Context
-	cancel      context.CancelFunc
+	cancel      context.CancelCauseFunc
 	done, total atomic.Int64
 }
 
@@ -214,13 +226,13 @@ var (
 
 func startProfileRun(root context.Context) *profileRun {
 	run := &profileRun{}
-	run.ctx, run.cancel = context.WithCancel(root)
+	run.ctx, run.cancel = context.WithCancelCause(root)
 
 	profileRunMu.Lock()
 	defer profileRunMu.Unlock()
 
 	if prev := currentProfileRun; prev != nil {
-		prev.cancel()
+		prev.cancel(errRunSuperseded)
 
 		log.Infoln("Test profile: previous test cancelled by a new one")
 	}
@@ -231,7 +243,7 @@ func startProfileRun(root context.Context) *profileRun {
 }
 
 func (run *profileRun) finish() {
-	run.cancel()
+	run.cancel(nil)
 
 	profileRunMu.Lock()
 	defer profileRunMu.Unlock()

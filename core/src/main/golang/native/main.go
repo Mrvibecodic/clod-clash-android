@@ -43,7 +43,7 @@ func coreInit(home, versionName, gitVersion C.c_string, sdkVersion C.int) {
 func reset() {
 	defer guard("reset", func() {})()
 
-	tunnel.CancelHealthChecks()
+	tunnel.CancelHealthChecksOnReset()
 	tunnel.CloseProviders()
 	config.LoadDefault()
 	tunnel.ResetStatistic()

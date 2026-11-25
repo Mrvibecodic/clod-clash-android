@@ -111,7 +111,12 @@ func healthCheckGroups(completable unsafe.Pointer, request C.c_string) {
 func testProfileDelays(path C.c_string, cellular C.int) (result *C.char) {
 	defer guard("testProfileDelays", func() {})()
 
-	return marshalJson(tunnel.TestProfileDelays(C.GoString(path), cellular != 0))
+	delays, err := tunnel.TestProfileDelays(C.GoString(path), cellular != 0)
+	if err != nil {
+		return nil
+	}
+
+	return marshalJson(delays)
 }
 
 //export queryProfileDelayProgress

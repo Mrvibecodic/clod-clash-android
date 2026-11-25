@@ -71,10 +71,19 @@ func probeContext() context.Context {
 	return probeRoot
 }
 
-var errConfigReplaced = errors.New("config replaced")
+var (
+	errConfigReplaced = errors.New("config replaced")
+	errCoreReset      = errors.New("core reset")
+)
 
 func CancelHealthChecks() {
 	cancelHealthChecks(nil)
+}
+
+// Сброс ядра (старт и стоп сессии): замер без туннеля, прерванный им, — не
+// ошибка для человека, дальше экран живёт уже другим списком
+func CancelHealthChecksOnReset() {
+	cancelHealthChecks(errCoreReset)
 }
 
 // Замер, начатый до загрузки конфига, меряет выброшенные объекты прежнего

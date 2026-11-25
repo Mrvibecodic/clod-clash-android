@@ -49,3 +49,29 @@ func TestZeroOutcomeIsSuperseded(t *testing.T) {
 		t.Errorf("нулевой исход = %s, ожидался %s", zero, Superseded)
 	}
 }
+
+func TestInterrupted(t *testing.T) {
+	reset := errors.New("core reset")
+	superseded := errors.New("superseded")
+
+	cases := []struct {
+		name                 string
+		candidates, measured int
+		cause                error
+		want                 bool
+	}{
+		{"мерить нечего", 0, 0, nil, false},
+		{"измерено хоть что-то", 5, 1, nil, false},
+		{"не измерено ничего, бюджет вышел", 5, 0, nil, true},
+		{"не измерено ничего, смена сети", 5, 0, context.Canceled, true},
+		{"не измерено ничего, сброс ядра", 5, 0, reset, false},
+		{"не измерено ничего, обёрнутый сброс ядра", 5, 0, fmt.Errorf("stop: %w", reset), false},
+		{"не измерено ничего, погашен новым", 5, 0, superseded, false},
+	}
+
+	for _, c := range cases {
+		if got := Interrupted(c.candidates, c.measured, c.cause, reset, superseded); got != c.want {
+			t.Errorf("%s: Interrupted = %v, ожидалось %v", c.name, got, c.want)
+		}
+	}
+}
