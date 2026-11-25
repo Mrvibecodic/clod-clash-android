@@ -24,7 +24,8 @@ npm start       # раздать out/
 | `content/docs/ru`, `content/docs/en` | страницы в MDX, по одной ветке на язык |
 | `content/docs/*/meta.json` | порядок пунктов в боковом меню |
 | `public/screenshots/{ru,en}` | скриншоты приложения |
-| `public/promo.png` | обложка для og:image и шапки корневого README |
+| `public/promo.png` | обложка для og:image |
+| `public/readme.png` | шапка корневого README |
 | `lib/i18n.ts` | список языков и перевод интерфейса Fumadocs |
 | `lib/shared.ts` | имя приложения, адрес сайта, ссылки на репозиторий |
 | `components/shot.tsx` | компоненты `<Shot>` и `<Shots>` для вставки скриншотов |
