@@ -35,7 +35,7 @@ npm start       # раздать out/
 модулем `:screenshots` (Robolectric + Roborazzi) и содержат только демонстрационные данные.
 
 ```bash
-./gradlew :screenshots:testDebugUnitTest
+./gradlew :screenshots:testStandardDebugUnitTest
 ```
 
 Готовые PNG появляются в `screenshots/build/screenshots/{ru,en}` — оттуда их
